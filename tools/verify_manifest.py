@@ -12,7 +12,14 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from gen_manifest import MANIFEST_JSON, ROOT, build_manifest, bundle_files  # noqa: E402
+from gen_manifest import (  # noqa: E402
+    MANIFEST_JSON,
+    MANIFEST_SHA,
+    ROOT,
+    build_manifest,
+    build_manifest_sha_text,
+    bundle_files,
+)
 
 
 def main() -> int:
@@ -43,6 +50,10 @@ def main() -> int:
         problems.append("canonical_manifest_hash is stale")
     if on_disk != recomputed:
         problems.append("contract manifest envelope or deterministic metadata drift")
+    if not MANIFEST_SHA.exists():
+        problems.append("contracts/MANIFEST.sha256 is missing")
+    elif MANIFEST_SHA.read_text(encoding="utf-8") != build_manifest_sha_text(recomputed):
+        problems.append("contracts/MANIFEST.sha256 bytes are stale or tampered")
 
     if problems:
         for p in problems:

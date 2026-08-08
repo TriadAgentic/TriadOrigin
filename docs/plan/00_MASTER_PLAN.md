@@ -98,11 +98,13 @@ exception.
 
 Mandatory evidence:
 
-- spec/control bundle digest and exact scope;
+- authority-basis digest and status (`RATIFIED_BUNDLE` or explicitly noncanonical audit basis), plus
+  exact scope digest;
 - base, PR-head, and merge SHAs;
-- build/toolchain and dependency-lock identity;
+- build/toolchain, dependency-specification, and resolved dependency-snapshot identity;
 - test IDs, commands, exit codes, skips/xfails, and result digest;
-- contract-manifest, golden-vector, and replay output digests where applicable;
+- contract-manifest, golden-vector, and replay output digests where applicable, with every
+  non-applicable item named, owned, reasoned, and assigned to a later milestone;
 - negative-capability scan;
 - CI run identity and independent review state;
 - post-merge fresh-main reproduction;

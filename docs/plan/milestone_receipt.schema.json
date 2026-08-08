@@ -9,36 +9,103 @@
     "receipt_id",
     "milestone_id",
     "scope",
-    "spec_bundle_sha256",
+    "scope_sha256",
+    "authority_basis",
     "base_sha",
     "head_sha",
     "merge_sha",
+    "toolchain",
+    "artifacts",
     "ci",
     "tests",
     "manifests",
+    "deferred_evidence",
     "negative_capability",
     "review",
     "post_merge",
+    "supersession",
+    "rollback",
     "status"
   ],
   "properties": {
-    "schema": {"const": "origin.milestone_receipt.v1"},
-    "receipt_id": {"type": "string", "minLength": 1},
-    "milestone_id": {"type": "string", "pattern": "^(R|B)[0-9]{2}$"},
-    "scope": {"type": "string", "minLength": 1},
-    "spec_bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "base_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-    "head_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-    "merge_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "schema": { "const": "origin.milestone_receipt.v1" },
+    "receipt_id": { "type": "string", "minLength": 1 },
+    "milestone_id": { "type": "string", "pattern": "^(R|B)[0-9]{2}$" },
+    "scope": { "type": "string", "minLength": 1 },
+    "scope_sha256": { "$ref": "#/$defs/sha256" },
+    "authority_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "digest_sha256", "canonical", "inventory_ref"],
+      "properties": {
+        "status": {
+          "enum": ["RATIFIED_BUNDLE", "INCOMPLETE_AUDIT_BASIS", "HISTORICAL_COMPATIBILITY_BASIS"]
+        },
+        "digest_sha256": { "$ref": "#/$defs/sha256" },
+        "canonical": { "type": "boolean" },
+        "inventory_ref": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "RATIFIED_BUNDLE" } } },
+          "then": { "properties": { "canonical": { "const": true } } }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": ["INCOMPLETE_AUDIT_BASIS", "HISTORICAL_COMPATIBILITY_BASIS"]
+              }
+            }
+          },
+          "then": { "properties": { "canonical": { "const": false } } }
+        }
+      ]
+    },
+    "base_sha": { "$ref": "#/$defs/gitSha" },
+    "head_sha": { "$ref": "#/$defs/gitSha" },
+    "merge_sha": { "$ref": "#/$defs/gitSha" },
+    "toolchain": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "python_version",
+        "platform",
+        "runner_image",
+        "dependency_spec_sha256",
+        "dependency_snapshot_sha256"
+      ],
+      "properties": {
+        "python_version": { "type": "string", "minLength": 1 },
+        "platform": { "type": "string", "minLength": 1 },
+        "runner_image": { "type": "string", "minLength": 1 },
+        "dependency_spec_sha256": { "$ref": "#/$defs/sha256" },
+        "dependency_snapshot_sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind", "sha256"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["source-tree", "sdist", "wheel", "test-corpus", "other"] },
+          "sha256": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    },
     "ci": {
       "type": "object",
       "additionalProperties": false,
       "required": ["provider", "run_id", "head_sha", "conclusion"],
       "properties": {
-        "provider": {"const": "github-actions"},
-        "run_id": {"type": "string", "minLength": 1},
-        "head_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-        "conclusion": {"const": "success"}
+        "provider": { "const": "github-actions" },
+        "run_id": { "type": "string", "minLength": 1 },
+        "head_sha": { "$ref": "#/$defs/gitSha" },
+        "conclusion": { "const": "success" }
       }
     },
     "tests": {
@@ -47,51 +114,98 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["command", "exit_code", "result_sha256"],
+        "required": [
+          "command",
+          "exit_code",
+          "result_sha256",
+          "test_ids_sha256",
+          "passed",
+          "skips",
+          "xfails"
+        ],
         "properties": {
-          "command": {"type": "string", "minLength": 1},
-          "exit_code": {"const": 0},
-          "result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-          "skips": {"type": "integer", "minimum": 0},
-          "xfails": {"type": "integer", "minimum": 0}
+          "command": { "type": "string", "minLength": 1 },
+          "exit_code": { "const": 0 },
+          "result_sha256": { "$ref": "#/$defs/sha256" },
+          "test_ids_sha256": { "$ref": "#/$defs/sha256" },
+          "passed": { "type": "integer", "minimum": 0 },
+          "skips": { "type": "integer", "minimum": 0 },
+          "xfails": { "type": "integer", "minimum": 0 }
         }
       }
     },
     "manifests": {
       "type": "object",
       "minProperties": 1,
-      "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      "additionalProperties": { "$ref": "#/$defs/sha256" }
+    },
+    "deferred_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["evidence_id", "reason", "owner", "later_milestone"],
+        "properties": {
+          "evidence_id": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 },
+          "owner": { "type": "string", "minLength": 1 },
+          "later_milestone": { "type": "string", "pattern": "^B[0-9]{2}$" }
+        }
+      }
     },
     "negative_capability": {
       "type": "object",
       "additionalProperties": false,
       "required": ["scanner", "result_sha256", "forbidden_hits"],
       "properties": {
-        "scanner": {"type": "string", "minLength": 1},
-        "result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-        "forbidden_hits": {"const": 0}
+        "scanner": { "type": "string", "minLength": 1 },
+        "result_sha256": { "$ref": "#/$defs/sha256" },
+        "forbidden_hits": { "const": 0 }
       }
     },
     "review": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["unresolved_actionable_threads", "reviewer"],
+      "required": ["unresolved_actionable_threads", "reviewer", "review_sha256"],
       "properties": {
-        "unresolved_actionable_threads": {"const": 0},
-        "reviewer": {"type": "string", "minLength": 1}
+        "unresolved_actionable_threads": { "const": 0 },
+        "reviewer": { "type": "string", "minLength": 1 },
+        "review_sha256": { "$ref": "#/$defs/sha256" }
       }
     },
     "post_merge": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["fresh_main_sha", "reproduced", "result_sha256"],
+      "required": ["fresh_main_sha", "reproduced", "command_set_sha256", "result_sha256"],
       "properties": {
-        "fresh_main_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-        "reproduced": {"const": true},
-        "result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        "fresh_main_sha": { "$ref": "#/$defs/gitSha" },
+        "reproduced": { "const": true },
+        "command_set_sha256": { "$ref": "#/$defs/sha256" },
+        "result_sha256": { "$ref": "#/$defs/sha256" }
       }
     },
-    "supersedes": {"type": ["string", "null"]},
-    "status": {"const": "VERIFIED"}
+    "supersession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supersedes_receipt_id", "reason"],
+      "properties": {
+        "supersedes_receipt_id": { "type": ["string", "null"] },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "receipt_id"],
+      "properties": {
+        "strategy": { "type": "string", "minLength": 1 },
+        "receipt_id": { "type": ["string", "null"] }
+      }
+    },
+    "status": { "const": "VERIFIED" }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
   }
 }

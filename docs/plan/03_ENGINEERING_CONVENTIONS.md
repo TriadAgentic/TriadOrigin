@@ -114,5 +114,7 @@ No skip/xfail is accepted silently; each has an owner and receipt disposition.
 ## Milestone receipt
 
 A milestone is `VERIFIED` only when its receipt validates against
-`milestone_receipt.schema.json` and includes exact artifact, test, CI, review, merge, replay, and
-negative-capability evidence. A workbook/manual status cannot substitute for a receipt.
+`milestone_receipt.schema.json` and includes exact authority-basis/scope, toolchain/dependency,
+artifact, test-ID/result, CI, review, merge, post-merge, supersession, rollback, and
+negative-capability evidence. Inapplicable formula/parameter/corpus/replay evidence is an explicit
+owned deferral, never omission. A workbook/manual status cannot substitute for a receipt.

@@ -75,15 +75,20 @@ def build_manifest() -> dict:
     }
 
 
+def build_manifest_sha_text(manifest: dict) -> str:
+    """Return the exact deterministic bytes expected in ``contracts/MANIFEST.sha256``."""
+    payload = manifest["payload"]
+    lines = [f"{a['sha256']}  {a['path']}" for a in payload["artifacts"]]
+    lines.append(f"{payload['canonical_manifest_hash']}  {BUNDLE_VERSION}")
+    return "\n".join(lines) + "\n"
+
+
 def write_manifest() -> dict:
     manifest = build_manifest()
     MANIFEST_JSON.parent.mkdir(parents=True, exist_ok=True)
     MANIFEST_JSON.write_text(
         json.dumps(manifest, sort_keys=True, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    payload = manifest["payload"]
-    lines = [f"{a['sha256']}  {a['path']}" for a in payload["artifacts"]]
-    lines.append(f"{payload['canonical_manifest_hash']}  {BUNDLE_VERSION}")
-    MANIFEST_SHA.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    MANIFEST_SHA.write_text(build_manifest_sha_text(manifest), encoding="utf-8")
     return manifest
 
 

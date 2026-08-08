@@ -91,6 +91,7 @@ assert len(contracts.known_contracts()) == 30
 schema = contracts.load_schema('triad.edge_candidate.v2')
 assert schema['title'] == 'triad.edge_candidate.v2'
 assert contracts._CONTRACTS_DIR.name == '_contracts'
+assert (contracts._CONTRACTS_DIR / 'MANIFEST.sha256').is_file()
 golden = contracts._CONTRACTS_DIR / 'golden' / 'triad.edge_candidate.v2' / 'valid.json'
 event = json.loads(golden.read_text(encoding='utf-8'))
 contracts.validate(event)  # fresh wheel has no jsonschema: exercises the stdlib path
