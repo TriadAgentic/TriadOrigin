@@ -2,7 +2,7 @@
 
 _Audited: 2026-08-09. Status is evidence-based and DARK._
 
-## Repository
+## Pre-R00 repository snapshot
 
 | Item | State |
 |---|---|
@@ -34,7 +34,7 @@ against its declared schema.
 | RC1 M1 | `MERGED_IMPLEMENTATION / FAILED_AUDIT` | PR #1; 5 unresolved findings; no CI |
 | RC1 M2 | `MERGED_IMPLEMENTATION / FAILED_AUDIT` | PR #2; 6 unresolved findings; no CI |
 | Prior plan | `SUPERSEDED` | PR #3; 3 unresolved findings; incompatible with RC2 |
-| R00 | `IN_PROGRESS` | Foundation/review/CI/status remediation |
+| R00 | `PR #4 / RECEIPT_PENDING` | Bootstrap foundation/review/CI/status remediation; final state derives from merge + receipt |
 | B00 | `BLOCKED` | Incomplete/conflicting RC2 package and missing authority decisions |
 | B01–B09 | `BLOCKED_BY_PREDECESSOR` | No implementation starts early |
 
@@ -47,9 +47,9 @@ against its declared schema.
 - Its static control `PASS` is invalid; broken references and vocabulary defects are recorded in
   the conflict register.
 
-## Immediate next action
+## Next permissible action
 
-Finish R00, open a PR, wait for CI/review, merge, and reproduce merged `main`.
-Then B00 remains in `SAFE_HOLD` until the complete RC2 source bundle and named decisions exist.
-Do not resume detector fan-out.
-
+Complete PR #4 review, merge only on exact-head green CI, reproduce fresh merged `main`, and seal the
+R00 receipt. After that, B00 remains in `SAFE_HOLD` until the complete RC2 source bundle and named
+decisions exist. Do not resume detector fan-out. This status document intentionally distinguishes
+the pre-R00 audit snapshot from receipt-derived post-merge state.

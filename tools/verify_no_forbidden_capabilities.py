@@ -14,27 +14,42 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RUNTIME = ROOT / "src" / "triad_origin"
 
-FORBIDDEN_MODULE_ROOTS = {
-    "aiohttp",
-    "binance",
-    "ccxt",
-    "httpx",
-    "hyperliquid",
-    "requests",
-    "socket",
-    "urllib3",
-    "websocket",
-    "websockets",
+ALLOWED_MODULE_ROOTS = {
+    "__future__",
+    "collections",
+    "dataclasses",
+    "decimal",
+    "enum",
+    "fcntl",
+    "functools",
+    "hashlib",
+    "json",
+    "jsonschema",  # optional local schema validation only
+    "math",
+    "os",
+    "pathlib",
+    "re",
+    "typing",
+    "unicodedata",
 }
 FORBIDDEN_CALLS = {
+    "__import__",
     "amend_order",
     "cancel_order",
     "create_order",
+    "execv",
+    "execve",
     "getenv",
+    "import_module",
+    "popen",
     "place_order",
     "send_order",
     "sign_request",
+    "spawnl",
+    "spawnv",
     "submit_order",
+    "system",
+    "urlopen",
 }
 FORBIDDEN_IDENTIFIERS = {
     "api_key",
@@ -57,12 +72,15 @@ def scan_file(path: pathlib.Path) -> list[str]:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 root = alias.name.split(".", 1)[0]
-                if root in FORBIDDEN_MODULE_ROOTS:
-                    findings.append(f"{path}:{node.lineno}: forbidden runtime import {alias.name}")
+                if root not in ALLOWED_MODULE_ROOTS:
+                    findings.append(f"{path}:{node.lineno}: unapproved runtime import {alias.name}")
         elif isinstance(node, ast.ImportFrom) and node.module:
-            root = node.module.split(".", 1)[0]
-            if root in FORBIDDEN_MODULE_ROOTS:
-                findings.append(f"{path}:{node.lineno}: forbidden runtime import {node.module}")
+            if node.level == 0:
+                root = node.module.split(".", 1)[0]
+                if root not in ALLOWED_MODULE_ROOTS:
+                    findings.append(
+                        f"{path}:{node.lineno}: unapproved runtime import {node.module}"
+                    )
         elif isinstance(node, ast.Call):
             name = None
             if isinstance(node.func, ast.Name):

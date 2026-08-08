@@ -104,6 +104,8 @@ No skip/xfail is accepted silently; each has an owner and receipt disposition.
 
 - One fresh branch and one PR per milestone.
 - Spec/scope change precedes implementation in a separate PR.
+- R00 alone is the recorded bootstrap exception because it introduces this corrected law while
+  repairing the audit defects that made the prior law unsafe; the exception expires at R00 merge.
 - No normal force-push or reused long-lived milestone branch.
 - Merge only after exact-head CI and review completion.
 - Post-merge verification uses a fresh reconstruction of `main`.

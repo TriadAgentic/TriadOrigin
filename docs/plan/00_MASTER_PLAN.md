@@ -22,12 +22,13 @@ The repository does **not** own:
 - E10 outcomes, accounting, learning promotion, or profitability claims;
 - lease issuance, risk/exit policy authority, a legacy runtime, or an authority router.
 
-## 2 · Current baseline
+## 2 · Pre-R00 audited baseline
 
-Main currently contains RC1 M1/M2 implementation. Local reconstruction on 2026-08-09 reproduced
+The 2026-08-09 pre-R00 `main` contained RC1 M1/M2 implementation. Local reconstruction reproduced
 `165 passed` and the 91-artifact byte manifest, but GitHub has no CI status or workflow evidence.
 Fourteen actionable review threads remain open, including P1 correctness failures. RC2 acceptance
-is therefore unproven and M3 is blocked.
+was therefore unproven and M3 was blocked. This paragraph is an immutable audit snapshot, not the
+post-R00 status; post-merge truth is carried by PR #4 and the R00 receipt.
 
 ## 3 · Constitution
 
@@ -90,6 +91,11 @@ Each milestone uses a fresh `agent/<milestone>-<description>` branch from verifi
 The PR body identifies exact scope, coupled requirement IDs, root cause, checks, rollback, and
 residual blockers.
 
+R00 alone is a documented bootstrap exception: it combines replacement of the already-invalid plan
+with bounded foundation remediation because the audit discovered both before a corrected process
+existed. This exception ends at the R00 merge; B00 onward follows the prior-plan-PR rule without
+exception.
+
 Mandatory evidence:
 
 - spec/control bundle digest and exact scope;
@@ -121,4 +127,3 @@ Test count is descriptive only. A test that encodes the wrong behavior does not 
 B00 cannot pass until the complete RC2 bundle and compatibility decisions exist. B03 cannot start
 until every formula it uses has resolved semantics and ratified-or-explicit-DARK parameters.
 No B-stage may absorb out-of-repository estate work merely to make a checklist appear complete.
-

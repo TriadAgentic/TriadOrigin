@@ -80,6 +80,45 @@ def test_checkpoint_roundtrip_and_checksum(tmp_path):
     assert loaded.state == checkpoint.state
     assert loaded.input_offset == 41
     assert loaded.state_checksum == checksum
+    assert loaded.identity_schema_version == cp.CHECKPOINT_IDENTITY_VERSION
+
+
+def test_legacy_v1_checkpoint_requires_explicit_cold_rebuild(tmp_path):
+    path = tmp_path / "legacy.checkpoint"
+    state = {"x": 1}
+    # M2's v1 checksum authenticated state only. Its offset/digests cannot be trusted for resume.
+    raw = {
+        "partition": "p",
+        "state": state,
+        "input_offset": 7,
+        "state_checksum": cp.sha256_hex(cp.canonical_json(state)),
+        "digests": {"build": "legacy"},
+        "identity_schema_version": cp.LEGACY_CHECKPOINT_IDENTITY_VERSION,
+    }
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(cp.CheckpointMigrationRequired, match="cold rebuild"):
+        cp.load(path)
+
+
+def test_unknown_checkpoint_version_fails_closed(tmp_path):
+    path = tmp_path / "future.checkpoint"
+    cp.save(path, cp.Checkpoint(partition="p", state={"x": 1}, input_offset=7))
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["identity_schema_version"] = "origin.checkpoint.v999"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(cp.CheckpointError, match="unsupported checkpoint identity version"):
+        cp.load(path)
+
+
+def test_writer_refuses_legacy_or_unknown_checkpoint_version(tmp_path):
+    checkpoint = cp.Checkpoint(
+        partition="p",
+        state={"x": 1},
+        input_offset=7,
+        identity_schema_version=cp.LEGACY_CHECKPOINT_IDENTITY_VERSION,
+    )
+    with pytest.raises(cp.CheckpointError, match="refusing to write unsupported"):
+        cp.save(tmp_path / "legacy.checkpoint", checkpoint)
 
 
 def test_checkpoint_tamper_fails_closed(tmp_path):

@@ -6,6 +6,7 @@ from __future__ import annotations
 import pathlib
 import subprocess
 import sys
+import tarfile
 import tempfile
 import venv
 
@@ -25,14 +26,36 @@ def main() -> int:
     try:
         with tempfile.TemporaryDirectory(prefix="triad-origin-wheel-") as tmp_name:
             tmp = pathlib.Path(tmp_name)
+            sdist_dir = tmp / "sdist"
             dist = tmp / "dist"
+            _run(
+                [
+                    sys.executable,
+                    "setup.py",
+                    "--quiet",
+                    "sdist",
+                    "--dist-dir",
+                    str(sdist_dir),
+                ],
+                cwd=ROOT,
+            )
+            sdists = sorted(sdist_dir.glob("triad_origin-*.tar.gz"))
+            if len(sdists) != 1:
+                raise RuntimeError(f"expected one source distribution, found: {sdists}")
+            with tarfile.open(sdists[0], mode="r:gz") as archive:
+                names = archive.getnames()
+            if not any(name.endswith("/contracts/registry/index.json") for name in names):
+                raise RuntimeError("source distribution omits the contract registry")
+            if not any(name.endswith("/contracts/MANIFEST.sha256") for name in names):
+                raise RuntimeError("source distribution omits the contract byte manifest")
             _run(
                 [
                     sys.executable,
                     "-m",
                     "pip",
                     "wheel",
-                    ".",
+                    "--no-cache-dir",
+                    str(sdists[0]),
                     "--no-deps",
                     "--no-build-isolation",
                     "--wheel-dir",
@@ -54,6 +77,7 @@ def main() -> int:
                     "pip",
                     "install",
                     "--disable-pip-version-check",
+                    "--no-cache-dir",
                     "--no-index",
                     "--no-deps",
                     str(wheels[0]),
@@ -82,7 +106,7 @@ else:
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"FAIL: isolated wheel smoke failed: {exc}", file=sys.stderr)
         return 1
-    print("OK: isolated installed wheel loads all 30 packaged contracts")
+    print("OK: sdist-built isolated wheel loads all 30 packaged contracts")
     return 0
 
 

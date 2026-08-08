@@ -18,6 +18,14 @@ class CheckpointError(RuntimeError):
     pass
 
 
+class CheckpointMigrationRequired(CheckpointError):
+    """A recognized legacy checkpoint cannot be trusted for warm restore."""
+
+
+CHECKPOINT_IDENTITY_VERSION = "origin.checkpoint.v2"
+LEGACY_CHECKPOINT_IDENTITY_VERSION = "origin.checkpoint.v1"
+
+
 @dataclass
 class Checkpoint:
     partition: str
@@ -25,7 +33,7 @@ class Checkpoint:
     input_offset: int
     state_checksum: str = ""
     digests: dict = field(default_factory=dict)
-    identity_schema_version: str = "origin.checkpoint.v1"
+    identity_schema_version: str = CHECKPOINT_IDENTITY_VERSION
 
     def integrity_material(self) -> dict:
         """Every field that controls restore identity or replay position."""
@@ -54,6 +62,10 @@ class Checkpoint:
 
 def save(path: str | pathlib.Path, cp: Checkpoint) -> str:
     """Seal and write a checkpoint atomically. Returns the state checksum."""
+    if cp.identity_schema_version != CHECKPOINT_IDENTITY_VERSION:
+        raise CheckpointError(
+            f"refusing to write unsupported checkpoint version: {cp.identity_schema_version!r}"
+        )
     sealed = cp.sealed()
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -89,6 +101,15 @@ def load(path: str | pathlib.Path) -> Checkpoint:
         digests=raw["digests"],
         identity_schema_version=raw["identity_schema_version"],
     )
+    if cp.identity_schema_version == LEGACY_CHECKPOINT_IDENTITY_VERSION:
+        raise CheckpointMigrationRequired(
+            "origin.checkpoint.v1 authenticated state only; cold rebuild and write "
+            "origin.checkpoint.v2 before warm restore"
+        )
+    if cp.identity_schema_version != CHECKPOINT_IDENTITY_VERSION:
+        raise CheckpointError(
+            f"unsupported checkpoint identity version: {cp.identity_schema_version!r}"
+        )
     if cp.state_checksum != cp.compute_checksum():
         raise CheckpointError(f"checkpoint checksum mismatch for partition {cp.partition}")
     return cp

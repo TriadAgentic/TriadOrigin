@@ -1,0 +1,2 @@
+include contracts/MANIFEST.sha256
+recursive-include contracts *.json

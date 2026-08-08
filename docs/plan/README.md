@@ -57,3 +57,10 @@ implementation PR. A milestone may merge only when:
 
 No force-push workflow, self-reported test count, or workbook colour is acceptance evidence.
 
+### R00 bootstrap exception
+
+R00 is the one-time bootstrap exception to the prior-plan-PR rule: the obsolete plan and the
+foundation defects were discovered in the same audit, and no corrected execution law existed under
+which to split them safely. R00 may therefore combine governance refreeze with bounded M1/M2
+integrity remediation. The exception expires when R00 merges. B00 onward requires any semantic
+spec/scope change to merge in a prior, separate PR.
