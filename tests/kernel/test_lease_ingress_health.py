@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+from dataclasses import FrozenInstanceError
 
 import pytest
 
@@ -37,6 +38,13 @@ def test_origin_exposes_no_lease_issuer():
     from triad_origin import lease
 
     assert not hasattr(lease, "LeaseCoordinator")
+    assert not hasattr(Lease, "with_state")
+
+
+def test_external_lease_representation_is_immutable():
+    lease = _external_lease(1)
+    with pytest.raises(FrozenInstanceError):
+        lease.state = LeaseState.REVOKED
 
 
 def test_consumer_fence_rejects_stale_and_equal():

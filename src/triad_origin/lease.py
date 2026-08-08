@@ -31,10 +31,6 @@ class Lease:
     activation_manifest_id: str
     state: LeaseState
 
-    def with_state(self, state: LeaseState) -> "Lease":
-        return Lease(self.lease_id, self.scope, self.producer_service, self.producer_instance_id,
-                     self.fencing_token, self.activation_manifest_id, state)
-
 
 @dataclass
 class ConsumerFence:
