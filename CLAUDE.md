@@ -54,9 +54,12 @@ Replay and live consumption must call the same transition implementation.
 Every change runs:
 
 ```bash
-python -m pytest
+PYTHONHASHSEED=0 python -m pytest
+PYTHONHASHSEED=1 python -m pytest
+python tools/collect_test_ids.py
 python tools/verify_manifest.py
 python tools/validate_contract_manifest.py
+python tools/verify_reproducible_build.py
 python tools/test_wheel_install.py
 python tools/verify_no_forbidden_capabilities.py
 ```

@@ -22,10 +22,11 @@ acceptance.
 **Acceptance.**
 
 - Full local suite and manifest gate pass on the exact PR head.
-- CI is green; no actionable PR thread remains.
+- CI is green; no actionable PR #4 thread remains before merge.
 - Old PR threads are replied to with the remediation PR/commit and resolved only after the fix exists.
 - Fresh merged `main` reproduces all checks.
-- R00 receipt validates against `milestone_receipt.schema.json`.
+- R00 receipt validates against `milestone_receipt.schema.json` and the cross-field/sentinel checks
+  in `tools/validate_milestone_receipt.py`.
 - Until issue #5 proves a durable main ruleset, merge is bound procedurally to the reviewed exact
   head SHA; the ruleset gap remains a B00 blocker and is disclosed in the receipt.
 - Post-merge receipt is anchored on `evidence/r00-receipt`; failure leaves R00
@@ -40,7 +41,9 @@ acceptance.
 - Complete RC2 source bundle, manifest, and exact byte digest.
 - Corrected RC2 workbook/control catalogue with no false green or broken references.
 - One canonical contract-version/compatibility map.
-- Resolved `BLK-RC2-001…015` plus all missing consequential variables.
+- Authoritative decisions for every open `BLK-RC2-*` row plus all missing consequential variables;
+  implementation controls remain assigned to their downstream milestone and cannot be marked done
+  by the B00 decision alone.
 - Ownership matrix: `OWN`, `CONSUME`, `VERIFY_ONLY`, `REFERENCE_ONLY`, `OUT_OF_REPO`,
   `DEFERRED`.
 - Explicit E02 input/output boundary and negative-capability policy.
@@ -74,8 +77,10 @@ identically to checkout; manifest/registry/schema identities reconcile; all B01 
 - Pure transition kernel, integer math, ordering, quality, journal, checkpoint, ingress, telemetry,
   health, and append-only ledger.
 - Production driver and replay driver invoke the same transition implementation.
-- Checkpoint seals replay-controlling metadata.
-- ORIGIN verifies external leases; lease issuance/durable coordinator remain out of repository.
+- Checkpoint seals replay-controlling metadata, an independently anchored output-ledger head, and
+  the complete per-scope consumer-fence restore state (CTRL-B02-001/002).
+- ORIGIN verifies external leases and durably restores only its consumer fence; lease issuance and
+  authority coordination remain out of repository.
 
 **Acceptance.** Prefix/cold/warm/checkpoint/restart/duplicate/correction/future-mutation invariance;
 same-input live/replay byte equality; no credential/order/risk/money capability; B02 receipt sealed.

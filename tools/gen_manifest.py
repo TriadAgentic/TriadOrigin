@@ -14,9 +14,11 @@ import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CONTRACTS = ROOT / "contracts"
-MANIFEST_JSON = CONTRACTS / "manifest" / "contract_bundle.manifest.v1.json"
+LEGACY_MANIFEST_JSON = CONTRACTS / "manifest" / "contract_bundle.manifest.v1.json"
+MANIFEST_JSON = CONTRACTS / "manifest" / "contract_bundle.manifest.r00.v1.json"
 MANIFEST_SHA = CONTRACTS / "MANIFEST.sha256"
 BUNDLE_VERSION = "origin.contracts.1.0.0-RC1"
+DESCRIPTOR_VERSION = "origin.contract-bundle-descriptor.r00.v1"
 DARK_CONFIG_BUNDLE_SHA256 = hashlib.sha256(
     b"TRIAD_ORIGIN_NO_CONFIG_BUNDLE_DARK"
 ).hexdigest()
@@ -51,6 +53,7 @@ def build_manifest() -> dict:
         })
     payload = {
         "bundle_version": BUNDLE_VERSION,
+        "descriptor_version": DESCRIPTOR_VERSION,
         "artifacts": artifacts,
     }
     # Canonical manifest hash over the artifact list (sorted-key JSON, no self-reference).
@@ -62,7 +65,7 @@ def build_manifest() -> dict:
     return {
         "schema": "triad.contract_bundle.manifest.v1",
         "schema_version": "1.0.0",
-        "event_id": f"contract_bundle_manifest_{BUNDLE_VERSION}",
+        "event_id": f"contract_bundle_manifest_{DESCRIPTOR_VERSION}",
         "event_kind": "CONTRACT_BUNDLE_MANIFEST",
         "producer_service": "contract-governance",
         "producer_instance_id": "offline-build",

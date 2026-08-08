@@ -1,7 +1,9 @@
 # 05 · RC2 Conflict and Blocker Register
 
-All rows are release-blocking. Resolution requires a changed authoritative artifact, compatibility
-evidence, named owner/reviewer, and a receipt. Implementation does not pick a side.
+All `BLK-RC2-*` rows block the B00 authority freeze until a named authority ratifies the semantic
+decision, version/migration disposition, owner/reviewer, and evidence obligation. That decision does
+not mark downstream implementation complete: corresponding `CTRL-B01+` rows remain blocking at the
+assigned build milestone. Implementation never picks a side.
 
 | ID | Conflict / missing decision | Required closure |
 |---|---|---|
@@ -20,6 +22,8 @@ evidence, named owner/reviewer, and a receipt. Implementation does not pick a si
 | BLK-RC2-013 | Candidate lifecycle permits post-publication abstention and omits withdrawal | Exact lifecycle graph; abstention sibling and withdrawal rules |
 | BLK-RC2-014 | F18 uses `abs(E-S)` and can accept a stop on the wrong side | Directional stop-side invariant and one-tick vectors |
 | BLK-RC2-015 | Linked complete checklist and `canonical/` bundle are absent | Supply and hash every package member; fail closed on missing link |
+| BLK-RC2-016 | RC1 `engine_attestation.v1` duplicates build/config/contract/artifact/epoch identities in envelope and payload without equality constraints; its valid golden contradicts itself | B00 ratifies canonical cross-field equality and migration/version law; CTRL-B01-002 implements additive contracts/vectors; R00 payload builder remains non-authoritative |
+| BLK-RC2-017 | RC1 generic length-framed digest encoding has no field type tags, so selected values of different runtime types can encode identically | B00 ratifies typed identity and compatibility law while preserving valid RC1 IDs; CTRL-B01-003 implements the additive identity version/vectors |
 
 ## Additional consequential variables
 
@@ -57,3 +61,9 @@ The following require exact declarations or `NOT_RATIFIED`:
 | ID | Defect | Required closure |
 |---|---|---|
 | CTRL-R00-001 | Available evidence does not prove a main-branch ruleset requiring exact-head CI and review | Close GitHub issue #5 with repository-setting evidence in B00; until then only the R00 expected-head bootstrap merge is permitted |
+| CTRL-B01-001 | RC1 manifest labels every JSON artifact as `application/schema+json`, including goldens and registry | Preserve immutable RC1 bundle bytes/hash in R00; correct only through an additive B01 descriptor/bundle version plus compatibility evidence |
+| CTRL-B01-002 | RC1 engine-attestation envelope/payload identity equality is unenforced and its valid golden contradicts itself | After B00 decides the law, add a distinct compatible contract/version, corrected vectors, and equality validation in B01 |
+| CTRL-B01-003 | Generic RC1 digest framing lacks field type tags even though R00 public identity constructors now enforce declared string types | After B00 decides the law, add typed identity-domain/version vectors and migration evidence in B01 without rewriting valid RC1 IDs |
+| CTRL-B02-001 | A self-contained hash-chained ledger detects torn/interior corruption but cannot detect deletion or replacement of a complete tail; checkpoint output segment/offset has no independently durable expected-head binding | Bind output segment, offset, chain head, file identity, and recovery receipt to an external durable anchor; falsify tail deletion/replacement and cold/warm exactly-once parity before B02 acceptance |
+| CTRL-B02-002 | R00 consumer fencing and ingress epoch high-water marks are process-local; checkpoint/restart does not yet restore the complete per-scope accepted-token state | Define the closed per-scope fence state, authenticate it in checkpoint/recovery evidence, restore it before consumption, and falsify lower-token acceptance across restart in B02 |
+| CTRL-B08-001 | R00 bootstrap readiness has no source freshness, coverage, lease-validity, or estate-activation evidence inputs | Keep `READY_NO_AUTHORITY` explicitly narrow; add and falsify the complete read-only evidence projection in B08 before operational readiness is claimed |

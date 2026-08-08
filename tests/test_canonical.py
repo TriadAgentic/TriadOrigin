@@ -35,9 +35,24 @@ def test_rejects_finite_floats_on_encode_and_decode():
         C.loads_canonical('{"x":1.0}')
 
 
+def test_canonical_wire_rejects_out_of_int64_and_unbounded_integer_lexemes():
+    with pytest.raises(C.CanonicalError):
+        C.canonical_json({"x": C.INT64_MAX + 1})
+    with pytest.raises(C.CanonicalError):
+        C.canonical_json({"x": 10**5_000})
+    with pytest.raises(C.CanonicalError):
+        C.loads_canonical('{"x":' + ("9" * 5_000) + "}")
+
+
 def test_loads_rejects_duplicate_keys():
     with pytest.raises(C.CanonicalError):
         C.loads_canonical('{"a":1,"a":2}')
+
+
+@pytest.mark.parametrize("text", ['{"x":-0}', '{ "x":0}', '{"b":1,"a":2}', '"e\u0301"'])
+def test_loads_rejects_noncanonical_json_bytes(text):
+    with pytest.raises(C.CanonicalError):
+        C.loads_canonical(text)
 
 
 @pytest.mark.parametrize("value", [0, 1, -1, C.INT64_MAX, C.INT64_MIN])
@@ -59,11 +74,22 @@ def test_tick_out_of_range():
         C.tick_to_str(C.INT64_MAX + 1)
     with pytest.raises(C.CanonicalError):
         C.str_to_tick(str(C.INT64_MAX + 1))
+    with pytest.raises(C.CanonicalError):
+        C.str_to_tick("9" * 5_000)
+    with pytest.raises(C.CanonicalError):
+        C.tick_to_str(10**5_000)
 
 
 def test_length_prefix_prevents_collision():
     # ("a","bc") and ("ab","c") must not collide under length-prefixed framing.
     assert C.digest_fields("a", "bc") != C.digest_fields("ab", "c")
+
+
+def test_digest_integer_fields_obey_signed_int64_law():
+    with pytest.raises(C.CanonicalError):
+        C.digest_fields(C.INT64_MAX + 1)
+    with pytest.raises(C.CanonicalError):
+        C.digest_fields(10**5_000)
 
 
 def test_digest_arity_matters():

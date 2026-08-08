@@ -59,7 +59,12 @@ revocation, expiry, and failure behavior before `signed config` is an acceptance
 
 - Cross-source events preserve recorded local receipt order; source sequences are compared only
   within the same source/connection epoch.
-- Checkpoints authenticate state plus partition, input offset, all digests, and identity version.
+- The R00 checkpoint authenticates canonical state, partition, input segment/offset and consumed
+  prefix digest, last domain event ID, highest producer epoch, projection checksum, output
+  segment/offset, the closed build/config/contract/parameter/instrument digest set, state sequence,
+  last transition identity, and identity version. It binds the supplied input prefix and build
+  context before skipping. B02 must additionally bind an independently durable output-ledger head
+  and complete per-scope consumer-fence state before restart/exactly-once acceptance.
 - Replay, production consumption, checkpoint resume, and cold rebuild invoke the exact same
   transition functions.
 - Duplicate identity is idempotent. Corrections append and never move knowledge time backward.
@@ -91,9 +96,12 @@ Each module ships:
 Every PR runs at minimum:
 
 ```bash
-python -m pytest
+PYTHONHASHSEED=0 python -m pytest
+PYTHONHASHSEED=1 python -m pytest
+python tools/collect_test_ids.py
 python tools/verify_manifest.py
 python tools/validate_contract_manifest.py
+python tools/verify_reproducible_build.py
 python tools/test_wheel_install.py
 python tools/verify_no_forbidden_capabilities.py
 ```
@@ -114,7 +122,11 @@ No skip/xfail is accepted silently; each has an owner and receipt disposition.
 ## Milestone receipt
 
 A milestone is `VERIFIED` only when its receipt validates against
-`milestone_receipt.schema.json` and includes exact authority-basis/scope, toolchain/dependency,
+`milestone_receipt.schema.json` plus `tools/validate_milestone_receipt.py` and includes exact
+authority-basis/scope, toolchain/dependency,
 artifact, test-ID/result, CI, review, merge, post-merge, supersession, rollback, and
-negative-capability evidence. Inapplicable formula/parameter/corpus/replay evidence is an explicit
-owned deferral, never omission. A workbook/manual status cannot substitute for a receipt.
+negative-capability evidence. Every receipt digest except the directly recomputed scope digest binds
+to a persisted repository-relative preimage in `evidence_files`; the semantic validator rehashes
+those files and rejects missing, tampered, duplicate, escaping, unbound, or opaque evidence.
+Inapplicable formula/parameter/corpus/replay evidence is an explicit owned deferral, never omission.
+A workbook/manual status cannot substitute for a receipt.

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from triad_origin import ids
 
 
@@ -39,8 +41,43 @@ def test_opportunity_cluster_is_order_insensitive():
     assert a == b and a.startswith("opp_")
 
 
+def test_opportunity_cluster_deduplicates_after_unicode_normalization():
+    composed = "hyp_é"
+    decomposed = "hyp_e\u0301"
+    assert ids.opportunity_cluster_id([composed, decomposed]) == (
+        ids.opportunity_cluster_id([composed])
+    )
+
+
 def test_direction_changes_identity():
     si = ids.semantic_instance_id("f.v1", "pd", "V", "15m")
     long_ = ids.structure_id("INSTR", "V", "SWING", si, "LONG", ["s1"], "geo")
     short_ = ids.structure_id("INSTR", "V", "SWING", si, "SHORT", ["s1"], "geo")
     assert long_ != short_
+
+
+@pytest.mark.parametrize("bad", [1, True, b"f", ""])
+def test_public_identity_fields_reject_type_aliases(bad):
+    with pytest.raises(TypeError):
+        ids.semantic_instance_id(bad, "pd", "V", "15m")
+    with pytest.raises(TypeError):
+        ids.opportunity_cluster_id([bad])
+
+
+def test_identity_iterables_reject_scalar_string_aliases():
+    semantic = ids.semantic_instance_id("f", "pd", "V", "1m")
+    with pytest.raises(TypeError):
+        ids.structure_id("I", "V", "K", semantic, "LONG", "ab", "geo")
+    with pytest.raises(TypeError):
+        ids.opportunity_cluster_id("ab")
+
+
+def test_order_semantic_identity_rejects_unordered_sources():
+    semantic = ids.semantic_instance_id("f", "pd", "V", "1m")
+    with pytest.raises(TypeError, match="ordered sequence"):
+        ids.structure_id("I", "V", "K", semantic, "LONG", {"a", "b"}, "geo")
+
+
+def test_identity_fields_reject_non_wire_unicode():
+    with pytest.raises(TypeError, match="canonical-wire"):
+        ids.opportunity_cluster_id(["hyp_\ud800"])

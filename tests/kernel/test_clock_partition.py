@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+
 import pytest
 
 from triad_origin import clock_watermark as cw
@@ -31,10 +34,36 @@ def test_watermark_lateness():
     assert not wm.is_late(96)
 
 
+def test_watermark_configuration_and_progress_cannot_be_mutated_around_guard():
+    wm = cw.Watermark(allowed_lateness_us=5)
+    wm.advance(100)
+    with pytest.raises(AttributeError):
+        wm.completed_through_us = 0
+    with pytest.raises(AttributeError):
+        wm.allowed_lateness_us = -1
+    with pytest.raises(cw.ClockError):
+        wm.advance(50)
+
+
 def test_no_future_venue_read():
     with pytest.raises(cw.ClockError):
-        cw.assert_not_future_venue_read(reader_knowledge_us=100, other_venue_event_us=101)
-    cw.assert_not_future_venue_read(reader_knowledge_us=100, other_venue_event_us=100)
+        cw.assert_not_future_venue_read(reader_knowledge_us=100, other_venue_knowledge_us=101)
+    cw.assert_not_future_venue_read(reader_knowledge_us=100, other_venue_knowledge_us=100)
+
+
+def test_cross_venue_causality_uses_other_knowledge_not_event_time():
+    late_fact = cw.Clocks(50, 50, 200, 200)
+    with pytest.raises(cw.ClockError):
+        cw.assert_not_future_venue_read(
+            reader_knowledge_us=100,
+            other_venue_knowledge_us=late_fact.knowledge_time_us,
+        )
+
+
+@pytest.mark.parametrize("bad", [True, 1.0, -(2**63) - 1, 2**63])
+def test_clock_fields_require_signed_int64(bad):
+    with pytest.raises(cw.ClockError):
+        cw.Clocks(bad, 10, 10, 10)
 
 
 def test_single_writer_lock():
@@ -48,6 +77,51 @@ def test_single_writer_lock():
         coord.claim(key, "writer_b")
     with pytest.raises(P.PartitionError):
         coord.next_seq(key, "writer_b")
+
+
+def test_concurrent_partition_claim_grants_only_one_writer():
+    coord = P.PartitionCoordinator()
+    key = PartitionKey("BINANCE_USDM", "BTCUSDT", "15m")
+    barrier = Barrier(2)
+
+    def claim(writer):
+        barrier.wait()
+        try:
+            coord.claim(key, writer)
+        except P.PartitionError:
+            return False
+        return True
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(claim, ["writer_a", "writer_b"]))
+    assert sorted(outcomes) == [False, True]
+
+
+def test_partition_key_string_is_injective_by_construction():
+    with pytest.raises(P.PartitionError, match="delimiter"):
+        PartitionKey("A|B", "C", "D")
+
+
+def test_partition_key_normalizes_canonical_unicode_before_ownership():
+    composed = PartitionKey("é", "BTC", "1m")
+    decomposed = PartitionKey("e\u0301", "BTC", "1m")
+    assert composed == decomposed
+    coordinator = P.PartitionCoordinator()
+    coordinator.claim(composed, "one")
+    with pytest.raises(P.PartitionError):
+        coordinator.claim(decomposed, "two")
+
+
+def test_partition_and_writer_identity_are_canonical_wire_values():
+    with pytest.raises(P.PartitionError, match="canonical-wire"):
+        PartitionKey("\ud800", "BTC", "1m")
+    key = PartitionKey("venue", "BTC", "1m")
+    coordinator = P.PartitionCoordinator()
+    coordinator.claim(key, "é")
+    coordinator.claim(key, "e\u0301")
+    assert coordinator.next_seq(key, "e\u0301") == 0
+    with pytest.raises(P.PartitionError, match="canonical-wire"):
+        coordinator.claim(key, "\ud800")
 
 
 def _ordered_event(raw_id, *, source, connection, receive, receipt):
@@ -86,6 +160,51 @@ def test_source_sequence_regression_fails_closed():
     ]
     with pytest.raises(P.PartitionError):
         P.deterministic_order(events)
+
+
+def test_exact_duplicate_ordering_input_is_idempotent():
+    event = _ordered_event("one", source="book-a", connection=7, receive=1, receipt=10)
+    assert P.deterministic_order([event, dict(event)]) == [event]
+
+
+def test_same_receive_sequence_with_different_bytes_is_not_a_duplicate():
+    first = _ordered_event("one", source="book-a", connection=7, receive=1, receipt=10)
+    conflict = {**first, "raw_event_id": "other"}
+    with pytest.raises(P.PartitionError, match="receive_sequence regression"):
+        P.deterministic_order([first, conflict])
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [1.0, "01", "+1", " 1", "1 ", True, "١", "9" * 5_000],
+)
+def test_ordering_rejects_noncanonical_numeric_values(bad):
+    event = _ordered_event("one", source="book-a", connection=7, receive=1, receipt=10)
+    event["local_receipt_mono_ns"] = bad
+    with pytest.raises(P.PartitionError, match="not (?:an integer|canonical)"):
+        P.deterministic_order([event])
+
+
+@pytest.mark.parametrize("field", ["connection_epoch", "receive_sequence"])
+def test_source_ordering_counters_reject_negative_values(field):
+    event = _ordered_event("one", source="book-a", connection=7, receive=1, receipt=10)
+    event[field] = -1
+    with pytest.raises(P.PartitionError, match="non-negative"):
+        P.deterministic_order([event])
+
+
+def test_ordering_rejects_negative_monotonic_receipt():
+    event = _ordered_event("one", source="book-a", connection=7, receive=1, receipt=-1)
+    with pytest.raises(P.PartitionError, match="non-negative"):
+        P.deterministic_order([event])
+
+
+@pytest.mark.parametrize("field", ["raw_event_id", "venue", "route_family", "source_stream"])
+def test_ordering_identity_fields_are_not_string_coerced(field):
+    event = _ordered_event("one", source="book-a", connection=7, receive=1, receipt=10)
+    event[field] = 1
+    with pytest.raises(P.PartitionError, match="not a string"):
+        P.deterministic_order([event])
 
 
 def test_quality_machine_paths():

@@ -49,7 +49,7 @@ Semantic scope/spec changes land in a prior plan/spec PR; they are never hidden 
 implementation PR. A milestone may merge only when:
 
 1. required CI checks pass on the exact PR head;
-2. every actionable review thread is resolved;
+2. every actionable thread required by that milestone's pre-merge gate is resolved;
 3. the approved head SHA is unchanged;
 4. the PR is squash-merged;
 5. a fresh reconstruction of merged `main` reproduces the checks; and
@@ -64,3 +64,7 @@ foundation defects were discovered in the same audit, and no corrected execution
 which to split them safely. R00 may therefore combine governance refreeze with bounded M1/M2
 integrity remediation. The exception expires when R00 merges. B00 onward requires any semantic
 spec/scope change to merge in a prior, separate PR.
+
+For R00 specifically, PR #4 threads close before merge; the 14 inherited PR #1–#3 threads close
+post-merge after their replies can cite the actual squash SHA and receipt, as controlled by
+[`00_MASTER_PLAN.md`](00_MASTER_PLAN.md) and [`07_REVIEW_REMEDIATION.md`](07_REVIEW_REMEDIATION.md).

@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from triad_origin import contracts  # noqa: E402
 
-MANIFEST = ROOT / "contracts" / "manifest" / "contract_bundle.manifest.v1.json"
+MANIFEST = ROOT / "contracts" / "manifest" / "contract_bundle.manifest.r00.v1.json"
 
 
 def main() -> int:

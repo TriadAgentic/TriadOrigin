@@ -20,4 +20,3 @@ claim that the package is complete or ratified.
 
 Package status is therefore `INCOMPLETE / SAFE_HOLD`. The workbook can be audited as a catalogue,
 but its 1,088-task graph cannot substitute for the missing canonical source bundle.
-

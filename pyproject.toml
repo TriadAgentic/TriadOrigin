@@ -12,6 +12,9 @@ license = { text = "Proprietary — TRIAD estate internal" }
 # Runtime is stdlib-only. Signed-config parsing/verification remains blocked by B00 and must not
 # add a dependency or hidden trust policy before that control surface is ratified.
 dependencies = []
+classifiers = [
+  "Operating System :: POSIX :: Linux",
+]
 
 [project.optional-dependencies]
 # Test/validation tooling only. Runtime code never imports these on the money path.

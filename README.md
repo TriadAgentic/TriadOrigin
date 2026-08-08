@@ -49,9 +49,12 @@ tests/             Falsification and regression suites
 
 ```bash
 PIP_CONSTRAINT=constraints/ci.txt python -m pip install -e '.[test]'
-python -m pytest
+PYTHONHASHSEED=0 python -m pytest
+PYTHONHASHSEED=1 python -m pytest
+python tools/collect_test_ids.py
 python tools/verify_manifest.py
 python tools/validate_contract_manifest.py
+python tools/verify_reproducible_build.py
 python tools/test_wheel_install.py
 python tools/verify_no_forbidden_capabilities.py
 ```
@@ -60,4 +63,6 @@ Test count is descriptive, not acceptance evidence. A milestone also requires ex
 completion, squash merge, fresh-main reproduction, and an immutable receipt.
 
 R00 source artifacts use package version `7.0.0rc1.post1`; this distinguishes the repaired RC1
-foundation from pre-R00 `7.0.0rc1` bytes and does not claim RC2 specification acceptance.
+foundation from pre-R00 `7.0.0rc1` bytes and does not claim RC2 specification acceptance. The R00
+ledger implementation is Linux/POSIX-only (`fcntl` inode locking); cross-platform transport is not
+claimed.

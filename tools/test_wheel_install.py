@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import pathlib
 import subprocess
 import sys
@@ -48,6 +49,21 @@ def main() -> int:
                 raise RuntimeError("source distribution omits the contract registry")
             if not any(name.endswith("/contracts/MANIFEST.sha256") for name in names):
                 raise RuntimeError("source distribution omits the contract byte manifest")
+            source_legacy_manifest_json_sha = hashlib.sha256(
+                (ROOT / "contracts" / "manifest" / "contract_bundle.manifest.v1.json").read_bytes()
+            ).hexdigest()
+            source_manifest_json_sha = hashlib.sha256(
+                (ROOT / "contracts" / "manifest" / "contract_bundle.manifest.r00.v1.json").read_bytes()
+            ).hexdigest()
+            source_manifest_text_sha = hashlib.sha256(
+                (ROOT / "contracts" / "MANIFEST.sha256").read_bytes()
+            ).hexdigest()
+            source_runtime = {
+                str(path.relative_to(ROOT / "src" / "triad_origin")): hashlib.sha256(
+                    path.read_bytes()
+                ).hexdigest()
+                for path in sorted((ROOT / "src" / "triad_origin").rglob("*.py"))
+            }
             _run(
                 [
                     sys.executable,
@@ -85,30 +101,68 @@ def main() -> int:
                 ],
                 cwd=tmp,
             )
-            probe = """
+            probe = f"""
+import hashlib
 import json
+import pathlib
+import triad_origin
 from triad_origin import contracts
 assert len(contracts.known_contracts()) == 30
-schema = contracts.load_schema('triad.edge_candidate.v2')
-assert schema['title'] == 'triad.edge_candidate.v2'
 assert contracts._CONTRACTS_DIR.name == '_contracts'
-assert (contracts._CONTRACTS_DIR / 'MANIFEST.sha256').is_file()
-golden = contracts._CONTRACTS_DIR / 'golden' / 'triad.edge_candidate.v2' / 'valid.json'
-event = json.loads(golden.read_text(encoding='utf-8'))
-contracts.validate(event)  # fresh wheel has no jsonschema: exercises the stdlib path
-event['producer_service'] = ''
-try:
-    contracts.validate(event)
-except contracts.ContractError:
-    pass
-else:
-    raise AssertionError('stdlib validator accepted a minLength violation')
+root = contracts._CONTRACTS_DIR
+manifest_text = root / 'MANIFEST.sha256'
+legacy_manifest_json = root / 'manifest' / 'contract_bundle.manifest.v1.json'
+manifest_json = root / 'manifest' / 'contract_bundle.manifest.r00.v1.json'
+assert hashlib.sha256(manifest_text.read_bytes()).hexdigest() == {source_manifest_text_sha!r}
+assert hashlib.sha256(legacy_manifest_json.read_bytes()).hexdigest() == {source_legacy_manifest_json_sha!r}
+assert hashlib.sha256(manifest_json.read_bytes()).hexdigest() == {source_manifest_json_sha!r}
+
+runtime_root = pathlib.Path(triad_origin.__file__).resolve().parent
+installed_runtime = {{
+    str(path.relative_to(runtime_root)): hashlib.sha256(path.read_bytes()).hexdigest()
+    for path in sorted(runtime_root.rglob('*.py'))
+}}
+assert installed_runtime == {source_runtime!r}, (installed_runtime, {source_runtime!r})
+
+entries = []
+for line in manifest_text.read_text(encoding='utf-8').splitlines():
+    digest, name = line.split('  ', 1)
+    if name.startswith('contracts/'):
+        relative = name.removeprefix('contracts/')
+        target = root / relative
+        assert target.is_file(), name
+        assert hashlib.sha256(target.read_bytes()).hexdigest() == digest, name
+        entries.append(relative)
+assert len(entries) == 91
+actual = {{str(path.relative_to(root)) for path in root.rglob('*') if path.is_file()}}
+expected = set(entries) | {{
+    'MANIFEST.sha256',
+    'manifest/contract_bundle.manifest.v1.json',
+    'manifest/contract_bundle.manifest.r00.v1.json',
+}}
+assert actual == expected, (sorted(actual - expected), sorted(expected - actual))
+
+for schema_id in contracts.known_contracts():
+    schema = contracts.load_schema(schema_id)
+    assert schema['title'] == schema_id
+    golden_dir = root / 'golden' / schema_id
+    valid = json.loads((golden_dir / 'valid.json').read_text(encoding='utf-8'))
+    contracts.validate(valid, schema_id=schema_id)
+    invalid = json.loads((golden_dir / 'invalid.json').read_text(encoding='utf-8'))
+    try:
+        contracts.validate(invalid, schema_id=schema_id)
+    except contracts.ContractError:
+        pass
+    else:
+        raise AssertionError(f'fallback accepted invalid golden for {{schema_id}}')
 """
             _run([str(python), "-I", "-c", probe], cwd=tmp)
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"FAIL: isolated wheel smoke failed: {exc}", file=sys.stderr)
         return 1
-    print("OK: sdist-built isolated wheel loads all 30 packaged contracts")
+    print(
+        "OK: sdist-built wheel byte-matches runtime, verifies 91 artifacts and all 30 goldens"
+    )
     return 0
 
 

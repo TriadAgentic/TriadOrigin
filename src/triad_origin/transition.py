@@ -17,6 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
+from .canonical import canonical_json, loads_canonical, sha256_hex
+
 State = dict[str, Any]
 Envelope = dict[str, Any]
 Params = dict[str, Any]
@@ -49,6 +51,10 @@ class MissingParameterError(KeyError):
     """A required semantic parameter is absent. Fail closed — never a code default (Doc 02 §02.15)."""
 
 
+class InputIdentityError(ValueError):
+    """An event/revision identity was reused with different canonical bytes."""
+
+
 def require(params: Params, name: str) -> Any:
     """Fetch a required semantic parameter or fail closed.
 
@@ -63,11 +69,30 @@ def require(params: Params, name: str) -> Any:
     return value
 
 
-@dataclass
+@dataclass(frozen=True)
 class RunResult:
-    final_state: State
-    events: list[Event] = field(default_factory=list)
-    states: list[State] = field(default_factory=list)
+    """Detached canonical snapshots; accessors never expose the driver's retained state."""
+
+    _final_state_canonical: bytes = field(repr=False)
+    _events_canonical: tuple[bytes, ...] = field(default_factory=tuple, repr=False)
+    _states_canonical: tuple[bytes, ...] = field(default_factory=tuple, repr=False)
+    _duplicate_count: int = field(default=0, repr=False)
+
+    @property
+    def final_state(self) -> State:
+        return _object_snapshot(self._final_state_canonical, "final state")
+
+    @property
+    def events(self) -> list[Event]:
+        return [_object_snapshot(value, "event") for value in self._events_canonical]
+
+    @property
+    def states(self) -> list[State]:
+        return [_object_snapshot(value, "state") for value in self._states_canonical]
+
+    @property
+    def duplicate_count(self) -> int:
+        return self._duplicate_count
 
 
 def run(
@@ -83,13 +108,82 @@ def run(
     ``None`` the machine's cold ``initial_state`` is used. The same ``inputs`` prefix always yields
     the same states/events (prefix + restart invariance).
     """
-    state = dict(initial) if initial is not None else machine.initial_state()
-    out = RunResult(final_state=state)
-    for env in inputs:
-        quality = quality_of(env) if quality_of else env.get("_quality", {})
-        result = machine.transition(state, env, params, quality)
-        state = result.state
-        out.final_state = state
-        out.states.append(state)
-        out.events.extend(result.events)
-    return out
+    if quality_of is not None:
+        raise TypeError("dependency quality must be recorded in envelope['_quality']")
+    state = _snapshot_object(initial if initial is not None else machine.initial_state(), "state")
+    params_bytes = canonical_json(_snapshot_object(params, "parameters"))
+    states: list[bytes] = []
+    events: list[bytes] = []
+    seen_inputs: dict[tuple[str, bytes], str] = {}
+    seen_fingerprints: set[str] = set()
+    duplicate_count = 0
+    for offset, env in enumerate(inputs):
+        envelope = _snapshot_object(env, "envelope")
+        if register_input(envelope, offset, seen_inputs, seen_fingerprints):
+            duplicate_count += 1
+            continue
+        quality = _snapshot_object(envelope.get("_quality", {}), "quality")
+        prior_state_bytes = canonical_json(state)
+        result = machine.transition(
+            _snapshot_object(state, "state"),
+            _snapshot_object(envelope, "envelope"),
+            _object_snapshot(params_bytes, "parameters"),
+            quality,
+        )
+        if not isinstance(result, TransitionResult):
+            raise TypeError("machine transition must return TransitionResult")
+        if not isinstance(result.events, tuple) or any(
+            not isinstance(event, dict) for event in result.events
+        ):
+            raise TypeError("transition events must be a tuple of objects")
+        state = _snapshot_object(result.state, "state")
+        state_bytes = canonical_json(state)
+        event_bytes = tuple(
+            canonical_json(_snapshot_object(event, "event")) for event in result.events
+        )
+        if state_bytes == prior_state_bytes and not event_bytes:
+            continue
+        states.append(state_bytes)
+        events.extend(event_bytes)
+    return RunResult(
+        _final_state_canonical=canonical_json(state),
+        _events_canonical=tuple(events),
+        _states_canonical=tuple(states),
+        _duplicate_count=duplicate_count,
+    )
+
+
+def register_input(
+    envelope: Envelope,
+    offset: int,
+    seen_inputs: dict[tuple[str, bytes], str],
+    seen_fingerprints: set[str],
+) -> bool:
+    """Register canonical event/revision identity; return true for exact retransmission."""
+    if not isinstance(envelope, dict):
+        raise InputIdentityError("input envelope must be an object")
+    encoded = canonical_json(envelope)
+    fingerprint = sha256_hex(encoded)
+    event_id = envelope.get("event_id", f"in_{offset}")
+    if not isinstance(event_id, str) or not event_id:
+        raise InputIdentityError("input event_id must be a non-empty string when supplied")
+    revision = canonical_json(envelope.get("revision"))
+    identity = (event_id, revision)
+    prior = seen_inputs.get(identity)
+    if prior is not None and prior != fingerprint:
+        raise InputIdentityError("same event/revision identity carries conflicting canonical bytes")
+    duplicate = fingerprint in seen_fingerprints
+    seen_inputs[identity] = fingerprint
+    seen_fingerprints.add(fingerprint)
+    return duplicate
+def _snapshot_object(value: Any, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise TypeError(f"transition {label} must be an object")
+    return _object_snapshot(canonical_json(value), label)
+
+
+def _object_snapshot(data: bytes, label: str) -> dict[str, Any]:
+    value = loads_canonical(data)
+    if not isinstance(value, dict):  # pragma: no cover - encoded after object check
+        raise TypeError(f"transition {label} must be an object")
+    return value

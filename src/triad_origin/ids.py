@@ -18,9 +18,9 @@ independent of logging, wall clock, process id, thread count, iteration order or
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
-from .canonical import digest_fields
+from .canonical import CanonicalError, canonical_json, digest_fields, nfc
 
 IDENTITY_SCHEMA_VERSION = "origin.identity.v1"
 
@@ -38,8 +38,26 @@ _HEXLEN = 40  # 160 bits of the SHA-256 digest is ample and keeps IDs compact + 
 
 def _seq_digest(items: Iterable[str]) -> str:
     """Order-preserving digest of a sequence of source IDs (never sorted — order is semantic)."""
-    items = list(items)
+    if isinstance(items, (str, bytes)) or not isinstance(items, Sequence):
+        raise TypeError("identity source IDs must be an explicitly ordered sequence of strings")
+    items = [_canonical_text(item, "source ID") for item in items]
     return digest_fields("seq", len(items), *items)
+
+
+def _require_strings(**fields: str) -> None:
+    for name, value in fields.items():
+        _canonical_text(value, name)
+
+
+def _canonical_text(value: object, name: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise TypeError(f"identity field {name} must be a non-empty string")
+    normalized = nfc(value)
+    try:
+        canonical_json(normalized)
+    except (CanonicalError, UnicodeError, RecursionError) as exc:
+        raise TypeError(f"identity field {name} is not canonical-wire encodable") from exc
+    return normalized
 
 
 def semantic_instance_id(
@@ -48,6 +66,12 @@ def semantic_instance_id(
     venue_model: str,
     timeframe: str,
 ) -> str:
+    _require_strings(
+        formula_version=formula_version,
+        parameter_digest=parameter_digest,
+        venue_model=venue_model,
+        timeframe=timeframe,
+    )
     h = digest_fields(
         "semantic_instance",
         formula_version,
@@ -69,6 +93,15 @@ def structure_id(
     *,
     identity_schema_version: str = IDENTITY_SCHEMA_VERSION,
 ) -> str:
+    _require_strings(
+        instrument_id=instrument_id,
+        venue_model=venue_model,
+        structure_kind=structure_kind,
+        semantic_instance_id=semantic_instance_id_,
+        direction=direction,
+        original_geometry_digest=original_geometry_digest,
+        identity_schema_version=identity_schema_version,
+    )
     h = digest_fields(
         "structure",
         identity_schema_version,
@@ -88,6 +121,7 @@ def reaction_id(
     reaction_formula: str,
     trigger_source_ids: Iterable[str],
 ) -> str:
+    _require_strings(structure_id=structure_id_, reaction_formula=reaction_formula)
     h = digest_fields(
         "reaction",
         structure_id_,
@@ -98,11 +132,21 @@ def reaction_id(
 
 
 def hypothesis_id(reaction_id_: str, capsule_version: str, parameter_digest: str) -> str:
+    _require_strings(
+        reaction_id=reaction_id_,
+        capsule_version=capsule_version,
+        parameter_digest=parameter_digest,
+    )
     h = digest_fields("hypothesis", reaction_id_, capsule_version, parameter_digest)
     return _PREFIX["hypothesis"] + h[:_HEXLEN]
 
 
 def candidate_id(hypothesis_id_: str, candidate_formula: str, publication_occurrence: str) -> str:
+    _require_strings(
+        hypothesis_id=hypothesis_id_,
+        candidate_formula=candidate_formula,
+        publication_occurrence=publication_occurrence,
+    )
     h = digest_fields("candidate", hypothesis_id_, candidate_formula, publication_occurrence)
     return _PREFIX["candidate"] + h[:_HEXLEN]
 
@@ -113,6 +157,11 @@ def opportunity_cluster_id(member_hypothesis_ids: Iterable[str]) -> str:
     Membership is order-insensitive here (a cluster is a *set* of aliases), so members are sorted
     before hashing — distinct from the order-sensitive source-id sequences above.
     """
-    members = sorted(set(member_hypothesis_ids))
+    if isinstance(member_hypothesis_ids, (str, bytes)):
+        raise TypeError("cluster members must be an iterable of IDs, not a scalar")
+    supplied = list(member_hypothesis_ids)
+    if not supplied:
+        raise TypeError("cluster member hypothesis IDs must be non-empty strings")
+    members = sorted({_canonical_text(member, "cluster member") for member in supplied})
     h = digest_fields("opportunity_cluster", len(members), *members)
     return _PREFIX["opportunity_cluster"] + h[:_HEXLEN]

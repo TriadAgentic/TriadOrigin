@@ -17,6 +17,10 @@ jobs:
       # B01 owns reviewed dependency refreshes; CI must never float them silently.
       PIP_CONSTRAINT: ${{ github.workspace }}/constraints/ci.txt
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      TZ: UTC
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      PYTHONHASHSEED: "0"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 resolved 2026-08-08
         with:
@@ -34,10 +38,18 @@ jobs:
         run: python -m pip install -e '.[test]'
       - name: Falsification suite
         run: python -m pytest
+      - name: Hash-order invariance
+        env:
+          PYTHONHASHSEED: "1"
+        run: python -m pytest
+      - name: Exact pytest collection identity
+        run: python tools/collect_test_ids.py
       - name: Contract byte manifest
         run: python tools/verify_manifest.py
       - name: Contract manifest schema
         run: python tools/validate_contract_manifest.py
+      - name: Reproducible source and wheel artifacts
+        run: python tools/verify_reproducible_build.py
       - name: Installed-wheel contract smoke
         run: python tools/test_wheel_install.py
       - name: DARK capability boundary

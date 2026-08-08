@@ -1,16 +1,20 @@
 """Verify-only producer-lease fencing at the E02 boundary (CON-023 / Doc 04 §04.16).
 
 Deploy is not authority. An E02-owned topic is written only by the holder of a scoped producer
-lease carrying a **monotonic fencing token**. Consumers persist the highest accepted token per scope
-and reject lower/expired/revoked tokens even when a later-timestamped payload arrives — clock
-ordering never beats fencing. ORIGIN never issues, activates, coordinates, or supersedes a lease;
-those are external governance responsibilities.
+lease carrying a **monotonic fencing token**. This in-process verifier tracks the highest accepted
+token per scope and rejects lower/expired/revoked tokens even when a later-timestamped payload
+arrives — clock ordering never beats fencing. Durable per-scope restore remains a B02 blocker;
+ORIGIN never issues, activates, coordinates, or supersedes a lease, which are external governance
+responsibilities.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from threading import RLock
+
+from .canonical import INT64_MAX, CanonicalError, canonical_json, nfc
 
 
 class LeaseState(str, Enum):
@@ -40,48 +44,72 @@ class ConsumerFence:
     must then carry that exact accepted token: an unseen higher value is not authority.
     """
 
-    _highest: dict[str, int] = field(default_factory=dict)
-    _revoked: set[str] = field(default_factory=set)
+    _highest: dict[str, int] = field(default_factory=dict, init=False, repr=False)
+    _revoked: set[str] = field(default_factory=set, init=False, repr=False)
+    _lock: RLock = field(default_factory=RLock, init=False, repr=False, compare=False)
 
     def accept(self, lease: Lease) -> bool:
         """Fence an externally validated active lease; this method never issues authority."""
+        if not isinstance(lease, Lease):
+            return False
         if lease.state is not LeaseState.ACTIVE:
             return False
+        text_fields = (
+            lease.lease_id,
+            lease.scope,
+            lease.producer_service,
+            lease.producer_instance_id,
+            lease.activation_manifest_id,
+        )
         if (
-            not all(
-                isinstance(value, str) and bool(value)
-                for value in (
-                    lease.lease_id,
-                    lease.scope,
-                    lease.producer_service,
-                    lease.producer_instance_id,
-                    lease.activation_manifest_id,
-                )
-            )
+            not all(_canonical_nonempty_text(value) is not None for value in text_fields)
             or isinstance(lease.fencing_token, bool)
             or not isinstance(lease.fencing_token, int)
             or lease.fencing_token <= 0
+            or lease.fencing_token > INT64_MAX
         ):
             return False
         # A revocation is terminal for this verifier instance. Re-authorizing a scope requires a
         # separately ratified, cryptographically verified replacement path, which is blocked by
         # B00 and intentionally absent from this repository today.
-        if lease.scope in self._revoked:
-            return False
-        highest = self._highest.get(lease.scope, 0)
-        if lease.fencing_token <= highest:
-            return False  # stale epoch; reject even if it "arrives later"
-        self._highest[lease.scope] = lease.fencing_token
-        return True
+        scope = _canonical_nonempty_text(lease.scope)
+        assert scope is not None  # checked above
+        with self._lock:
+            if scope in self._revoked:
+                return False
+            highest = self._highest.get(scope, 0)
+            if lease.fencing_token <= highest:
+                return False  # stale epoch; reject even if it "arrives later"
+            self._highest[scope] = lease.fencing_token
+            return True
 
     def revoke(self, scope: str) -> None:
-        self._revoked.add(scope)
+        normalized = _canonical_nonempty_text(scope)
+        if normalized is None:
+            return
+        with self._lock:
+            self._revoked.add(normalized)
 
     def accepts_write(self, scope: str, fencing_token: int) -> bool:
         """Accept only the exact token of an active lease previously accepted for ``scope``."""
-        if scope in self._revoked:
+        normalized = _canonical_nonempty_text(scope)
+        if normalized is None:
             return False
         if isinstance(fencing_token, bool) or not isinstance(fencing_token, int):
             return False
-        accepted = self._highest.get(scope)
-        return accepted is not None and fencing_token == accepted
+        with self._lock:
+            if normalized in self._revoked:
+                return False
+            accepted = self._highest.get(normalized)
+            return accepted is not None and fencing_token == accepted
+
+
+def _canonical_nonempty_text(value: object) -> str | None:
+    if not isinstance(value, str) or not value or len(value) > 256:
+        return None
+    normalized = nfc(value)
+    try:
+        canonical_json(normalized)
+    except (CanonicalError, UnicodeError, RecursionError):
+        return None
+    return normalized

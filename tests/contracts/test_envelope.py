@@ -55,6 +55,14 @@ def test_authority_event_without_epoch_is_rejected():
         contracts.assert_epoch_ge(ev, 0)
 
 
+@pytest.mark.parametrize("bad", [True, 1, 1.0, "01", "+1", " 1", "-1"])
+def test_epoch_helper_rejects_noncanonical_or_negative_values(bad):
+    event = _valid("triad.edge_candidate.v2")
+    event["producer_epoch"] = bad
+    with pytest.raises(contracts.StaleEpochError):
+        contracts.assert_epoch_ge(event, -1)
+
+
 def test_forbidden_candidate_field_is_a_breach():
     ev = _valid("triad.edge_candidate.v2")
     bad = copy.deepcopy(ev)
@@ -69,3 +77,16 @@ def test_forbidden_candidate_field_is_a_breach():
 
 def test_clean_candidate_passes_forbidden_guard():
     contracts.assert_no_forbidden_candidate_fields(_valid("triad.edge_candidate.v2"))
+
+
+def test_forbidden_candidate_field_is_rejected_recursively_and_at_validation_boundary():
+    bad = _valid("triad.edge_candidate.v2")
+    bad["payload"]["quality"]["raw_credentials"] = "secret"
+    with pytest.raises(contracts.ContractError, match="raw_credentials"):
+        contracts.assert_no_forbidden_candidate_fields(bad)
+    with pytest.raises(contracts.ContractError, match="raw_credentials"):
+        contracts.validate(bad)
+    tuple_nested = _valid("triad.edge_candidate.v2")
+    tuple_nested["payload"]["quality"]["nested"] = ({"raw_credentials": "secret"},)
+    with pytest.raises(contracts.ContractError, match="raw_credentials"):
+        contracts.validate(tuple_nested)

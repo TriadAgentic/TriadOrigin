@@ -12,11 +12,14 @@ on a third-party library.
 
 from __future__ import annotations
 
+import copy
 import functools
 import json
 import pathlib
 import re
 from typing import Any
+
+from .canonical import CanonicalError, canonical_json, str_to_tick
 
 _PACKAGE_CONTRACTS_DIR = pathlib.Path(__file__).resolve().parent / "_contracts"
 _SOURCE_CONTRACTS_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / "contracts"
@@ -38,22 +41,58 @@ class StaleEpochError(ContractError):
 
 
 @functools.lru_cache(maxsize=1)
-def registry() -> dict[str, Any]:
+def _registry_cached() -> dict[str, Any]:
     if not _REGISTRY.exists():
         raise ContractError("contract registry index missing; run tools/gen_contracts.py")
     return json.loads(_REGISTRY.read_text(encoding="utf-8"))
 
 
+def registry() -> dict[str, Any]:
+    """Return a detached registry view; callers cannot mutate validation truth."""
+    return copy.deepcopy(_registry_cached())
+
+
 @functools.lru_cache(maxsize=256)
-def load_schema(schema_id: str) -> dict[str, Any]:
+def _load_schema_cached(schema_id: str) -> dict[str, Any]:
+    # Called only after the non-cached type/grammar/membership guard below. Keeping this loader
+    # private prevents lru_cache from hashing an attacker-supplied unhashable object first.
     path = _SCHEMA_DIR / f"{schema_id}.schema.json"
-    if not path.exists():
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ContractError(f"cannot load contract schema {schema_id!r}: {exc}") from exc
+
+
+def _checked_schema_id(schema_id: object) -> str:
+    if (
+        not isinstance(schema_id, str)
+        or len(schema_id) > 128
+        or re.fullmatch(
+            r"triad\.[a-z0-9_]+(?:\.[a-z0-9_]+)*\.v[1-9][0-9]*", schema_id
+        ) is None
+    ):
+        raise ContractError(f"invalid contract schema identifier: {schema_id!r}")
+    if schema_id not in _known_contracts_cached():
         raise ContractError(f"unknown contract schema: {schema_id}")
-    return json.loads(path.read_text(encoding="utf-8"))
+    return schema_id
+
+
+def _schema_for_validation(schema_id: object) -> dict[str, Any]:
+    return _load_schema_cached(_checked_schema_id(schema_id))
+
+
+def load_schema(schema_id: str) -> dict[str, Any]:
+    """Return a detached schema view; the private validation cache is never exposed."""
+    return copy.deepcopy(_schema_for_validation(schema_id))
+
+
+@functools.lru_cache(maxsize=1)
+def _known_contracts_cached() -> tuple[str, ...]:
+    return tuple(contract["contract_id"] for contract in _registry_cached()["contracts"])
 
 
 def known_contracts() -> list[str]:
-    return [c["contract_id"] for c in registry()["contracts"]]
+    return list(_known_contracts_cached())
 
 
 # --- validation ----------------------------------------------------------------------------------
@@ -139,14 +178,17 @@ def validate(event: dict, *, schema_id: str | None = None) -> None:
     """
     if not isinstance(event, dict):
         raise ContractError("event must be a JSON object")
+    _require_canonical_wire(event, "event")
     declared = event.get("schema")
     sid = schema_id or declared
     if sid is None:
         raise ContractError("event has no 'schema' field")
     if declared is not None and schema_id is not None and declared != schema_id:
         raise ContractError(f"schema mismatch: envelope says {declared!r}, expected {schema_id!r}")
-    schema = load_schema(sid)
+    schema = _schema_for_validation(sid)
     _validate_against_schema(schema, event)
+    if sid in {"triad.edge_candidate.v1", "triad.edge_candidate.v2"}:
+        assert_no_forbidden_candidate_fields(event)
 
 
 def validate_payload(schema_id: str, payload: dict) -> None:
@@ -156,13 +198,23 @@ def validate_payload(schema_id: str, payload: dict) -> None:
     them to an envelope producer.  This prevents a read-face or quarantine path from constructing a
     payload that its declared contract can never carry.
     """
-    schema = load_schema(schema_id)
+    schema = _schema_for_validation(schema_id)
     payload_schema = schema.get("properties", {}).get("payload")
     if not isinstance(payload_schema, dict):
         raise ContractError(f"contract {schema_id!r} has no object payload schema")
     if not isinstance(payload, dict):
         raise ContractError("payload must be a JSON object")
+    _require_canonical_wire(payload, "payload")
     _validate_against_schema(payload_schema, payload)
+    if schema_id in {"triad.edge_candidate.v1", "triad.edge_candidate.v2"}:
+        assert_no_forbidden_candidate_fields({"payload": payload})
+
+
+def _require_canonical_wire(value: dict, label: str) -> None:
+    try:
+        canonical_json(value)
+    except (CanonicalError, UnicodeError, RecursionError) as exc:
+        raise ContractError(f"{label} is not canonical-wire encodable: {exc}") from exc
 
 
 def _validate_against_schema(schema: dict, value: Any) -> None:
@@ -187,13 +239,21 @@ def assert_epoch_ge(event: dict, highest_accepted: int) -> int:
     Returns the current highest accepted epoch. The active epoch may emit any number of events;
     only a lower epoch is stale. A newly promoted producer still needs a strictly higher epoch.
     """
+    if (
+        isinstance(highest_accepted, bool)
+        or not isinstance(highest_accepted, int)
+        or highest_accepted < -1
+    ):
+        raise StaleEpochError("highest accepted epoch must be an integer >= -1")
     raw = event.get("producer_epoch")
     if raw is None:
         raise StaleEpochError("authority-path event carries no producer_epoch")
     try:
-        epoch = int(raw)
-    except (TypeError, ValueError) as exc:
-        raise StaleEpochError(f"producer_epoch not a decimal integer: {raw!r}") from exc
+        epoch = str_to_tick(raw)
+    except CanonicalError as exc:
+        raise StaleEpochError(f"producer_epoch not a canonical decimal integer: {raw!r}") from exc
+    if epoch < 0:
+        raise StaleEpochError("producer_epoch must be non-negative")
     if epoch < highest_accepted:
         raise StaleEpochError(
             f"stale producer_epoch {epoch} < highest accepted {highest_accepted}")
@@ -202,9 +262,19 @@ def assert_epoch_ge(event: dict, highest_accepted: int) -> int:
 
 def assert_no_forbidden_candidate_fields(event: dict) -> None:
     """Constitutional guard: an edge candidate may carry no money-authority field (Doc 03 §03.6)."""
-    forbidden = ("final_approval", "account_id", "notional", "leverage", "executable_quantity",
-                 "venue_order_id", "raw_credentials", "expected_return", "e09_destination")
+    forbidden = {"final_approval", "account_id", "notional", "leverage", "executable_quantity",
+                 "venue_order_id", "raw_credentials", "expected_return", "e09_destination"}
     payload = event.get("payload", {})
-    present = [f for f in forbidden if f in payload]
+    stack: list[Any] = [payload]
+    present: set[str] = set()
+    while stack:
+        value = stack.pop()
+        if isinstance(value, dict):
+            present.update(forbidden.intersection(value))
+            stack.extend(value.values())
+        elif isinstance(value, (list, tuple)):
+            stack.extend(value)
     if present:
-        raise ContractError(f"edge candidate carries forbidden money field(s): {present}")
+        raise ContractError(
+            f"edge candidate carries forbidden money field(s): {sorted(present)}"
+        )

@@ -15,6 +15,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from threading import RLock
+
+from .canonical import (
+    CanonicalError,
+    canonical_json,
+    loads_canonical,
+    nfc,
+    str_to_tick,
+    tick_to_str,
+)
 
 
 @dataclass(frozen=True, order=True)
@@ -22,6 +32,25 @@ class PartitionKey:
     venue_model: str
     canonical_instrument_id: str
     semantic_timeframe: str
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("venue_model", self.venue_model),
+            ("canonical_instrument_id", self.canonical_instrument_id),
+            ("semantic_timeframe", self.semantic_timeframe),
+        ):
+            if not isinstance(value, str) or not value or "|" in value:
+                raise PartitionError(
+                    f"partition {name} must be a non-empty string without the '|' delimiter"
+                )
+            normalized = nfc(value)
+            try:
+                canonical_json(normalized)
+            except (CanonicalError, UnicodeError, RecursionError) as exc:
+                raise PartitionError(
+                    f"partition {name} is not canonical-wire encodable"
+                ) from exc
+            object.__setattr__(self, name, normalized)
 
     def __str__(self) -> str:
         return f"{self.venue_model}|{self.canonical_instrument_id}|{self.semantic_timeframe}"
@@ -37,20 +66,40 @@ class PartitionCoordinator:
 
     _owner: dict[PartitionKey, str] = field(default_factory=dict)
     _seq: dict[PartitionKey, int] = field(default_factory=dict)
+    _lock: RLock = field(default_factory=RLock, init=False, repr=False, compare=False)
 
     def claim(self, key: PartitionKey, writer_id: str) -> None:
-        current = self._owner.get(key)
-        if current is not None and current != writer_id:
-            raise PartitionError(
-                f"partition {key} already owned by {current!r}; two writers not permitted")
-        self._owner[key] = writer_id
-        self._seq.setdefault(key, -1)
+        if not isinstance(key, PartitionKey):
+            raise PartitionError("partition claim requires a canonical PartitionKey")
+        writer_id = _canonical_writer_id(writer_id)
+        with self._lock:
+            current = self._owner.get(key)
+            if current is not None and current != writer_id:
+                raise PartitionError(
+                    f"partition {key} already owned by {current!r}; two writers not permitted")
+            self._owner[key] = writer_id
+            self._seq.setdefault(key, -1)
 
     def next_seq(self, key: PartitionKey, writer_id: str) -> int:
-        if self._owner.get(key) != writer_id:
-            raise PartitionError(f"{writer_id!r} does not own partition {key}")
-        self._seq[key] += 1
-        return self._seq[key]
+        if not isinstance(key, PartitionKey):
+            raise PartitionError("partition sequence requires a canonical PartitionKey")
+        writer_id = _canonical_writer_id(writer_id)
+        with self._lock:
+            if self._owner.get(key) != writer_id:
+                raise PartitionError(f"{writer_id!r} does not own partition {key}")
+            self._seq[key] += 1
+            return self._seq[key]
+
+
+def _canonical_writer_id(value: object) -> str:
+    if not isinstance(value, str) or not value:
+        raise PartitionError("partition writer_id must be a non-empty string")
+    normalized = nfc(value)
+    try:
+        canonical_json(normalized)
+    except (CanonicalError, UnicodeError, RecursionError) as exc:
+        raise PartitionError("partition writer_id is not canonical-wire encodable") from exc
+    return normalized
 
 
 def deterministic_order(events: list[dict]) -> list[dict]:
@@ -67,10 +116,27 @@ def deterministic_order(events: list[dict]) -> list[dict]:
             _required_int(body, "local_receipt_mono_ns"),
             _source_key(body),
             _required_int(body, "receive_sequence"),
-            str(_required(body, "raw_event_id")),
+            _required_str(body, "raw_event_id"),
         )
 
-    ordered = sorted(events, key=_key)
+    unique: list[dict] = []
+    seen: set[bytes] = set()
+    for event in events:
+        if not isinstance(event, dict):
+            raise PartitionError("ordered input event must be an object")
+        try:
+            encoded = canonical_json(event)
+        except CanonicalError as exc:
+            raise PartitionError("ordered input event is not canonical") from exc
+        if encoded in seen:
+            continue  # exact retransmission is idempotent
+        seen.add(encoded)
+        normalized = loads_canonical(encoded)
+        if not isinstance(normalized, dict):  # pragma: no cover - guarded above
+            raise PartitionError("ordered input event must be an object")
+        unique.append(normalized)
+
+    ordered = sorted(unique, key=_key)
     last_receive: dict[tuple[str, str, str, int], int] = {}
     for event in ordered:
         body = _event_body(event)
@@ -98,19 +164,35 @@ def _required(body: dict, name: str):
 
 def _required_int(body: dict, name: str) -> int:
     value = _required(body, name)
-    if isinstance(value, bool):
-        raise PartitionError(f"ordering field {name!r} is not an integer: {value!r}")
     try:
-        return int(value)
-    except (TypeError, ValueError) as exc:
+        if isinstance(value, bool):
+            raise CanonicalError("boolean is not an ordering integer")
+        if isinstance(value, int):
+            tick_to_str(value)  # signed-int64 boundary
+            parsed = value
+        elif isinstance(value, str):
+            parsed = str_to_tick(value)
+        else:
+            raise CanonicalError(f"unsupported ordering type {type(value).__name__}")
+    except CanonicalError as exc:
         raise PartitionError(f"ordering field {name!r} is not an integer: {value!r}") from exc
+    if name in {"connection_epoch", "receive_sequence", "local_receipt_mono_ns"} and parsed < 0:
+        raise PartitionError(f"ordering field {name!r} must be non-negative: {value!r}")
+    return parsed
+
+
+def _required_str(body: dict, name: str) -> str:
+    value = _required(body, name)
+    if not isinstance(value, str):
+        raise PartitionError(f"ordering field {name!r} is not a string: {value!r}")
+    return value
 
 
 def _source_key(body: dict) -> tuple[str, str, str, int]:
     return (
-        str(_required(body, "venue")),
-        str(_required(body, "route_family")),
-        str(_required(body, "source_stream")),
+        _required_str(body, "venue"),
+        _required_str(body, "route_family"),
+        _required_str(body, "source_stream"),
         _required_int(body, "connection_epoch"),
     )
 

@@ -17,6 +17,7 @@ RUNTIME = ROOT / "src" / "triad_origin"
 ALLOWED_MODULE_ROOTS = {
     "__future__",
     "collections",
+    "copy",
     "dataclasses",
     "decimal",
     "enum",
@@ -29,6 +30,7 @@ ALLOWED_MODULE_ROOTS = {
     "os",
     "pathlib",
     "re",
+    "threading",
     "typing",
     "unicodedata",
 }
@@ -39,6 +41,14 @@ FORBIDDEN_CALLS = {
     "create_order",
     "execv",
     "execve",
+    "eval",
+    "exec",
+    "compile",
+    "getattr",
+    "globals",
+    "locals",
+    "setattr",
+    "vars",
     "getenv",
     "import_module",
     "popen",
@@ -59,6 +69,7 @@ FORBIDDEN_IDENTIFIERS = {
     "secret_key",
     "venue_credentials",
 }
+FORBIDDEN_IMPORTED_NAMES = FORBIDDEN_CALLS | FORBIDDEN_IDENTIFIERS | {"environ"}
 
 
 def scan_file(path: pathlib.Path) -> list[str]:
@@ -81,6 +92,12 @@ def scan_file(path: pathlib.Path) -> list[str]:
                     findings.append(
                         f"{path}:{node.lineno}: unapproved runtime import {node.module}"
                     )
+                for alias in node.names:
+                    if alias.name in FORBIDDEN_IMPORTED_NAMES:
+                        findings.append(
+                            f"{path}:{node.lineno}: forbidden capability import "
+                            f"{node.module}.{alias.name}"
+                        )
         elif isinstance(node, ast.Call):
             name = None
             if isinstance(node.func, ast.Name):

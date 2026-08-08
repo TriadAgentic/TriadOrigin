@@ -63,6 +63,38 @@ def test_unknown_schema_fails_closed():
         contracts.validate({"schema": "triad.does_not_exist.v9", "payload": {}})
 
 
+@pytest.mark.parametrize("bad_schema", [[], {}, 1, None])
+def test_unhashable_or_nonstring_schema_id_fails_closed(bad_schema):
+    with pytest.raises(contracts.ContractError):
+        contracts.load_schema(bad_schema)
+    with pytest.raises(contracts.ContractError):
+        contracts.validate({"schema": bad_schema})
+
+
+def test_public_contract_views_cannot_mutate_cached_validation_truth():
+    schema_id = "triad.edge_candidate.v2"
+    invalid = _load(schema_id, "invalid")
+    schema = contracts.load_schema(schema_id)
+    schema.clear()
+    registry = contracts.registry()
+    registry["contracts"].clear()
+    assert len(contracts.known_contracts()) == 30
+    with pytest.raises(contracts.ContractError):
+        contracts.validate(invalid, schema_id=schema_id)
+    assert contracts.load_schema(schema_id)
+
+
+@pytest.mark.parametrize("bad", [1.5, object()])
+def test_public_validation_rejects_noncanonical_nested_values(bad):
+    event = _load("triad.edge_candidate.v2", "valid")
+    # quality is an open RC1 object, so this exercises canonical-wire enforcement beyond schema.
+    event["payload"]["quality"]["unsafe"] = bad
+    with pytest.raises(contracts.ContractError, match="canonical-wire"):
+        contracts.validate(event)
+    with pytest.raises(contracts.ContractError, match="canonical-wire"):
+        contracts.validate_payload("triad.edge_candidate.v2", event["payload"])
+
+
 @pytest.mark.parametrize(
     ("schema_id", "mutate"),
     [

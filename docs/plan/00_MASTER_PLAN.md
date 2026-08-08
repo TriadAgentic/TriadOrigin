@@ -113,13 +113,22 @@ Mandatory evidence:
 Repository ruleset enforcement is **not yet evidenced** by the available repository API. Issue
 [#5](https://github.com/TriadAgentic/TriadOrigin/issues/5) is therefore a B00 control blocker. R00
 may use only the documented bootstrap merge procedure: re-read the immutable PR head, require its
-exact-head `CI / test-and-verify` run to be green, require zero actionable threads, and submit the
-merge with that same head SHA as the expected value. A direct/admin merge outside that procedure
-invalidates the receipt; it does not prove a durable ruleset.
+exact-head `CI / test-and-verify` run to be green, require zero unresolved actionable PR #4 threads,
+and submit the merge with that same head SHA as the expected value. A direct/admin merge outside
+that procedure invalidates the receipt; it does not prove a durable ruleset.
+
+For that pre-merge guard, “zero actionable threads” means PR #4's current review threads. The 14
+inherited PR #1–#3 threads remain inventoried until the post-merge remediation reply can cite the
+actual squash SHA and receipt path; they are then resolved and captured in the sealed receipt.
 
 The merge SHA and fresh-main result do not exist before merge, so an R00 receipt cannot truthfully
 live in PR #4. After the squash merge, it is generated and schema-validated at
-`evidence/receipts/R00.json`, then anchored by a commit on `evidence/r00-receipt` whose parent is the
+`evidence/receipts/R00.json`; its canonical test-ID/results, commands, toolchain, review,
+post-merge, manifest, dependency, source, sdist, and wheel preimages are persisted beneath
+`evidence/R00/` (or referenced repository paths) and bound through `evidence_files`. It is validated
+by both the JSON Schema and
+`tools/validate_milestone_receipt.py` cross-field identity checks, then anchored by a commit on
+`evidence/r00-receipt` whose parent is the
 R00 merge SHA. The immutable receipt-commit URL is posted back to PR #4. R00 remains
 `MERGED_UNVERIFIED` and B00 may not start unless that post-merge mechanism succeeds.
 
