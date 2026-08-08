@@ -1,0 +1,159 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.emergency_exit_authorization.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "EMERGENCY_EXIT_AUTHORIZATION"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "audit_reason": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "object"
+        },
+        "expiry_us": {
+          "type": "integer"
+        },
+        "max_reducible_qty_steps": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "position_mode": {
+          "enum": [
+            "ONE_WAY",
+            "HEDGE"
+          ],
+          "type": "string"
+        },
+        "position_side": {
+          "enum": [
+            "LONG",
+            "SHORT",
+            "BOTH"
+          ],
+          "type": "string"
+        },
+        "position_snapshot_id": {
+          "type": "string"
+        },
+        "serial_key": {
+          "type": "string"
+        },
+        "standing_policy_id": {
+          "type": "string"
+        },
+        "standing_policy_signature": {
+          "type": "string"
+        },
+        "tier2_market_permitted": {
+          "type": "boolean"
+        },
+        "trigger": {
+          "type": "object"
+        },
+        "urgency_tier": {
+          "enum": [
+            "TIER1",
+            "TIER2"
+          ],
+          "type": "string"
+        },
+        "worst_acceptable_price_ticks": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "position_snapshot_id",
+        "max_reducible_qty_steps",
+        "position_side",
+        "position_mode",
+        "urgency_tier",
+        "worst_acceptable_price_ticks",
+        "tier2_market_permitted",
+        "trigger",
+        "evidence",
+        "standing_policy_id",
+        "standing_policy_signature",
+        "expiry_us",
+        "serial_key",
+        "audit_reason"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.emergency_exit_authorization.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.emergency_exit_authorization.v1",
+  "type": "object"
+}

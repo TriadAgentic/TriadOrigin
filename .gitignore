@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.coverage
+htmlcov/
+# ORIGIN never commits runtime ledgers, checkpoints or secrets
+/run/
+/var/
+*.ledger
+*.checkpoint
+secrets/
+*.env

@@ -1,0 +1,26 @@
+{
+  "artifact_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+  "build_commit": "0000000000000000000000000000000000000000",
+  "config_bundle_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "contract_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "emitted_at_us": 1786156800123456,
+  "event_id": "evt_triad_edge_candidate_transition_v1",
+  "event_kind": "CANDIDATE_TRANSITION",
+  "payload": {
+    "candidate_id": "x",
+    "event_time_us": 1786156800123456,
+    "from_state": "x",
+    "knowledge_at_us": 1786156800123456,
+    "previous_transition_id": "x",
+    "reason": "x",
+    "source_transition_id": "x",
+    "state_seq": "1",
+    "to_state": "x",
+    "transition_id": "x"
+  },
+  "producer_epoch": "42",
+  "producer_instance_id": "inst_golden_01",
+  "producer_service": "origin",
+  "schema": "triad.edge_candidate_transition.v1",
+  "schema_version": "1.0.0"
+}

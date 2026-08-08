@@ -1,0 +1,168 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.market_state.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "BOOK",
+        "BAR",
+        "TRADE",
+        "DERIVATIVE"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "bar_finalization_state": {
+          "type": "object"
+        },
+        "book_sequence_state": {
+          "type": "object"
+        },
+        "canonical_instrument_id": {
+          "type": "string"
+        },
+        "dependency_event_ids": {
+          "type": "array"
+        },
+        "finalized_event_time_us": {
+          "type": "integer"
+        },
+        "instrument_revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "knowledge_time_us": {
+          "type": "integer"
+        },
+        "partition_key": {
+          "type": "object"
+        },
+        "prior_revision_id": {
+          "type": "string"
+        },
+        "provenance_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "publication_time_us": {
+          "type": "integer"
+        },
+        "source_offset_range": {
+          "type": "array"
+        },
+        "state_kind": {
+          "type": "string"
+        },
+        "state_revision_id": {
+          "type": "string"
+        },
+        "timeframe": {
+          "type": "string"
+        },
+        "validity": {
+          "enum": [
+            "SYNCING",
+            "READY",
+            "DEGRADED",
+            "GAPPED",
+            "STALE"
+          ],
+          "type": "string"
+        },
+        "watermark_complete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "state_revision_id",
+        "partition_key",
+        "state_kind",
+        "canonical_instrument_id",
+        "timeframe",
+        "source_offset_range",
+        "dependency_event_ids",
+        "finalized_event_time_us",
+        "watermark_complete",
+        "knowledge_time_us",
+        "publication_time_us",
+        "instrument_revision",
+        "validity",
+        "book_sequence_state",
+        "bar_finalization_state",
+        "provenance_hash",
+        "prior_revision_id"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.market_state.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.market_state.v2",
+  "type": "object"
+}

@@ -1,0 +1,321 @@
+id,domain,kind,item,current_state,target_state,disposition,owner,priority,evidence_or_gap
+REP-001,Repositories,repository,TriadEngine,Pinned at 70eae19e0cc4c8e7004e4ce0965679c1291aa290,Retained chassis; legacy E02 frozen control/bridge,REPAIR,Platform/Engine,P0,Source verified; deployment not freshly traced
+REP-002,Repositories,repository,TriadIntelligence,Pinned at 9727a6717cb9bfa5aca86d24a5bed5ffdd75f6fe,Separate advisory treatment route,RETAIN,Intelligence,P1,Source verified
+REP-003,Repositories,repository,TriadExecutor,Pinned at d1d371d833038c9d715c3572328d8557942a9d8b,E07/E08/E09 responsibilities contract-separated,REPAIR,Risk/Execution,P0,Source verified; current coupling
+REP-004,Repositories,repository,TriadVenueGateway,Pinned at 1d945ff41cccec173b1dea3d1fc1ba619f482a00,E09 sole raw-credential holder and venue truth,RETAIN,Execution,P0,Source verified; keyholder documentation conflict to close
+REP-005,Repositories,repository,TriadLearning,Pinned at c93860bad7b6b9369f0636873a2225711312485f,Read-only evidence and governed artifact proposal,RETAIN,Learning,P1,Source verified
+REP-006,Repositories,repository,TriadDTBNK,Pinned at 6df9f4aa24469843796d69fbb3b1d0b0052e4909,Projection store; not sole replay tape until certified,REPAIR,Data,P1,Source verified; tape incomplete
+REP-007,Repositories,repository,TriadRelay,Accessible estate repository,Keyless read-only relay only,RETAIN,Platform,P2,Repository inventory; fresh implementation trace pending
+REP-008,Repositories,repository,TriadInQuest,Accessible estate repository,Investigation/evidence only,DEFER,Evidence,P3,Scope not required for first ORIGIN gate
+REP-009,Repositories,repository,TriadKronos,Accessible forecast repository,Treatment-only forecast service,RETAIN,Forecast,P2,Does not gate deterministic control
+REP-010,Repositories,repository,TriadForecast,Accessible forecast repository,Treatment-only; resolve overlap with Kronos,REPAIR,Forecast,P2,Owner/authority overlap inventory required
+REP-011,Repositories,repository,TriadLLM,Accessible intelligence repository,Treatment-only,DEFER,Intelligence,P3,No deterministic dependency
+REP-012,Repositories,repository,TriadLLMCore,Accessible intelligence repository,Treatment-only,DEFER,Intelligence,P3,No deterministic dependency
+REP-013,Repositories,repository,TriadMissionControl,Accessible operations repository,Read-only activation/evidence UI unless separately governed,REPAIR,Operations,P2,Control verbs must be inventoried
+REP-014,Repositories,repository,TriadAgent,Accessible agent repository,No money authority,DEFER,Automation,P3,Explicit boundary test required if connected
+REP-015,Repositories,repository,TriadUPDOWN,Accessible repository,Out of initial ORIGIN scope,DEFER,Owner TBD,P3,No first-venue dependency
+REP-016,Repositories,repository,quant-trade-0 / yolonaut-1 / yolobotv2-2 / uponly-core-3 / newnaut-4 / pulse-5,Legacy engine organizations inspected historically,Evidence corpus only; no code inheritance,RETIRE,Archive owner,P1,Preserve licenses/provenance/golden behaviors; do not copy wholesale
+REP-017,Repositories,repository,TriadOrigin,Does not yet exist in verified baseline,New clean-room repository,BUILD,ORIGIN team,P0,Name/namespace ratified for spec; repository creation pending
+SRV-001,Processes,service/process,feeds,Current static keeper,Certified E00 base-feed collector,REPAIR,Data,P0,Route/coverage/session tests pending
+SRV-002,Processes,service/process,feeds-liq-ws,Current liquidation collector,Supported routed source or honest degraded null,REPAIR,Data,P1,Retired/unsupported endpoint audit
+SRV-003,Processes,service/process,triad_engine,Coupled E01+E02 process,Transitional E01 publisher + frozen legacy control,REPAIR,Engine,P0,Process split can lag contract split
+SRV-004,Processes,service/process,triad-origin-e02,Absent,Standalone no-credential ORIGIN service,BUILD,ORIGIN,P0,"Kernel, contracts, deployment needed"
+SRV-005,Processes,service/process,legacy-input-bridge,Absent,candidate.v1/context compatibility bridge,BUILD,ORIGIN/Platform,P0,Removal criteria required
+SRV-006,Processes,service/process,edge-comparator,Absent,Side-effect-free legacy/ORIGIN diff worker,BUILD,Evidence,P1,Reads same offsets; no E07 rights
+SRV-007,Processes,service/process,edge-authority-router,No standalone verified process,Single selected candidate writer,BUILD,Platform/Governance,P0,Producer lease required
+SRV-008,Processes,service/process,intelligence-gateway,Current sole judged_live producer,Treatment decision producer only,REPAIR,Intelligence,P1,Arm and candidate authority separation
+SRV-009,Processes,service/process,shadowexec,Optional current shadow process,Offline/test harness only or remove,RETIRE,Execution,P1,No duplicate/shadow executor in prod money path
+SRV-010,Processes,service/process,crossvenueobs,Current observer,Read-only optional feature source,DEFER,Data/Execution,P2,Separate venue clock certification
+SRV-011,Processes,service/process,kronos,Current forecast/time service,Treatment-only,RETAIN,Forecast,P2,No ORIGIN readiness dependency
+SRV-012,Processes,service/process,databankresolve,Current maintenance process,Projection/reconciliation maintenance,REPAIR,Data,P2,Ownership and write scope
+SRV-013,Processes,service/process,mcp,Current evidence process,Strict read-only evidence surface,REPAIR,Evidence,P1,Dark/unavailable family truth
+SRV-014,Processes,service/process,gui,Current operator interface,Read-only by default; controls separately signed,REPAIR,Operations,P1,No implicit activation
+SRV-015,Processes,service/process,prometheus,Configured in source; runtime availability not proven,Certified metrics dependency or honest local fallback,REPAIR,SRE,P1,Dated MCP reported unavailable dependencies
+SRV-016,Processes,service/process,venuegateway-$lane,Current per-account keeper,E09 VGP sole raw-credential role,RETAIN,Execution,P0,Least privilege and route certification
+SRV-017,Processes,service/process,exposurefeed-$lane,Current per-account keeper,Authoritative account exposure input to reconciler/risk,REPAIR,Risk/Execution,P0,Private stream/session continuity
+SRV-018,Processes,service/process,capskeeper-$lane,Current caps keeper,E08 policy projection only,REPAIR,Risk,P1,Single risk policy/manifest
+SRV-019,Processes,service/process,liveoutcomes-$lane,Current outcome process,E10 outcome.v2 publisher from strict v3 facts,REPAIR,Outcomes,P1,Fill v3 join completeness
+SRV-020,Processes,service/process,liveexec-$lane,Couples policy/risk/order/exit,Transitional orchestrator with contract-separated E07/E08/E09 ownership,REPAIR,Risk/Execution,P0,Command authorship and secrets separation
+SRV-021,Processes,service/process,fillrecorder-$lane,Current fill evidence writer,Strict fill.v3 authoritative normalizer/recorder,REPAIR,Execution,P0,Dual-publish and quarantine
+SRV-022,Processes,service/process,reconciler-$lane,Current reconciler,Authoritative position/protection reconciliation,REPAIR,Execution,P0,Regular+algo+account facts
+SRV-023,Processes,service/process,ttfexport-$lane,Current time-to-fill exporter,Evidence projection only,RETAIN,Execution evidence,P2,No truth origination
+SRV-024,Processes,service/process,lease-coordinator,Absent,Monotonic producer fencing per authority scope,BUILD,Platform,P0,Before any treatment money path
+SRV-025,Processes,service/process,replay-runner,Partial estate capabilities,Same-code deterministic CLI/batch runner,BUILD,ORIGIN,P0,Sealed tapes/checkpoints/receipts
+MOD-001,ORIGIN modules,software module,contract_ingress,Not present as clean ORIGIN module,Contract gate,BUILD,ORIGIN,P0,Unit/property/golden/replay tests required
+MOD-002,ORIGIN modules,software module,partition_coordinator,Not present as clean ORIGIN module,Single-writer partition order,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-003,ORIGIN modules,software module,clock_watermark,Not present as clean ORIGIN module,Causal clocks/watermarks,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-004,ORIGIN modules,software module,instrument_math,Not present as clean ORIGIN module,Integer tick/step algebra,BUILD,ORIGIN,P0,Unit/property/golden/replay tests required
+MOD-005,ORIGIN modules,software module,feature_primitives,Not present as clean ORIGIN module,Causal normalized features,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-006,ORIGIN modules,software module,typed_level_registry,Not present as clean ORIGIN module,DC/fractal/rolling/equal/session levels,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-007,ORIGIN modules,software module,structure_state,Not present as clean ORIGIN module,Protected level and BOS/CHOCH state,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-008,ORIGIN modules,software module,fvg_registry,Not present as clean ORIGIN module,FVG lifecycle,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-009,ORIGIN modules,software module,order_block_registry,Not present as clean ORIGIN module,OB causal lifecycle,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-010,ORIGIN modules,software module,excursion_reclaim_registry,Not present as clean ORIGIN module,Frozen-level reclaim lifecycle,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-011,ORIGIN modules,software module,flow_atoms,Not present as clean ORIGIN module,OFI/TFI/tilt/liquidation/exhaustion,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-012,ORIGIN modules,software module,reaction_engine,Not present as clean ORIGIN module,Location→geometry evaluation,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-013,ORIGIN modules,software module,capsule_host,Not present as clean ORIGIN module,Pure isolated hypothesis runtime,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-014,ORIGIN modules,software module,opportunity_clusterer,Not present as clean ORIGIN module,Correlated hypothesis identity,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-015,ORIGIN modules,software module,candidate_publisher,Not present as clean ORIGIN module,Immutable candidate/withdrawal,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-016,ORIGIN modules,software module,state_journal,Not present as clean ORIGIN module,Append transitions/provenance,BUILD,ORIGIN,P0,Unit/property/golden/replay tests required
+MOD-017,ORIGIN modules,software module,checkpoint_restore,Not present as clean ORIGIN module,Versioned deterministic state,BUILD,ORIGIN,P0,Unit/property/golden/replay tests required
+MOD-018,ORIGIN modules,software module,replay_adapter,Not present as clean ORIGIN module,Same live/replay transitions,BUILD,ORIGIN,P0,Unit/property/golden/replay tests required
+MOD-019,ORIGIN modules,software module,evidence_telemetry,Not present as clean ORIGIN module,Funnel/latency/reason facts,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+MOD-020,ORIGIN modules,software module,health_readface,Not present as clean ORIGIN module,Read-only readiness/attestation,BUILD,ORIGIN,P1,Unit/property/golden/replay tests required
+CON-001,Contracts,schema,market_event.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,E00,P1,See Contract Catalog; authoritative implementation required
+CON-002,Contracts,schema,market_state.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,E01,P0,See Contract Catalog; authoritative implementation required
+CON-003,Contracts,schema,feature_snapshot.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,ORIGIN/E02,P1,See Contract Catalog; authoritative implementation required
+CON-004,Contracts,schema,structure_atom.v2,v1 exists; v2 target,Signed schema + invariant/golden/compatibility tests,REPAIR,ORIGIN,P0,See Contract Catalog; authoritative implementation required
+CON-005,Contracts,schema,structure_transition.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,ORIGIN,P1,See Contract Catalog; authoritative implementation required
+CON-006,Contracts,schema,reaction_event.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,ORIGIN,P1,See Contract Catalog; authoritative implementation required
+CON-007,Contracts,schema,edge_candidate.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,ORIGIN,P0,See Contract Catalog; authoritative implementation required
+CON-008,Contracts,schema,edge_candidate_transition.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,ORIGIN,P1,See Contract Catalog; authoritative implementation required
+CON-009,Contracts,schema,decision.v2,v1 exists,Signed schema + invariant/golden/compatibility tests,REPAIR,E07,P1,See Contract Catalog; authoritative implementation required
+CON-010,Contracts,schema,risk_decision.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,E08,P0,See Contract Catalog; authoritative implementation required
+CON-011,Contracts,schema,risk_reservation.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,E08,P1,See Contract Catalog; authoritative implementation required
+CON-012,Contracts,schema,execution_authorization.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,E08,P0,See Contract Catalog; authoritative implementation required
+CON-013,Contracts,schema,emergency_exit_authorization.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,E08/E09 policy,P1,See Contract Catalog; authoritative implementation required
+CON-014,Contracts,schema,execution_cmd.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,E09,P1,See Contract Catalog; authoritative implementation required
+CON-015,Contracts,schema,order_event.v2,v1 exists,Signed schema + invariant/golden/compatibility tests,REPAIR,E09,P1,See Contract Catalog; authoritative implementation required
+CON-016,Contracts,schema,fill.v3,v1/v2 exist; v3 target,Signed schema + invariant/golden/compatibility tests,REPAIR,E09,P0,See Contract Catalog; authoritative implementation required
+CON-017,Contracts,schema,venue_account_event.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,E09,P1,See Contract Catalog; authoritative implementation required
+CON-018,Contracts,schema,position_event.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,E09,P1,See Contract Catalog; authoritative implementation required
+CON-019,Contracts,schema,protection_event.v2,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,E09,P1,See Contract Catalog; authoritative implementation required
+CON-020,Contracts,schema,outcome.v2,v1 exists,Signed schema + invariant/golden/compatibility tests,REPAIR,E10,P1,See Contract Catalog; authoritative implementation required
+CON-021,Contracts,schema,trial_registration.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,Governance,P1,See Contract Catalog; authoritative implementation required
+CON-022,Contracts,schema,divergence_record.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,Evidence,P1,See Contract Catalog; authoritative implementation required
+CON-023,Contracts,schema,producer_lease.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,Platform,P0,See Contract Catalog; authoritative implementation required
+CON-024,Contracts,schema,engine_attestation.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,Every producer,P1,See Contract Catalog; authoritative implementation required
+CON-025,Contracts,schema,service_heartbeat.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,Every producer,P1,See Contract Catalog; authoritative implementation required
+CON-026,Contracts,schema,contract_bundle.manifest.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,Contracts,P1,See Contract Catalog; authoritative implementation required
+CON-027,Contracts,schema,activation_manifest.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,Governance,P0,See Contract Catalog; authoritative implementation required
+CON-028,Contracts,schema,compatibility_manifest.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,Contracts,P1,See Contract Catalog; authoritative implementation required
+CON-029,Contracts,schema,quarantine_record.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,Boundary owner,P1,See Contract Catalog; authoritative implementation required
+CON-030,Contracts,schema,replay_receipt.v1,No verified target schema,Signed schema + invariant/golden/compatibility tests,BUILD,Replay,P1,See Contract Catalog; authoritative implementation required
+TOP-001,Topics,logical topic,market.events.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,E00,P0,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-002,Topics,logical topic,market.state.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,E01,P0,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-003,Topics,logical topic,features.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,ORIGIN/E02,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-004,Topics,logical topic,structures.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,ORIGIN,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-005,Topics,logical topic,structure.lifecycle.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,ORIGIN,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-006,Topics,logical topic,edge.candidates.v2.control,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,Legacy bridge,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-007,Topics,logical topic,edge.candidates.v2.treatment,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,ORIGIN,P0,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-008,Topics,logical topic,edge.divergence.v1,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,Comparator,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-009,Topics,logical topic,edge.authority.v1,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,Authority router,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-010,Topics,logical topic,decisions.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,E07,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-011,Topics,logical topic,risk.decisions.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,E08,P0,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-012,Topics,logical topic,risk.reservations.v1,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,E08,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-013,Topics,logical topic,execution.authorizations.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,E08,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-014,Topics,logical topic,execution.commands.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,E09,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-015,Topics,logical topic,execution.orders.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,E09,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-016,Topics,logical topic,execution.fills.v3,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,E09,P0,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-017,Topics,logical topic,venue.account.events.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,VGP,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-018,Topics,logical topic,positions.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,Reconciler,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-019,Topics,logical topic,protections.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,Protection owner,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-020,Topics,logical topic,outcomes.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,E10,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-021,Topics,logical topic,producer.leases.v1,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,Lease coordinator,P0,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-022,Topics,logical topic,runtime.lifecycle.v2,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,Every service,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-023,Topics,logical topic,quarantine.v1.<source>,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,Boundary,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-024,Topics,logical topic,dlq.v1.<topic>,Not present under this exact target contract/binding,File-ledger binding first; optional certified JetStream binding,BUILD,Transport,P1,"Transport-neutral ownership, retention, checkpoint and ACL needed"
+TOP-025,Topics,current file-ledger topic,market.events,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-026,Topics,current file-ledger topic,context.packets,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-027,Topics,current file-ledger topic,candidates,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-028,Topics,current file-ledger topic,candidates.shadow,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Current owner TBD,P1,Do not assume NATS deployment
+TOP-029,Topics,current file-ledger topic,decisions,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-030,Topics,current file-ledger topic,refusals,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-031,Topics,current file-ledger topic,intents,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-032,Topics,current file-ledger topic,orders,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-033,Topics,current file-ledger topic,exits.fast,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-034,Topics,current file-ledger topic,fills,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-035,Topics,current file-ledger topic,live_placements,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-036,Topics,current file-ledger topic,live_fills,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-037,Topics,current file-ledger topic,outcomes,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-038,Topics,current file-ledger topic,exec_journal.jsonl,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-039,Topics,current file-ledger topic,judged_live,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-040,Topics,current file-ledger topic,live_outcomes,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-041,Topics,current file-ledger topic,structure_atom,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-042,Topics,current file-ledger topic,detector_route_heartbeat,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+TOP-043,Topics,current file-ledger topic,judge_trace,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Current owner TBD,P1,Do not assume NATS deployment
+TOP-044,Topics,current file-ledger topic,money_path_result,Reported/verified in current source documentation,Inventory writer/reader/retention and bridge or retirement,REPAIR,Estate owner,P1,Do not assume NATS deployment
+CFG-001,Configuration,current config,active_matrix.v1.json,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P0,Same 1.37.0 label has manifest/config drift
+CFG-002,Configuration,current config,geometry.v1.json,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P1,Same 1.37.0 label has manifest/config drift
+CFG-003,Configuration,current config,regimes.v1.json,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P1,Same 1.37.0 label has manifest/config drift
+CFG-004,Configuration,current config,symbols.v1.json,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P1,Same 1.37.0 label has manifest/config drift
+CFG-005,Configuration,current config,fee_model.v1,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P1,Same 1.37.0 label has manifest/config drift
+CFG-006,Configuration,current config,Engine limit_config.v1,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P0,Same 1.37.0 label has manifest/config drift
+CFG-007,Configuration,current config,Executor limit_config.v1,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P0,Same 1.37.0 label has manifest/config drift
+CFG-008,Configuration,current config,latency_budgets.v1,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P1,Same 1.37.0 label has manifest/config drift
+CFG-009,Configuration,current config,staleness_bounds.v1,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P1,Same 1.37.0 label has manifest/config drift
+CFG-010,Configuration,current config,bus_map.v1.json,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P1,Same 1.37.0 label has manifest/config drift
+CFG-011,Configuration,current config,run_stack.sh environment flags,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",REPAIR,Config owner TBD,P1,Same 1.37.0 label has manifest/config drift
+CFG-012,Configuration,current config,live.env,Present/reported in contracts/deployment,"Pin, hash, assign owner; bridge or supersede",RETIRE,Config owner TBD,P0,Same 1.37.0 label has manifest/config drift
+CFG-013,Configuration,target config,capsules.v1.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,ORIGIN,P0,No scattered semantic environment booleans
+CFG-014,Configuration,target config,geometry.v2.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,ORIGIN,P0,No scattered semantic environment booleans
+CFG-015,Configuration,target config,lifecycle.v1.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,ORIGIN,P1,No scattered semantic environment booleans
+CFG-016,Configuration,target config,regime_eligibility.v2.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,E07,P1,No scattered semantic environment booleans
+CFG-017,Configuration,target config,symbols.v2.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,Instrument owner,P1,No scattered semantic environment booleans
+CFG-018,Configuration,target config,staleness_bounds.v2.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,Data/Risk,P1,No scattered semantic environment booleans
+CFG-019,Configuration,target config,latency_budgets.v2.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,SRE,P1,No scattered semantic environment booleans
+CFG-020,Configuration,target config,risk_policy.v2.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,E08,P0,No scattered semantic environment booleans
+CFG-021,Configuration,target config,exit_policy.v2.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,E08/E09,P0,No scattered semantic environment booleans
+CFG-022,Configuration,target config,transport_bindings.v1.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,Platform,P1,No scattered semantic environment booleans
+CFG-023,Configuration,target config,activation_manifest.v1.json,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,Governance,P0,No scattered semantic environment booleans
+CFG-024,Configuration,target config,treatment_manifest.v1.json,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,Experiment owner,P1,No scattered semantic environment booleans
+CFG-025,Configuration,target config,rollback_manifest.v1.json,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,Operations,P1,No scattered semantic environment booleans
+CFG-026,Configuration,target config,secret_allowlist.v1.yaml,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,Security,P0,No scattered semantic environment booleans
+CFG-027,Configuration,target config,compatibility_manifest.v1.json,Absent/unverified,"Signed canonical artifact with schema, owner and change control",BUILD,Contracts,P1,No scattered semantic environment booleans
+DAT-001,Storage & data,data/store,Raw venue-byte ledger,Current file ledger is authoritative replay source,Sealed hash-chained raw segments + archive,RETAIN,Data,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-002,Storage & data,data/store,Normalized market-event ledger,Current topics exist,v2 event journal with offsets/quality,REPAIR,Data,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-003,Storage & data,data/store,Market-state journal,Mostly context packet/current state,Append v2 revisions + latest projection,BUILD,E01,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-004,Storage & data,data/store,ORIGIN structure journal,structure_atom route/source drift,v2 atoms + transitions,BUILD,ORIGIN,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-005,Storage & data,data/store,ORIGIN checkpoint store,No certified V7 checkpoint,Versioned checksummed per partition,BUILD,ORIGIN,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-006,Storage & data,data/store,Candidate control/treatment ledgers,Current candidate/shadow topics,Physically separate v2 journals,BUILD,Platform,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-007,Storage & data,data/store,Divergence corpus,Prior forensic reports only,Immutable per-offset diff records,BUILD,Evidence,P1,"Owner, provenance, durability, retention and restore proof required"
+DAT-008,Storage & data,data/store,Producer lease ledger,Absent,Permanent fencing/audit log,BUILD,Platform,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-009,Storage & data,data/store,Strict money ledgers,v1/v2 current gaps,order/fill.v3/account/position/protection/outcome,REPAIR,Execution/E10,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-010,Storage & data,data/store,Quarantine ledger,Not consistent,Per-source raw ref + rejection,BUILD,Boundary owners,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-011,Storage & data,data/store,DTBNK live projections,Present but not full tape,Derived only from authoritative ledgers,REPAIR,Data,P1,"Owner, provenance, durability, retention and restore proof required"
+DAT-012,Storage & data,data/store,shadow.cf_trades,Observed; owner unknown,Owner/migration proven or dependence removed,BLOCKED,Data,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-013,Storage & data,data/store,common.liq_5m,Reported not live,Honest null or certified producer,DEFER,Data,P2,"Owner, provenance, durability, retention and restore proof required"
+DAT-014,Storage & data,data/store,Golden replay corpus,No sealed V7 corpus,Versioned exact/approximate corpora,BUILD,Validation,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-015,Storage & data,data/store,Replay receipt bank,Absent,Immutable receipts and hashes,BUILD,Validation,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-016,Storage & data,data/store,Trial registry,Fragmented/absent,Permanent preregistration and result-access ledger,BUILD,Governance,P0,"Owner, provenance, durability, retention and restore proof required"
+DAT-017,Storage & data,data/store,Promotion evidence bank,Reports/manual evidence,Signed gate receipts and decisions,BUILD,Governance,P1,"Owner, provenance, durability, retention and restore proof required"
+DAT-018,Storage & data,data/store,Object-store archive,Unspecified,Optional sealed segment/golden corpus archive,DEFER,Data/SRE,P2,"Owner, provenance, durability, retention and restore proof required"
+VEN-001,Venue & ingress,venue/feed capability,WebSocket /public pool,Route migration effective,Separate depth/bookTicker pool,REPAIR,Data,P0,Official Binance route
+VEN-002,Venue & ingress,venue/feed capability,WebSocket /market pool,Legacy/unrouted risk,Separate aggTrade/mark/kline pool,REPAIR,Data,P0,Official Binance route
+VEN-003,Venue & ingress,venue/feed capability,WebSocket /private pool,Private stream required,Separate user/account pool,REPAIR,Execution,P0,Official Binance route
+VEN-004,Venue & ingress,venue/feed capability,Stream manifest,Absent/incomplete,Per-stream route/parser/coverage/freshness law,BUILD,Data,P0,Startup route validation
+VEN-005,Venue & ingress,venue/feed capability,24-hour handover,Uncertified,Scheduled overlap/dedupe before forced close,BUILD,Data,P0,26-hour soak
+VEN-006,Venue & ingress,venue/feed capability,Ping/pong handler,Implementation requires certification,3m ping/10m pong current rule,REPAIR,Data,P1,Route connection test
+VEN-007,Venue & ingress,venue/feed capability,Control-message limiter,Uncertified,≤10 incoming client messages/s,BUILD,Data,P1,Subscription chaos test
+VEN-008,Venue & ingress,venue/feed capability,Stream-count sharding,Uncertified,≤1024 streams/connection,BUILD,Data,P1,Manifest capacity test
+VEN-009,Venue & ingress,venue/feed capability,Listen-key renewal,Existing behavior unverified,Renew/recreate before expiry; detect expired,REPAIR,Execution,P0,Private-stream interruption test
+VEN-010,Venue & ingress,venue/feed capability,Local depth book,Current behavior not fully certified,Exact snapshot + U/u/pu + absolute qty,REPAIR,E01,P0,Official golden/chaos suite
+VEN-011,Venue & ingress,venue/feed capability,exchangeInfo registry,Current adapter has rounding/filter guards,Versioned refresh and fail-close metadata,RETAIN,Execution/Data,P0,Source verified; runtime certify
+VEN-012,Venue & ingress,venue/feed capability,Binance Algo Service,VGP already has algoOrder support,Retain; consume ALGO_UPDATE and reconcile,RETAIN,Execution,P0,Source verified; lifecycle tests
+VEN-013,Venue & ingress,venue/feed capability,Unknown 503 reconciliation,Needs explicit state certification,No blind retry; stream/query resolution,REPAIR,Execution,P0,Fault-injection test
+VEN-014,Venue & ingress,venue/feed capability,Normal GTX entry,VGP supports maker path,100% encoded normal maker; no fallback,RETAIN,Execution,P0,Venue transcripts
+VEN-015,Venue & ingress,venue/feed capability,Normal GTX exit,Coarse maker-only boolean current,Maker-first policy with deadline,REPAIR,Execution,P0,Exit policy v2
+VEN-016,Venue & ingress,venue/feed capability,SNIPE-01 taker entry,Current source capability,Forbidden/removed from all ORIGIN routes,RETIRE,Execution,P0,Static route and venue regression
+VEN-017,Venue & ingress,venue/feed capability,Emergency IOC exit,Approved target,Bounded worst-price reduce-only tier,BUILD,Execution/Risk,P0,Full hedge/one-way/partial matrix
+VEN-018,Venue & ingress,venue/feed capability,Emergency market exit,Target only if separately ratified,Catastrophic Tier 2 with explicit policy,BLOCKED,Risk owner,P0,Trigger/allow thresholds TBD
+VEN-019,Venue & ingress,venue/feed capability,Hyperliquid adapter,Exists/reported in estate,Separate later certification,DEFER,Execution,P3,Not part of Binance-first gate
+VEN-020,Venue & ingress,venue/feed capability,Other venue adapters,Future/custom,Per-venue model and evidence,DEFER,Execution,P3,No shared proof by analogy
+SEC-001,Security & access,control,Venue API credentials,VGP documented keyholder; docs conflict,VGP operating role only,REPAIR,Security/Execution,P0,Inventory actual environment/process access
+SEC-002,Security & access,control,MCP bearer tokens,Literal values reported in private run_stack,"Rotate, purge, secret-manager injection",BLOCKED,Security,P0,Do not copy values; incident closure evidence
+SEC-003,Security & access,control,Global live.env inheritance,run_stack exports to descendants,Per-service allowlisted environment,RETIRE,Security/Operations,P0,Process environment diff
+SEC-004,Security & access,control,ORIGIN OS identity,Absent,Dedicated non-privileged service account,BUILD,Operations,P0,ACL test
+SEC-005,Security & access,control,ORIGIN network ACL,Absent,No gateway/account/venue-write route,BUILD,Security,P0,Negative connectivity test
+SEC-006,Security & access,control,ORIGIN filesystem ACL,Absent,Read input; write owned journal/checkpoints only,BUILD,Security,P0,Negative path tests
+SEC-007,Security & access,control,Account arm token,Current execution capability,Narrow execution authorization only,REPAIR,Risk/Execution,P0,V7 denied
+SEC-008,Security & access,control,Risk-policy signing key,Unspecified,Governance/E08 deployment only,BUILD,Security/Risk,P1,Key custody/rotation
+SEC-009,Security & access,control,Live writer DSN,Current scoped roles vary,Only authorized live bridge,REPAIR,Data/Security,P0,Role audit
+SEC-010,Security & access,control,Superuser migration DSN,May be external/optional,One-shot migration job only,REPAIR,Data/Security,P1,No long-lived env
+SEC-011,Security & access,control,Read-only analytics DSN,Available for MCP/Learning,Scoped by approved views,RETAIN,Data/Security,P1,No venue gateway need
+SEC-012,Security & access,control,Secret scanning,Not established by evidence,CI + history + deployment environment scan,BUILD,Security,P0,Block release
+SEC-013,Security & access,control,Withdrawal permission,Unverified,Disabled on all trading keys,BLOCKED,Security/Execution,P0,Venue configuration receipt
+SEC-014,Security & access,control,IP allowlisting,Unverified,Enable where venue supports,BLOCKED,Security,P1,Venue configuration receipt
+SEC-015,Security & access,control,Environment account separation,Reported multiple lanes,Explicit live-only canary account/risk cell,REPAIR,Risk/Execution,P0,Account identity attestation
+SEC-016,Security & access,control,Two-person activation,Not fully specified,Required for high-risk promotion/emergency policy changes,BUILD,Governance,P1,Signed decisions
+SEC-017,Security & access,control,SBOM/dependency lock,Unverified for new service,Immutable build SBOM and lock,BUILD,ORIGIN/Security,P1,Artifact release gate
+SEC-018,Security & access,control,Audit log secret scrubbing,Unverified,No values in logs/receipts/traces/crash dumps,BUILD,Security/SRE,P0,Synthetic secret regression
+OBS-001,Observability,metric/readiness,startupz,No ORIGIN endpoint,Manifest/input/checkpoint validation,BUILD,ORIGIN,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-002,Observability,metric/readiness,readyz,No ORIGIN endpoint,Warm/current/lease/output semantics,BUILD,ORIGIN,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-003,Observability,metric/readiness,livez,No ORIGIN endpoint,Event-loop/watchdog liveness,BUILD,ORIGIN,P1,"Metric definition, owner, window, alert and runbook required"
+OBS-004,Observability,metric/readiness,version endpoint,No ORIGIN endpoint,Commit/artifact/manifests/epoch,BUILD,ORIGIN,P1,"Metric definition, owner, window, alert and runbook required"
+OBS-005,Observability,metric/readiness,input offset/watermark,Partial current evidence,Per partition metric/heartbeat,BUILD,Data/ORIGIN,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-006,Observability,metric/readiness,stream route coverage,Uncertified,Per required stream/session,BUILD,Data,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-007,Observability,metric/readiness,sequence gap/duplicate/out-of-order,Partial,Per source/partition counters,BUILD,Data,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-008,Observability,metric/readiness,clock skew/availability latency,Partial,Histogram with source and quality,BUILD,Data/SRE,P1,"Metric definition, owner, window, alert and runbook required"
+OBS-009,Observability,metric/readiness,checkpoint age/restore,Absent for ORIGIN,"Age, duration, checksum",BUILD,ORIGIN,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-010,Observability,metric/readiness,replay divergence,Prior reports only,Counter + record links,BUILD,Evidence,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-011,Observability,metric/readiness,stable ID collision,Absent,Zero-tolerance metric/page,BUILD,ORIGIN,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-012,Observability,metric/readiness,illegal lifecycle transition,Absent,Counter/reason/page threshold,BUILD,ORIGIN,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-013,Observability,metric/readiness,capsule funnel,Partial current route metrics,Examine→atom→candidate→withdraw per dimension,BUILD,ORIGIN,P1,"Metric definition, owner, window, alert and runbook required"
+OBS-014,Observability,metric/readiness,named zero reasons,Heartbeat contract exists partially,Complete per capsule/symbol,REPAIR,ORIGIN,P1,"Metric definition, owner, window, alert and runbook required"
+OBS-015,Observability,metric/readiness,producer epoch/lease,Absent,Active/expiry/renew/rejection,BUILD,Platform,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-016,Observability,metric/readiness,shadow contamination,Partial controls,Continuous zero-tolerance metric,BUILD,Platform/SRE,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-017,Observability,metric/readiness,manifest mismatch,Current attestations partial,Exact tuple mismatch metric/page,BUILD,All owners,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-018,Observability,metric/readiness,ledger append/fsync,Current ledger exists,Latency/failure/disk risk,REPAIR,SRE,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-019,Observability,metric/readiness,resource metrics,Prometheus configured,CPU/memory/FD/queue/disk bounded labels,REPAIR,SRE,P1,"Metric definition, owner, window, alert and runbook required"
+OBS-020,Observability,metric/readiness,latency stages,v1 budgets exist,p50/p95/p99 full chain,REPAIR,SRE/owners,P1,"Metric definition, owner, window, alert and runbook required"
+OBS-021,Observability,metric/readiness,unknown orders,Current reconciliation,Count/age/page,REPAIR,Execution,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-022,Observability,metric/readiness,fill v3 quarantine,Absent,Completeness/reason/age,BUILD,Execution,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-023,Observability,metric/readiness,position reconciliation lag,Current reconciler,Exact age/parity/page,REPAIR,Execution,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-024,Observability,metric/readiness,unprotected position duration,Partial/current stop metrics,Zero-tolerance deadline,REPAIR,Execution,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-025,Observability,metric/readiness,emergency exits,Target,Trigger/tier/fills/residual/slippage/failure,BUILD,Execution/Risk,P0,"Metric definition, owner, window, alert and runbook required"
+OBS-026,Observability,metric/readiness,economic funnel/net EV,Current money attribution insufficient,Separate money/control/treatment metrics,BUILD,E10/Evidence,P1,"Metric definition, owner, window, alert and runbook required"
+OPS-001,Deployment & operations,artifact/runbook,Immutable build artifact,Current manual/tag deployment,Commit+artifact digest,BUILD,Release,P0,Acceptance rehearsal/receipt required
+OPS-002,Deployment & operations,artifact/runbook,Signed activation manifest,Absent,Separate deploy from authority,BUILD,Governance,P0,Acceptance rehearsal/receipt required
+OPS-003,Deployment & operations,artifact/runbook,Transport binding manifest,bus_map logical only,File-ledger first; NATS optional,BUILD,Platform,P0,Acceptance rehearsal/receipt required
+OPS-004,Deployment & operations,artifact/runbook,Dedicated service definition,Absent for ORIGIN,Resource/ACL/env constraints,BUILD,Operations,P0,Acceptance rehearsal/receipt required
+OPS-005,Deployment & operations,artifact/runbook,Blue/green ORIGIN deployment,Absent,Dark green before lease transfer,BUILD,Operations,P1,Acceptance rehearsal/receipt required
+OPS-006,Deployment & operations,artifact/runbook,Post-deploy replay smoke,Partial E2E,Known tape/output hash,BUILD,Validation,P0,Acceptance rehearsal/receipt required
+OPS-007,Deployment & operations,artifact/runbook,Authority rollback,No lease mechanism,Revoke/fence/switch manifest,BUILD,Operations/Governance,P0,Acceptance rehearsal/receipt required
+OPS-008,Deployment & operations,artifact/runbook,Crash-loop handling,Current keeper behavior,No automatic authority inheritance,REPAIR,Operations,P0,Acceptance rehearsal/receipt required
+OPS-009,Deployment & operations,artifact/runbook,26-hour ingress soak,Unverified,Cross 24h forced lifetime,BUILD,SRE/Data,P0,Acceptance rehearsal/receipt required
+OPS-010,Deployment & operations,artifact/runbook,Disaster recovery,Backup/DR topology target,Sealed ledger/checkpoint restore,BUILD,SRE/Data,P1,Acceptance rehearsal/receipt required
+OPS-011,Deployment & operations,artifact/runbook,Data migration job,Some external migrations,"Additive, one-shot scoped identity",REPAIR,Data,P1,Acceptance rehearsal/receipt required
+OPS-012,Deployment & operations,artifact/runbook,Runbook: ingress gap,Partial,Route/book resync and entry block,BUILD,Data Ops,P0,Acceptance rehearsal/receipt required
+OPS-013,Deployment & operations,artifact/runbook,Runbook: unknown submit,Partial,Reconcile-before-retry,BUILD,Execution Ops,P0,Acceptance rehearsal/receipt required
+OPS-014,Deployment & operations,artifact/runbook,Runbook: protection failure,Partial,Maker deadline→emergency reduction,BUILD,Execution Ops,P0,Acceptance rehearsal/receipt required
+OPS-015,Deployment & operations,artifact/runbook,Runbook: producer split brain,Absent,Fence/revoke/investigate,BUILD,Platform Ops,P0,Acceptance rehearsal/receipt required
+OPS-016,Deployment & operations,artifact/runbook,Runbook: rollback,Prior recommendation,One-action scoped flow + open position handling,BUILD,Operations,P0,Acceptance rehearsal/receipt required
+OPS-017,Deployment & operations,artifact/runbook,Runbook: secret exposure,Needed now,Rotate/purge/audit/redeploy,BUILD,Security,P0,Acceptance rehearsal/receipt required
+OPS-018,Deployment & operations,artifact/runbook,Runbook: disk/ledger failure,Partial,Stop entries before evidence loss,BUILD,SRE,P0,Acceptance rehearsal/receipt required
+OPS-019,Deployment & operations,artifact/runbook,Operator ownership roster,Unspecified in RC1,Named on-call/approvers/escalation,BLOCKED,Operations,P0,Acceptance rehearsal/receipt required
+OPS-020,Deployment & operations,artifact/runbook,Audit retention periods,Not fully specified,Per raw/money/control/test artifact,BLOCKED,Governance/Legal,P1,Acceptance rehearsal/receipt required
+TST-001,Tests & evidence,test/data artifact,224-test falsification registry,Exists in prior blueprint,Reset target status to NOT_RUN; extend critical 2026 cases,RETAIN,Validation,P0,Verification Matrix and gate owner
+TST-002,Tests & evidence,test/data artifact,Contract golden vectors,Partial current schemas,Valid/invalid/per-language round trips,BUILD,Contracts,P0,Verification Matrix and gate owner
+TST-003,Tests & evidence,test/data artifact,Structure golden vectors,Prior definitions only,Long/short exact fixtures for each type,BUILD,ORIGIN,P0,Verification Matrix and gate owner
+TST-004,Tests & evidence,test/data artifact,Property/mutation tests,Not proven,Prefix/restart/duplicate/mirror/null/identity,BUILD,ORIGIN,P0,Verification Matrix and gate owner
+TST-005,Tests & evidence,test/data artifact,Binance route certification,Needed after 2026 change,"/public,/market,/private coverage tests",BUILD,Data,P0,Verification Matrix and gate owner
+TST-006,Tests & evidence,test/data artifact,Book chaos corpus,Not proven,Snapshot/gap/duplicate/reconnect cases,BUILD,Data,P0,Verification Matrix and gate owner
+TST-007,Tests & evidence,test/data artifact,Private/algo corpus,Not proven,"Listen expiry, ALGO_UPDATE, restart/reconcile",BUILD,Execution,P0,Verification Matrix and gate owner
+TST-008,Tests & evidence,test/data artifact,Unknown-submit fault suite,Not proven,503/timeouts/query/adoption/retry,BUILD,Execution,P0,Verification Matrix and gate owner
+TST-009,Tests & evidence,test/data artifact,Emergency-exit matrix,Target,One-way/hedge/partial/stale/duplicate/disconnect,BUILD,Execution/Risk,P0,Verification Matrix and gate owner
+TST-010,Tests & evidence,test/data artifact,Exact replay corpus,Raw file ledger available,Seal receipt-timed golden ranges,BUILD,Validation,P0,Verification Matrix and gate owner
+TST-011,Tests & evidence,test/data artifact,Approximate historical corpus,Historical sources may lack receipt times,Label approximate; no exact certification,REPAIR,Evidence,P1,Verification Matrix and gate owner
+TST-012,Tests & evidence,test/data artifact,Control/treatment paired corpus,Absent,Same offsets + divergence classification,BUILD,Evidence,P1,Verification Matrix and gate owner
+TST-013,Tests & evidence,test/data artifact,Trial family ledger,Absent/fragmented,Count failures/renames/slices/agents,BUILD,Governance,P0,Verification Matrix and gate owner
+TST-014,Tests & evidence,test/data artifact,Locked historical OOS,Not established,Chronological purged/embargoed holdout,BUILD,Research,P1,Verification Matrix and gate owner
+TST-015,Tests & evidence,test/data artifact,Prospective dark window,Not run,Frozen manifest and zero authority,BUILD,Research/SRE,P1,Verification Matrix and gate owner
+TST-016,Tests & evidence,test/data artifact,Power/sample calculation,TBD,Pre-register before money evidence,BLOCKED,Research/Risk,P0,Verification Matrix and gate owner
+TST-017,Tests & evidence,test/data artifact,Safety canary budget,TBD,Absolute loss/anomaly/emergency bounds,BLOCKED,Risk owner,P0,Verification Matrix and gate owner
+TST-018,Tests & evidence,test/data artifact,Economic gate thresholds,Recommended only,Owner-ratified CI/PBO/DSR/multiplicity,BLOCKED,Research/Governance,P0,Verification Matrix and gate owner
+TST-019,Tests & evidence,test/data artifact,Release gate receipts,Absent,Machine-readable signed evidence per gate,BUILD,Governance,P1,Verification Matrix and gate owner
+TST-020,Tests & evidence,test/data artifact,Legacy divergence taxonomy,Prior reports,Per-event intentional/unexplained register,BUILD,Evidence,P1,Verification Matrix and gate owner
+TST-021,Tests & evidence,test/data artifact,Maker fill calibration,Money evidence insufficient,Venue-confirmed queue/fill model calibration,BUILD,Execution research,P1,Verification Matrix and gate owner
+TST-022,Tests & evidence,test/data artifact,Cost/fee/funding model,Static assumptions current,Actual account-tier facts + versioned scenarios,REPAIR,E10/Research,P1,Verification Matrix and gate owner
+MCP-001,MCP & evidence UI,reader/tool family,MCP core/tool catalog,207 tools/23 families reported 2026-08-07,Read-only evidence catalog,RETAIN,Evidence,P2,No secret values or control verbs
+MCP-002,MCP & evidence UI,reader/tool family,fill_lineage family,Dark by default,Enable only after strict v3 source/auth evidence,BLOCKED,Evidence/Execution,P1,No secret values or control verbs
+MCP-003,MCP & evidence UI,reader/tool family,investigation family,Dark by default,Scoped direct read after auth verification,BLOCKED,Evidence,P1,No secret values or control verbs
+MCP-004,MCP & evidence UI,reader/tool family,normalization family,Dark by default,Expose v2/v3 provenance and nulls,BLOCKED,Evidence/Data,P2,No secret values or control verbs
+MCP-005,MCP & evidence UI,reader/tool family,runtime family,Dark by default,Source/deploy/runtime/authority separate status,BLOCKED,Evidence/SRE,P1,No secret values or control verbs
+MCP-006,MCP & evidence UI,reader/tool family,dual_edge family,Dark by default,Control/treatment/divergence read face,BUILD,Evidence,P1,No secret values or control verbs
+MCP-007,MCP & evidence UI,reader/tool family,scorecard family,Dark by default,Population-labeled offline scorecard,DEFER,Evidence,P2,No secret values or control verbs
+MCP-008,MCP & evidence UI,reader/tool family,scorecard_live family,Dark by default,Strict money-only v3 scorecard,BLOCKED,Evidence/E10,P1,No secret values or control verbs
+MCP-009,MCP & evidence UI,reader/tool family,NATS bus status,Reported unavailable,Honest unavailable until bus certified,DEFER,Platform,P3,No secret values or control verbs
+MCP-010,MCP & evidence UI,reader/tool family,Prometheus-dependent tools,Some reported unavailable,Honest local fallback or certified metrics backend,REPAIR,SRE/Evidence,P2,No secret values or control verbs
+MCP-011,MCP & evidence UI,reader/tool family,ORIGIN structure read face,Absent,Clocks/identity/lifecycle/provenance,BUILD,ORIGIN/Evidence,P1,No secret values or control verbs
+MCP-012,MCP & evidence UI,reader/tool family,ORIGIN lease/attestation read face,Absent,Exact authority and bundle evidence,BUILD,Platform/Evidence,P0,No secret values or control verbs
+MCP-013,MCP & evidence UI,reader/tool family,Money control verbs,Not authorized,Permanently absent from MCP,RETAIN,Security,P0,No secret values or control verbs
+DEP-001,Deprecations,retirement/deferment,Legacy E02 detector authority,Current,Retire scope-by-scope after ORIGIN promotion,RETIRE,Engine,P1,Removal or deferral acceptance proof
+DEP-002,Deprecations,retirement/deferment,Packet-hash/now-based structure IDs,Historical risk,Replace with stable occurrence identity,RETIRE,ORIGIN,P0,Removal or deferral acceptance proof
+DEP-003,Deprecations,retirement/deferment,Generic swing alias,Current semantic ambiguity,Typed level registry only,RETIRE,ORIGIN,P0,Removal or deferral acceptance proof
+DEP-004,Deprecations,retirement/deferment,Boolean-only FVG fill,Legacy shortcut,Penetration lifecycle,RETIRE,ORIGIN,P1,Removal or deferral acceptance proof
+DEP-005,Deprecations,retirement/deferment,Large-candle OB shortcut,Legacy science defect,Origin→displacement→BOS causal rule,RETIRE,ORIGIN,P0,Removal or deferral acceptance proof
+DEP-006,Deprecations,retirement/deferment,Opposite BOS relabeled CHOCH,Legacy semantic defect,Protected-swing transition only,RETIRE,ORIGIN,P0,Removal or deferral acceptance proof
+DEP-007,Deprecations,retirement/deferment,Touch-as-fill simulation,Research shortcut,Queue uncertainty + venue confirmation,RETIRE,Research,P0,Removal or deferral acceptance proof
+DEP-008,Deprecations,retirement/deferment,Universal fill-rate >98% KPI,Topology target,Net EV/fill-quality objective,RETIRE,Evidence,P1,Removal or deferral acceptance proof
+DEP-009,Deprecations,retirement/deferment,Average-only <2bps slippage KPI,Topology target,p50/p95/p99/worst by route,RETIRE,Evidence,P1,Removal or deferral acceptance proof
+DEP-010,Deprecations,retirement/deferment,Production dryrun/testnet/paper modes,Current docs/flags,LIVE-only production; offline harness separate,RETIRE,Operations,P0,Removal or deferral acceptance proof
+DEP-011,Deprecations,retirement/deferment,SNIPE-01 taker entries,Current VGP capability,Forbidden on ORIGIN routes,RETIRE,Execution,P0,Removal or deferral acceptance proof
+DEP-012,Deprecations,retirement/deferment,Global semantic env flags,Current run_stack sprawl,Signed manifest selector only,RETIRE,Config/Operations,P0,Removal or deferral acceptance proof
+DEP-013,Deprecations,retirement/deferment,Global live.env export,Current security defect,Per-service allowlist,RETIRE,Security,P0,Removal or deferral acceptance proof
+DEP-014,Deprecations,retirement/deferment,Duplicate/shadow executors,Current optional paths,One E09 authority; offline simulator only,RETIRE,Execution,P0,Removal or deferral acceptance proof
+DEP-015,Deprecations,retirement/deferment,Direct model-to-execution,Constitutionally forbidden,E07→E08→E09 only,RETIRE,Architecture,P0,Removal or deferral acceptance proof
+DEP-016,Deprecations,retirement/deferment,NATS as assumed deployed bus,Diagram/schema implication,Transport-neutral; certify before binding,RETIRE,Platform,P1,Removal or deferral acceptance proof
+DEP-017,Deprecations,retirement/deferment,In-place fill.v2 tightening,Tempting migration,Strict new fill.v3,RETIRE,Contracts,P0,Removal or deferral acceptance proof
+DEP-018,Deprecations,retirement/deferment,Online auto-tuning,Target learning-loop implication,Offline governed artifact only,DEFER,Learning/Governance,P0,Removal or deferral acceptance proof
+DEP-019,Deprecations,retirement/deferment,Multiple-entry initial canary,Historically weaker evidence,Single entry first,DEFER,Risk/Research,P1,Removal or deferral acceptance proof
+DEP-020,Deprecations,retirement/deferment,Hyperliquid first-wave certification,Available adapter,Binance first; separate later,DEFER,Execution,P2,Removal or deferral acceptance proof

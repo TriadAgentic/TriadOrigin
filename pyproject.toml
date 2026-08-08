@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "triad-origin"
+version = "7.0.0rc1"
+description = "TRIAD ORIGIN V7 — Deterministic Causal Edge Core (E02 replacement). Governed, not armed."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary — TRIAD estate internal" }
+# Runtime is stdlib-only by design (deterministic, self-contained CI).
+# PyYAML is used only for reading signed config artifacts.
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+# Test/validation tooling only. Runtime code never imports these on the money path.
+test = ["pytest>=8", "jsonschema>=4.20"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"

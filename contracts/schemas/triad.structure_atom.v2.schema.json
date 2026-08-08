@@ -1,0 +1,207 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.structure_atom.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "STRUCTURE_CONFIRMED"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "availability_time_us": {
+          "type": "integer"
+        },
+        "build_commit": {
+          "type": "string"
+        },
+        "canonical_instrument_id": {
+          "type": "string"
+        },
+        "config_bundle_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "confirmation_source_ids": {
+          "type": "array"
+        },
+        "confirmation_time_us": {
+          "type": "integer"
+        },
+        "dependency_quality": {
+          "type": "object"
+        },
+        "direction": {
+          "enum": [
+            "LONG",
+            "SHORT"
+          ],
+          "type": "string"
+        },
+        "formula_version": {
+          "type": "string"
+        },
+        "instrument_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "knowledge_time_us": {
+          "type": "integer"
+        },
+        "origin_source_ids": {
+          "type": "array"
+        },
+        "origin_time_us": {
+          "type": "integer"
+        },
+        "original_geometry": {
+          "type": "object"
+        },
+        "original_geometry_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "parameter_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "parameter_set_id": {
+          "type": "string"
+        },
+        "predecessor_structure_ids": {
+          "type": "array"
+        },
+        "reference_level_ids": {
+          "type": "array"
+        },
+        "semantic_instance_id": {
+          "type": "string"
+        },
+        "source_offset_range": {
+          "type": "array"
+        },
+        "state": {
+          "enum": [
+            "CONFIRMED"
+          ],
+          "type": "string"
+        },
+        "structure_id": {
+          "type": "string"
+        },
+        "structure_kind": {
+          "type": "string"
+        },
+        "structure_subtype": {
+          "type": "string"
+        },
+        "timeframe": {
+          "type": "string"
+        },
+        "venue_model": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "structure_id",
+        "semantic_instance_id",
+        "structure_kind",
+        "structure_subtype",
+        "canonical_instrument_id",
+        "venue_model",
+        "timeframe",
+        "direction",
+        "origin_source_ids",
+        "confirmation_source_ids",
+        "origin_time_us",
+        "confirmation_time_us",
+        "availability_time_us",
+        "knowledge_time_us",
+        "original_geometry",
+        "original_geometry_digest",
+        "reference_level_ids",
+        "source_offset_range",
+        "dependency_quality",
+        "formula_version",
+        "parameter_set_id",
+        "parameter_digest",
+        "build_commit",
+        "config_bundle_sha256",
+        "instrument_digest",
+        "state",
+        "predecessor_structure_ids"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.structure_atom.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.structure_atom.v2",
+  "type": "object"
+}

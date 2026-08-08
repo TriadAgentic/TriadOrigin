@@ -1,0 +1,28 @@
+{
+  "artifact_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+  "build_commit": "0000000000000000000000000000000000000000",
+  "config_bundle_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "contract_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "emitted_at_us": 1786156800123456,
+  "event_id": "evt_triad_protection_event_v2",
+  "event_kind": "PROTECTION_EVENT",
+  "payload": {
+    "algo_order_id": "x",
+    "authorization_id": "x",
+    "covered_qty_steps": "0",
+    "deadline_us": 1786156800123456,
+    "position_id": "x",
+    "price_protect": true,
+    "raw_evidence": {},
+    "reconciliation": {},
+    "regular_order_id": "x",
+    "state": "REQUESTED",
+    "trigger_price_ticks": "0",
+    "working_type": "x"
+  },
+  "producer_epoch": "42",
+  "producer_instance_id": "inst_golden_01",
+  "producer_service": "e09-protection-owner",
+  "schema": "triad.protection_event.v2",
+  "schema_version": "2.0.0"
+}

@@ -1,0 +1,158 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.decision.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "DECISION"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "allocation_manifest_id": {
+          "type": "string"
+        },
+        "arbitration_set": {
+          "type": "array"
+        },
+        "arbitration_winner": {
+          "type": "string"
+        },
+        "arm": {
+          "type": "string"
+        },
+        "candidate_id": {
+          "type": "string"
+        },
+        "clause_results": {
+          "type": "array"
+        },
+        "decided_at_us": {
+          "type": "integer"
+        },
+        "decision_id": {
+          "type": "string"
+        },
+        "disposition": {
+          "enum": [
+            "TAKE",
+            "WAIT",
+            "SKIP"
+          ],
+          "type": "string"
+        },
+        "economic_assumption_refs": {
+          "type": "array"
+        },
+        "opportunity_cluster_id": {
+          "type": "string"
+        },
+        "policy_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "policy_id": {
+          "type": "string"
+        },
+        "policy_version": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "valid_until_us": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "decision_id",
+        "candidate_id",
+        "opportunity_cluster_id",
+        "arm",
+        "allocation_manifest_id",
+        "policy_id",
+        "policy_version",
+        "policy_digest",
+        "disposition",
+        "clause_results",
+        "arbitration_set",
+        "arbitration_winner",
+        "economic_assumption_refs",
+        "reason",
+        "valid_until_us",
+        "decided_at_us"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.decision.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.decision.v2",
+  "type": "object"
+}
