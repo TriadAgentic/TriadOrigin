@@ -66,6 +66,17 @@ R00_REQUIRED_DEFERRALS = {
     "parameter-evidence": "B03",
     "replay-evidence": "B02",
 }
+_DEPENDENCY_NAME_RE = re.compile(
+    r"[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?"
+)
+_CONCRETE_VERSION_RE = re.compile(
+    r"(?:[0-9]+!)?[0-9]+(?:\.[0-9]+)*"
+    r"(?:(?:a|b|rc)[0-9]+)?"
+    r"(?:\.post[0-9]+)?"
+    r"(?:\.dev[0-9]+)?"
+    r"(?:\+[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*)?",
+    re.IGNORECASE,
+)
 R00_INHERITED_THREADS = {
     "3740889446": 1,
     "3740889448": 1,
@@ -1015,6 +1026,19 @@ def _validate_typed_evidence(
         )
 
 
+def _exact_dependency_pin_name(value: Any) -> str | None:
+    """Return the normalized project name for one concrete ``name==version`` pin."""
+
+    if not isinstance(value, str) or value != value.strip() or value.count("==") != 1:
+        return None
+    name, version = value.split("==", 1)
+    if _DEPENDENCY_NAME_RE.fullmatch(name) is None:
+        return None
+    if _CONCRETE_VERSION_RE.fullmatch(version) is None:
+        return None
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
 def _validate_r00_evidence_set(
     receipt: dict[str, Any],
     bound: dict[str, dict[str, Any]],
@@ -1038,17 +1062,28 @@ def _validate_r00_evidence_set(
     snapshot_path = target("/toolchain/dependency_snapshot_sha256")
     if spec_path is not None and snapshot_path is not None:
         try:
-            spec_lines = {
-                line.strip() for line in spec_path.read_text(encoding="utf-8").splitlines()
+            spec_lines = [
+                line for line in spec_path.read_text(encoding="utf-8").splitlines()
                 if line.strip() and not line.lstrip().startswith("#")
-            }
+            ]
+            spec_names = [_exact_dependency_pin_name(line) for line in spec_lines]
             snapshot = json.loads(snapshot_path.read_bytes())
             packages = snapshot.get("packages") if isinstance(snapshot, dict) else None
+            package_names = (
+                [_exact_dependency_pin_name(package) for package in packages]
+                if isinstance(packages, list)
+                else None
+            )
             if (
-                not isinstance(packages, list)
+                not spec_lines
+                or any(name is None for name in spec_names)
+                or len(spec_names) != len(set(spec_names))
+                or not isinstance(packages, list)
                 or not packages
-                or any(not isinstance(package, str) or "==" not in package for package in packages)
-                or not spec_lines.issubset(set(packages))
+                or package_names is None
+                or any(name is None for name in package_names)
+                or len(package_names) != len(set(package_names))
+                or not set(spec_lines).issubset(set(packages))
             ):
                 problems.append("R00 toolchain snapshot is empty, unpinned, or omits constraints")
         except (OSError, UnicodeError, json.JSONDecodeError):

@@ -37,6 +37,7 @@ from tools.validate_milestone_receipt import (
     R00_REQUIRED_COMMANDS,
     R00_REVIEW_THREADS_QUERY,
     ReceiptValidationError,
+    _exact_dependency_pin_name,
     _expected_codex_review_body,
     _expected_remediation_reply_body,
     _github_get_json_from_token,
@@ -2216,6 +2217,57 @@ def test_r00_dependency_spec_must_equal_reviewed_constraints(tmp_path):
     _rewrite_bound_record(tmp_path, receipt, "toolchain", toolchain)
     with pytest.raises(ReceiptValidationError, match="reviewed constraints/ci.txt"):
         validate_receipt(receipt, _schema(), evidence_root=tmp_path)
+
+
+@pytest.mark.parametrize(
+    "forged_pin",
+    [
+        "example==1.*",
+        "example==1.0.*",
+        "example==",
+        "example==not-a-version",
+        "example==1..0",
+        "example>=1.0",
+        "example~=1.0",
+        "example===1.0",
+        "example==1.0,==2.0",
+        "example[extra]==1.0",
+        "example @ https://e.invalid/example.whl",
+        " example==1.0",
+        "example == 1.0",
+        "example==1.0 ",
+        "example==1.0 --hash=sha256:abc",
+        "example==1.0 # pinned",
+        "example==1.0;python_version>'3.11'",
+    ],
+)
+def test_r00_dependency_snapshot_requires_concrete_exact_pins(tmp_path, forged_pin):
+    _materialize_evidence(tmp_path)
+    receipt = _valid_receipt()
+    toolchain = json.loads((tmp_path / "evidence/R00/toolchain.json").read_bytes())
+    toolchain["packages"].append(forged_pin)
+    _rewrite_bound_record(tmp_path, receipt, "toolchain", toolchain)
+    with pytest.raises(ReceiptValidationError, match="empty, unpinned, or omits constraints"):
+        validate_receipt(receipt, _schema(), evidence_root=tmp_path)
+
+
+def test_r00_dependency_snapshot_rejects_duplicate_normalized_project_names(tmp_path):
+    _materialize_evidence(tmp_path)
+    receipt = _valid_receipt()
+    toolchain = json.loads((tmp_path / "evidence/R00/toolchain.json").read_bytes())
+    toolchain["packages"].extend(["Example_Name==1.0", "example-name==1.0"])
+    _rewrite_bound_record(tmp_path, receipt, "toolchain", toolchain)
+    with pytest.raises(ReceiptValidationError, match="empty, unpinned, or omits constraints"):
+        validate_receipt(receipt, _schema(), evidence_root=tmp_path)
+
+
+def test_r00_dependency_pin_parser_accepts_concrete_pep440_subset():
+    assert (
+        _exact_dependency_pin_name(
+            "Example_Name==1!2.0rc3.post4.dev5+linux.x86_64"
+        )
+        == "example-name"
+    )
 
 
 def test_r00_dependency_snapshot_cannot_be_omitted_from_source_and_sdist(tmp_path):

@@ -7,6 +7,8 @@ import re
 import subprocess
 import sys
 
+from tools.validate_milestone_receipt import _exact_dependency_pin_name
+
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -46,8 +48,8 @@ def test_ci_constraint_snapshot_is_exact_and_unique():
         if line.strip() and not line.startswith("#")
     ]
     assert lines
-    assert all(re.fullmatch(r"[A-Za-z0-9_.-]+==[^=\s]+", line) for line in lines)
-    names = [line.split("==", 1)[0].lower().replace("_", "-") for line in lines]
+    names = [_exact_dependency_pin_name(line) for line in lines]
+    assert all(name is not None for name in names)
     assert len(names) == len(set(names))
     assert {"pytest", "jsonschema", "setuptools", "wheel"} <= set(names)
 
