@@ -34,7 +34,11 @@ class Lease:
 
 @dataclass
 class ConsumerFence:
-    """A consumer's per-scope fence. Accepts only strictly-higher tokens (Doc 04 §04.16)."""
+    """A consumer's per-scope fence for already validated external leases.
+
+    Lease acceptance advances only to a structurally valid, externally activated token. Writes
+    must then carry that exact accepted token: an unseen higher value is not authority.
+    """
 
     _highest: dict[str, int] = field(default_factory=dict)
     _revoked: set[str] = field(default_factory=set)
@@ -42,6 +46,22 @@ class ConsumerFence:
     def accept(self, lease: Lease) -> bool:
         """Fence an externally validated active lease; this method never issues authority."""
         if lease.state is not LeaseState.ACTIVE:
+            return False
+        if (
+            not all(
+                isinstance(value, str) and bool(value)
+                for value in (
+                    lease.lease_id,
+                    lease.scope,
+                    lease.producer_service,
+                    lease.producer_instance_id,
+                    lease.activation_manifest_id,
+                )
+            )
+            or isinstance(lease.fencing_token, bool)
+            or not isinstance(lease.fencing_token, int)
+            or lease.fencing_token <= 0
+        ):
             return False
         # A revocation is terminal for this verifier instance. Re-authorizing a scope requires a
         # separately ratified, cryptographically verified replacement path, which is blocked by
@@ -58,7 +78,10 @@ class ConsumerFence:
         self._revoked.add(scope)
 
     def accepts_write(self, scope: str, fencing_token: int) -> bool:
-        """Would a message stamped with ``fencing_token`` be accepted for ``scope``?"""
+        """Accept only the exact token of an active lease previously accepted for ``scope``."""
         if scope in self._revoked:
             return False
-        return fencing_token >= self._highest.get(scope, 0) and fencing_token > 0
+        if isinstance(fencing_token, bool) or not isinstance(fencing_token, int):
+            return False
+        accepted = self._highest.get(scope)
+        return accepted is not None and fencing_token == accepted

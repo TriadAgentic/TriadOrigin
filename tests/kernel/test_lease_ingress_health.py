@@ -56,6 +56,37 @@ def test_consumer_fence_rejects_stale_and_equal():
     assert fence.accept(stale) is False
 
 
+def test_write_requires_exact_previously_accepted_external_token():
+    fence = ConsumerFence()
+    # Positive or higher-looking numbers are not authority until the corresponding externally
+    # validated ACTIVE lease has passed through accept().
+    assert fence.accepts_write("scope", 1) is False
+    assert fence.accepts_write("scope", 10_000) is False
+
+    active = _external_lease(1)
+    assert fence.accept(active) is True
+    assert fence.accepts_write("scope", active.fencing_token) is True
+    assert fence.accepts_write("scope", active.fencing_token + 1) is False
+    assert fence.accepts_write("other-scope", active.fencing_token) is False
+    assert fence.accepts_write("scope", True) is False
+
+
+@pytest.mark.parametrize("token", [True, 0, -1, "1"])
+def test_consumer_fence_rejects_malformed_external_tokens(token):
+    fence = ConsumerFence()
+    malformed = Lease(
+        lease_id="external-lease",
+        scope="scope",
+        producer_service="origin",
+        producer_instance_id="i1",
+        fencing_token=token,
+        activation_manifest_id="a1",
+        state=LeaseState.ACTIVE,
+    )
+    assert fence.accept(malformed) is False
+    assert fence.accepts_write("scope", token) is False
+
+
 def test_higher_external_lease_fences_old_token():
     fence = ConsumerFence()
     old = _external_lease(1)
@@ -65,6 +96,7 @@ def test_higher_external_lease_fences_old_token():
     assert new.state is LeaseState.ACTIVE
     assert fence.accept(new) is True
     assert fence.accepts_write("scope", old.fencing_token) is False
+    assert fence.accepts_write("scope", new.fencing_token) is True
 
 
 def test_revoked_scope_rejects_guessed_token_until_validated_replacement():
