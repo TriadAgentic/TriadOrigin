@@ -1,0 +1,15 @@
+# R00 exact CI dependency snapshot, captured from successful run 31268745943 on Python 3.11.15.
+# Changes require review plus a new exact-head receipt; this is test/build tooling, not runtime.
+attrs==26.1.0
+iniconfig==2.3.0
+jsonschema==4.26.0
+jsonschema-specifications==2025.9.1
+packaging==26.3
+pluggy==1.6.0
+Pygments==2.20.0
+pytest==9.1.1
+referencing==0.37.0
+rpds-py==2026.6.3
+setuptools==79.0.1
+typing-extensions==4.16.0
+wheel==0.47.0

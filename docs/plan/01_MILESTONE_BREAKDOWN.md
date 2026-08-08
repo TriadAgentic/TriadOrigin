@@ -15,7 +15,7 @@ acceptance.
   float rejection, checkpoint integrity, cross-source ordering, revocation, heartbeat, quarantine,
   and LIVE-only production posture.
 - Add GitHub CI for tests, byte manifest, manifest-schema validation, wheel-install validation, and
-  negative-capability scanning.
+  negative-capability scanning; pin action commits and the resolved test/build dependency snapshot.
 - Replace false M1/M2 completion language with merged-implementation/acceptance-blocked status.
 - Replace the RC1 M1–M6 plan with R00/B00–B09 and add conflict/source/review registers.
 
@@ -26,6 +26,10 @@ acceptance.
 - Old PR threads are replied to with the remediation PR/commit and resolved only after the fix exists.
 - Fresh merged `main` reproduces all checks.
 - R00 receipt validates against `milestone_receipt.schema.json`.
+- Until issue #5 proves a durable main ruleset, merge is bound procedurally to the reviewed exact
+  head SHA; the ruleset gap remains a B00 blocker and is disclosed in the receipt.
+- Post-merge receipt is anchored on `evidence/r00-receipt`; failure leaves R00
+  `MERGED_UNVERIFIED` and blocks B00.
 
 **Does not assert.** RC2 conformance, package completeness, detector readiness, or live authority.
 
@@ -40,6 +44,7 @@ acceptance.
 - Ownership matrix: `OWN`, `CONSUME`, `VERIFY_ONLY`, `REFERENCE_ONLY`, `OUT_OF_REPO`,
   `DEFERRED`.
 - Explicit E02 input/output boundary and negative-capability policy.
+- Durable main-branch ruleset requiring exact-head CI and review; close issue #5 with evidence.
 
 **Acceptance.** Package validation, all B00 blockers closed by named authority, no `NOT_RATIFIED`
 value in B01/B02 scope, and immutable B00 receipt.
@@ -159,4 +164,3 @@ has an ID/reason/later gate; no writable MCP or money path.
 
 RC2 G6–G9 rehearsal, canary, prospective money sample, cutover, scaling, and retirement are outside
 this repository and are never implied by B09.
-

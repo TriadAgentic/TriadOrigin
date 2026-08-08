@@ -38,6 +38,15 @@ against its declared schema.
 | B00 | `BLOCKED` | Incomplete/conflicting RC2 package and missing authority decisions |
 | B01–B09 | `BLOCKED_BY_PREDECESSOR` | No implementation starts early |
 
+## Repository control gap
+
+| Control | State | Compensating control / closure |
+|---|---|---|
+| Required main CI + review ruleset | `UNVERIFIED` | R00 exact-head guarded merge only; issue [#5](https://github.com/TriadAgentic/TriadOrigin/issues/5) must close in B00 |
+| CI action identity | `PINNED` | Immutable action SHAs in `.github/workflows/ci.yml` |
+| CI dependency identity | `PINNED_R00_SNAPSHOT` | `constraints/ci.txt`; receipt records the resolved environment |
+| Post-merge receipt storage | `DEFINED_NOT_YET_EXECUTABLE` | Commit `evidence/receipts/R00.json` on `evidence/r00-receipt` after merge |
+
 ## RC2 control catalogue
 
 - 1,088 tasks are `NOT_STARTED`.

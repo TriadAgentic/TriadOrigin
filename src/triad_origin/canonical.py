@@ -132,7 +132,7 @@ def str_to_tick(text: str) -> int:
     s = text
     neg = s.startswith("-")
     body = s[1:] if neg else s
-    if body == "" or not body.isdigit():
+    if body == "" or any(ch < "0" or ch > "9" for ch in body):
         raise CanonicalError(f"not a canonical integer string: {text!r}")
     if len(body) > 1 and body[0] == "0":
         raise CanonicalError(f"leading zero not permitted: {text!r}")

@@ -52,3 +52,8 @@ The following require exact declarations or `NOT_RATIFIED`:
 | WB-RC2-009 | Fixed-range dashboard formulas can omit appended task rows |
 | WB-RC2-010 | Editable/immutable cells are not protected or adequately validated |
 
+## Repository-control blocker
+
+| ID | Defect | Required closure |
+|---|---|---|
+| CTRL-R00-001 | Available evidence does not prove a main-branch ruleset requiring exact-head CI and review | Close GitHub issue #5 with repository-setting evidence in B00; until then only the R00 expected-head bootstrap merge is permitted |

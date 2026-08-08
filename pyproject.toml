@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "triad-origin"
-version = "7.0.0rc1"
+version = "7.0.0rc1.post1"
 description = "TRIAD ORIGIN V7 — Deterministic Causal Edge Core (E02 replacement). Governed, not armed."
 readme = "README.md"
 requires-python = ">=3.11"

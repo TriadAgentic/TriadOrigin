@@ -121,6 +121,44 @@ def test_writer_refuses_legacy_or_unknown_checkpoint_version(tmp_path):
         cp.save(tmp_path / "legacy.checkpoint", checkpoint)
 
 
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda checkpoint: setattr(checkpoint, "partition", ""),
+        lambda checkpoint: setattr(checkpoint, "state", []),
+        lambda checkpoint: setattr(checkpoint, "input_offset", "7"),
+        lambda checkpoint: setattr(checkpoint, "input_offset", True),
+        lambda checkpoint: setattr(checkpoint, "digests", {"build": ""}),
+    ],
+)
+def test_writer_rejects_invalid_checkpoint_field_types(tmp_path, mutate):
+    checkpoint = cp.Checkpoint(
+        partition="p",
+        state={"x": 1},
+        input_offset=7,
+        digests={"build": "known"},
+    )
+    mutate(checkpoint)
+    with pytest.raises(cp.CheckpointError):
+        cp.save(tmp_path / "invalid.checkpoint", checkpoint)
+
+
+def test_loader_rejects_unknown_fields_and_noncanonical_checksum(tmp_path):
+    path = tmp_path / "part.checkpoint"
+    cp.save(path, cp.Checkpoint(partition="p", state={"x": 1}, input_offset=7))
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["unexpected"] = "field"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(cp.CheckpointError, match="unknown field"):
+        cp.load(path)
+
+    raw.pop("unexpected")
+    raw["state_checksum"] = "A" * 64
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(cp.CheckpointError, match="lowercase SHA-256"):
+        cp.load(path)
+
+
 def test_checkpoint_tamper_fails_closed(tmp_path):
     path = tmp_path / "part.checkpoint"
     cp.save(path, cp.Checkpoint(partition="p", state={"x": 1}, input_offset=0))

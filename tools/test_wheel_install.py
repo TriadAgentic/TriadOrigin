@@ -55,6 +55,7 @@ def main() -> int:
                     "pip",
                     "wheel",
                     "--no-cache-dir",
+                    "--no-index",
                     str(sdists[0]),
                     "--no-deps",
                     "--no-build-isolation",

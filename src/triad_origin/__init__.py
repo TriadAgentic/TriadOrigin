@@ -15,7 +15,7 @@ from __future__ import annotations
 PRODUCT_NAME = "TRIAD ORIGIN V7"
 DESCRIPTIVE_NAME = "Deterministic Causal Edge Core"
 SPEC_VERSION = "1.0.0-RC1"
-PACKAGE_VERSION = "7.0.0rc1"
+PACKAGE_VERSION = "7.0.0rc1.post1"
 
 SERVICE_ID = "triad-origin-e02"
 TOPOLOGY_NODE = "E02-V7"

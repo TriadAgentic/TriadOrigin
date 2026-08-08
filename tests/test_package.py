@@ -10,6 +10,7 @@ def test_identity_constants():
     assert origin.TOPOLOGY_NODE == "E02-V7"
     assert origin.NAMESPACE == "triad.origin.v7"
     assert origin.SPEC_VERSION == "1.0.0-RC1"
+    assert origin.PACKAGE_VERSION == "7.0.0rc1.post1"
 
 
 def test_dark_posture():

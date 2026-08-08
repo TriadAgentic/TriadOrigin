@@ -110,6 +110,19 @@ Mandatory evidence:
 - post-merge fresh-main reproduction;
 - supersession linkage to any earlier receipt.
 
+Repository ruleset enforcement is **not yet evidenced** by the available repository API. Issue
+[#5](https://github.com/TriadAgentic/TriadOrigin/issues/5) is therefore a B00 control blocker. R00
+may use only the documented bootstrap merge procedure: re-read the immutable PR head, require its
+exact-head `CI / test-and-verify` run to be green, require zero actionable threads, and submit the
+merge with that same head SHA as the expected value. A direct/admin merge outside that procedure
+invalidates the receipt; it does not prove a durable ruleset.
+
+The merge SHA and fresh-main result do not exist before merge, so an R00 receipt cannot truthfully
+live in PR #4. After the squash merge, it is generated and schema-validated at
+`evidence/receipts/R00.json`, then anchored by a commit on `evidence/r00-receipt` whose parent is the
+R00 merge SHA. The immutable receipt-commit URL is posted back to PR #4. R00 remains
+`MERGED_UNVERIFIED` and B00 may not start unless that post-merge mechanism succeeds.
+
 ## 7 · Verification strategy
 
 Acceptance is falsification-first:

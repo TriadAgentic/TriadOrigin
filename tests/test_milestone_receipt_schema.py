@@ -104,3 +104,31 @@ def test_incomplete_authority_basis_cannot_claim_canonical():
     receipt["authority_basis"]["canonical"] = True
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate(receipt, _schema())
+
+
+def test_deferred_evidence_requires_exactly_one_internal_or_external_disposition():
+    internal = _valid_receipt()
+    internal["deferred_evidence"] = [{
+        "evidence_id": "branch-ruleset",
+        "reason": "repository setting is not visible through the current evidence API",
+        "owner": "repository-admin",
+        "later_milestone": "B00",
+    }]
+    jsonschema.validate(internal, _schema())
+
+    external = _valid_receipt()
+    external["deferred_evidence"] = [{
+        "evidence_id": "money-canary",
+        "reason": "ORIGIN is DARK and has no money authority",
+        "external_owner": "estate-governance",
+        "external_gate": "RC2-G8",
+    }]
+    jsonschema.validate(external, _schema())
+
+    ambiguous = copy.deepcopy(external)
+    ambiguous["deferred_evidence"][0].update({
+        "owner": "origin",
+        "later_milestone": "B09",
+    })
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(ambiguous, _schema())

@@ -62,10 +62,7 @@ class Checkpoint:
 
 def save(path: str | pathlib.Path, cp: Checkpoint) -> str:
     """Seal and write a checkpoint atomically. Returns the state checksum."""
-    if cp.identity_schema_version != CHECKPOINT_IDENTITY_VERSION:
-        raise CheckpointError(
-            f"refusing to write unsupported checkpoint version: {cp.identity_schema_version!r}"
-        )
+    _validate_fields(cp, loading=False)
     sealed = cp.sealed()
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -81,7 +78,12 @@ def load(path: str | pathlib.Path) -> Checkpoint:
     p = pathlib.Path(path)
     if not p.exists():
         raise CheckpointError(f"checkpoint missing: {p}")
-    raw = json.loads(p.read_text(encoding="utf-8"))
+    try:
+        raw = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CheckpointError(f"checkpoint is not valid UTF-8 JSON: {p}") from exc
+    if not isinstance(raw, dict):
+        raise CheckpointError("checkpoint root must be an object")
     required = {
         "partition",
         "state",
@@ -93,6 +95,9 @@ def load(path: str | pathlib.Path) -> Checkpoint:
     missing = sorted(required - raw.keys())
     if missing:
         raise CheckpointError(f"checkpoint missing integrity field(s): {missing}")
+    extra = sorted(raw.keys() - required)
+    if extra:
+        raise CheckpointError(f"checkpoint carries unknown field(s): {extra}")
     cp = Checkpoint(
         partition=raw["partition"],
         state=raw["state"],
@@ -101,6 +106,7 @@ def load(path: str | pathlib.Path) -> Checkpoint:
         digests=raw["digests"],
         identity_schema_version=raw["identity_schema_version"],
     )
+    _validate_fields(cp, loading=True)
     if cp.identity_schema_version == LEGACY_CHECKPOINT_IDENTITY_VERSION:
         raise CheckpointMigrationRequired(
             "origin.checkpoint.v1 authenticated state only; cold rebuild and write "
@@ -113,3 +119,30 @@ def load(path: str | pathlib.Path) -> Checkpoint:
     if cp.state_checksum != cp.compute_checksum():
         raise CheckpointError(f"checkpoint checksum mismatch for partition {cp.partition}")
     return cp
+
+
+def _validate_fields(cp: Checkpoint, *, loading: bool) -> None:
+    if not isinstance(cp.partition, str) or not cp.partition:
+        raise CheckpointError("checkpoint partition must be a non-empty string")
+    if not isinstance(cp.state, dict):
+        raise CheckpointError("checkpoint state must be an object")
+    if isinstance(cp.input_offset, bool) or not isinstance(cp.input_offset, int):
+        raise CheckpointError("checkpoint input_offset must be an integer")
+    if not isinstance(cp.digests, dict) or any(
+        not isinstance(k, str) or not k or not isinstance(v, str) or not v
+        for k, v in cp.digests.items()
+    ):
+        raise CheckpointError("checkpoint digests must map non-empty strings to non-empty strings")
+    if not isinstance(cp.identity_schema_version, str):
+        raise CheckpointError("checkpoint identity_schema_version must be a string")
+    if loading:
+        if (
+            not isinstance(cp.state_checksum, str)
+            or len(cp.state_checksum) != 64
+            or any(ch not in "0123456789abcdef" for ch in cp.state_checksum)
+        ):
+            raise CheckpointError("checkpoint state_checksum must be lowercase SHA-256 hex")
+    elif cp.identity_schema_version != CHECKPOINT_IDENTITY_VERSION:
+        raise CheckpointError(
+            f"refusing to write unsupported checkpoint version: {cp.identity_schema_version!r}"
+        )

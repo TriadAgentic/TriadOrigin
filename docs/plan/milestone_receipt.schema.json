@@ -144,13 +144,35 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["evidence_id", "reason", "owner", "later_milestone"],
+        "required": ["evidence_id", "reason"],
         "properties": {
           "evidence_id": { "type": "string", "minLength": 1 },
           "reason": { "type": "string", "minLength": 1 },
           "owner": { "type": "string", "minLength": 1 },
-          "later_milestone": { "type": "string", "pattern": "^B[0-9]{2}$" }
-        }
+          "later_milestone": { "type": "string", "pattern": "^B[0-9]{2}$" },
+          "external_owner": { "type": "string", "minLength": 1 },
+          "external_gate": { "type": "string", "minLength": 1 }
+        },
+        "oneOf": [
+          {
+            "required": ["owner", "later_milestone"],
+            "not": {
+              "anyOf": [
+                { "required": ["external_owner"] },
+                { "required": ["external_gate"] }
+              ]
+            }
+          },
+          {
+            "required": ["external_owner", "external_gate"],
+            "not": {
+              "anyOf": [
+                { "required": ["owner"] },
+                { "required": ["later_milestone"] }
+              ]
+            }
+          }
+        ]
       }
     },
     "negative_capability": {

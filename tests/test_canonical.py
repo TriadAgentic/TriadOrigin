@@ -45,7 +45,10 @@ def test_tick_roundtrip(value):
     assert C.str_to_tick(C.tick_to_str(value)) == value
 
 
-@pytest.mark.parametrize("bad", ["01", "+1", " 1", "1 ", "-0", "", "0x1", "1.0"])
+@pytest.mark.parametrize(
+    "bad",
+    ["01", "+1", " 1", "1 ", "-0", "", "0x1", "1.0", "١", "１２", "²"],
+)
 def test_tick_rejects_noncanonical(bad):
     with pytest.raises(C.CanonicalError):
         C.str_to_tick(bad)
