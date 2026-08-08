@@ -1,0 +1,127 @@
+name: R00 postmerge evidence capture
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/r00-postmerge-capture.yml
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      TZ: UTC
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      PYTHONHASHSEED: "0"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Fresh-clone merged main and capture controlled evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo install -d -o "$(id -u)" -g "$(id -g)" /fresh
+          auth="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
+          git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $auth"
+          git clone --no-local https://github.com/TriadAgentic/TriadOrigin.git /fresh/checkout
+          git config --global --unset-all http.https://github.com/.extraheader
+          test "$(git -C /fresh/checkout rev-parse HEAD)" = "241b301d1144e3e2a0a15f4bfe9ffef5b51068ed"
+          test "$(git -C /fresh/checkout branch --show-current)" = "main"
+          test "$(git -C /fresh/checkout rev-parse origin/main)" = "241b301d1144e3e2a0a15f4bfe9ffef5b51068ed"
+          test -z "$(git -C /fresh/checkout status --porcelain=v1)"
+          mkdir -p /tmp/r00-logs
+          cd /fresh/checkout
+          export PIP_CONSTRAINT=/fresh/checkout/constraints/ci.txt
+          python -m pip install -e '.[test]' > /tmp/r00-setup-install.log 2>&1
+          cat > /tmp/r00-setup.log <<'EOF'
+          CLONE=TriadAgentic/TriadOrigin
+          TARGET=/fresh/checkout
+          HEAD=241b301d1144e3e2a0a15f4bfe9ffef5b51068ed
+          BRANCH=main
+          ORIGIN_MAIN=241b301d1144e3e2a0a15f4bfe9ffef5b51068ed
+          CLEAN=true
+          INSTALL=success
+          EOF
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import subprocess
+
+          root = pathlib.Path('/fresh/checkout')
+          rows = subprocess.check_output(
+              ['git', '-C', str(root), 'ls-files', '-s', '-z']
+          ).split(b'\0')
+          files = []
+          for row in rows:
+              if not row:
+                  continue
+              metadata, path_raw = row.split(b'\t', 1)
+              mode, blob_sha, stage = metadata.decode().split()
+              if stage != '0':
+                  raise SystemExit('non-stage-zero source entry')
+              path = path_raw.decode('utf-8')
+              target = root / path
+              data = os.readlink(target).encode() if target.is_symlink() else target.read_bytes()
+              files.append({
+                  'path': path,
+                  'mode': mode,
+                  'type': 'blob',
+                  'blob_sha': blob_sha,
+                  'sha256': hashlib.sha256(data).hexdigest(),
+              })
+          record = {
+              'schema': 'origin.source-tree-evidence.v1',
+              'repository': 'TriadAgentic/TriadOrigin',
+              'merge_sha': '241b301d1144e3e2a0a15f4bfe9ffef5b51068ed',
+              'tree_sha': subprocess.check_output(
+                  ['git', '-C', str(root), 'rev-parse', 'HEAD^{tree}'], text=True
+              ).strip(),
+              'files': sorted(files, key=lambda item: item['path']),
+          }
+          pathlib.Path('/tmp/r00-source-tree.json').write_bytes(
+              json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(',', ':')).encode()
+          )
+          PY
+          capture() {
+            index="$1"
+            command="$2"
+            logfile="/tmp/r00-logs/$index.log"
+            printf 'R00_COMMAND_%s=%s\n' "$index" "$command"
+            set +e
+            eval "$command" >"$logfile" 2>&1
+            status="$?"
+            set -e
+            cat "$logfile"
+            test "$status" -eq 0
+          }
+          capture 0 'PYTHONHASHSEED=0 python -m pytest'
+          capture 1 'PYTHONHASHSEED=1 python -m pytest'
+          capture 2 'python tools/collect_test_ids.py'
+          capture 3 'python tools/verify_manifest.py'
+          capture 4 'python tools/validate_contract_manifest.py'
+          capture 5 'python tools/verify_reproducible_build.py'
+          capture 6 'python tools/test_wheel_install.py'
+          capture 7 'python tools/verify_no_forbidden_capabilities.py'
+          python -m pip freeze --all | LC_ALL=C sort > /tmp/r00-toolchain.txt
+          printf 'R00_CAPTURE_RUN_ID=%s\n' "$GITHUB_RUN_ID"
+          printf 'R00_CAPTURE_HEAD=%s\n' "$(git rev-parse HEAD)"
+          for file in /tmp/r00-setup.log /tmp/r00-setup-install.log /tmp/r00-source-tree.json /tmp/r00-toolchain.txt /tmp/r00-logs/*.log; do
+            label="$(basename "$file" | tr '.-' '__')"
+            printf 'R00_FILE_%s=' "$label"
+            base64 -w0 "$file"
+            printf '\n'
+          done
