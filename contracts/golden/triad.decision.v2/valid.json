@@ -1,0 +1,32 @@
+{
+  "artifact_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+  "build_commit": "0000000000000000000000000000000000000000",
+  "config_bundle_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "contract_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "emitted_at_us": 1786156800123456,
+  "event_id": "evt_triad_decision_v2",
+  "event_kind": "DECISION",
+  "payload": {
+    "allocation_manifest_id": "x",
+    "arbitration_set": [],
+    "arbitration_winner": "x",
+    "arm": "x",
+    "candidate_id": "x",
+    "clause_results": [],
+    "decided_at_us": 1786156800123456,
+    "decision_id": "x",
+    "disposition": "TAKE",
+    "economic_assumption_refs": [],
+    "opportunity_cluster_id": "x",
+    "policy_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "policy_id": "x",
+    "policy_version": "x",
+    "reason": "x",
+    "valid_until_us": 1786156800123456
+  },
+  "producer_epoch": "42",
+  "producer_instance_id": "inst_golden_01",
+  "producer_service": "triad-e07",
+  "schema": "triad.decision.v2",
+  "schema_version": "2.0.0"
+}

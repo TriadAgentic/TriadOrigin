@@ -1,0 +1,346 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.fill.v3.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "FILL"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_id": {
+          "type": "string"
+        },
+        "authorization_id": {
+          "type": "string"
+        },
+        "base_value": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "string"
+        },
+        "candidate_id": {
+          "type": "string"
+        },
+        "canonical_instrument_id": {
+          "type": "string"
+        },
+        "capsule_id": {
+          "type": "string"
+        },
+        "capsule_version": {
+          "type": "string"
+        },
+        "close_position": {
+          "type": "boolean"
+        },
+        "connection_session_id": {
+          "type": "string"
+        },
+        "conversion_evidence": {
+          "type": "object"
+        },
+        "decision_id": {
+          "type": "string"
+        },
+        "economic_idempotency_id": {
+          "type": "string"
+        },
+        "environment": {
+          "enum": [
+            "LIVE"
+          ],
+          "type": "string"
+        },
+        "exchange_event_time_us": {
+          "type": "integer"
+        },
+        "exchange_transaction_time_us": {
+          "type": "integer"
+        },
+        "execution_command_id": {
+          "type": "string"
+        },
+        "experiment_arm": {
+          "type": "string"
+        },
+        "fee_amount_atomic": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "fee_asset": {
+          "type": "string"
+        },
+        "fee_quote_minor": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "fill_id": {
+          "type": "string"
+        },
+        "hypothesis_id": {
+          "type": "string"
+        },
+        "instrument_revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "lane": {
+          "type": "string"
+        },
+        "liquidity_role": {
+          "enum": [
+            "MAKER",
+            "TAKER"
+          ],
+          "type": "string"
+        },
+        "local_receipt_mono_ns": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "local_receipt_wall_us": {
+          "type": "integer"
+        },
+        "normalized_time_us": {
+          "type": "integer"
+        },
+        "oms_order_id": {
+          "type": "string"
+        },
+        "opportunity_cluster_id": {
+          "type": "string"
+        },
+        "order_role": {
+          "enum": [
+            "ENTRY",
+            "EXIT",
+            "PROTECTION",
+            "EMERGENCY"
+          ],
+          "type": "string"
+        },
+        "order_side": {
+          "enum": [
+            "BUY",
+            "SELL"
+          ],
+          "type": "string"
+        },
+        "position_effect": {
+          "enum": [
+            "OPEN",
+            "INCREASE",
+            "REDUCE",
+            "CLOSE",
+            "REVERSE"
+          ],
+          "type": "string"
+        },
+        "position_effect_derivation_evidence": {
+          "type": "object"
+        },
+        "position_id": {
+          "type": "string"
+        },
+        "position_mode": {
+          "enum": [
+            "ONE_WAY",
+            "HEDGE"
+          ],
+          "type": "string"
+        },
+        "position_side": {
+          "enum": [
+            "LONG",
+            "SHORT",
+            "BOTH"
+          ],
+          "type": "string"
+        },
+        "price_ticks": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "qty_steps": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "quote_value": {
+          "type": "string"
+        },
+        "raw_payload_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "reconciliation_status": {
+          "enum": [
+            "VENUE_CONFIRMED",
+            "PENDING",
+            "QUARANTINED"
+          ],
+          "type": "string"
+        },
+        "recorded_time_us": {
+          "type": "integer"
+        },
+        "reduce_only": {
+          "type": "boolean"
+        },
+        "reservation_id": {
+          "type": "string"
+        },
+        "risk_decision_id": {
+          "type": "string"
+        },
+        "role_derivation_evidence": {
+          "type": "object"
+        },
+        "structure_id": {
+          "type": "string"
+        },
+        "venue": {
+          "type": "string"
+        },
+        "venue_instrument_id": {
+          "type": "string"
+        },
+        "venue_order_id": {
+          "type": "string"
+        },
+        "venue_trade_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fill_id",
+        "venue_trade_id",
+        "oms_order_id",
+        "venue_order_id",
+        "execution_command_id",
+        "authorization_id",
+        "economic_idempotency_id",
+        "venue",
+        "environment",
+        "account_id",
+        "canonical_instrument_id",
+        "venue_instrument_id",
+        "instrument_revision",
+        "risk_decision_id",
+        "reservation_id",
+        "decision_id",
+        "candidate_id",
+        "hypothesis_id",
+        "opportunity_cluster_id",
+        "structure_id",
+        "capsule_id",
+        "capsule_version",
+        "lane",
+        "experiment_arm",
+        "campaign_id",
+        "position_id",
+        "order_side",
+        "position_side",
+        "position_mode",
+        "position_effect",
+        "order_role",
+        "liquidity_role",
+        "reduce_only",
+        "close_position",
+        "price_ticks",
+        "qty_steps",
+        "base_value",
+        "quote_value",
+        "fee_asset",
+        "fee_amount_atomic",
+        "fee_quote_minor",
+        "conversion_evidence",
+        "exchange_transaction_time_us",
+        "exchange_event_time_us",
+        "local_receipt_wall_us",
+        "local_receipt_mono_ns",
+        "normalized_time_us",
+        "recorded_time_us",
+        "connection_session_id",
+        "raw_payload_digest",
+        "reconciliation_status",
+        "position_effect_derivation_evidence",
+        "role_derivation_evidence"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.fill.v3"
+    },
+    "schema_version": {
+      "const": "3.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.fill.v3",
+  "type": "object"
+}

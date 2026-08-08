@@ -1,0 +1,112 @@
+{
+  "schema": "triad.origin.specification_artifact_manifest.v1",
+  "title": "TRIAD ORIGIN V7 — Deterministic Causal Edge Core",
+  "version": "1.0.0-RC1",
+  "issued": "2026-08-08",
+  "status": "RATIFICATION_CANDIDATE_NOT_ARMED",
+  "counts": {
+    "documents": 11,
+    "inventory_records": 320,
+    "checklist_tasks": 407,
+    "verification_tests": 408
+  },
+  "coverage": "Payload files only; excludes this manifest and ZIP to avoid self-reference.",
+  "files": [
+    {
+      "path": "00_TRIAD_ORIGIN_V7_DOCUMENT_CONTROL_AND_INDEX_1.0.0_RC1.html",
+      "bytes": 33817,
+      "sha256": "8e9ab852a62b035a32772896e7ddb60c64ef0dd17158205a74f1908aadaafe3a",
+      "media_type": "text/html"
+    },
+    {
+      "path": "01_TRIAD_ORIGIN_V7_MASTER_SPECIFICATION_1.0.0_RC1.html",
+      "bytes": 3036801,
+      "sha256": "d1b8a2f727aef4922affd74819ff6b716c195d76a2345c092fa2e737fad9e2b4",
+      "media_type": "text/html"
+    },
+    {
+      "path": "02_TRIAD_ORIGIN_V7_STRUCTURE_SEMANTICS_1.0.0_RC1.html",
+      "bytes": 41071,
+      "sha256": "517b7818daa9564a965df39fdae71ac8c57f383c3553a97d3dd280de49d93b04",
+      "media_type": "text/html"
+    },
+    {
+      "path": "03_TRIAD_ORIGIN_V7_CONTRACT_AND_IDENTITY_CATALOG_1.0.0_RC1.html",
+      "bytes": 43020,
+      "sha256": "504ed1ec9de107f1a26f9902111eb9f92319cfb8afa2c63f106e95bb16af2b28",
+      "media_type": "text/html"
+    },
+    {
+      "path": "04_TRIAD_ORIGIN_V7_STATE_MACHINE_CATALOG_1.0.0_RC1.html",
+      "bytes": 46359,
+      "sha256": "8ff7cd48d787f0b36f3325e1d7ba3b8dc83cef2475e60f038e1a448c12ab3ff0",
+      "media_type": "text/html"
+    },
+    {
+      "path": "05_TRIAD_ORIGIN_V7_END_TO_END_WIRING_1.0.0_RC1.html",
+      "bytes": 44605,
+      "sha256": "09b6321665b39fa4114f1b4de0507b99f08f6d087635689b4dcace5b6cd4e455",
+      "media_type": "text/html"
+    },
+    {
+      "path": "06_TRIAD_ORIGIN_V7_IMPLEMENTATION_INVENTORY_1.0.0_RC1.html",
+      "bytes": 171324,
+      "sha256": "8284c9cbafca3a1f96600ad65c6192ddc386514229b7c687dcbf7bb466641a0e",
+      "media_type": "text/html"
+    },
+    {
+      "path": "07_TRIAD_ORIGIN_V7_IMPLEMENTATION_CHECKLIST_1.0.0_RC1.html",
+      "bytes": 267051,
+      "sha256": "5a9636a4f0453f81f7cd406cee80549dd4a0cf5481c63e5197a4f9996aa20337",
+      "media_type": "text/html"
+    },
+    {
+      "path": "08_TRIAD_ORIGIN_V7_VERIFICATION_MATRIX_1.0.0_RC1.html",
+      "bytes": 367301,
+      "sha256": "ca7fd0a6a86153af461f5907a6fd8004b60949aedbbbf9d8c87dd0f1b877dfa9",
+      "media_type": "text/html"
+    },
+    {
+      "path": "09_TRIAD_ORIGIN_V7_MIGRATION_AND_ROLLBACK_RUNBOOK_1.0.0_RC1.html",
+      "bytes": 36543,
+      "sha256": "9baca2129b96f8da028e76549905c35c4b27ed2b37f83de9bd3ad9a97a160032",
+      "media_type": "text/html"
+    },
+    {
+      "path": "10_TRIAD_ORIGIN_V7_DECISION_AND_DEFERRED_REGISTER_1.0.0_RC1.html",
+      "bytes": 35458,
+      "sha256": "fd6e3ad313ace61c971e6dba963d8d675b1284eea983398d0e274377a8f20d99",
+      "media_type": "text/html"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2015,
+      "sha256": "82636c6f447f2e430f14d2b66ab09ec760989fe5751936360816fba4ca7d2387",
+      "media_type": "text/markdown"
+    },
+    {
+      "path": "TRIAD_ORIGIN_V7_COMPLETE_MASTER_SPECIFICATION_1.0.0_RC1.html",
+      "bytes": 3993202,
+      "sha256": "33c01f8ab73fefd0af4a0660ce63127b954b15b94182470f4c088ac7d20b5da8",
+      "media_type": "text/html"
+    },
+    {
+      "path": "TRIAD_ORIGIN_V7_IMPLEMENTATION_CHECKLIST_1.0.0_RC1.csv",
+      "bytes": 116135,
+      "sha256": "b46fc91c831ee5c00a3c8b06a518c8b805df525e5b54ffd667a6000585b78a5c",
+      "media_type": "text/csv"
+    },
+    {
+      "path": "TRIAD_ORIGIN_V7_IMPLEMENTATION_INVENTORY_1.0.0_RC1.csv",
+      "bytes": 61695,
+      "sha256": "f006cc6f5f1da82d1155f170783e63b7a2d65d6cdadc1f7e5518756f490f01ca",
+      "media_type": "text/csv"
+    },
+    {
+      "path": "TRIAD_ORIGIN_V7_VERIFICATION_MATRIX_1.0.0_RC1.csv",
+      "bytes": 153154,
+      "sha256": "e5b2a3448ebfdeaba4a1cc81d8fd486d56cfce60bf1f2979b7460df8b38ac630",
+      "media_type": "text/csv"
+    }
+  ]
+}

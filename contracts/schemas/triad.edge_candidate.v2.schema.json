@@ -1,0 +1,221 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.edge_candidate.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "EDGE_CANDIDATE"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_id": false,
+        "arm": {
+          "enum": [
+            "CONTROL",
+            "TREATMENT",
+            "SHADOW"
+          ],
+          "type": "string"
+        },
+        "cancellation_conditions": {
+          "type": "array"
+        },
+        "candidate_id": {
+          "type": "string"
+        },
+        "canonical_instrument_id": {
+          "type": "string"
+        },
+        "capsule_id": {
+          "type": "string"
+        },
+        "capsule_version": {
+          "type": "string"
+        },
+        "cost_model_id": {
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "LONG",
+            "SHORT"
+          ],
+          "type": "string"
+        },
+        "e09_destination": false,
+        "entry_policy": {
+          "type": "string"
+        },
+        "entry_reference_ticks": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "executable_quantity": false,
+        "expected_return": false,
+        "fill_model_id": {
+          "type": "string"
+        },
+        "final_approval": false,
+        "horizon": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "hypothesis_id": {
+          "type": "string"
+        },
+        "leverage": false,
+        "natural_invalidation_ticks": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "not_before_us": {
+          "type": "integer"
+        },
+        "notional": false,
+        "opportunity_cluster_id": {
+          "type": "string"
+        },
+        "parameter_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "prerequisites": {
+          "type": "array"
+        },
+        "provenance_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "quality": {
+          "type": "object"
+        },
+        "raw_credentials": false,
+        "rr_denominator": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "rr_numerator": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "source_reaction_id": {
+          "type": "string"
+        },
+        "source_structure_id": {
+          "type": "string"
+        },
+        "targets": {
+          "type": "array"
+        },
+        "trial_id": {
+          "type": "string"
+        },
+        "ttl_us": {
+          "type": "integer"
+        },
+        "venue_order_id": false
+      },
+      "required": [
+        "candidate_id",
+        "hypothesis_id",
+        "opportunity_cluster_id",
+        "capsule_id",
+        "capsule_version",
+        "parameter_digest",
+        "trial_id",
+        "source_structure_id",
+        "source_reaction_id",
+        "canonical_instrument_id",
+        "direction",
+        "horizon",
+        "entry_policy",
+        "entry_reference_ticks",
+        "natural_invalidation_ticks",
+        "targets",
+        "rr_numerator",
+        "rr_denominator",
+        "ttl_us",
+        "not_before_us",
+        "cancellation_conditions",
+        "cost_model_id",
+        "fill_model_id",
+        "arm",
+        "quality",
+        "prerequisites",
+        "provenance_hash"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.edge_candidate.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.edge_candidate.v2",
+  "type": "object"
+}

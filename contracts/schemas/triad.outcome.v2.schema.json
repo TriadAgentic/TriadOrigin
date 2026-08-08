@@ -1,0 +1,185 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.outcome.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "OUTCOME"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "arm_attribution": {
+          "type": "object"
+        },
+        "campaign_id": {
+          "type": "string"
+        },
+        "campaign_state": {
+          "enum": [
+            "OPEN",
+            "CLOSING",
+            "COMPLETED",
+            "UNRESOLVED"
+          ],
+          "type": "string"
+        },
+        "capsule_attribution": {
+          "type": "object"
+        },
+        "concentration_unit": {
+          "type": "string"
+        },
+        "duration_us": {
+          "type": "integer"
+        },
+        "emergency_cost": {
+          "type": "string"
+        },
+        "fees": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "fills": {
+          "type": "array"
+        },
+        "funding": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "gross_pnl": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "liquidation_adl_cost": {
+          "type": "string"
+        },
+        "mae": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "markouts": {
+          "type": "array"
+        },
+        "mfe": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "net_pnl": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "quantity_conservation": {
+          "type": "object"
+        },
+        "rebates": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "reconciliation_state": {
+          "type": "string"
+        },
+        "regime_attribution": {
+          "type": "object"
+        },
+        "valuation_evidence": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "campaign_id",
+        "campaign_state",
+        "fills",
+        "quantity_conservation",
+        "gross_pnl",
+        "fees",
+        "rebates",
+        "funding",
+        "liquidation_adl_cost",
+        "emergency_cost",
+        "net_pnl",
+        "mae",
+        "mfe",
+        "markouts",
+        "duration_us",
+        "capsule_attribution",
+        "arm_attribution",
+        "regime_attribution",
+        "valuation_evidence",
+        "concentration_unit",
+        "reconciliation_state"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.outcome.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.outcome.v2",
+  "type": "object"
+}
