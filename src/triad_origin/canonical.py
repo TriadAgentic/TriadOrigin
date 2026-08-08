@@ -36,17 +36,18 @@ def nfc(s: str) -> str:
 
 
 def _normalize(obj: Any) -> Any:
-    """Recursively NFC-normalize string keys/values and reject non-finite floats."""
+    """Recursively NFC-normalize strings and reject every floating-point value.
+
+    Canonical wire v1 has one numeric representation: JSON integers.  Semantic decimal values are
+    represented as canonical base-10 strings at the boundary.  Accepting even a finite float would
+    give equivalent values such as ``1`` and ``1.0`` different bytes and therefore different IDs.
+    """
     if isinstance(obj, str):
         return nfc(obj)
     if isinstance(obj, bool):
         return obj
     if isinstance(obj, float):
-        # Floats are not a canonical numeric form for semantic values; only allow finite,
-        # and forbid NaN/Infinity outright.
-        if obj != obj or obj in (float("inf"), float("-inf")):
-            raise CanonicalError("NaN/Infinity is not permitted on the canonical wire")
-        return obj
+        raise CanonicalError("floating-point values are not permitted on the canonical wire")
     if isinstance(obj, int):
         return obj
     if obj is None:
@@ -92,10 +93,19 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def loads_canonical(data: bytes | str) -> Any:
-    """Decode canonical JSON, rejecting duplicate keys and non-finite numbers."""
+    """Decode canonical JSON, rejecting duplicate keys and every floating-point number."""
     if isinstance(data, bytes):
         data = data.decode("utf-8")
-    return json.loads(data, object_pairs_hook=_reject_duplicate_keys, parse_constant=_reject_const)
+    return json.loads(
+        data,
+        object_pairs_hook=_reject_duplicate_keys,
+        parse_float=_reject_float,
+        parse_constant=_reject_const,
+    )
+
+
+def _reject_float(token: str) -> Any:
+    raise CanonicalError(f"floating-point JSON number is not permitted: {token}")
 
 
 def _reject_const(token: str) -> Any:  # pragma: no cover - defensive

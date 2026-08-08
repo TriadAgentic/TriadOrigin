@@ -59,17 +59,20 @@ class ContractIngress:
         return Accepted(event=event, epoch=epoch)
 
     def _quarantine(self, event: Any, reason: str, observed_at_us: int) -> Quarantined:
-        raw = canonical_json(event) if isinstance(event, dict) else str(event).encode()
+        try:
+            raw = canonical_json(event) if isinstance(event, dict) else str(event).encode()
+        except (TypeError, ValueError):
+            # Quarantine must remain available for non-canonical input. Only the digest is exposed.
+            raw = repr(event).encode("utf-8", errors="backslashreplace")
+        digest = sha256_hex(raw)
         record = {
-            "quarantine_id": "qtn_" + sha256_hex(raw)[:40],
-            "source": event.get("producer_service", "unknown") if isinstance(event, dict) else "unknown",
+            "quarantine_id": "qtn_" + digest[:40],
+            "source": str(event.get("producer_service") or "unknown") if isinstance(event, dict) else "unknown",
             "boundary": self.boundary,
-            "raw_reference": {
-                "raw_payload_digest": sha256_hex(raw),
-                "event_id": event.get("event_id") if isinstance(event, dict) else None,
-            },
+            "raw_reference": "sha256:" + digest,
             "rejection_reason": reason,
-            "contract_id": event.get("schema") if isinstance(event, dict) else None,
+            "contract_id": str(event.get("schema") or "unknown") if isinstance(event, dict) else "unknown",
             "observed_at_us": observed_at_us,
         }
+        contracts.validate_payload("triad.quarantine_record.v1", record)
         return Quarantined(record=record)

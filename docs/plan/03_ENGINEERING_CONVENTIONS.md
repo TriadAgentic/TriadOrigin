@@ -1,80 +1,116 @@
 # 03 · Engineering Conventions
 
-Binding conventions for every milestone. These make the constitution (00 §2) mechanical.
+## Deterministic semantic path
 
-## Determinism (Doc 02 §02.2, §02.16)
+Every semantic component exposes a pure transition:
 
-- Every structure/capsule is a pure state machine with the signature
-  `transition(prior_state, ordered_input_envelope, immutable_params, dependency_quality) →
-  (new_state, events)` via `triad_origin.transition.TransitionResult`.
-- **Forbidden on the semantic path:** `time`/`datetime.now`, `random`, environment reads, file/network
-  I/O, iteration-order-dependent output, floats in semantic comparisons.
-- Prices/quantities are signed **integer ticks/steps** (`int`). The only decimal boundary is
-  `instrument_math` conversion, which is fail-closed on overflow/non-multiple.
-- Proof obligations are tested per module: prefix invariance, restart invariance, duplicate
-  invariance, LONG/SHORT mirror, scale metamorphism, lifecycle monotonicity, identity stability, risk
-  independence, null honesty, falsification.
+`transition(prior_state, ordered_input_envelope, immutable_parameter_bundle,
+dependency_quality_snapshot) -> (new_state, events)`.
 
-## Parameters (Doc 02 §02.15) — no hidden experiments
+Forbidden on that path:
 
-- Numeric thresholds are **symbolic**. Read every one via `transition.require(params, "name")`, which
-  raises `MissingParameterError` when absent or null. **Never** write a numeric default for a semantic
-  threshold.
-- Tests supply an explicit parameter bundle. A missing-parameter test proves fail-closed behavior.
-- Every emitted semantic fact carries `formula_version`, `parameter_set_id`, `parameter_digest`.
+- wall clock, process identity, environment reads, file/network I/O, randomness;
+- float values or float-dependent comparison;
+- iteration-order-dependent output;
+- future or non-watermark-safe facts;
+- mutable global configuration or silent fallback.
 
-## Contracts & identity (Doc 03)
+CI runs with fixed UTC/locale and varied `PYTHONHASHSEED` where order invariance matters.
 
-- Canonical wire = sorted-key UTF-8 JSON, NFC strings, no NaN/Infinity, integer tick/step as base-10
-  strings (`canonical.py`).
-- IDs are **length-prefixed** field hashes (`canonical.digest_fields`); never raw concatenation. Use
-  the `ids.py` hierarchy; mutable geometry retains `structure_id` and increments `state_seq`.
-- Validate at production **and** at the consuming boundary; unknown enum/major/stale epoch **rejects**
-  (fail closed) or **quarantines** with raw evidence — never defaults.
-- New/changed schema bytes update `contracts/MANIFEST.sha256` via `tools/gen_manifest.py`;
-  `tools/verify_manifest.py` gates CI. Same version ⟹ byte-identical.
+## Representation and clocks
 
-## Transport & journals (Doc 04, Doc 05)
+The current RC1 code uses base-10 strings for tick/step wire values, while RC2 declarations say
+signed int64. RC2 also conflicts between `*_ns` field names and UTC Unix microseconds.
+Until B00 resolves semantic type, JSON encoding, field names, and migration compatibility:
 
-- Durable path is the hash-chained append-only `ledger.py` (one writer lock/partition; torn/tampered
-  frames stop the partition and preserve bytes). Consumers checkpoint input offset + projection
-  checksum.
-- State machines are append-only with compare-and-append; projections rebuild from the journal and
-  match the authoritative checksum.
-- Authority is a scoped `producer_lease` with a monotonic fencing token; consumers keep the highest
-  token per scope. A restart never inherits a lease.
+- existing published bytes remain immutable;
+- no new contract version is inferred;
+- internal semantic math remains checked signed integers;
+- boundary conversion is exact and fail-closed;
+- any ambiguous/new scope is `SAFE_HOLD`.
 
-## Modules & layout
+## Parameters
 
+- No semantic numeric default in code.
+- Every parameter has canonical ID, type, unit, inclusive/exclusive boundary, rounding, scope,
+  formula version, failure behavior, immutable digest, status, and evidence receipt.
+- Missing/null/`NOT_RATIFIED` is a named not-ready/abstention state.
+- A proposed RC2 value is not ratified merely because a test fixture uses it.
+- A semantic change creates a new parameter set and preregistered trial; old evidence becomes stale.
+
+## Contracts and identities
+
+- Validate before publication and again at consumption.
+- Supported validators must agree; the stdlib path enforces every safety-material keyword used.
+- Unknown contract major, stale/lower epoch, forbidden field, noncanonical number, or missing lineage
+  rejects/quarantines.
+- Current producer epoch equality is valid for subsequent events; lower epochs reject.
+- Stable root identity and append-only revision identity are distinct.
+- Published schemas are installed package resources and remain byte-pinned.
+- The contract bundle artifact must validate against its own declared schema.
+
+## Config and signatures
+
+ORIGIN may verify signed public configuration. It may not contain a private signing key.
+B00 must define signature algorithm, canonical signed bytes, trust-root distribution, signer roles,
+revocation, expiry, and failure behavior before `signed config` is an acceptance claim.
+
+## Ordering, checkpoint, and replay
+
+- Cross-source events preserve recorded local receipt order; source sequences are compared only
+  within the same source/connection epoch.
+- Checkpoints authenticate state plus partition, input offset, all digests, and identity version.
+- Replay, production consumption, checkpoint resume, and cold rebuild invoke the exact same
+  transition functions.
+- Duplicate identity is idempotent. Corrections append and never move knowledge time backward.
+
+## Capability boundaries
+
+Runtime source and built artifacts must fail a negative scan for:
+
+- venue credential/token loading or secret persistence;
+- network clients or direct venue/MCP control connections;
+- order place/cancel/replace/flatten/close verbs;
+- E07/E08/E09 producer bindings;
+- lease issuance/coordinator capability;
+- risk, quantity authorization, or money-publish effects.
+
+Declarative conformance schemas are allowed only when clearly separated from executable capability.
+
+## Testing and CI
+
+Each module ships:
+
+- equality and one-unit-neighbor boundaries;
+- invalid/null/stale/gap/overflow cases;
+- duplicate, correction, future-mutation, prefix, cold/warm/restart/checkpoint tests;
+- LONG/SHORT mirror and scale tests where meaningful;
+- contract-valid output and forbidden-field tests;
+- property/falsification tests tied to stable requirement IDs.
+
+Every PR runs at minimum:
+
+```bash
+python -m pytest
+python tools/verify_manifest.py
+python tools/validate_contract_manifest.py
+python tools/test_wheel_install.py
+python tools/verify_no_forbidden_capabilities.py
 ```
-src/triad_origin/
-  canonical.py ids.py contracts.py transition.py            # foundation
-  instrument_math.py clock_watermark.py partition.py         # kernel
-  ledger.py checkpoint.py journal.py lease.py ingress.py     # transport/control
-  telemetry.py health.py                                     # faces
-  feature_primitives.py                                      # M3
-  structures/                                                # M3 detectors
-  capsules/                                                  # M4 capsules
-  reaction_engine.py capsule_host.py opportunity_clusterer.py candidate_publisher.py  # M4
-  comparator.py authority_router.py legacy_bridge.py replay_runner.py service/        # M5
-```
 
-## Testing
+No skip/xfail is accepted silently; each has an owner and receipt disposition.
 
-- `pytest`; tests mirror the source tree under `tests/`. Each new module ships focused tests in the
-  same PR. Falsification-first: prefer a test that could disprove the property.
-- A milestone is **not done** until `python3 -m pytest` is green **and** `python3
-  tools/verify_manifest.py` is exit-0.
+## PR and merge
 
-## PR & merge
+- One fresh branch and one PR per milestone.
+- Spec/scope change precedes implementation in a separate PR.
+- No normal force-push or reused long-lived milestone branch.
+- Merge only after exact-head CI and review completion.
+- Post-merge verification uses a fresh reconstruction of `main`.
+- Old review threads are resolved only after their corrective commit exists and is referenced.
 
-- One PR per milestone into `main`; squash-merge when green; re-base the feature branch on fresh
-  `main` before the next milestone.
-- PR body: milestone scope, deliverables, verification evidence (test count + manifest), coupled spec
-  sections. Force-with-lease is used only to advance the branch past already-merged history.
+## Milestone receipt
 
-## Naming & posture
-
-- Service `triad-origin-e02`, node `E02-V7`, namespace `triad.origin.v7`, shorthand `ORIGIN`.
-- `POSTURE = "DARK"`, `ALLOW_MONEY_PUBLISH = False`. No module imports anything that signs, holds a
-  venue key, or writes an order. Candidates carry no money field.
+A milestone is `VERIFIED` only when its receipt validates against
+`milestone_receipt.schema.json` and includes exact artifact, test, CI, review, merge, replay, and
+negative-capability evidence. A workbook/manual status cannot substitute for a receipt.

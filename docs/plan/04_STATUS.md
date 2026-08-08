@@ -1,23 +1,55 @@
-# 04 · Status
+# 04 · Audited Status
 
-_Last updated: 2026-08-08._
+_Audited: 2026-08-09. Status is evidence-based and DARK._
 
-| Milestone | Status | PR | Evidence |
-|-----------|--------|----|----------|
-| M1 · Contract & Identity foundation | ✅ merged | #1 | 128 tests green · manifest OK (91 artifacts) |
-| M2 · Kernel primitives & transport | ✅ merged | #2 | 165 tests green · manifest OK |
-| M3 · Structure semantics | ⏸ **paused for plan review** | — | shared base laid (`structures/common.py`); 3/7 detectors drafted (held in scratch, pending plan sign-off) |
-| M4 · Reaction, capsules & candidates | 🔜 planned | — | — |
-| M5 · Config artifacts, wiring & services | 🔜 planned | — | — |
-| M6 · Verification matrix & runbooks | 🔜 planned | — | — |
+## Repository
 
-## Current gate state
-- `python3 -m pytest` → **165 passed** (on `main` == merged M1+M2).
-- `python3 tools/verify_manifest.py` → **OK** (91 artifacts).
-- Working branch: `claude/triad-origin-implementation-xz7uct` (re-based on `main`).
+| Item | State |
+|---|---|
+| Repository | `TriadAgentic/TriadOrigin` |
+| Default branch | `main` |
+| Audited main | `69dfd7245fb462992f17e4af06e6746ac2f9d2f0` |
+| Open PRs at audit | 0 |
+| Merged PRs | #1, #2, #3 |
+| GitHub workflow/status evidence | None |
+| Unresolved review threads | 14: 9 P1, 5 P2 |
+| Old feature branch | Diverged; not an acceptable next-milestone base |
 
-## Next action (on plan approval)
-Resume **M3** via the ultracode fan-out (7 detector agents, self-tested), re-verify the full suite,
-then open + merge the M3 PR. The 3 already-drafted detectors (feature_primitives,
-typed_level_registry, structure_state) are preserved and will be reviewed against the ratified plan
-rather than discarded.
+## Reproduced baseline
+
+An authenticated file reconstruction of audited `main` reproduced:
+
+- `165 passed` locally;
+- `tools/verify_manifest.py`: 91 artifacts match
+  `5189c78ae315850d…`.
+
+This proves reproducibility of the current tests/bytes, not correctness: two tests explicitly encoded
+the rejected same-epoch behavior, and the manifest verifier did not validate the manifest artifact
+against its declared schema.
+
+## Milestones
+
+| Milestone | Status | Evidence / reason |
+|---|---|---|
+| RC1 M1 | `MERGED_IMPLEMENTATION / FAILED_AUDIT` | PR #1; 5 unresolved findings; no CI |
+| RC1 M2 | `MERGED_IMPLEMENTATION / FAILED_AUDIT` | PR #2; 6 unresolved findings; no CI |
+| Prior plan | `SUPERSEDED` | PR #3; 3 unresolved findings; incompatible with RC2 |
+| R00 | `IN_PROGRESS` | Foundation/review/CI/status remediation |
+| B00 | `BLOCKED` | Incomplete/conflicting RC2 package and missing authority decisions |
+| B01–B09 | `BLOCKED_BY_PREDECESSOR` | No implementation starts early |
+
+## RC2 control catalogue
+
+- 1,088 tasks are `NOT_STARTED`.
+- 1,496 verification rows are `NOT_RUN`.
+- All G-1…G9 gates are open.
+- The workbook is a catalogue/operator view, not an authoritative evidence engine.
+- Its static control `PASS` is invalid; broken references and vocabulary defects are recorded in
+  the conflict register.
+
+## Immediate next action
+
+Finish R00, open a PR, wait for CI/review, merge, and reproduce merged `main`.
+Then B00 remains in `SAFE_HOLD` until the complete RC2 source bundle and named decisions exist.
+Do not resume detector fan-out.
+

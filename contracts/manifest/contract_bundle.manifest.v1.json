@@ -1,5 +1,13 @@
 {
-  "artifacts": [
+  "artifact_sha256": "5189c78ae315850d0f2ab230dd4cb00ba6af693af2fec6e69f52e0c9c0dd3fe1",
+  "build_commit": "UNBOUND_DARK_BUILD",
+  "config_bundle_sha256": "fabdc1c16d4044a051c99d2b4230a6273ff5c899a53d7151cc384d6674c12297",
+  "contract_manifest_sha256": "5189c78ae315850d0f2ab230dd4cb00ba6af693af2fec6e69f52e0c9c0dd3fe1",
+  "emitted_at_us": 0,
+  "event_id": "contract_bundle_manifest_origin.contracts.1.0.0-RC1",
+  "event_kind": "CONTRACT_BUNDLE_MANIFEST",
+  "payload": {
+    "artifacts": [
     {
       "media_type": "application/schema+json",
       "path": "contracts/golden/triad.activation_manifest.v1/invalid.json",
@@ -457,6 +465,10 @@
     }
   ],
   "bundle_version": "origin.contracts.1.0.0-RC1",
-  "canonical_manifest_hash": "5189c78ae315850d0f2ab230dd4cb00ba6af693af2fec6e69f52e0c9c0dd3fe1",
-  "schema": "triad.contract_bundle.manifest.v1"
+  "canonical_manifest_hash": "5189c78ae315850d0f2ab230dd4cb00ba6af693af2fec6e69f52e0c9c0dd3fe1"
+  },
+  "producer_instance_id": "offline-build",
+  "producer_service": "contract-governance",
+  "schema": "triad.contract_bundle.manifest.v1",
+  "schema_version": "1.0.0"
 }

@@ -27,8 +27,10 @@ SHORTHAND = "ORIGIN"
 POSTURE = "DARK"  # DARK | READY_NO_AUTHORITY are the only postures this package can hold.
 ALLOW_MONEY_PUBLISH = False  # Enforced by capability/ACL, not merely this boolean (Doc 09 §09.4).
 
-# The three modes are a promotion ladder, not a venue switch (Doc 00 ADR-005).
-MODES = ("shadow", "paper", "live")
+# Production has exactly one venue mode (Doc 00 ADR-005). Replay and simulation are offline
+# harnesses; they are deliberately not production modes or venue switches.
+PRODUCTION_MODES = ("live",)
+OFFLINE_HARNESSES = ("replay", "simulation")
 
 __all__ = [
     "PRODUCT_NAME",
@@ -41,5 +43,6 @@ __all__ = [
     "SHORTHAND",
     "POSTURE",
     "ALLOW_MONEY_PUBLISH",
-    "MODES",
+    "PRODUCTION_MODES",
+    "OFFLINE_HARNESSES",
 ]

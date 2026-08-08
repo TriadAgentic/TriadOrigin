@@ -15,9 +15,16 @@ from __future__ import annotations
 import functools
 import json
 import pathlib
+import re
 from typing import Any
 
-_CONTRACTS_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / "contracts"
+_PACKAGE_CONTRACTS_DIR = pathlib.Path(__file__).resolve().parent / "_contracts"
+_SOURCE_CONTRACTS_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / "contracts"
+_CONTRACTS_DIR = (
+    _PACKAGE_CONTRACTS_DIR
+    if (_PACKAGE_CONTRACTS_DIR / "registry" / "index.json").is_file()
+    else _SOURCE_CONTRACTS_DIR
+)
 _SCHEMA_DIR = _CONTRACTS_DIR / "schemas"
 _REGISTRY = _CONTRACTS_DIR / "registry" / "index.json"
 
@@ -27,7 +34,7 @@ class ContractError(ValueError):
 
 
 class StaleEpochError(ContractError):
-    """A structurally valid payload carrying a lower/equal producer epoch than already accepted."""
+    """A structurally valid payload carrying a lower producer epoch than already accepted."""
 
 
 @functools.lru_cache(maxsize=1)
@@ -78,6 +85,19 @@ def _validate_fallback(schema: dict, event: dict) -> None:
         t = node_schema.get("type")
         if t and not _type_ok(t, value):
             raise ContractError(f"{path}: expected type {t}, got {type(value).__name__}")
+        if "minLength" in node_schema and isinstance(value, str):
+            minimum = node_schema["minLength"]
+            if len(value) < minimum:
+                raise ContractError(
+                    f"{path}: string length {len(value)} is below minLength {minimum}")
+        if "pattern" in node_schema and isinstance(value, str):
+            pattern = node_schema["pattern"]
+            try:
+                matched = re.search(pattern, value)
+            except re.error as exc:
+                raise ContractError(f"{path}: invalid schema pattern {pattern!r}") from exc
+            if matched is None:
+                raise ContractError(f"{path}: value {value!r} does not match pattern {pattern!r}")
         if t == "object" or "properties" in node_schema or "required" in node_schema:
             if not isinstance(value, dict):
                 if node_schema.get("additionalProperties") is False:
@@ -106,7 +126,7 @@ def _type_ok(t: str, value: Any) -> bool:
         "integer": isinstance(value, int),
         "number": isinstance(value, (int, float)),
         "boolean": isinstance(value, bool),
-        "array": isinstance(value, (list, tuple)),
+        "array": isinstance(value, list),
         "object": isinstance(value, dict),
         "null": value is None,
     }.get(t, True)
@@ -126,10 +146,30 @@ def validate(event: dict, *, schema_id: str | None = None) -> None:
     if declared is not None and schema_id is not None and declared != schema_id:
         raise ContractError(f"schema mismatch: envelope says {declared!r}, expected {schema_id!r}")
     schema = load_schema(sid)
+    _validate_against_schema(schema, event)
+
+
+def validate_payload(schema_id: str, payload: dict) -> None:
+    """Validate a payload builder against the pinned payload schema for ``schema_id``.
+
+    Builders that do not own envelope metadata still validate the bytes they do own before handing
+    them to an envelope producer.  This prevents a read-face or quarantine path from constructing a
+    payload that its declared contract can never carry.
+    """
+    schema = load_schema(schema_id)
+    payload_schema = schema.get("properties", {}).get("payload")
+    if not isinstance(payload_schema, dict):
+        raise ContractError(f"contract {schema_id!r} has no object payload schema")
+    if not isinstance(payload, dict):
+        raise ContractError("payload must be a JSON object")
+    _validate_against_schema(payload_schema, payload)
+
+
+def _validate_against_schema(schema: dict, value: Any) -> None:
     try:
-        _validate_jsonschema(schema, event)
+        _validate_jsonschema(schema, value)
     except ModuleNotFoundError:
-        _validate_fallback(schema, event)
+        _validate_fallback(schema, value)
 
 
 def is_valid(event: dict, *, schema_id: str | None = None) -> bool:
@@ -144,8 +184,8 @@ def is_valid(event: dict, *, schema_id: str | None = None) -> bool:
 def assert_epoch_ge(event: dict, highest_accepted: int) -> int:
     """Fencing check at a consuming authority boundary (Doc 03 §03.9, Doc 04 §04.16).
 
-    Returns the new highest accepted epoch. Raises ``StaleEpochError`` if the event epoch is not
-    strictly greater than ``highest_accepted`` — clock ordering never beats fencing.
+    Returns the current highest accepted epoch. The active epoch may emit any number of events;
+    only a lower epoch is stale. A newly promoted producer still needs a strictly higher epoch.
     """
     raw = event.get("producer_epoch")
     if raw is None:
@@ -154,10 +194,10 @@ def assert_epoch_ge(event: dict, highest_accepted: int) -> int:
         epoch = int(raw)
     except (TypeError, ValueError) as exc:
         raise StaleEpochError(f"producer_epoch not a decimal integer: {raw!r}") from exc
-    if epoch <= highest_accepted:
+    if epoch < highest_accepted:
         raise StaleEpochError(
-            f"stale producer_epoch {epoch} <= highest accepted {highest_accepted}")
-    return epoch
+            f"stale producer_epoch {epoch} < highest accepted {highest_accepted}")
+    return max(epoch, highest_accepted)
 
 
 def assert_no_forbidden_candidate_fields(event: dict) -> None:

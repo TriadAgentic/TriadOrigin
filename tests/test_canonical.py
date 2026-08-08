@@ -28,6 +28,13 @@ def test_rejects_nan_and_infinity():
             C.canonical_json({"x": bad})
 
 
+def test_rejects_finite_floats_on_encode_and_decode():
+    with pytest.raises(C.CanonicalError):
+        C.canonical_json({"x": 1.0})
+    with pytest.raises(C.CanonicalError):
+        C.loads_canonical('{"x":1.0}')
+
+
 def test_loads_rejects_duplicate_keys():
     with pytest.raises(C.CanonicalError):
         C.loads_canonical('{"a":1,"a":2}')

@@ -54,29 +54,65 @@ class PartitionCoordinator:
 
 
 def deterministic_order(events: list[dict]) -> list[dict]:
-    """Order events within a partition by (venue_sequence, receive_sequence, local receipt).
+    """Order by recorded local receipt, with sequence numbers scoped to their source.
 
-    Cross-connection events have no fabricated total exchange order; this preserves the
-    source-specific venue sequence and the recorded local receipt order as the tie-break.
+    Sequence values from different connections are incomparable. Local monotonic receipt is the
+    cross-source order; source identity and receive sequence only break an equal-receipt tie. A
+    receive-sequence regression within one source is rejected instead of silently fabricating a
+    causal order.
     """
     def _key(e: dict) -> tuple:
+        body = _event_body(e)
         return (
-            _as_int(e.get("venue_sequence"), default=0),
-            _as_int(e.get("receive_sequence"), default=0),
-            _as_int(e.get("local_receipt_mono_ns"), default=0),
-            str(e.get("raw_event_id", "")),
+            _required_int(body, "local_receipt_mono_ns"),
+            _source_key(body),
+            _required_int(body, "receive_sequence"),
+            str(_required(body, "raw_event_id")),
         )
 
-    return sorted(events, key=_key)
+    ordered = sorted(events, key=_key)
+    last_receive: dict[tuple[str, str, str, int], int] = {}
+    for event in ordered:
+        body = _event_body(event)
+        source = _source_key(body)
+        receive = _required_int(body, "receive_sequence")
+        prior = last_receive.get(source)
+        if prior is not None and receive <= prior:
+            raise PartitionError(
+                f"receive_sequence regression for source {source}: {receive} <= {prior}")
+        last_receive[source] = receive
+    return ordered
 
 
-def _as_int(v, default: int) -> int:
-    if v is None:
-        return default
+def _event_body(event: dict) -> dict:
+    payload = event.get("payload")
+    return payload if isinstance(payload, dict) else event
+
+
+def _required(body: dict, name: str):
+    value = body.get(name)
+    if value is None or value == "":
+        raise PartitionError(f"event missing required ordering field {name!r}")
+    return value
+
+
+def _required_int(body: dict, name: str) -> int:
+    value = _required(body, name)
+    if isinstance(value, bool):
+        raise PartitionError(f"ordering field {name!r} is not an integer: {value!r}")
     try:
-        return int(v)
-    except (TypeError, ValueError):
-        return default
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise PartitionError(f"ordering field {name!r} is not an integer: {value!r}") from exc
+
+
+def _source_key(body: dict) -> tuple[str, str, str, int]:
+    return (
+        str(_required(body, "venue")),
+        str(_required(body, "route_family")),
+        str(_required(body, "source_stream")),
+        _required_int(body, "connection_epoch"),
+    )
 
 
 # --- E01 partition input-quality machine (Doc 04 §04.3) ------------------------------------------

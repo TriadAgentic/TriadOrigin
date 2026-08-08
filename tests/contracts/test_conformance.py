@@ -61,3 +61,23 @@ def test_fallback_validator_agrees(schema_id, monkeypatch):
 def test_unknown_schema_fails_closed():
     with pytest.raises(contracts.ContractError):
         contracts.validate({"schema": "triad.does_not_exist.v9", "payload": {}})
+
+
+@pytest.mark.parametrize(
+    ("schema_id", "mutate"),
+    [
+        (
+            "triad.edge_candidate.v2",
+            lambda event: event["payload"].__setitem__("entry_reference_ticks", "01"),
+        ),
+        (
+            "triad.edge_candidate.v2",
+            lambda event: event.__setitem__("producer_service", ""),
+        ),
+    ],
+)
+def test_fallback_enforces_declared_pattern_and_min_length(schema_id, mutate):
+    event = _load(schema_id, "valid")
+    mutate(event)
+    with pytest.raises(contracts.ContractError):
+        contracts._validate_fallback(contracts.load_schema(schema_id), event)

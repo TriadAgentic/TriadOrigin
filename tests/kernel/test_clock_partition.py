@@ -50,14 +50,42 @@ def test_single_writer_lock():
         coord.next_seq(key, "writer_b")
 
 
-def test_deterministic_order_by_venue_then_receipt():
+def _ordered_event(raw_id, *, source, connection, receive, receipt):
+    return {
+        "raw_event_id": raw_id,
+        "venue": "BINANCE_USDM",
+        "route_family": "PUBLIC",
+        "source_stream": source,
+        "connection_epoch": connection,
+        "receive_sequence": receive,
+        "local_receipt_mono_ns": receipt,
+    }
+
+
+def test_cross_source_order_preserves_local_receipt():
     events = [
-        {"raw_event_id": "c", "venue_sequence": 3, "receive_sequence": 1},
-        {"raw_event_id": "a", "venue_sequence": 1, "receive_sequence": 9},
-        {"raw_event_id": "b", "venue_sequence": 2, "receive_sequence": 0},
+        _ordered_event("later-b", source="book-b", connection=8, receive=1, receipt=20),
+        _ordered_event("first-a", source="book-a", connection=7, receive=100, receipt=10),
     ]
     ordered = [e["raw_event_id"] for e in P.deterministic_order(events)]
-    assert ordered == ["a", "b", "c"]
+    assert ordered == ["first-a", "later-b"]
+
+
+def test_equal_receipt_uses_sequence_only_within_source():
+    events = [
+        _ordered_event("two", source="book-a", connection=7, receive=2, receipt=10),
+        _ordered_event("one", source="book-a", connection=7, receive=1, receipt=10),
+    ]
+    assert [e["raw_event_id"] for e in P.deterministic_order(events)] == ["one", "two"]
+
+
+def test_source_sequence_regression_fails_closed():
+    events = [
+        _ordered_event("two", source="book-a", connection=7, receive=2, receipt=10),
+        _ordered_event("one", source="book-a", connection=7, receive=1, receipt=20),
+    ]
+    with pytest.raises(P.PartitionError):
+        P.deterministic_order(events)
 
 
 def test_quality_machine_paths():

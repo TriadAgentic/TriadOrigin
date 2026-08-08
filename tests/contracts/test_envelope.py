@@ -38,14 +38,14 @@ def test_environment_enum_forbids_testnet():
         contracts.validate(ev)
 
 
-def test_epoch_fencing_is_strictly_monotonic():
+def test_epoch_fencing_accepts_current_and_rejects_lower():
     ev = _valid("triad.edge_candidate.v2")
     ev["producer_epoch"] = "42"
     assert contracts.assert_epoch_ge(ev, 41) == 42
+    assert contracts.assert_epoch_ge(ev, 42) == 42  # current producer emits many events
+    ev["producer_epoch"] = "41"
     with pytest.raises(contracts.StaleEpochError):
-        contracts.assert_epoch_ge(ev, 42)  # equal is not greater
-    with pytest.raises(contracts.StaleEpochError):
-        contracts.assert_epoch_ge(ev, 100)
+        contracts.assert_epoch_ge(ev, 42)
 
 
 def test_authority_event_without_epoch_is_rejected():

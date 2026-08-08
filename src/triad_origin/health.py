@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from . import ALLOW_MONEY_PUBLISH, SERVICE_ID
+from . import ALLOW_MONEY_PUBLISH, SERVICE_ID, contracts
 
 
 class Readiness(str, Enum):
@@ -20,7 +20,6 @@ class Readiness(str, Enum):
     STARTING = "STARTING"
     WARMING = "WARMING"
     READY_NO_AUTHORITY = "READY_NO_AUTHORITY"
-    READY_AUTHORITATIVE = "READY_AUTHORITATIVE"
     DRAINING = "DRAINING"
     STOPPED = "STOPPED"
     FAILED = "FAILED"
@@ -32,15 +31,13 @@ def compute_readiness(
     warmup_complete: bool,
     checkpoint_parity: bool,
     ledgers_writable: bool,
-    lease_active: bool,
 ) -> Readiness:
-    """Derive the readiness posture from the semantic preconditions. Fail closed / dark-first."""
+    """Derive readiness for the current DARK baseline; authority is not implemented here."""
     if not (manifest_ok and ledgers_writable):
         return Readiness.STARTING
     if not (warmup_complete and checkpoint_parity):
         return Readiness.WARMING
-    # A healthy warm process holds authority ONLY with an active scoped lease; otherwise it is dark.
-    return Readiness.READY_AUTHORITATIVE if lease_active else Readiness.READY_NO_AUTHORITY
+    return Readiness.READY_NO_AUTHORITY
 
 
 def build_service_heartbeat(
@@ -48,20 +45,23 @@ def build_service_heartbeat(
     partition_offsets: dict,
     watermark: dict,
     warmup_status: str,
-    quality: str,
+    quality: dict,
     lease_state: str,
 ) -> dict:
     """A ``service_heartbeat.v1`` payload. ``side_effect_capability`` is zero for a dark process."""
-    return {
+    if ALLOW_MONEY_PUBLISH:
+        raise RuntimeError("constitutional breach: ORIGIN cannot advertise money authority")
+    payload = {
         "service_id": SERVICE_ID,
         "partition_offsets": partition_offsets,
         "watermark": watermark,
         "warmup_status": warmup_status,
         "quality": quality,
         "lease_state": lease_state,
-        # ORIGIN publishes structures/candidates/evidence only; it can never place money.
-        "side_effect_capability": {"money": bool(ALLOW_MONEY_PUBLISH), "candidate_authority": lease_state == "ACTIVE"},
+        "side_effect_capability": "NONE",
     }
+    contracts.validate_payload("triad.service_heartbeat.v1", payload)
+    return payload
 
 
 def build_engine_attestation(

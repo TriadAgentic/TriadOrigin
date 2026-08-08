@@ -21,8 +21,10 @@ def main() -> int:
         return 1
     on_disk = json.loads(MANIFEST_JSON.read_text(encoding="utf-8"))
     recomputed = build_manifest()
+    on_payload = on_disk.get("payload", {})
+    expected_payload = recomputed["payload"]
 
-    disk_paths = {a["path"] for a in on_disk["artifacts"]}
+    disk_paths = {a["path"] for a in on_payload.get("artifacts", [])}
     actual_paths = {str(p.relative_to(ROOT)) for p in bundle_files()}
     problems = []
 
@@ -31,21 +33,23 @@ def main() -> int:
     for missing in sorted(disk_paths - actual_paths):
         problems.append(f"manifest references missing file: {missing}")
 
-    disk_by_path = {a["path"]: a["sha256"] for a in on_disk["artifacts"]}
-    new_by_path = {a["path"]: a["sha256"] for a in recomputed["artifacts"]}
+    disk_by_path = {a["path"]: a["sha256"] for a in on_payload.get("artifacts", [])}
+    new_by_path = {a["path"]: a["sha256"] for a in expected_payload["artifacts"]}
     for path in sorted(disk_paths & actual_paths):
         if disk_by_path[path] != new_by_path.get(path):
             problems.append(f"byte change without manifest update: {path}")
 
-    if on_disk.get("canonical_manifest_hash") != recomputed["canonical_manifest_hash"]:
+    if on_payload.get("canonical_manifest_hash") != expected_payload["canonical_manifest_hash"]:
         problems.append("canonical_manifest_hash is stale")
+    if on_disk != recomputed:
+        problems.append("contract manifest envelope or deterministic metadata drift")
 
     if problems:
         for p in problems:
             print(f"FAIL: {p}", file=sys.stderr)
         return 1
-    print(f"OK: {len(recomputed['artifacts'])} artifacts match manifest "
-          f"({recomputed['canonical_manifest_hash'][:16]}...)")
+    print(f"OK: {len(expected_payload['artifacts'])} artifacts match manifest "
+          f"({expected_payload['canonical_manifest_hash'][:16]}...)")
     return 0
 
 

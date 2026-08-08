@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://triad.internal/schemas/origin.milestone_receipt.v1.schema.json",
+  "title": "TRIAD ORIGIN milestone receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "receipt_id",
+    "milestone_id",
+    "scope",
+    "spec_bundle_sha256",
+    "base_sha",
+    "head_sha",
+    "merge_sha",
+    "ci",
+    "tests",
+    "manifests",
+    "negative_capability",
+    "review",
+    "post_merge",
+    "status"
+  ],
+  "properties": {
+    "schema": {"const": "origin.milestone_receipt.v1"},
+    "receipt_id": {"type": "string", "minLength": 1},
+    "milestone_id": {"type": "string", "pattern": "^(R|B)[0-9]{2}$"},
+    "scope": {"type": "string", "minLength": 1},
+    "spec_bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "base_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "head_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "merge_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "ci": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "run_id", "head_sha", "conclusion"],
+      "properties": {
+        "provider": {"const": "github-actions"},
+        "run_id": {"type": "string", "minLength": 1},
+        "head_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "conclusion": {"const": "success"}
+      }
+    },
+    "tests": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "exit_code", "result_sha256"],
+        "properties": {
+          "command": {"type": "string", "minLength": 1},
+          "exit_code": {"const": 0},
+          "result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "skips": {"type": "integer", "minimum": 0},
+          "xfails": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "manifests": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+    },
+    "negative_capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scanner", "result_sha256", "forbidden_hits"],
+      "properties": {
+        "scanner": {"type": "string", "minLength": 1},
+        "result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "forbidden_hits": {"const": 0}
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unresolved_actionable_threads", "reviewer"],
+      "properties": {
+        "unresolved_actionable_threads": {"const": 0},
+        "reviewer": {"type": "string", "minLength": 1}
+      }
+    },
+    "post_merge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fresh_main_sha", "reproduced", "result_sha256"],
+      "properties": {
+        "fresh_main_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "reproduced": {"const": true},
+        "result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "supersedes": {"type": ["string", "null"]},
+    "status": {"const": "VERIFIED"}
+  }
+}

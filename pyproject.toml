@@ -9,13 +9,18 @@ description = "TRIAD ORIGIN V7 — Deterministic Causal Edge Core (E02 replaceme
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary — TRIAD estate internal" }
-# Runtime is stdlib-only by design (deterministic, self-contained CI).
-# PyYAML is used only for reading signed config artifacts.
-dependencies = ["PyYAML>=6.0"]
+# Runtime is stdlib-only. Signed-config parsing/verification remains blocked by B00 and must not
+# add a dependency or hidden trust policy before that control surface is ratified.
+dependencies = []
 
 [project.optional-dependencies]
 # Test/validation tooling only. Runtime code never imports these on the money path.
-test = ["pytest>=8", "jsonschema>=4.20"]
+test = [
+  "pytest>=8",
+  "jsonschema>=4.20",
+  "setuptools>=68",
+  "wheel>=0.43",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

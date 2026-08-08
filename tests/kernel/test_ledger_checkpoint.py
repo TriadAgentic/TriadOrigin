@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from triad_origin import checkpoint as cp
@@ -85,5 +87,42 @@ def test_checkpoint_tamper_fails_closed(tmp_path):
     cp.save(path, cp.Checkpoint(partition="p", state={"x": 1}, input_offset=0))
     text = path.read_text().replace('"x":1', '"x":2')
     path.write_text(text)
+    with pytest.raises(cp.CheckpointError):
+        cp.load(path)
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda raw: raw.__setitem__("partition", "other"),
+        lambda raw: raw.__setitem__("input_offset", 999),
+        lambda raw: raw.__setitem__("digests", {"build": "changed"}),
+        lambda raw: raw.__setitem__("identity_schema_version", "origin.checkpoint.v999"),
+    ],
+)
+def test_checkpoint_replay_metadata_tamper_fails_closed(tmp_path, mutate):
+    path = tmp_path / "part.checkpoint"
+    cp.save(
+        path,
+        cp.Checkpoint(
+            partition="p",
+            state={"x": 1},
+            input_offset=7,
+            digests={"build": "original"},
+        ),
+    )
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    mutate(raw)
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(cp.CheckpointError):
+        cp.load(path)
+
+
+def test_checkpoint_missing_integrity_metadata_fails_closed(tmp_path):
+    path = tmp_path / "part.checkpoint"
+    cp.save(path, cp.Checkpoint(partition="p", state={"x": 1}, input_offset=7))
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw.pop("input_offset")
+    path.write_text(json.dumps(raw), encoding="utf-8")
     with pytest.raises(cp.CheckpointError):
         cp.load(path)
