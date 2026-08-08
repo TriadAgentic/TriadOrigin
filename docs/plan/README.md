@@ -68,7 +68,14 @@ exception: it may change only the failed receipt/package path and the evidence l
 the corrective chain honestly. The exception expires only when the corrective receipt is sealed.
 B00 onward requires any semantic spec/scope change to merge in a prior, separate PR.
 
-For R00 specifically, PR #4 and PR #7 threads close before their respective merges; the 14 inherited
-PR #1–#3 threads closed post-PR #4 merge after their replies could cite the actual squash SHA and
-receipt path. The final receipt inventories PRs #1–#4 and #7, as controlled by
+For R00 specifically, PR #4 threads closed before its merge. Corrective PR #7's observed actionable
+roots—including `3741593887`—must be named, fixed, replied to, and resolved; two complete live
+GraphQL snapshots must equal the persisted root/resolution/reply inventory and the reviewed
+immutable root manifest. The complete PR #7 review list is likewise fetched twice; a current
+`CHANGES_REQUESTED`, later pre-merge review, or unbound post-merge review blocks closure. Its final
+exact-head Codex acceptance must have no findings, and PR #7 remains blocked until the authentic
+clean-result shape (review object or documented 👍 reaction) is observed and head-bound without
+fabrication. The 14 inherited PR #1–#3 threads closed post-PR #4 merge
+after their replies could cite the actual squash SHA and receipt path. The final receipt inventories
+PRs #1–#4 and #7, as controlled by
 [`00_MASTER_PLAN.md`](00_MASTER_PLAN.md) and [`07_REVIEW_REMEDIATION.md`](07_REVIEW_REMEDIATION.md).

@@ -22,6 +22,21 @@ def test_ci_actions_are_sha_pinned_and_solver_uses_committed_constraints():
     assert 'PYTHONHASHSEED: "0"' in workflow
     assert 'PYTHONHASHSEED: "1"' in workflow
     assert workflow.count("run: python -m pytest") == 2
+    assert "pull-requests: read" in workflow
+    assert "actions: read" in workflow
+    assert "contents: read" in workflow
+    assert "fetch-depth: 2" in workflow
+    assert "ref: ${{ github.head_ref || github.sha }}" in workflow
+    assert "name: Checkout exact head" in workflow
+    assert "name: Set up Python 3.11" in workflow
+    assert "hashFiles('evidence/receipts/R00.json')" in workflow
+    assert "github.head_ref == 'evidence/r00-receipt'" in workflow
+    assert "github.event_name == 'pull_request'" in workflow
+    assert "GITHUB_TOKEN: ${{ github.token }}" in workflow
+    assert (
+        "run: python tools/validate_milestone_receipt.py "
+        "evidence/receipts/R00.json"
+    ) in workflow
 
 
 def test_ci_constraint_snapshot_is_exact_and_unique():

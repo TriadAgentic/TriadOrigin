@@ -19,14 +19,28 @@ R00 owns all unresolved actionable findings from PRs #1–#3.
 | OPS traceability | #3 | P2 | Map build, service, replay smoke, soak, ACL, rollback/DR work | `02_TRACEABILITY.md` |
 | Receipt artifact closure | #7 | P1 | Include the reviewed dependency snapshot in the sdist and bind the corrective merge/review chain honestly | Real sdist + semantic receipt validation |
 
-Old threads remain open until the corrective PR contains the fix and exact evidence. After merge,
-each receives a reference to the correcting commit/receipt and is resolved.
+The 14 inherited threads remained open through PR #4's pre-merge gate. After that merge, each
+received a thread-specific reply citing squash `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed`
+and `evidence/receipts/R00.json`, and all 14 were resolved. PR #4's six current threads were also
+resolved and later received the same post-merge closure reference.
 
-This post-merge closure is deliberate: PR #4 must have zero unresolved actionable threads before
-merge, while the inherited PR #1–#3 threads remain open until their reply can name the actual squash
-SHA and `evidence/receipts/R00.json`. The receipt binds both populations and their API resolution
-state; it does not pretend the inherited threads closed before that evidence existed.
+This sequencing was deliberate: PR #4 had zero unresolved actionable current threads before merge,
+while the inherited PR #1–#3 threads could close only after their replies could name the actual
+squash SHA and receipt path. The receipt binds both populations and their actual API resolution
+state; it does not rewrite when or against which merge those historical replies closed.
 
 PR #4's first post-merge receipt attempt failed closed on the sdist/dependency-snapshot mismatch.
-PR #7 is the only authorized corrective continuation. Its own actionable threads must close before
-merge, and the sealed review export covers PRs #1–#4 and #7 without altering the historical states.
+PR #7 is the only authorized corrective continuation. Adversarial review created actionable root
+`3741593887`; this reviewed plan therefore names it instead of erasing history. Every observed PR #7
+root must enter the controlled set, be fixed/replied/resolved before merge, and receive an
+authenticated post-merge closure reply citing the corrective squash and receipt path. The sealer
+compares two complete live GraphQL snapshots against every persisted PR #1–#4/#7 root, resolution,
+and selected reply; a reviewed immutable root manifest also pins every original finding's text,
+author, path, IDs, and URL. Incomplete pagination, edited roots, or any mismatch fails closed. The
+sealer twice fetches the complete PR #7 top-level review inventory and rejects every current
+`CHANGES_REQUESTED`, every review after the selected pre-merge acceptance, and every post-merge
+review not carried solely by an authenticated canonical closure reply. The final exact-head Codex
+acceptance must itself have zero findings. PR #7 must not merge until the service's authentic clean
+artifact is observed; a 👍-only result requires a separately reviewed exact-head reaction binding
+rather than an invented empty review object. The sealed export preserves historical states and does
+not relabel PR #4 as the accepted corrective merge.

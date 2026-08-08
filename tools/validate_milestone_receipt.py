@@ -18,8 +18,11 @@ import sys
 import tarfile
 import tempfile
 import tomllib
+import urllib.error
+import urllib.request
 import zipfile
-from typing import Any
+from datetime import datetime
+from typing import Any, Callable
 
 import jsonschema
 
@@ -37,9 +40,25 @@ R00_REQUIRED_COMMANDS = [
     "python tools/test_wheel_install.py",
     "python tools/verify_no_forbidden_capabilities.py",
 ]
+R00_REQUIRED_CI_STEPS = [
+    ("Checkout exact head", "success"),
+    ("Bind checks to exact event head", "success"),
+    ("Set up Python 3.11", "success"),
+    ("Install test toolchain", "success"),
+    ("Falsification suite", "success"),
+    ("Hash-order invariance", "success"),
+    ("Exact pytest collection identity", "success"),
+    ("Contract byte manifest", "success"),
+    ("Contract manifest schema", "success"),
+    ("Reproducible source and wheel artifacts", "success"),
+    ("Installed-wheel contract smoke", "success"),
+    ("DARK capability boundary", "success"),
+    ("Authenticate sealed milestone receipt", "skipped"),
+]
 R00_REQUIRED_ARTIFACT_KINDS = {"source-tree", "sdist", "wheel"}
 R00_REQUIRED_MANIFESTS = {
-    "contracts", "golden_vectors", "test_collection", "test_collection_log"
+    "contracts", "failed_attempt", "golden_vectors", "test_collection",
+    "test_collection_log",
 }
 R00_REQUIRED_DEFERRALS = {
     "branch-ruleset": "B00",
@@ -69,8 +88,254 @@ R00_KNOWN_PR4_THREADS = {
 }
 R00_RECEIPT_PR = 7
 R00_REVIEW_PRS = {1, 2, 3, 4, R00_RECEIPT_PR}
-# Populated before the corrective head may merge if PR #7 receives inline findings.
-R00_KNOWN_PR7_THREADS: set[str] = set()
+R00_PR_AUTHOR = "likosubakti"
+R00_REQUIRED_REVIEWER = "chatgpt-codex-connector"
+R00_IMPLEMENTATION_MERGE_SHA = "241b301d1144e3e2a0a15f4bfe9ffef5b51068ed"
+R00_IMPLEMENTATION_BASE_SHA = "69dfd7245fb462992f17e4af06e6746ac2f9d2f0"
+R00_IMPLEMENTATION_HEAD_SHA = "b66a95ca84b8660e26c6ff12b3af73cb32aebc04"
+R00_IMPLEMENTATION_TREE_SHA = "049c9186b34ded7ad664499249d733af57931fd1"
+R00_IMPLEMENTATION_REVIEW_ID = "4889614037"
+R00_IMPLEMENTATION_REVIEWER = "likosubakti"
+R00_IMPLEMENTATION_REVIEW_URL = (
+    "https://github.com/TriadAgentic/TriadOrigin/pull/4"
+    f"#pullrequestreview-{R00_IMPLEMENTATION_REVIEW_ID}"
+)
+R00_IMPLEMENTATION_REVIEW_BODY = (
+    f"R00_REVIEW_VERDICT: PASS\nHEAD: {R00_IMPLEMENTATION_HEAD_SHA}\nP0: 0\nP1: 0\n"
+)
+R00_FAILED_ATTEMPT = {
+    "base_sha": R00_IMPLEMENTATION_BASE_SHA,
+    "ci_job_id": "93149756437",
+    "ci_run_id": "31276105452",
+    "corrective_pr": 7,
+    "failure_code": "SDIST_MISSING_CONSTRAINT_SNAPSHOT",
+    "head_sha": R00_IMPLEMENTATION_HEAD_SHA,
+    "merge_sha": R00_IMPLEMENTATION_MERGE_SHA,
+    "pr_number": 4,
+    "receipt_published": False,
+    "schema": "origin.failed-attempt-evidence.v1",
+    "sdist_sha256": "4b4a0d0fcd731587ed16aa815bd7208bbfd8a48d6aeb97694a5efd120666eb3b",
+    "status": "REJECTED_NO_RECEIPT",
+    "tree_sha": R00_IMPLEMENTATION_TREE_SHA,
+}
+# Exact corrective-review roots observed before the final head. Every row must be live-resolved.
+R00_KNOWN_PR7_THREADS: set[str] = {"3741593887"}
+
+# Immutable pre-merge review-root manifest. The full finding text is source-reviewed here
+# so a post-merge export cannot legitimize an edited or substituted finding.
+R00_REVIEWED_ROOTS: dict[str, dict[str, str | int]] = {
+    "3740889446": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Accept additional events from the current fencing epoch**\n\nWhen a producer emits more than one event under the same active lease, the consumer stores the first event's epoch as `highest_accepted`, after which this `<=` check rejects every subsequent legitimate event from that producer. Doc 03 §03.9 specifies rejecting lower tokens while accepting the current token; only a newly promoted producer needs a strictly higher token.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/contracts.py",
+        "pr_number": 1,
+        "review_id": "4889010117",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-XFm",
+        "thread_node_id": "PRRT_kwDOTyUBrM6Xeuh7",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/1#discussion_r3740889446",
+    },
+    "3740889448": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Enforce schema patterns in the stdlib validation path**\n\nIn a normal runtime installation `jsonschema` is absent because it is only a test extra, so this fallback is the default validation path, but it ignores constraints such as `pattern` and `minLength`. Consequently money-path events such as an execution command with `qty_steps: \"1.5\"` or a fill with `price_ticks: \"01\"` pass `validate()` despite violating their schemas and the canonical integer law; the fallback must enforce these constraints or `jsonschema` must be a runtime dependency.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/contracts.py",
+        "pr_number": 1,
+        "review_id": "4889010117",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-XFo",
+        "thread_node_id": "PRRT_kwDOTyUBrM6Xeuh9",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/1#discussion_r3740889448",
+    },
+    "3740889449": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Emit the contract manifest in its declared envelope**\n\nThe generated artifact declares `triad.contract_bundle.manifest.v1` but places bundle fields at the root and omits the common envelope and `payload` required by that schema. Validating the committed manifest currently fails immediately with `missing required field 'artifact_sha256'`, so any service consuming the published manifest through the contract validator cannot start or attest the bundle; generate the required envelope or use a separate schema for this artifact shape.\n\nUseful? React with 👍 / 👎.",
+        "path": "tools/gen_manifest.py",
+        "pr_number": 1,
+        "review_id": "4889010117",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-XFp",
+        "thread_node_id": "PRRT_kwDOTyUBrM6Xeuh-",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/1#discussion_r3740889449",
+    },
+    "3740889452": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Include contract artifacts in installed distributions**\n\nThis repository-relative path works for an editable checkout, but a wheel places `triad_origin` under `site-packages` while the root-level `contracts/` tree is not included by the package-only setuptools configuration. In a normal wheel installation `_REGISTRY.exists()` is therefore false and every `known_contracts()` or `validate()` call fails; package the contract data and resolve it as an installed resource.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/contracts.py",
+        "pr_number": 1,
+        "review_id": "4889010117",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-XFs",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XeuiA",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/1#discussion_r3740889452",
+    },
+    "3740889453": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject finite floats from the integer-only canonical wire**\n\nWhen an identity payload contains a finite float, this branch permits it even though the module's canonical-wire law specifies integer JSON numbers. It consequently encodes mathematically equivalent inputs such as `1` and `1.0` as different bytes and different identity digests, while also permitting semantic calculations to leak floats onto the wire; reject floats or define and enforce an explicit canonical float representation.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/canonical.py",
+        "pr_number": 1,
+        "review_id": "4889010117",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-XFt",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XeuiB",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/1#discussion_r3740889453",
+    },
+    "3740901367": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Allow subsequent events under the active producer epoch**\n\nWhen a producer emits multiple authoritative events under one lease, every event carries the same fencing epoch. After the first event updates `_epoch[scope]`, this call rejects all later events because `assert_epoch_ge` requires a strictly greater value, effectively limiting each lease to one accepted event. Equality should be accepted for ordinary writes from the currently authorized epoch while lower or revoked epochs remain fenced.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/ingress.py",
+        "pr_number": 2,
+        "review_id": "4889021032",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-Z_3",
+        "thread_node_id": "PRRT_kwDOTyUBrM6Xewk6",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/2#discussion_r3740901367",
+    },
+    "3740901373": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Include replay metadata in the checkpoint integrity check**\n\nThe checksum covers only `state`, so corruption or modification of `input_offset`, `partition`, `digests`, or `identity_schema_version` still passes `load()`. In particular, a changed input offset makes `replay()` silently skip the wrong prefix, while changed digests can misrepresent the build/config used for the state; the integrity check must authenticate the replay-controlling metadata as well as the state.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/checkpoint.py",
+        "pr_number": 2,
+        "review_id": "4889021032",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-Z_9",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XewlA",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/2#discussion_r3740901373",
+    },
+    "3740901374": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Preserve receipt order across independent connections**\n\nFor events from different connection epochs or source streams, `venue_sequence` and `receive_sequence` are not globally comparable, yet this key sorts those values before the recorded local receipt time and does not include connection identity. For example, an event received first on connection A with sequence 100 is moved after a later event on connection B with sequence 1, fabricating a cross-connection order and changing causal replay results; sequence ordering must be scoped to its source, with local receipt order preserved across sources.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/partition.py",
+        "pr_number": 2,
+        "review_id": "4889021032",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-Z_-",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XewlB",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/2#discussion_r3740901374",
+    },
+    "3740901377": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Keep revoked scopes closed until a lease is accepted**\n\nAfter `revoke(scope)`, any message carrying an arbitrary token greater than the previously accepted value passes this branch even though no replacement lease has been validated. This lets writes bypass revocation merely by guessing a higher token; a revoked scope should reject every write until `accept()` validates an active higher-token lease and clears the revoked state.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/lease.py",
+        "pr_number": 2,
+        "review_id": "4889021032",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-aAB",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XewlD",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/2#discussion_r3740901377",
+    },
+    "3740901381": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Emit a contract-valid heartbeat capability value**\n\nWhenever this payload is inserted into a `triad.service_heartbeat.v1` envelope, contract validation rejects it because that schema defines `payload.side_effect_capability` as a string while the builder always returns an object. Consequently the new health read-face cannot publish its documented heartbeat through the repository's contract boundary; the builder and pinned contract need to agree on one representation.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/health.py",
+        "pr_number": 2,
+        "review_id": "4889021032",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-aAF",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XewlF",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/2#discussion_r3740901381",
+    },
+    "3740901383": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Serialize quarantine raw references according to the contract**\n\nOn every rejected input, this constructs `raw_reference` as an object, but `triad.quarantine_record.v1` requires that payload field to be a string. Wrapping the returned record in its declared quarantine envelope therefore fails validation precisely on the rejection path, preventing invalid input from producing publishable quarantine evidence.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/ingress.py",
+        "pr_number": 2,
+        "review_id": "4889021032",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-aAH",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XewlH",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/2#discussion_r3740901383",
+    },
+    "3740938956": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Remove paper from the production promotion ladder**\n\nThis sentence directly contradicts the preceding release-blocking rule and ADR-005: production is LIVE-only, while paper/replay/simulation must remain separate offline research harnesses. Treating `shadow/paper/live` as three runtime modes can lead M5 configuration and service wiring to preserve the P0-forbidden paper production mode instead of retiring it.\n\nUseful? React with 👍 / 👎.",
+        "path": "docs/plan/00_MASTER_PLAN.md",
+        "pr_number": 3,
+        "review_id": "4889056077",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-jLM",
+        "thread_node_id": "PRRT_kwDOTyUBrM6Xe3Il",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/3#discussion_r3740938956",
+    },
+    "3740938960": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Keep the lease coordinator work open**\n\nMarking SRV-024 complete removes its P0 control-plane work from every later milestone, but the checked M2 implementation is only an in-process `LeaseCoordinator`: its `_highest` and `_active` dictionaries reset on restart, issuance is not coordinated across processes, and it does not write the permanent DAT-008 fencing/audit ledger that this plan also marks complete on line 65. A restart or two coordinator instances can therefore reuse the same token, so the plan must retain ownership for a durable, race-safe Platform lease service/store.\n\nUseful? React with 👍 / 👎.",
+        "path": "docs/plan/02_TRACEABILITY.md",
+        "pr_number": 3,
+        "review_id": "4889056077",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-jLQ",
+        "thread_node_id": "PRRT_kwDOTyUBrM6Xe3Ip",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/3#discussion_r3740938960",
+    },
+    "3740938963": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Assign the omitted OPS inventory items**\n\nThe advertised traceability is incomplete: a repo-wide search of `docs/plan` finds no `OPS-*` mapping at all, and the milestone deliverables do not assign required work such as the immutable build artifact (OPS-001), dedicated service definition (OPS-004), post-deploy replay smoke (OPS-006), or 26-hour ingress soak (OPS-009). Because this document says milestone scope is fixed, those inventory items can silently remain unimplemented when M6 is declared complete; map them to a milestone or explicitly defer/block each one.\n\nUseful? React with 👍 / 👎.",
+        "path": "docs/plan/README.md",
+        "pr_number": 3,
+        "review_id": "4889056077",
+        "root_node_id": "PRRC_kwDOTyUBrM7e-jLT",
+        "thread_node_id": "PRRT_kwDOTyUBrM6Xe3Is",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/3#discussion_r3740938963",
+    },
+    "3741134194": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Version the expanded checkpoint checksum**\n\nAny checkpoint written before this change stores a checksum of `state` only, but `load()` now recomputes it over all integrity material while the format remains `origin.checkpoint.v1`. Consequently, deploying this version with an existing checkpoint always raises `CheckpointError` and prevents warm restore; either introduce a new checkpoint version with explicit migration/fallback handling or preserve verification of the old v1 checksum.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/checkpoint.py",
+        "pr_number": 4,
+        "review_id": "4889242636",
+        "root_node_id": "PRRC_kwDOTyUBrM7e_S1y",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XfZXt",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/4#discussion_r3741134194",
+    },
+    "3741134196": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Include the contract tree in source distributions**\n\nWhen a wheel is built from an sdist, this copy fails because setuptools does not include the top-level `contracts/` directory in the generated sdist. This also makes the usual `python -m build` flow fail when it builds its wheel from the freshly created sdist, while the new smoke test misses the problem by building directly from the repository checkout; add the contract tree to the sdist manifest/package inputs.\n\nUseful? React with 👍 / 👎.",
+        "path": "setup.py",
+        "pr_number": 4,
+        "review_id": "4889242636",
+        "root_node_id": "PRRC_kwDOTyUBrM7e_S10",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XfZXu",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/4#discussion_r3741134196",
+    },
+    "3741134197": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Cover standard-library networking in the DARK gate**\n\nThe capability gate can currently pass executable network code such as `import urllib.request; urllib.request.urlopen(...)` or `import http.client`, because neither module root nor the corresponding calls are forbidden. A future runtime change using these standard-library clients would therefore pass the advertised DARK CI boundary despite acquiring network capability; cover these routes or use an import allowlist rather than this incomplete blacklist.\n\nUseful? React with 👍 / 👎.",
+        "path": "tools/verify_no_forbidden_capabilities.py",
+        "pr_number": 4,
+        "review_id": "4889242636",
+        "root_node_id": "PRRC_kwDOTyUBrM7e_S11",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XfZXv",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/4#discussion_r3741134197",
+    },
+    "3741211095": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Reject writes for scopes without an accepted lease**\n\nFor a fresh `ConsumerFence`, `_highest.get(scope, 0)` makes every positive token pass `accepts_write()` even when `accept()` has never validated an active lease for that scope. A caller can therefore authorize a guessed token on a new scope, bypassing the verify-only lease boundary; require the scope to exist in the accepted-token map before permitting writes.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/lease.py",
+        "pr_number": 4,
+        "review_id": "4889327416",
+        "root_node_id": "PRRC_kwDOTyUBrM7e_lnX",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XfnSk",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/4#discussion_r3741211095",
+    },
+    "3741211096": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind the CI evidence SHA to the receipt head**\n\nWhen a receipt supplies different well-formed values for top-level `head_sha` and `ci.head_sha`, this schema still validates it as `VERIFIED`. That allows a successful CI run for an unrelated commit to satisfy the documented exact-head gate; remove the duplicated identity or add a receipt validator that enforces equality before accepting the receipt.\n\nUseful? React with 👍 / 👎.",
+        "path": "docs/plan/milestone_receipt.schema.json",
+        "pr_number": 4,
+        "review_id": "4889327416",
+        "root_node_id": "PRRC_kwDOTyUBrM7e_lnY",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XfnSl",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/4#discussion_r3741211096",
+    },
+    "3741211097": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Reject noncanonical ordering numbers instead of coercing them**\n\nWhen ordering is invoked before contract validation or on raw replay input, `int()` silently truncates floats and normalizes values such as `\"01\"`, `\"+1\"`, and whitespace-padded strings. This can collapse distinct receipt, connection, or sequence values and change deterministic replay order despite the stated fail-closed behavior; accept only actual integers or the contract's exact canonical decimal syntax.\n\nUseful? React with 👍 / 👎.",
+        "path": "src/triad_origin/partition.py",
+        "pr_number": 4,
+        "review_id": "4889327416",
+        "root_node_id": "PRRC_kwDOTyUBrM7e_lnZ",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XfnSm",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/4#discussion_r3741211097",
+    },
+    "3741593887": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Bind the packaged constraint to dependency evidence**\n\nWhen the receipt captures a dependency-spec/toolchain preimage that differs from the reviewed `constraints/ci.txt`, `_validate_r00_evidence_set` validates each side independently and still accepts the receipt: the sdist bytes are compared only with `source_files`, while `spec_path` is compared only with the toolchain package list. Thus this inclusion can seal a receipt claiming different exact pins from those packaged and reviewed; compare the bound dependency-spec bytes/digest directly with `source_files[\"constraints/ci.txt\"]` and add a mismatch test.\n\nUseful? React with 👍 / 👎.",
+        "path": "MANIFEST.in",
+        "pr_number": 7,
+        "review_id": "4889698522",
+        "root_node_id": "PRRC_kwDOTyUBrM7fBDEf",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XgoL6",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/7#discussion_r3741593887",
+    },
+}
+
 R00_AUTHORITY_INVENTORY_PATH = "docs/plan/06_RC2_SOURCE_INVENTORY.md"
 R00_AUTHORITY_SOURCES = [
     {"bytes": 8_000, "name": "index.html", "sha256": "042f6bea59f897add75dd108632cdd22d90382350a290f8f5a0873fa2e636568"},
@@ -89,6 +354,65 @@ class ReceiptValidationError(ValueError):
     pass
 
 
+GitHubJsonGetter = Callable[[str], Any]
+GitHubReviewThreadsGetter = Callable[[int], Any]
+R00_REVIEW_THREADS_QUERY = """query R00ReviewThreads($owner: String!, $repo: String!, $number: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100) {
+        totalCount
+        pageInfo { hasNextPage }
+        nodes {
+          id
+          isResolved
+          comments(first: 100) {
+            totalCount
+            pageInfo { hasNextPage }
+            nodes {
+              id
+              fullDatabaseId
+              url
+              body
+              path
+              replyTo { fullDatabaseId }
+              author { login }
+              pullRequestReview { fullDatabaseId }
+            }
+          }
+        }
+      }
+    }
+  }
+}"""
+
+
+def _expected_codex_review_body(head_sha: str) -> str:
+    return (
+        "\n### 💡 Codex Review\n\n"
+        "Here are some automated review suggestions for this pull request.\n\n"
+        f"**Reviewed commit:** `{head_sha[:10]}`\n    \n\n"
+        "<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n"
+        "[Your team has set up Codex to review pull requests in this repo]"
+        "(https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n"
+        "- Open a pull request for review\n"
+        "- Mark a draft as ready\n"
+        "- Comment \"@codex review\".\n\n"
+        "If Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\n"
+        "Codex can also answer questions or update the PR. Try commenting "
+        "\"@codex address that feedback\".\n            \n</details>"
+    )
+
+
+def _expected_remediation_reply_body(thread_id: str, merge_sha: str) -> str:
+    return (
+        "R00_REMEDIATION_CLOSURE_V1\n"
+        f"thread_id={thread_id}\n"
+        f"remediation_merge={merge_sha}\n"
+        "receipt=evidence/receipts/R00.json\n"
+        "status=RESOLVED\n"
+    )
+
+
 def _walk_strings(value: Any, path: str = "<root>"):
     if isinstance(value, dict):
         for key, child in value.items():
@@ -101,9 +425,16 @@ def _walk_strings(value: Any, path: str = "<root>"):
 
 
 def validate_receipt(
-    receipt: dict[str, Any], schema: dict[str, Any], *, evidence_root: pathlib.Path
+    receipt: dict[str, Any],
+    schema: dict[str, Any],
+    *,
+    evidence_root: pathlib.Path,
+    github_get_json: GitHubJsonGetter | None = None,
+    github_get_review_threads: GitHubReviewThreadsGetter | None = None,
+    git_root: pathlib.Path | None = None,
+    receipt_path: pathlib.Path | None = None,
 ) -> None:
-    """Reject structurally valid receipts whose linked evidence identities disagree."""
+    """Reject receipts whose evidence, live review, or optional Git seal disagrees."""
     jsonschema.validators.validator_for(schema).check_schema(schema)
     jsonschema.validate(receipt, schema)
     problems: list[str] = []
@@ -132,6 +463,10 @@ def validate_receipt(
             problems.append(
                 "R00 merge control does not identify the controlled corrective PR #7"
             )
+        if receipt["base_sha"] != R00_IMPLEMENTATION_MERGE_SHA:
+            problems.append("R00 corrective base does not equal the PR #4 implementation merge")
+        if receipt["review"]["reviewer"] != R00_REQUIRED_REVIEWER:
+            problems.append("R00 final reviewer is not the independent Codex reviewer")
         if commands != R00_REQUIRED_COMMANDS:
             problems.append("R00 tests do not equal the controlled required command set")
         artifact_kind_list = [artifact["kind"] for artifact in receipt["artifacts"]]
@@ -141,7 +476,9 @@ def validate_receipt(
         if len(artifact_kind_list) != len(artifact_kinds):
             problems.append("R00 artifact kinds must be unique; no claim may hide behind a duplicate")
         if not R00_REQUIRED_MANIFESTS.issubset(receipt["manifests"]):
-            problems.append("R00 manifests omit contract, golden-vector, or test-collection identity")
+            problems.append(
+                "R00 manifests omit failed-attempt, contract, golden-vector, or test identity"
+            )
         deferrals = {
             item["evidence_id"]: item for item in receipt["deferred_evidence"]
         }
@@ -175,13 +512,29 @@ def validate_receipt(
         values = [item[key] for item in collection]
         if len(values) != len(set(values)):
             problems.append(f"duplicate {key} in receipt")
-    _validate_evidence_files(receipt, evidence_root, problems)
+    _validate_evidence_files(
+        receipt,
+        evidence_root,
+        problems,
+        github_get_json=github_get_json,
+        github_get_review_threads=github_get_review_threads,
+    )
+    if git_root is not None or receipt_path is not None:
+        if git_root is None or receipt_path is None:
+            problems.append("Git-bound validation requires both git_root and receipt_path")
+        else:
+            _validate_git_binding(receipt, git_root, receipt_path, problems)
     if problems:
         raise ReceiptValidationError("; ".join(problems))
 
 
 def _validate_evidence_files(
-    receipt: dict[str, Any], evidence_root: pathlib.Path, problems: list[str]
+    receipt: dict[str, Any],
+    evidence_root: pathlib.Path,
+    problems: list[str],
+    *,
+    github_get_json: GitHubJsonGetter | None,
+    github_get_review_threads: GitHubReviewThreadsGetter | None,
 ) -> None:
     root = evidence_root.resolve()
     bound: dict[str, dict[str, Any]] = {}
@@ -233,7 +586,14 @@ def _validate_evidence_files(
     if extra:
         problems.append(f"evidence bindings target non-evidence fields: {extra}")
     if receipt["milestone_id"] == "R00":
-        _validate_r00_evidence_set(receipt, bound, root, problems)
+        _validate_r00_evidence_set(
+            receipt,
+            bound,
+            root,
+            problems,
+            github_get_json=github_get_json,
+            github_get_review_threads=github_get_review_threads,
+        )
     authority_pointer = "/authority_basis/digest_sha256"
     authority = bound.get(authority_pointer)
     if authority is not None and authority["path"] != receipt["authority_basis"]["inventory_ref"]:
@@ -446,11 +806,16 @@ def _validate_typed_evidence(
             item["path"],
             problems,
         )
-        if set(record) != {
+        expected_review_fields = {
             "schema", "head_sha", "reviewer", "unresolved_actionable_threads", "verdict",
             "reviewed_prs", "inherited_thread_count", "pr4_thread_count", "threads",
             "final_review",
-        }:
+        }
+        if receipt["milestone_id"] == "R00":
+            expected_review_fields.add("pr_author")
+            if record.get("pr_author") != R00_PR_AUTHOR:
+                problems.append(f"R00 review evidence omits the PR author: {item['path']}")
+        if set(record) != expected_review_fields:
             problems.append(f"review evidence has contradictory unknown fields: {item['path']}")
         threads = record.get("threads")
         if not isinstance(threads, list):
@@ -655,6 +1020,9 @@ def _validate_r00_evidence_set(
     bound: dict[str, dict[str, Any]],
     root: pathlib.Path,
     problems: list[str],
+    *,
+    github_get_json: GitHubJsonGetter | None,
+    github_get_review_threads: GitHubReviewThreadsGetter | None,
 ) -> None:
     """Validate R00 evidence content, not only the hashes of opaque files."""
 
@@ -704,6 +1072,17 @@ def _validate_r00_evidence_set(
                 receipt["merge_control"]["tree_sha"],
                 problems,
             )
+    if spec_path is not None and source_files:
+        try:
+            reviewed_constraints = source_files["constraints/ci.txt"]
+            persisted_constraints = spec_path.read_bytes()
+        except (KeyError, OSError):
+            reviewed_constraints = None
+            persisted_constraints = None
+        if reviewed_constraints is None or persisted_constraints != reviewed_constraints:
+            problems.append(
+                "R00 dependency specification does not equal reviewed constraints/ci.txt"
+            )
     _validate_r00_authority_and_manifests(receipt, target, source_files, problems)
     for kind in ("sdist", "wheel"):
         entry = artifact_by_kind.get(kind)
@@ -749,6 +1128,7 @@ def _validate_r00_evidence_set(
                     prefix + "pyproject.toml",
                     prefix + "setup.cfg",
                     prefix + "setup.py",
+                    prefix + "constraints/ci.txt",
                     prefix + "src/triad_origin/__init__.py",
                     prefix + "contracts/registry/index.json",
                 }
@@ -1019,8 +1399,25 @@ def _validate_r00_evidence_set(
             review_path,
             review_api_path,
             receipt["head_sha"],
+            receipt["base_sha"],
             receipt["merge_sha"],
+            receipt["merge_control"]["tree_sha"],
+            github_get_json,
+            github_get_review_threads,
             problems,
+        )
+
+    ci_path = target("/ci/evidence_sha256")
+    if ci_path is not None:
+        try:
+            ci_record = json.loads(ci_path.read_bytes())
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            ci_record = None
+        _validate_live_r00_ci(
+            receipt,
+            ci_record,
+            github_get_json=github_get_json,
+            problems=problems,
         )
 
     setup_path = target("/post_merge/setup_log_sha256")
@@ -1073,6 +1470,18 @@ def _validate_r00_authority_and_manifests(
             or authority.get("missing_members") != R00_AUTHORITY_MISSING
         ):
             problems.append("R00 authority basis does not bind the closed supplied-source inventory")
+
+    failed_path = target("/manifests/failed_attempt")
+    try:
+        failed_raw = failed_path.read_bytes() if failed_path is not None else b""
+        failed_attempt = json.loads(failed_raw)
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        failed_attempt = None
+    if (
+        failed_attempt != R00_FAILED_ATTEMPT
+        or canonical_json(failed_attempt) != failed_raw
+    ):
+        problems.append("R00 failed PR #4 receipt attempt is not exactly authenticated")
 
     contract_path = target("/manifests/contracts")
     golden_path = target("/manifests/golden_vectors")
@@ -1195,7 +1604,11 @@ def _validate_r00_review_export(
     review_path: pathlib.Path,
     export_path: pathlib.Path,
     head_sha: str,
+    base_sha: str,
     merge_sha: str,
+    tree_sha: str,
+    github_get_json: GitHubJsonGetter | None,
+    github_get_review_threads: GitHubReviewThreadsGetter | None,
     problems: list[str],
 ) -> None:
     try:
@@ -1221,13 +1634,21 @@ def _validate_r00_review_export(
     exported: dict[str, tuple[int, str, bool]] = {}
     exported_rows: dict[str, dict[str, Any]] = {}
     reviews: dict[str, dict[str, Any]] = {}
+    review_prs: dict[str, int] = {}
     covered_prs: set[int] = set()
+    exported_pulls: dict[int, dict[str, Any]] = {}
     for pull in export["pull_requests"]:
         if not isinstance(pull, dict) or pull.get("pr_number") not in R00_REVIEW_PRS:
             problems.append("R00 GitHub review export has an invalid pull request row")
             return
         pr_number = pull["pr_number"]
+        if pr_number in covered_prs:
+            problems.append("R00 GitHub review export has a duplicate pull request row")
+            return
         covered_prs.add(pr_number)
+        exported_pulls[pr_number] = pull
+        if pr_number == R00_RECEIPT_PR and pull.get("author") != R00_PR_AUTHOR:
+            problems.append("R00 GitHub review export does not bind the corrective PR author")
         comments = pull.get("inline_threads")
         if not isinstance(comments, list):
             problems.append("R00 GitHub review export omits inline thread rows")
@@ -1243,7 +1664,23 @@ def _validate_r00_review_export(
                 f"#discussion_r{comment_id}"
             )
             if (
-                not isinstance(comment_id, str)
+                set(comment)
+                != {
+                    "id",
+                    "is_resolved",
+                    "path",
+                    "remediation_reply",
+                    "reply_inventory",
+                    "review_id",
+                    "root",
+                    "thread_node_id",
+                    "url",
+                }
+                or not isinstance(comment.get("thread_node_id"), str)
+                or not comment["thread_node_id"]
+                or not isinstance(comment.get("root"), dict)
+                or not isinstance(comment.get("reply_inventory"), list)
+                or not isinstance(comment_id, str)
                 or not comment_id.isdigit()
                 or url != expected_url
                 or not isinstance(comment.get("path"), str)
@@ -1266,8 +1703,15 @@ def _validate_r00_review_export(
                 problems.append("R00 GitHub review export has invalid/duplicate review identity")
                 return
             reviews[review_id] = api_review
+            review_prs[review_id] = pr_number
     if covered_prs != R00_REVIEW_PRS:
         problems.append("R00 GitHub review export does not cover PR #1-#4 and PR #7")
+    _validate_live_r00_review_threads(
+        exported,
+        exported_rows,
+        github_get_review_threads=github_get_review_threads,
+        problems=problems,
+    )
     for comment_id, pr_number in R00_INHERITED_THREADS.items():
         if exported.get(comment_id, (None,))[0] != pr_number:
             problems.append("R00 GitHub review export omits a known inherited thread")
@@ -1292,9 +1736,13 @@ def _validate_r00_review_export(
         str(thread.get("thread_id")): thread
         for thread in review_threads if isinstance(thread, dict)
     }
-    known_actionable = (
-        set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS | R00_KNOWN_PR7_THREADS
-    )
+    historical_actionable = set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS
+    corrective_actionable = {
+        thread_id
+        for thread_id, (pr_number, _, _) in exported.items()
+        if pr_number == R00_RECEIPT_PR
+    }
+    known_actionable = historical_actionable | corrective_actionable
     for thread_id in known_actionable:
         api_thread = exported_rows.get(thread_id, {})
         inventory_thread = inventory_rows.get(thread_id, {})
@@ -1303,6 +1751,14 @@ def _validate_r00_review_export(
         expected_reply_url = (
             f"https://github.com/TriadAgentic/TriadOrigin/pull/{pr_number}"
             f"#discussion_r{reply.get('id') if isinstance(reply, dict) else ''}"
+        )
+        expected_closure_merge = (
+            R00_IMPLEMENTATION_MERGE_SHA
+            if thread_id in historical_actionable
+            else merge_sha
+        )
+        expected_reply_body = _expected_remediation_reply_body(
+            thread_id, expected_closure_merge
         )
         if (
             api_thread.get("is_resolved") is not True
@@ -1318,33 +1774,757 @@ def _validate_r00_review_export(
             or not reply["author"]
             or reply.get("url") != expected_reply_url
             or not isinstance(reply.get("body"), str)
-            or merge_sha not in reply["body"]
-            or "evidence/receipts/R00.json" not in reply["body"]
+            or reply["body"] != expected_reply_body
         ):
             problems.append(
                 "R00 actionable review thread lacks an API-bound resolution reply and fix/receipt reference"
             )
             break
+    historical_review = reviews.get(R00_IMPLEMENTATION_REVIEW_ID)
+    if (
+        historical_review is None
+        or review_prs.get(R00_IMPLEMENTATION_REVIEW_ID) != 4
+        or historical_review.get("commit_id") != R00_IMPLEMENTATION_HEAD_SHA
+        or historical_review.get("url") != R00_IMPLEMENTATION_REVIEW_URL
+        or historical_review.get("reviewer") != R00_IMPLEMENTATION_REVIEWER
+        or historical_review.get("state") not in {"APPROVED", "COMMENTED"}
+        or historical_review.get("body") != R00_IMPLEMENTATION_REVIEW_BODY
+    ):
+        problems.append("R00 PR #4 implementation review is absent from the GitHub API export")
+    _validate_live_r00_implementation_review(
+        github_get_json=github_get_json,
+        problems=problems,
+    )
     final = review.get("final_review")
     if not isinstance(final, dict):
         problems.append("R00 final review is missing")
         return
     api_final = reviews.get(str(final.get("review_id")))
-    expected_review_body = (
-        f"R00_REVIEW_VERDICT: PASS\nHEAD: {head_sha}\nP0: 0\nP1: 0\n"
-    )
+    final_body = api_final.get("body") if isinstance(api_final, dict) else None
+    expected_final_body = _expected_codex_review_body(head_sha)
     if (
         api_final is None
+        or review_prs.get(str(final.get("review_id"))) != R00_RECEIPT_PR
         or api_final.get("commit_id") != head_sha
         or api_final.get("url") != final.get("url")
         or api_final.get("reviewer") != final.get("reviewer")
-        or api_final.get("state") not in {"APPROVED", "COMMENTED"}
-        or api_final.get("body") != expected_review_body
-        or final.get("body_sha256") != hashlib.sha256(
-            expected_review_body.encode("utf-8")
-        ).hexdigest()
+        or final.get("reviewer") != R00_REQUIRED_REVIEWER
+        or final.get("reviewer") == R00_PR_AUTHOR
+        or api_final.get("state") != "COMMENTED"
+        or not isinstance(final_body, str)
+        or final_body != expected_final_body
+        or final.get("body_sha256") != hashlib.sha256(final_body.encode("utf-8")).hexdigest()
     ):
         problems.append("R00 final review does not match the exact-head GitHub API export")
+    _validate_live_r00_review(
+        final,
+        api_final if isinstance(api_final, dict) else {},
+        persisted_reviews=exported_pulls.get(R00_RECEIPT_PR, {}).get("reviews"),
+        allowed_postmerge_review_ids={
+            str(reply.get("review_id"))
+            for row in exported_rows.values()
+            if exported.get(str(row.get("id")), (None,))[0] == R00_RECEIPT_PR
+            for reply in row.get("reply_inventory", [])
+            if isinstance(reply, dict) and str(reply.get("review_id", "")).isdigit()
+        },
+        head_sha=head_sha,
+        base_sha=base_sha,
+        merge_sha=merge_sha,
+        tree_sha=tree_sha,
+        github_get_json=github_get_json,
+        problems=problems,
+    )
+
+
+def _decimal_graphql_id(value: Any) -> str | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return str(value) if value >= 0 else None
+    if isinstance(value, str) and value.isascii() and value.isdigit():
+        return value
+    return None
+
+
+def _validate_live_r00_implementation_review(
+    *,
+    github_get_json: GitHubJsonGetter | None,
+    problems: list[str],
+) -> None:
+    if github_get_json is None:
+        problems.append("R00 sealing requires live PR #4 implementation-review revalidation")
+        return
+    try:
+        review = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/pulls/4/reviews/"
+            f"{R00_IMPLEMENTATION_REVIEW_ID}"
+        )
+    except Exception as exc:
+        problems.append(
+            f"R00 live PR #4 implementation-review revalidation failed: {type(exc).__name__}"
+        )
+        return
+    reviewer = _normalized_github_login(
+        review.get("user", {}).get("login")
+        if isinstance(review, dict) and isinstance(review.get("user"), dict)
+        else None
+    )
+    if (
+        not isinstance(review, dict)
+        or review.get("id") != int(R00_IMPLEMENTATION_REVIEW_ID)
+        or review.get("commit_id") != R00_IMPLEMENTATION_HEAD_SHA
+        or review.get("html_url") != R00_IMPLEMENTATION_REVIEW_URL
+        or review.get("state") != "COMMENTED"
+        or review.get("body") != R00_IMPLEMENTATION_REVIEW_BODY
+        or reviewer != R00_IMPLEMENTATION_REVIEWER
+    ):
+        problems.append("R00 live PR #4 implementation review does not match history")
+
+
+def _normalize_live_r00_review_threads(
+    payloads: dict[int, Any],
+) -> dict[str, dict[str, Any]]:
+    normalized: dict[str, dict[str, Any]] = {}
+    comment_ids: set[str] = set()
+    comment_node_ids: set[str] = set()
+    thread_node_ids: set[str] = set()
+    for pr_number in sorted(R00_REVIEW_PRS):
+        payload = payloads.get(pr_number)
+        try:
+            connection = payload["data"]["repository"]["pullRequest"]["reviewThreads"]
+            nodes = connection["nodes"]
+            page_info = connection["pageInfo"]
+        except (KeyError, TypeError):
+            raise ValueError("reviewThreads response is partial or malformed") from None
+        if (
+            not isinstance(connection, dict)
+            or not isinstance(nodes, list)
+            or connection.get("totalCount") != len(nodes)
+            or not isinstance(page_info, dict)
+            or page_info.get("hasNextPage") is not False
+        ):
+            raise ValueError("reviewThreads pagination is incomplete")
+        for thread in nodes:
+            if not isinstance(thread, dict):
+                raise ValueError("review thread is not an object")
+            thread_node_id = thread.get("id")
+            comments = thread.get("comments")
+            if (
+                not isinstance(thread_node_id, str)
+                or not thread_node_id
+                or thread_node_id in thread_node_ids
+                or not isinstance(thread.get("isResolved"), bool)
+                or not isinstance(comments, dict)
+                or not isinstance(comments.get("nodes"), list)
+                or comments.get("totalCount") != len(comments["nodes"])
+                or not isinstance(comments.get("pageInfo"), dict)
+                or comments["pageInfo"].get("hasNextPage") is not False
+                or not comments["nodes"]
+            ):
+                raise ValueError("review thread/comments are malformed or incomplete")
+            thread_node_ids.add(thread_node_id)
+            roots = [
+                comment
+                for comment in comments["nodes"]
+                if isinstance(comment, dict) and comment.get("replyTo") is None
+            ]
+            if len(roots) != 1 or comments["nodes"][0] is not roots[0]:
+                raise ValueError("review thread does not have one ordered root")
+            root = roots[0]
+            root_id = _decimal_graphql_id(root.get("fullDatabaseId"))
+            root_review = root.get("pullRequestReview")
+            root_review_id = _decimal_graphql_id(
+                root_review.get("fullDatabaseId")
+                if isinstance(root_review, dict)
+                else None
+            )
+            root_author = root.get("author")
+            root_node_id = root.get("id")
+            expected_root_url = (
+                f"https://github.com/TriadAgentic/TriadOrigin/pull/{pr_number}"
+                f"#discussion_r{root_id or ''}"
+            )
+            if (
+                root_id is None
+                or root_id in comment_ids
+                or root_review_id is None
+                or root.get("url") != expected_root_url
+                or not isinstance(root.get("path"), str)
+                or not root["path"]
+                or not isinstance(root.get("body"), str)
+                or not isinstance(root_node_id, str)
+                or not root_node_id
+                or root_node_id in comment_node_ids
+                or not isinstance(root_author, dict)
+                or not isinstance(root_author.get("login"), str)
+                or not root_author["login"]
+            ):
+                raise ValueError("review root identity is malformed")
+            root["body"].encode("utf-8")
+            comment_ids.add(root_id)
+            comment_node_ids.add(root_node_id)
+            replies: dict[str, dict[str, str]] = {}
+            reply_order: list[str] = []
+            reply_inventory: list[dict[str, str]] = []
+            for reply in comments["nodes"][1:]:
+                reply_to = reply.get("replyTo") if isinstance(reply, dict) else None
+                reply_author = reply.get("author") if isinstance(reply, dict) else None
+                reply_id = _decimal_graphql_id(
+                    reply.get("fullDatabaseId") if isinstance(reply, dict) else None
+                )
+                linked_root_id = _decimal_graphql_id(
+                    reply_to.get("fullDatabaseId")
+                    if isinstance(reply_to, dict)
+                    else None
+                )
+                expected_reply_url = (
+                    f"https://github.com/TriadAgentic/TriadOrigin/pull/{pr_number}"
+                    f"#discussion_r{reply_id or ''}"
+                )
+                reply_review = reply.get("pullRequestReview") if isinstance(reply, dict) else None
+                reply_review_id = _decimal_graphql_id(
+                    reply_review.get("fullDatabaseId")
+                    if isinstance(reply_review, dict)
+                    else None
+                )
+                reply_node_id = reply.get("id") if isinstance(reply, dict) else None
+                if (
+                    reply_id is None
+                    or reply_id in comment_ids
+                    or linked_root_id != root_id
+                    or reply.get("url") != expected_reply_url
+                    or reply.get("path") != root.get("path")
+                    or not isinstance(reply.get("body"), str)
+                    or not isinstance(reply_node_id, str)
+                    or not reply_node_id
+                    or reply_node_id in comment_node_ids
+                    or reply_review_id is None
+                    or not isinstance(reply_author, dict)
+                    or not isinstance(reply_author.get("login"), str)
+                    or not reply_author["login"]
+                ):
+                    raise ValueError("review reply identity is malformed")
+                reply["body"].encode("utf-8")
+                comment_ids.add(reply_id)
+                comment_node_ids.add(reply_node_id)
+                reply_order.append(reply_id)
+                replies[reply_id] = {
+                    "author": reply_author["login"],
+                    "body": reply["body"],
+                    "id": reply_id,
+                    "url": reply["url"],
+                }
+                reply_inventory.append({
+                    "author": reply_author["login"],
+                    "body_sha256": hashlib.sha256(
+                        reply["body"].encode("utf-8")
+                    ).hexdigest(),
+                    "id": reply_id,
+                    "node_id": reply_node_id,
+                    "path": reply["path"],
+                    "reply_to_id": root_id,
+                    "review_id": reply_review_id,
+                    "url": reply["url"],
+                })
+            normalized[root_id] = {
+                "is_resolved": thread["isResolved"],
+                "path": root["path"],
+                "pr_number": pr_number,
+                "reply_inventory": reply_inventory,
+                "review_id": root_review_id,
+                "reply_order": reply_order,
+                "replies": replies,
+                "root": {
+                    "author": root_author["login"],
+                    "body_sha256": hashlib.sha256(
+                        root["body"].encode("utf-8")
+                    ).hexdigest(),
+                    "node_id": root_node_id,
+                    "review_id": root_review_id,
+                    "url": root["url"],
+                },
+                "thread_node_id": thread_node_id,
+                "url": root["url"],
+            }
+    return normalized
+
+
+def _validate_live_r00_review_threads(
+    exported: dict[str, tuple[int, str, bool]],
+    exported_rows: dict[str, dict[str, Any]],
+    *,
+    github_get_review_threads: GitHubReviewThreadsGetter | None,
+    problems: list[str],
+) -> None:
+    """Authenticate every persisted root, resolution, and selected reply through GraphQL."""
+    if github_get_review_threads is None:
+        problems.append("R00 sealing requires live GitHub GraphQL thread revalidation")
+        return
+    snapshots: list[dict[str, dict[str, Any]]] = []
+    try:
+        for _ in range(2):
+            payloads = {
+                pr_number: github_get_review_threads(pr_number)
+                for pr_number in sorted(R00_REVIEW_PRS)
+            }
+            snapshots.append(_normalize_live_r00_review_threads(payloads))
+    except (KeyError, TypeError, UnicodeError, ValueError) as exc:
+        problems.append(f"R00 live GitHub thread revalidation failed: {type(exc).__name__}")
+        return
+    if snapshots[0] != snapshots[1]:
+        problems.append("R00 live GitHub thread inventory changed during sealing")
+        return
+    live = snapshots[0]
+    if set(live) != set(exported_rows):
+        problems.append("R00 persisted thread roots do not equal the live GitHub inventory")
+        return
+    controlled_roots = (
+        set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS | R00_KNOWN_PR7_THREADS
+    )
+    if set(R00_REVIEWED_ROOTS) != controlled_roots:
+        problems.append("R00 reviewed root manifest does not equal the controlled root set")
+        return
+    if set(live) != controlled_roots:
+        problems.append("R00 live GitHub roots do not equal the reviewed controlled set")
+        return
+    historical_actionable = set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS
+    for thread_id, live_row in live.items():
+        persisted = exported_rows[thread_id]
+        persisted_identity = exported.get(thread_id)
+        reviewed = R00_REVIEWED_ROOTS[thread_id]
+        reviewed_root = {
+            "author": reviewed["author"],
+            "body_sha256": hashlib.sha256(
+                str(reviewed["body"]).encode("utf-8")
+            ).hexdigest(),
+            "node_id": reviewed["root_node_id"],
+            "review_id": reviewed["review_id"],
+            "url": reviewed["url"],
+        }
+        if (
+            live_row["pr_number"] != reviewed["pr_number"]
+            or live_row["path"] != reviewed["path"]
+            or live_row["review_id"] != reviewed["review_id"]
+            or live_row["thread_node_id"] != reviewed["thread_node_id"]
+            or live_row["root"] != reviewed_root
+        ):
+            problems.append("R00 live GitHub root differs from the reviewed pre-merge root")
+            return
+        if (
+            persisted_identity
+            != (live_row["pr_number"], live_row["url"], live_row["is_resolved"])
+            or persisted.get("path") != live_row["path"]
+            or persisted.get("review_id") != live_row["review_id"]
+            or persisted.get("thread_node_id") != live_row["thread_node_id"]
+            or persisted.get("root") != live_row["root"]
+            or persisted.get("reply_inventory") != live_row["reply_inventory"]
+        ):
+            problems.append("R00 persisted review root disagrees with live GitHub GraphQL")
+            return
+        if thread_id in historical_actionable or live_row["pr_number"] == R00_RECEIPT_PR:
+            reply = persisted.get("remediation_reply")
+            if (
+                live_row["is_resolved"] is not True
+                or not isinstance(reply, dict)
+                or live_row["replies"].get(str(reply.get("id"))) != reply
+                or not live_row["reply_order"]
+                or live_row["reply_order"][-1] != str(reply.get("id"))
+            ):
+                problems.append(
+                    "R00 actionable thread resolution/reply is not authenticated by live GitHub GraphQL"
+                )
+                return
+
+
+def _parse_github_time(value: Any) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.utcoffset() is not None else None
+
+
+def _normalized_github_login(value: Any) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    return value.removesuffix("[bot]")
+
+
+def _validate_live_r00_ci(
+    receipt: dict[str, Any],
+    ci_record: Any,
+    *,
+    github_get_json: GitHubJsonGetter | None,
+    problems: list[str],
+) -> None:
+    """Authenticate the selected PR #7 exact-head run and job through GitHub Actions."""
+    if github_get_json is None:
+        problems.append("R00 sealing requires live GitHub Actions revalidation")
+        return
+    if not isinstance(ci_record, dict):
+        problems.append("R00 live CI revalidation lacks typed CI evidence")
+        return
+    run_id = receipt["ci"].get("run_id")
+    job_id = ci_record.get("job_id")
+    if (
+        not isinstance(run_id, str)
+        or not run_id.isdigit()
+        or not isinstance(job_id, str)
+        or not job_id.isdigit()
+    ):
+        problems.append("R00 live CI revalidation lacks decimal run/job IDs")
+        return
+    try:
+        run = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/actions/runs/{run_id}"
+        )
+        job = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/actions/jobs/{job_id}"
+        )
+        pull = github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+    except Exception as exc:
+        problems.append(f"R00 live GitHub Actions revalidation failed: {type(exc).__name__}")
+        return
+    if not isinstance(run, dict) or not isinstance(job, dict) or not isinstance(pull, dict):
+        problems.append("R00 live GitHub Actions response has the wrong shape")
+        return
+    run_finished = _parse_github_time(run.get("updated_at"))
+    merged_at = _parse_github_time(pull.get("merged_at"))
+    pull_numbers = {
+        item.get("number")
+        for item in run.get("pull_requests", [])
+        if isinstance(item, dict)
+    } if isinstance(run.get("pull_requests"), list) else set()
+    steps = job.get("steps")
+    required_step_names = {name for name, _ in R00_REQUIRED_CI_STEPS}
+    controlled_steps = (
+        [
+            (step.get("name"), step.get("conclusion"))
+            for step in steps
+            if isinstance(step, dict) and step.get("name") in required_step_names
+        ]
+        if isinstance(steps, list)
+        else []
+    )
+    steps_ok = controlled_steps == R00_REQUIRED_CI_STEPS
+    expected_run_url = (
+        f"https://github.com/TriadAgentic/TriadOrigin/actions/runs/{run_id}"
+    )
+    expected_job_url = f"{expected_run_url}/job/{job_id}"
+    if (
+        run.get("id") != int(run_id)
+        or run.get("event") != "pull_request"
+        or run.get("name") != "CI"
+        or run.get("path") != ".github/workflows/ci.yml"
+        or run.get("head_branch") != "agent/r00-receipt-closure"
+        or run.get("head_sha") != receipt["head_sha"]
+        or run.get("status") != "completed"
+        or run.get("conclusion") != "success"
+        or run.get("html_url") != expected_run_url
+        or pull_numbers != {R00_RECEIPT_PR}
+        or run_finished is None
+        or merged_at is None
+        or run_finished > merged_at
+        or job.get("id") != int(job_id)
+        or job.get("run_id") != int(run_id)
+        or job.get("name") != "test-and-verify"
+        or job.get("head_sha") != receipt["head_sha"]
+        or job.get("status") != "completed"
+        or job.get("conclusion") != "success"
+        or job.get("html_url") != expected_job_url
+        or not steps_ok
+    ):
+        problems.append("R00 live CI is not the successful exact-head PR #7 run/job")
+
+
+def _normalize_live_pr7_review(item: Any) -> dict[str, str]:
+    if not isinstance(item, dict):
+        raise ValueError("review is not an object")
+    review_id = _decimal_graphql_id(item.get("id"))
+    reviewer = _normalized_github_login(
+        item.get("user", {}).get("login")
+        if isinstance(item.get("user"), dict)
+        else None
+    )
+    submitted_at = item.get("submitted_at")
+    commit_id = item.get("commit_id")
+    body = item.get("body")
+    state = item.get("state")
+    expected_url = (
+        "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+        f"#pullrequestreview-{review_id or ''}"
+    )
+    if (
+        review_id is None
+        or reviewer is None
+        or not isinstance(commit_id, str)
+        or re.fullmatch(r"[0-9a-f]{40}", commit_id) is None
+        or not isinstance(body, str)
+        or state not in {"APPROVED", "CHANGES_REQUESTED", "COMMENTED", "DISMISSED"}
+        or _parse_github_time(submitted_at) is None
+        or item.get("html_url") != expected_url
+    ):
+        raise ValueError("review identity/state is malformed")
+    body.encode("utf-8")
+    return {
+        "body": body,
+        "commit_id": commit_id,
+        "review_id": review_id,
+        "reviewer": reviewer,
+        "state": state,
+        "submitted_at": submitted_at,
+        "url": expected_url,
+    }
+
+
+def _fetch_live_pr7_reviews(github_get_json: GitHubJsonGetter) -> list[dict[str, str]]:
+    reviews: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for page in range(1, 12):
+        payload = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/pulls/7/reviews?per_page=100&page={page}"
+        )
+        if not isinstance(payload, list):
+            raise ValueError("review page is not a list")
+        if not payload:
+            break
+        if len(payload) > 100:
+            raise ValueError("review page exceeds the controlled size")
+        for item in payload:
+            normalized = _normalize_live_pr7_review(item)
+            if normalized["review_id"] in seen:
+                raise ValueError("duplicate review identity")
+            seen.add(normalized["review_id"])
+            reviews.append(normalized)
+    else:
+        raise ValueError("review pagination exceeds the controlled page cap")
+    reviews.sort(
+        key=lambda item: (
+            _parse_github_time(item["submitted_at"]),
+            int(item["review_id"]),
+        )
+    )
+    return reviews
+
+
+def _validate_live_r00_review(
+    final: dict[str, Any],
+    persisted_review: dict[str, Any],
+    *,
+    persisted_reviews: Any,
+    allowed_postmerge_review_ids: set[str],
+    head_sha: str,
+    base_sha: str,
+    merge_sha: str,
+    tree_sha: str,
+    github_get_json: GitHubJsonGetter | None,
+    problems: list[str],
+) -> None:
+    """Re-read corrective PR #7 and its independent review at receipt-sealing time."""
+    if github_get_json is None:
+        problems.append("R00 sealing requires live GitHub REST revalidation")
+        return
+    review_id = final.get("review_id")
+    if not isinstance(review_id, str) or not review_id.isdigit():
+        problems.append("R00 live review revalidation lacks a numeric review ID")
+        return
+    try:
+        pull = github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+        review = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/pulls/7/reviews/{review_id}"
+        )
+        head_commit = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/git/commits/{head_sha}"
+        )
+        final_comments = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/pulls/7/reviews/{review_id}/comments?per_page=100"
+        )
+        live_review_snapshots = [
+            _fetch_live_pr7_reviews(github_get_json),
+            _fetch_live_pr7_reviews(github_get_json),
+        ]
+    except Exception as exc:  # Fail closed on network, API, and provider errors.
+        problems.append(f"R00 live GitHub REST revalidation failed: {type(exc).__name__}")
+        return
+    if (
+        not isinstance(pull, dict)
+        or not isinstance(review, dict)
+        or not isinstance(head_commit, dict)
+        or not isinstance(final_comments, list)
+        or not all(isinstance(item, list) for item in live_review_snapshots)
+    ):
+        problems.append("R00 live GitHub review response has the wrong shape")
+        return
+    author = _normalized_github_login(
+        pull.get("user", {}).get("login") if isinstance(pull.get("user"), dict) else None
+    )
+    reviewer = _normalized_github_login(
+        review.get("user", {}).get("login") if isinstance(review.get("user"), dict) else None
+    )
+    merged_at = _parse_github_time(pull.get("merged_at"))
+    submitted_at = _parse_github_time(review.get("submitted_at"))
+    expected_pr_url = "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+    expected_review_url = f"{expected_pr_url}#pullrequestreview-{review_id}"
+    body = review.get("body")
+    expected_body = _expected_codex_review_body(head_sha)
+    review_snapshots_ok = live_review_snapshots[0] == live_review_snapshots[1]
+    live_reviews = live_review_snapshots[0]
+    selected_review = next(
+        (item for item in live_reviews if item["review_id"] == review_id),
+        None,
+    )
+    inventory_ok = isinstance(persisted_reviews, list) and persisted_reviews == live_reviews
+    review_order_ok = selected_review is not None and all(
+        item["state"] != "CHANGES_REQUESTED" for item in live_reviews
+    )
+    if review_order_ok and submitted_at is not None and merged_at is not None:
+        selected_key = (submitted_at, int(review_id))
+        for item in live_reviews:
+            item_time = _parse_github_time(item["submitted_at"])
+            if item_time is None:
+                review_order_ok = False
+                break
+            if item_time <= merged_at:
+                if (item_time, int(item["review_id"])) > selected_key:
+                    review_order_ok = False
+                    break
+            elif not (
+                item["review_id"] in allowed_postmerge_review_ids
+                and item["reviewer"] == R00_PR_AUTHOR
+                and item["state"] == "COMMENTED"
+                and item["body"] == ""
+            ):
+                review_order_ok = False
+                break
+    if (
+        pull.get("number") != R00_RECEIPT_PR
+        or pull.get("html_url") != expected_pr_url
+        or author != R00_PR_AUTHOR
+        or pull.get("head", {}).get("sha") != head_sha
+        or pull.get("base", {}).get("sha") != base_sha
+        or base_sha != R00_IMPLEMENTATION_MERGE_SHA
+        or pull.get("merged") is not True
+        or pull.get("merge_commit_sha") != merge_sha
+        or head_commit.get("sha") != head_sha
+        or not isinstance(head_commit.get("tree"), dict)
+        or head_commit["tree"].get("sha") != tree_sha
+        or merged_at is None
+        or review.get("id") != int(review_id)
+        or reviewer != R00_REQUIRED_REVIEWER
+        or reviewer == author
+        or final.get("reviewer") != reviewer
+        or review.get("commit_id") != head_sha
+        or review.get("state") != "COMMENTED"
+        or review.get("html_url") != expected_review_url
+        or final.get("url") != expected_review_url
+        or not isinstance(body, str)
+        or body != persisted_review.get("body")
+        or body != expected_body
+        or final.get("body_sha256") != hashlib.sha256(body.encode("utf-8")).hexdigest()
+        or submitted_at is None
+        or submitted_at > merged_at
+        or final_comments != []
+        or selected_review != persisted_review
+        or not inventory_ok
+        or not review_order_ok
+        or not review_snapshots_ok
+    ):
+        problems.append("R00 live GitHub review is not an independent exact-head pre-merge review")
+
+
+def _github_get_json_from_token(token: str) -> GitHubJsonGetter:
+    if not token or token.isspace():
+        raise ReceiptValidationError("R00 sealing requires GITHUB_TOKEN")
+
+    def get_json(path: str) -> Any:
+        if not path.startswith("/repos/TriadAgentic/TriadOrigin/"):
+            raise ReceiptValidationError("refusing an uncontrolled GitHub REST path")
+        request = urllib.request.Request(
+            "https://api.github.com" + path,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": "triad-origin-r00-sealer",
+            },
+            method="GET",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                raw = response.read(1_048_577)
+        except (OSError, urllib.error.HTTPError, urllib.error.URLError) as exc:
+            raise ReceiptValidationError(
+                f"GitHub REST request failed: {type(exc).__name__}"
+            ) from exc
+        if len(raw) > 1_048_576:
+            raise ReceiptValidationError("GitHub REST response exceeds the controlled limit")
+        try:
+            value = json.loads(raw)
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            raise ReceiptValidationError("GitHub REST response is not JSON") from exc
+        if not isinstance(value, (dict, list)):
+            raise ReceiptValidationError("GitHub REST response root is not an object or array")
+        return value
+
+    return get_json
+
+
+def _github_get_review_threads_from_token(token: str) -> GitHubReviewThreadsGetter:
+    if not token or token.isspace():
+        raise ReceiptValidationError("R00 sealing requires GITHUB_TOKEN")
+
+    def get_review_threads(pr_number: int) -> Any:
+        if isinstance(pr_number, bool) or pr_number not in R00_REVIEW_PRS:
+            raise ReceiptValidationError("refusing an uncontrolled GitHub GraphQL PR")
+        request_body = json.dumps(
+            {
+                "query": R00_REVIEW_THREADS_QUERY,
+                "variables": {
+                    "number": pr_number,
+                    "owner": "TriadAgentic",
+                    "repo": "TriadOrigin",
+                },
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        request = urllib.request.Request(
+            "https://api.github.com/graphql",
+            data=request_body,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": "triad-origin-r00-sealer",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=20) as response:
+                raw = response.read(1_048_577)
+        except (OSError, urllib.error.HTTPError, urllib.error.URLError) as exc:
+            raise ReceiptValidationError(
+                f"GitHub GraphQL request failed: {type(exc).__name__}"
+            ) from exc
+        if len(raw) > 1_048_576:
+            raise ReceiptValidationError("GitHub GraphQL response exceeds the controlled limit")
+        try:
+            value = json.loads(raw)
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            raise ReceiptValidationError("GitHub GraphQL response is not JSON") from exc
+        if (
+            not isinstance(value, dict)
+            or value.get("errors")
+            or not isinstance(value.get("data"), dict)
+        ):
+            raise ReceiptValidationError("GitHub GraphQL response is partial or has errors")
+        return value
+
+    return get_review_threads
 
 
 def _validate_source_tree_evidence(
@@ -1458,6 +2638,141 @@ def _git_tree_sha(entries: list[dict[str, str]]) -> str:
     return digest(root)
 
 
+def _git_output(root: pathlib.Path, *arguments: str) -> bytes:
+    env = os.environ.copy()
+    for name in (
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_COMMON_DIR",
+        "GIT_DIR",
+        "GIT_INDEX_FILE",
+        "GIT_NAMESPACE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_REPLACE_REF_BASE",
+        "GIT_WORK_TREE",
+    ):
+        env.pop(name, None)
+    env["GIT_NO_REPLACE_OBJECTS"] = "1"
+    result = subprocess.run(
+        ["git", "-C", os.fspath(root), *arguments],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+    if result.returncode:
+        detail = result.stderr.decode("utf-8", errors="replace").strip()
+        raise ValueError(detail or f"git {' '.join(arguments)} failed")
+    return result.stdout
+
+
+def _git_commit_identity(root: pathlib.Path, commit_sha: str) -> tuple[str, list[str]]:
+    raw = _git_output(root, "cat-file", "commit", commit_sha)
+    header = raw.split(b"\n\n", 1)[0]
+    trees: list[str] = []
+    parents: list[str] = []
+    for line in header.splitlines():
+        if line.startswith(b"tree "):
+            trees.append(line.removeprefix(b"tree ").decode("ascii"))
+        elif line.startswith(b"parent "):
+            parents.append(line.removeprefix(b"parent ").decode("ascii"))
+    if (
+        len(trees) != 1
+        or re.fullmatch(r"[0-9a-f]{40}", trees[0]) is None
+        or any(re.fullmatch(r"[0-9a-f]{40}", parent) is None for parent in parents)
+    ):
+        raise ValueError("commit object has malformed tree/parent headers")
+    return trees[0], parents
+
+
+def _validate_git_binding(
+    receipt: dict[str, Any],
+    git_root: pathlib.Path,
+    receipt_path: pathlib.Path,
+    problems: list[str],
+) -> None:
+    """Authenticate the final R00 seal against immutable local Git objects."""
+    try:
+        root = git_root.resolve(strict=True)
+        top = pathlib.Path(
+            _git_output(root, "rev-parse", "--show-toplevel").decode("utf-8").strip()
+        ).resolve(strict=True)
+        if top != root:
+            raise ValueError("git_root is not the repository top level")
+        resolved_receipt = receipt_path.resolve(strict=True)
+        relative_receipt = resolved_receipt.relative_to(root).as_posix()
+        if (
+            receipt.get("milestone_id") == "R00"
+            and relative_receipt != "evidence/receipts/R00.json"
+        ):
+            raise ValueError("R00 receipt is not at its canonical repository path")
+        receipt_bytes = resolved_receipt.read_bytes()
+        if receipt_bytes != canonical_json(receipt):
+            raise ValueError("receipt bytes are not canonical or do not match the validated object")
+
+        merge_sha = receipt["merge_sha"]
+        merge_tree, merge_parents = _git_commit_identity(root, merge_sha)
+        if merge_tree != receipt["merge_control"]["tree_sha"]:
+            raise ValueError("merge commit tree does not equal merge_control.tree_sha")
+        if merge_parents != [receipt["base_sha"]]:
+            raise ValueError("merge commit does not have the receipt base as its sole parent")
+        if _git_output(root, "cat-file", "-t", merge_tree) != b"tree\n":
+            raise ValueError("merge commit tree object is absent")
+
+        head_sha = _git_output(root, "rev-parse", "--verify", "HEAD^{commit}").decode(
+            "ascii"
+        ).strip()
+        branch = _git_output(root, "symbolic-ref", "--short", "HEAD").decode(
+            "utf-8"
+        ).strip()
+        branch_head = _git_output(
+            root,
+            "rev-parse",
+            "--verify",
+            "refs/heads/evidence/r00-receipt^{commit}",
+        ).decode("ascii").strip()
+        if branch != "evidence/r00-receipt" or branch_head != head_sha:
+            raise ValueError("receipt is not sealed on the canonical evidence branch ref")
+        if _git_output(
+            root, "status", "--porcelain=v1", "--untracked-files=all", "-z"
+        ):
+            raise ValueError("receipt worktree/index is not clean")
+        _, receipt_parents = _git_commit_identity(root, head_sha)
+        if receipt_parents != [merge_sha]:
+            raise ValueError("current evidence commit is not a direct child of the merge commit")
+
+        changed = _git_output(
+            root,
+            "diff-tree",
+            "--no-commit-id",
+            "--name-only",
+            "-r",
+            "-z",
+            head_sha,
+        ).split(b"\0")
+        changed_paths = [name.decode("utf-8") for name in changed if name]
+        if not changed_paths or any(
+            not pathlib.PurePosixPath(name).parts
+            or pathlib.PurePosixPath(name).parts[0] != "evidence"
+            for name in changed_paths
+        ):
+            raise ValueError("evidence commit changes a path outside evidence/")
+
+        committed_paths = {relative_receipt}
+        committed_paths.update(item["path"] for item in receipt["evidence_files"])
+        if set(changed_paths) != committed_paths:
+            raise ValueError("evidence commit path set does not exactly equal receipt preimages")
+        for relative in sorted(committed_paths):
+            path = pathlib.PurePosixPath(relative)
+            if path.is_absolute() or ".." in path.parts:
+                raise ValueError("receipt names an unsafe committed evidence path")
+            disk = (root / pathlib.Path(*path.parts)).read_bytes()
+            committed = _git_output(root, "cat-file", "blob", f"{head_sha}:{relative}")
+            if committed != disk:
+                raise ValueError(f"evidence commit does not contain exact bytes for {relative}")
+    except (OSError, UnicodeError, KeyError, TypeError, ValueError) as exc:
+        problems.append(f"R00 Git-object lineage is not authenticated: {exc}")
+
+
 def _compare_record(
     record: dict[str, Any],
     expected: dict[str, Any],
@@ -1494,7 +2809,21 @@ def main(argv: list[str] | None = None) -> int:
     try:
         receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        validate_receipt(receipt, schema, evidence_root=ROOT)
+        github_get_json = None
+        github_get_review_threads = None
+        if receipt.get("milestone_id") == "R00":
+            token = os.environ.get("GITHUB_TOKEN", "")
+            github_get_json = _github_get_json_from_token(token)
+            github_get_review_threads = _github_get_review_threads_from_token(token)
+        validate_receipt(
+            receipt,
+            schema,
+            evidence_root=ROOT,
+            github_get_json=github_get_json,
+            github_get_review_threads=github_get_review_threads,
+            git_root=ROOT,
+            receipt_path=receipt_path,
+        )
     except (OSError, json.JSONDecodeError, jsonschema.ValidationError, ReceiptValidationError) as exc:
         print(f"FAIL: milestone receipt invalid: {exc}", file=sys.stderr)
         return 1

@@ -28,7 +28,7 @@ The 2026-08-09 pre-R00 `main` contained RC1 M1/M2 implementation. Local reconstr
 `165 passed` and the 91-artifact byte manifest, but GitHub has no CI status or workflow evidence.
 Fourteen actionable review threads remain open, including P1 correctness failures. RC2 acceptance
 was therefore unproven and M3 was blocked. This paragraph is an immutable audit snapshot, not the
-post-R00 status; post-merge truth is carried by PR #4 and the R00 receipt.
+post-R00 status; post-merge truth is carried by PR #4, corrective PR #7, and the R00 receipt.
 
 ## 3 · Constitution
 
@@ -93,8 +93,9 @@ residual blockers.
 
 R00 alone is a documented bootstrap exception: it combines replacement of the already-invalid plan
 with bounded foundation remediation because the audit discovered both before a corrected process
-existed. This exception ends at the R00 merge; B00 onward follows the prior-plan-PR rule without
-exception.
+existed. PR #4's receipt attempt failed closed, so the exception remains open only for corrective
+PR #7 and the single receipt commit. It expires when the corrective R00 receipt is sealed; B00
+onward follows the prior-plan-PR rule without exception.
 
 Mandatory evidence:
 
@@ -112,25 +113,46 @@ Mandatory evidence:
 
 Repository ruleset enforcement is **not yet evidenced** by the available repository API. Issue
 [#5](https://github.com/TriadAgentic/TriadOrigin/issues/5) is therefore a B00 control blocker. R00
-may use only the documented bootstrap merge procedure: re-read the immutable PR head, require its
-exact-head `CI / test-and-verify` run to be green, require zero unresolved actionable PR #4 threads,
-and submit the merge with that same head SHA as the expected value. A direct/admin merge outside
-that procedure invalidates the receipt; it does not prove a durable ruleset.
+may use only the documented bootstrap merge procedure: re-read the immutable corrective PR #7
+head, require its exact-head `CI / test-and-verify` run and independent review to be green, require
+zero unresolved actionable PR #7 threads, and submit the squash merge with that same head SHA as
+the expected value. A direct/admin merge outside that procedure invalidates the receipt; it does
+not prove a durable ruleset. PR #4 used the same guarded procedure for the first, failed-closed
+attempt; its exact head, review, merge, and artifact failure remain historical evidence rather than
+the final acceptance target.
 
-For that pre-merge guard, “zero actionable threads” means PR #4's current review threads. The 14
-inherited PR #1–#3 threads remain inventoried until the post-merge remediation reply can cite the
-actual squash SHA and receipt path; they are then resolved and captured in the sealed receipt.
+For PR #4's completed pre-merge guard, “zero actionable threads” meant PR #4's six current review
+threads. The 14 inherited PR #1–#3 threads were then given post-merge remediation replies citing
+PR #4's actual squash SHA and receipt path and were resolved. The final receipt preserves those
+historical API states and replies; it does not require them to cite PR #7's later corrective merge.
+PR #7 acquired actionable root `3741593887` during adversarial review, so the evidence law is
+explicitly extended here rather than pretending the root never existed. Every PR #1–#4 and PR #7
+root, live resolution state, and selected remediation reply must match two identical complete
+GitHub GraphQL snapshots. The reviewed control set pins each root's immutable author, full finding
+text, path, PR/review/comment/thread IDs, and URL; a post-merge export cannot redefine the finding it
+claims to close. Each observed PR #7 root must be named in that set, fixed and resolved before
+merge, then receive a live-authenticated post-merge reply citing the corrective squash and receipt
+path. The complete PR #7 top-level review list is fetched twice and must equal the persisted
+inventory; any current `CHANGES_REQUESTED`, later pre-merge review, or unbound post-merge review
+fails closed. The final exact-head Codex acceptance must itself have no findings. Its authentic
+clean-result representation must be observed before merge: if Codex emits only the documented
+👍 reaction rather than a review object, PR #7 remains blocked until that exact live artifact is
+captured and a reviewed, head-bound reaction law replaces the provisional review-object arm.
+Missing, invented, unresolved, changed, or pagination-incomplete review evidence fails closed.
 
-The merge SHA and fresh-main result do not exist before merge, so an R00 receipt cannot truthfully
-live in PR #4. After the squash merge, it is generated and schema-validated at
+The final merge SHA and fresh-main result do not exist before merge, so an R00 receipt cannot
+truthfully live in PR #4 or PR #7. After PR #7's corrective squash merge, it is generated and
+schema-validated at
 `evidence/receipts/R00.json`; its canonical test-ID/results, commands, toolchain, review,
 post-merge, manifest, dependency, source, sdist, and wheel preimages are persisted beneath
 `evidence/R00/` (or referenced repository paths) and bound through `evidence_files`. It is validated
-by both the JSON Schema and
-`tools/validate_milestone_receipt.py` cross-field identity checks, then anchored by a commit on
-`evidence/r00-receipt` whose parent is the
-R00 merge SHA. The immutable receipt-commit URL is posted back to PR #4. R00 remains
-`MERGED_UNVERIFIED` and B00 may not start unless that post-merge mechanism succeeds.
+first by the JSON Schema and semantic cross-field checks, then anchored by one commit on
+`evidence/r00-receipt` whose sole parent is PR #7's corrective merge SHA. From that committed state,
+`tools/validate_milestone_receipt.py` reruns the semantic checks, reads the raw Git objects to prove
+the merge tree/parent and committed evidence bytes, and re-fetches PR #7 through the authenticated
+GitHub API to prove independent author/reviewer separation. The immutable receipt-commit URL is
+posted back to PR #4 and PR #7. R00 remains `MERGED_UNVERIFIED` and B00 may not start unless that
+post-merge mechanism succeeds.
 
 The first execution of that mechanism failed closed after PR #4: its reviewed sealer required the
 exact dependency snapshot in the sdist, while the merged package omitted it. No receipt was
@@ -138,7 +160,8 @@ published. Corrective PR #7 is therefore a bounded continuation of R00, not B00 
 rewrite of PR #4 evidence. It must add the missing artifact byte, preserve every stronger sealer
 check, bind reviews for PRs #1–#4 plus #7, and pass the same exact-head, guarded-squash, fresh-main,
 and receipt controls. The final R00 receipt binds PR #7's corrective squash and records PR #4's
-failed-closed merge as its predecessor. Any broader implementation in PR #7 invalidates R00.
+failed-closed merge, exact rejected sdist digest, CI run, and no-receipt outcome as a typed
+predecessor. Any broader implementation in PR #7 invalidates R00.
 
 ## 7 · Verification strategy
 
