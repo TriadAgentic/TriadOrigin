@@ -15,7 +15,7 @@ jobs:
     env:
       # R00 binds the dependency solver to the exact snapshot reproduced by its evidence run.
       # B01 owns reviewed dependency refreshes; CI must never float them silently.
-      PIP_CONSTRAINT: constraints/ci.txt
+      PIP_CONSTRAINT: ${{ github.workspace }}/constraints/ci.txt
       PIP_DISABLE_PIP_VERSION_CHECK: "1"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 resolved 2026-08-08

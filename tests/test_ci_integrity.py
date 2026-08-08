@@ -14,7 +14,7 @@ def test_ci_actions_are_sha_pinned_and_solver_uses_committed_constraints():
     assert "actions/checkout@11d5960a326750d5838078e36cf38b85af677262" in workflow
     assert "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in workflow
     assert not re.search(r"uses:\s+actions/(?:checkout|setup-python)@v\\d", workflow)
-    assert "PIP_CONSTRAINT: constraints/ci.txt" in workflow
+    assert "PIP_CONSTRAINT: ${{ github.workspace }}/constraints/ci.txt" in workflow
 
 
 def test_ci_constraint_snapshot_is_exact_and_unique():
