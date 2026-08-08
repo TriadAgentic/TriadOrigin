@@ -132,6 +132,14 @@ by both the JSON Schema and
 R00 merge SHA. The immutable receipt-commit URL is posted back to PR #4. R00 remains
 `MERGED_UNVERIFIED` and B00 may not start unless that post-merge mechanism succeeds.
 
+The first execution of that mechanism failed closed after PR #4: its reviewed sealer required the
+exact dependency snapshot in the sdist, while the merged package omitted it. No receipt was
+published. Corrective PR #7 is therefore a bounded continuation of R00, not B00 and not a silent
+rewrite of PR #4 evidence. It must add the missing artifact byte, preserve every stronger sealer
+check, bind reviews for PRs #1–#4 plus #7, and pass the same exact-head, guarded-squash, fresh-main,
+and receipt controls. The final R00 receipt binds PR #7's corrective squash and records PR #4's
+failed-closed merge as its predecessor. Any broader implementation in PR #7 invalidates R00.
+
 ## 7 · Verification strategy
 
 Acceptance is falsification-first:

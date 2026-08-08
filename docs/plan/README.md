@@ -62,9 +62,13 @@ No force-push workflow, self-reported test count, or workbook colour is acceptan
 R00 is the one-time bootstrap exception to the prior-plan-PR rule: the obsolete plan and the
 foundation defects were discovered in the same audit, and no corrected execution law existed under
 which to split them safely. R00 may therefore combine governance refreeze with bounded M1/M2
-integrity remediation. The exception expires when R00 merges. B00 onward requires any semantic
-spec/scope change to merge in a prior, separate PR.
+integrity remediation. The PR #4 post-merge sealer then failed closed because its source artifact
+omitted the reviewed dependency snapshot. Corrective PR #7 is the bounded closure of that same R00
+exception: it may change only the failed receipt/package path and the evidence law needed to bind
+the corrective chain honestly. The exception expires only when the corrective receipt is sealed.
+B00 onward requires any semantic spec/scope change to merge in a prior, separate PR.
 
-For R00 specifically, PR #4 threads close before merge; the 14 inherited PR #1–#3 threads close
-post-merge after their replies can cite the actual squash SHA and receipt, as controlled by
+For R00 specifically, PR #4 and PR #7 threads close before their respective merges; the 14 inherited
+PR #1–#3 threads closed post-PR #4 merge after their replies could cite the actual squash SHA and
+receipt path. The final receipt inventories PRs #1–#4 and #7, as controlled by
 [`00_MASTER_PLAN.md`](00_MASTER_PLAN.md) and [`07_REVIEW_REMEDIATION.md`](07_REVIEW_REMEDIATION.md).

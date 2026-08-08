@@ -19,6 +19,9 @@ from triad_origin.canonical import canonical_json
 from tools.validate_milestone_receipt import (
     R00_INHERITED_THREADS,
     R00_KNOWN_PR4_THREADS,
+    R00_KNOWN_PR7_THREADS,
+    R00_RECEIPT_PR,
+    R00_REVIEW_PRS,
     R00_REQUIRED_COMMANDS,
     ReceiptValidationError,
     _git_tree_sha,
@@ -46,6 +49,7 @@ PYPROJECT_BYTES = (
     b"requires-python='>=3.11'\ndependencies=[]\n"
 )
 SETUP_BYTES = b"from setuptools import setup\nsetup()\n"
+CONSTRAINT_BYTES = b"pytest==9.1.1\n"
 COLLECTOR_BYTES = (REPO_ROOT / "tools" / "collect_test_ids.py").read_bytes()
 CONTRACT_SOURCE_FILES = {
     str(path.relative_to(REPO_ROOT)): path.read_bytes()
@@ -76,6 +80,7 @@ SOURCE_FILES = {
     AUTHORITY_INVENTORY_PATH: AUTHORITY_INVENTORY_BYTES,
     "pyproject.toml": PYPROJECT_BYTES,
     "setup.py": SETUP_BYTES,
+    "constraints/ci.txt": CONSTRAINT_BYTES,
     SOURCE_PATH: SOURCE_BYTES,
     TEST_SOURCE_PATH: TEST_SOURCE_BYTES,
     "tools/collect_test_ids.py": COLLECTOR_BYTES,
@@ -119,6 +124,7 @@ def _sdist_bytes() -> bytes:
             "pyproject.toml": PYPROJECT_BYTES,
             "setup.cfg": b"[egg_info]\ntag_build = \ntag_date = 0\n\n",
             "setup.py": SETUP_BYTES,
+            "constraints/ci.txt": CONSTRAINT_BYTES,
             "src/triad_origin/__init__.py": SOURCE_BYTES,
         }
         members.update(CONTRACT_SOURCE_FILES)
@@ -290,7 +296,11 @@ def _materials() -> list[dict]:
         "scanner": "tools/verify_no_forbidden_capabilities.py",
         "schema": "origin.negative-capability-evidence.v1",
     })
-    thread_prs = {**R00_INHERITED_THREADS, **{value: 4 for value in R00_KNOWN_PR4_THREADS}}
+    thread_prs = {
+        **R00_INHERITED_THREADS,
+        **{value: 4 for value in R00_KNOWN_PR4_THREADS},
+        **{value: R00_RECEIPT_PR for value in R00_KNOWN_PR7_THREADS},
+    }
     threads = [
         {
             "actionable": True,
@@ -318,7 +328,7 @@ def _materials() -> list[dict]:
             "review_id": final_review_id,
             "reviewer": "independent-reviewer",
             "url": (
-                "https://github.com/TriadAgentic/TriadOrigin/pull/4"
+                f"https://github.com/TriadAgentic/TriadOrigin/pull/{R00_RECEIPT_PR}"
                 f"#pullrequestreview-{final_review_id}"
             ),
             "verdict": "PASS",
@@ -326,7 +336,7 @@ def _materials() -> list[dict]:
         "head_sha": HEAD40,
         "inherited_thread_count": 14,
         "pr4_thread_count": len(R00_KNOWN_PR4_THREADS),
-        "reviewed_prs": [1, 2, 3, 4],
+        "reviewed_prs": sorted(R00_REVIEW_PRS),
         "reviewer": "independent-reviewer",
         "schema": "origin.review-evidence.v1",
         "threads": threads,
@@ -379,14 +389,14 @@ def _materials() -> list[dict]:
                         "reviewer": "independent-reviewer",
                         "state": "COMMENTED",
                         "url": (
-                            "https://github.com/TriadAgentic/TriadOrigin/pull/4"
+                            f"https://github.com/TriadAgentic/TriadOrigin/pull/{R00_RECEIPT_PR}"
                             f"#pullrequestreview-{final_review_id}"
                         ),
                     }]
-                    if pr_number == 4 else []
+                    if pr_number == R00_RECEIPT_PR else []
                 ),
             }
-            for pr_number in (1, 2, 3, 4)
+            for pr_number in sorted(R00_REVIEW_PRS)
         ],
         "repository": "TriadAgentic/TriadOrigin",
         "schema": "origin.github-review-export.v1",
@@ -399,10 +409,12 @@ def _materials() -> list[dict]:
         "merge_sha": MERGE40,
         "tree_sha": TREE40,
         "method": "squash",
-        "pr_number": 4,
+        "pr_number": R00_RECEIPT_PR,
         "repository": "TriadAgentic/TriadOrigin",
         "schema": "origin.merge-evidence.v1",
-        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/4",
+        "url": (
+            f"https://github.com/TriadAgentic/TriadOrigin/pull/{R00_RECEIPT_PR}"
+        ),
     })
     command_set = _canonical({
         "branch": "main",
@@ -644,11 +656,13 @@ def _valid_receipt() -> dict:
         },
         "merge_control": {
             "repository": "TriadAgentic/TriadOrigin",
-            "pr_number": 4,
+            "pr_number": R00_RECEIPT_PR,
             "method": "squash",
             "expected_head_sha": HEAD40,
             "tree_sha": TREE40,
-            "url": "https://github.com/TriadAgentic/TriadOrigin/pull/4",
+            "url": (
+                f"https://github.com/TriadAgentic/TriadOrigin/pull/{R00_RECEIPT_PR}"
+            ),
             "evidence_sha256": digests["/merge_control/evidence_sha256"],
         },
         "post_merge": {
@@ -756,6 +770,17 @@ def test_semantic_validator_rejects_cross_field_sha_mismatches(tmp_path):
         validate_receipt(receipt, _schema(), evidence_root=tmp_path)
 
 
+def test_r00_receipt_must_bind_the_controlled_corrective_pr(tmp_path):
+    _materialize_evidence(tmp_path)
+    receipt = _valid_receipt()
+    receipt["merge_control"]["pr_number"] = 4
+    receipt["merge_control"]["url"] = (
+        "https://github.com/TriadAgentic/TriadOrigin/pull/4"
+    )
+    with pytest.raises(ReceiptValidationError, match="corrective PR #7"):
+        validate_receipt(receipt, _schema(), evidence_root=tmp_path)
+
+
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -857,13 +882,43 @@ def test_r00_known_review_thread_requires_api_resolution_reply(tmp_path):
         validate_receipt(receipt, _schema(), evidence_root=tmp_path)
 
 
+def test_r00_review_export_must_cover_the_corrective_pr(tmp_path):
+    _materialize_evidence(tmp_path)
+    receipt = _valid_receipt()
+    record = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    record["pull_requests"] = [
+        pull for pull in record["pull_requests"]
+        if pull["pr_number"] != R00_RECEIPT_PR
+    ]
+    _rewrite_bound_record(tmp_path, receipt, "review-api", record)
+    with pytest.raises(ReceiptValidationError, match="PR #7"):
+        validate_receipt(receipt, _schema(), evidence_root=tmp_path)
+
+
 def test_r00_final_review_requires_api_bound_exact_head_pass_body(tmp_path):
     _materialize_evidence(tmp_path)
     receipt = _valid_receipt()
     record = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
-    record["pull_requests"][3]["reviews"][0]["body"] = "ordinary comment"
+    record["pull_requests"][4]["reviews"][0]["body"] = "ordinary comment"
     _rewrite_bound_record(tmp_path, receipt, "review-api", record)
     with pytest.raises(ReceiptValidationError, match="final review"):
+        validate_receipt(receipt, _schema(), evidence_root=tmp_path)
+
+
+def test_r00_sdist_must_carry_the_reviewed_dependency_snapshot(tmp_path):
+    _materialize_evidence(tmp_path)
+    receipt = _valid_receipt()
+    original = (tmp_path / "evidence/R00/triad-origin.tar.gz").read_bytes()
+    rebuilt = io.BytesIO()
+    with tarfile.open(fileobj=io.BytesIO(original), mode="r:*") as source:
+        with tarfile.open(fileobj=rebuilt, mode="w") as target:
+            for member in source.getmembers():
+                if member.name.endswith("/constraints/ci.txt"):
+                    continue
+                stream = source.extractfile(member) if member.isfile() else None
+                target.addfile(member, stream)
+    _rewrite_bound_bytes(tmp_path, receipt, "sdist", rebuilt.getvalue())
+    with pytest.raises(ReceiptValidationError, match="sdist evidence"):
         validate_receipt(receipt, _schema(), evidence_root=tmp_path)
 
 

@@ -67,6 +67,10 @@ R00_KNOWN_PR4_THREADS = {
     "3741134194", "3741134196", "3741134197",
     "3741211095", "3741211096", "3741211097",
 }
+R00_RECEIPT_PR = 7
+R00_REVIEW_PRS = {1, 2, 3, 4, R00_RECEIPT_PR}
+# Populated before the corrective head may merge if PR #7 receives inline findings.
+R00_KNOWN_PR7_THREADS: set[str] = set()
 R00_AUTHORITY_INVENTORY_PATH = "docs/plan/06_RC2_SOURCE_INVENTORY.md"
 R00_AUTHORITY_SOURCES = [
     {"bytes": 8_000, "name": "index.html", "sha256": "042f6bea59f897add75dd108632cdd22d90382350a290f8f5a0873fa2e636568"},
@@ -123,9 +127,11 @@ def validate_receipt(
     if receipt["milestone_id"] == "R00":
         if (
             receipt["merge_control"]["repository"] != "TriadAgentic/TriadOrigin"
-            or receipt["merge_control"]["pr_number"] != 4
+            or receipt["merge_control"]["pr_number"] != R00_RECEIPT_PR
         ):
-            problems.append("R00 merge control does not identify TriadOrigin PR #4")
+            problems.append(
+                "R00 merge control does not identify the controlled corrective PR #7"
+            )
         if commands != R00_REQUIRED_COMMANDS:
             problems.append("R00 tests do not equal the controlled required command set")
         artifact_kind_list = [artifact["kind"] for artifact in receipt["artifacts"]]
@@ -451,8 +457,11 @@ def _validate_typed_evidence(
             problems.append(f"review evidence contains unresolved actionable threads: {item['path']}")
         else:
             if receipt["milestone_id"] == "R00":
-                if record.get("reviewed_prs") != [1, 2, 3, 4]:
-                    problems.append(f"R00 review evidence omits PR #1-#4: {item['path']}")
+                if record.get("reviewed_prs") != sorted(R00_REVIEW_PRS):
+                    problems.append(
+                        f"R00 review evidence omits PR #1-#4 or corrective PR #7: "
+                        f"{item['path']}"
+                    )
                 inherited = [
                     thread for thread in threads
                     if isinstance(thread, dict) and thread.get("pr_number") in {1, 2, 3}
@@ -486,7 +495,8 @@ def _validate_typed_evidence(
                     or not final_review.get("reviewer")
                     or not isinstance(final_review.get("url"), str)
                     or not final_review["url"].startswith(
-                        "https://github.com/TriadAgentic/TriadOrigin/pull/4#"
+                        f"https://github.com/TriadAgentic/TriadOrigin/pull/"
+                        f"{R00_RECEIPT_PR}#"
                     )
                 ):
                     problems.append(f"R00 final-head review evidence is incomplete: {item['path']}")
@@ -510,7 +520,7 @@ def _validate_typed_evidence(
                     not isinstance(thread_id, str) or not thread_id
                     or not isinstance(url, str)
                     or not isinstance(disposition, str) or not disposition
-                    or isinstance(pr_number, bool) or pr_number not in {1, 2, 3, 4}
+                    or isinstance(pr_number, bool) or pr_number not in R00_REVIEW_PRS
                     or not isinstance(actionable, bool)
                     or not isinstance(resolved, bool)
                 ):
@@ -1213,7 +1223,7 @@ def _validate_r00_review_export(
     reviews: dict[str, dict[str, Any]] = {}
     covered_prs: set[int] = set()
     for pull in export["pull_requests"]:
-        if not isinstance(pull, dict) or pull.get("pr_number") not in {1, 2, 3, 4}:
+        if not isinstance(pull, dict) or pull.get("pr_number") not in R00_REVIEW_PRS:
             problems.append("R00 GitHub review export has an invalid pull request row")
             return
         pr_number = pull["pr_number"]
@@ -1256,14 +1266,16 @@ def _validate_r00_review_export(
                 problems.append("R00 GitHub review export has invalid/duplicate review identity")
                 return
             reviews[review_id] = api_review
-    if covered_prs != {1, 2, 3, 4}:
-        problems.append("R00 GitHub review export does not cover PR #1-#4")
+    if covered_prs != R00_REVIEW_PRS:
+        problems.append("R00 GitHub review export does not cover PR #1-#4 and PR #7")
     for comment_id, pr_number in R00_INHERITED_THREADS.items():
         if exported.get(comment_id, (None,))[0] != pr_number:
             problems.append("R00 GitHub review export omits a known inherited thread")
             break
     if not R00_KNOWN_PR4_THREADS.issubset(exported):
         problems.append("R00 GitHub review export omits a known PR #4 thread")
+    if not R00_KNOWN_PR7_THREADS.issubset(exported):
+        problems.append("R00 GitHub review export omits a known PR #7 thread")
     review_threads = review.get("threads")
     if not isinstance(review_threads, list):
         problems.append("R00 review inventory is not a list")
@@ -1280,7 +1292,9 @@ def _validate_r00_review_export(
         str(thread.get("thread_id")): thread
         for thread in review_threads if isinstance(thread, dict)
     }
-    known_actionable = set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS
+    known_actionable = (
+        set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS | R00_KNOWN_PR7_THREADS
+    )
     for thread_id in known_actionable:
         api_thread = exported_rows.get(thread_id, {})
         inventory_thread = inventory_rows.get(thread_id, {})
