@@ -12,7 +12,17 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from gen_manifest import MANIFEST_JSON, ROOT, build_manifest, bundle_files  # noqa: E402
+from gen_manifest import (  # noqa: E402
+    LEGACY_MANIFEST_JSON,
+    MANIFEST_JSON,
+    MANIFEST_SHA,
+    ROOT,
+    build_manifest,
+    build_manifest_sha_text,
+    bundle_files,
+)
+
+LEGACY_MANIFEST_SHA256 = "a4184b29288e58cd9ac65738c2ecc02b1ee1f21481c3698542b9de0ae1bf8ab6"
 
 
 def main() -> int:
@@ -21,32 +31,62 @@ def main() -> int:
         return 1
     on_disk = json.loads(MANIFEST_JSON.read_text(encoding="utf-8"))
     recomputed = build_manifest()
+    on_payload = on_disk.get("payload", {})
+    expected_payload = recomputed["payload"]
 
-    disk_paths = {a["path"] for a in on_disk["artifacts"]}
+    disk_paths = {a["path"] for a in on_payload.get("artifacts", [])}
     actual_paths = {str(p.relative_to(ROOT)) for p in bundle_files()}
+    new_by_path = {a["path"]: a["sha256"] for a in expected_payload["artifacts"]}
     problems = []
+
+    if not LEGACY_MANIFEST_JSON.exists():
+        problems.append("immutable RC1 bundle descriptor is missing")
+    elif _sha256_bytes(LEGACY_MANIFEST_JSON.read_bytes()) != LEGACY_MANIFEST_SHA256:
+        problems.append("immutable RC1 bundle descriptor bytes changed")
+    else:
+        legacy = json.loads(LEGACY_MANIFEST_JSON.read_text(encoding="utf-8"))
+        legacy_by_path = {
+            artifact["path"]: artifact["sha256"]
+            for artifact in legacy.get("artifacts", [])
+        }
+        if set(legacy_by_path) != actual_paths:
+            problems.append("current RC1 artifact paths differ from immutable RC1 descriptor")
+        for path in sorted(set(legacy_by_path) & actual_paths):
+            if legacy_by_path[path] != new_by_path[path]:
+                problems.append(f"immutable RC1 artifact bytes changed: {path}")
 
     for extra in sorted(actual_paths - disk_paths):
         problems.append(f"unmanifested bundle file: {extra}")
     for missing in sorted(disk_paths - actual_paths):
         problems.append(f"manifest references missing file: {missing}")
 
-    disk_by_path = {a["path"]: a["sha256"] for a in on_disk["artifacts"]}
-    new_by_path = {a["path"]: a["sha256"] for a in recomputed["artifacts"]}
+    disk_by_path = {a["path"]: a["sha256"] for a in on_payload.get("artifacts", [])}
     for path in sorted(disk_paths & actual_paths):
         if disk_by_path[path] != new_by_path.get(path):
             problems.append(f"byte change without manifest update: {path}")
 
-    if on_disk.get("canonical_manifest_hash") != recomputed["canonical_manifest_hash"]:
+    if on_payload.get("canonical_manifest_hash") != expected_payload["canonical_manifest_hash"]:
         problems.append("canonical_manifest_hash is stale")
+    if on_disk != recomputed:
+        problems.append("contract manifest envelope or deterministic metadata drift")
+    if not MANIFEST_SHA.exists():
+        problems.append("contracts/MANIFEST.sha256 is missing")
+    elif MANIFEST_SHA.read_text(encoding="utf-8") != build_manifest_sha_text(recomputed):
+        problems.append("contracts/MANIFEST.sha256 bytes are stale or tampered")
 
     if problems:
         for p in problems:
             print(f"FAIL: {p}", file=sys.stderr)
         return 1
-    print(f"OK: {len(recomputed['artifacts'])} artifacts match manifest "
-          f"({recomputed['canonical_manifest_hash'][:16]}...)")
+    print(f"OK: {len(expected_payload['artifacts'])} artifacts match manifest "
+          f"({expected_payload['canonical_manifest_hash'][:16]}...)")
     return 0
+
+
+def _sha256_bytes(data: bytes) -> str:
+    import hashlib
+
+    return hashlib.sha256(data).hexdigest()
 
 
 if __name__ == "__main__":

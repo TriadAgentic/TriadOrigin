@@ -2,112 +2,152 @@
 
 ## 1 · Objective
 
-Build **TRIAD ORIGIN V7** — the *Deterministic Causal Edge Core* — as a clean-room replacement for
-the deterministic **E02** feature/structure/candidate authority inside the existing TRIAD chassis,
-faithfully to the 1.0.0-RC1 specification set (docs 00–10, vendored under `docs/spec/`).
+Build TRIAD ORIGIN V7 as the clean-room deterministic **E02-V7** service inside the existing TRIAD
+chassis. ORIGIN consumes canonical, watermark-safe E01 state and emits deterministic E02 facts.
+It is not a new E00–E10 monolith.
 
-The deliverable is a **governed, testable, DARK** codebase:
-- deterministic causal state machines (structures → reactions → candidates),
-- strict versioned contracts with byte-pinned identity,
-- a durable hash-chained transport and replay/checkpoint determinism,
-- signed configuration and activation/lease control-plane artifacts,
-- read-only evidence/health faces,
-- a falsification-first test suite and migration/rollback runbooks.
+The repository owns:
 
-**Out of scope by construction (Doc 00):** any live activation, any venue credential/order verb, any
-money authority, and any *numeric* detector threshold value (thresholds remain symbolic/TBD until a
-registered trial + signed activation manifest supplies them). This is an engineering & research
-baseline; **no profitability is claimed**.
+- causal feature snapshots and structure/lifecycle facts;
+- reaction, hypothesis, abstention, withdrawal, and treatment-candidate facts;
+- deterministic state, checkpoints, exact same-code replay, quarantine, telemetry, and evidence;
+- a DARK service that reaches `READY_NO_AUTHORITY`.
 
-## 2 · Constitution (the laws every milestone obeys)
+The repository does **not** own:
 
-Derived from Doc 00 ADRs and Doc 02/03/04. These are release-blocking.
+- venue connectivity, private account state, order or fill creation;
+- E07 policy selection;
+- E08 allow/deny, sizing, reservations, or execution authorization;
+- E09 command compilation, venue execution, protection, reconciliation, or emergency IOC;
+- E10 outcomes, accounting, learning promotion, or profitability claims;
+- lease issuance, risk/exit policy authority, a legacy runtime, or an authority router.
 
-1. **Deterministic control bypasses intelligence.** ORIGIN is pure causal state machines:
-   `transition(prior_state, ordered_input, immutable_params, dependency_quality) → (new_state, events)`.
-   No system clock, I/O, randomness or unordered output.
-2. **Maker-first / post-only.** Normal entry & exit are post-only maker. Taker is an E09-owned,
-   governed, position-reducing **emergency escape only** — never open/add/reverse (ADR-003/004).
-3. **One live mode.** Replay/simulation are offline harnesses only. No dry-run/testnet/paper
-   production mode (ADR-005). The three modes (shadow/paper/live) are a promotion ladder.
-4. **Five isolated capsules.** No vote ensemble; each capsule has its own formula, parameter, trial
-   and denominator (ADR-006).
-5. **RR ≥ 2.0** geometric candidate floor before costs; stop placement is natural/learned, never a
-   fixed legacy distance (ADR-008).
-6. **No legacy-value inheritance.** A code default for a semantic threshold is a hidden experiment
-   and is forbidden — ORIGIN **fails closed** when a required parameter is absent (Doc 02 §02.15).
-7. **Deploy is not authority.** A healthy dark process is `READY_NO_AUTHORITY`. Money/candidate
-   authority is a scoped producer lease with monotonic fencing, never inherited on restart (Doc 04).
-8. **Immutable contract bytes.** Published schemas never change under the same version; the bundle
-   manifest pins exact bytes; CI fails on drift (Doc 03).
-9. **Evidence is append-only & honest-null.** Losing events and abstentions are never deleted or
-   defaulted to zero.
+## 2 · Pre-R00 audited baseline
 
-## 3 · Build approach
+The 2026-08-09 pre-R00 `main` contained RC1 M1/M2 implementation. Local reconstruction reproduced
+`165 passed` and the 91-artifact byte manifest, but GitHub has no CI status or workflow evidence.
+Fourteen actionable review threads remain open, including P1 correctness failures. RC2 acceptance
+was therefore unproven and M3 was blocked. This paragraph is an immutable audit snapshot, not the
+post-R00 status; post-merge truth is carried by PR #4 and the R00 receipt.
 
-- **Language:** Python 3.11, **stdlib-only runtime** (deterministic, self-contained CI). `PyYAML`
-  reads signed config artifacts; `pytest`/`jsonschema` are test-only. Rationale: the estate's
-  contract/conformance tooling is Python; a pure reference implementation with integer arithmetic and
-  ordered processing meets the determinism obligations and is fast to verify. (A later Rust port of
-  hot paths is a deferred option, not required by RC1.)
-- **Layered like the spec, not a monolith.** `contracts/` (schemas + manifest + golden vectors),
-  `src/triad_origin/` (kernel → structures → capsules → faces), `config/` (signed artifacts),
-  `tools/` (deterministic generators/verifiers), `tests/` (falsification-first), `docs/`.
-- **Ultracode where it pays.** Independent, well-specified modules (the 7 structure detectors; later
-  the 5 capsules; the verification-matrix suites) are fanned out with a workflow of parallel agents,
-  each self-testing. Tightly-coupled substrate (contracts, kernel, wiring) is authored directly for
-  coherence. Every workflow output is re-verified by the full suite before it merges.
+## 3 · Constitution
 
-## 4 · Milestone map
+1. **Causality first.** A semantic transition is a pure function of prior state, ordered input,
+   immutable parameters, and dependency quality. No system clock, I/O, randomness, future data,
+   unordered output, or float-dependent semantic comparison.
+2. **One authority per fact.** E01 owns canonical input state; ORIGIN owns E02 facts; E07 selects;
+   E08 authorizes and sizes; E09 executes and owns money truth; E10 derives outcomes.
+3. **DARK is structural.** ORIGIN has no credential loader, signing secret, venue client, order verb,
+   risk write, or money-publish capability. A boolean alone is not enforcement.
+4. **Deploy is not authority.** ORIGIN may verify an externally issued candidate-producer lease.
+   It may not issue or coordinate leases.
+5. **No hidden experiment.** Every consequential parameter has an ID, type, unit, boundary,
+   failure behavior, immutable digest, trial lineage, and ratification state. Proposed RC2 values
+   may be explicit DARK fixtures; they are never runtime defaults or activation authority.
+6. **Immutable contracts.** Published bytes never change under the same version. A version conflict
+   requires a compatibility/migration manifest; otherwise `SAFE_HOLD`.
+7. **Append-only honest evidence.** Corrections append revisions. Missing data yields a named
+   null/abstention/unresolved state, never zero or an inherited value.
+8. **Same code means same transition.** Live consumption and replay call the same production
+   transition functions over the same ordered envelopes and immutable bundle.
+9. **Review is a gate.** Test success cannot override an unresolved correctness finding.
+10. **No live authorization by repository work.** B00–B09 deliver DARK code and operator artifacts.
+    RC2 G6–G9 money rehearsals/canary/economic certification/cutover remain external governance work.
 
-| # | Milestone | Theme | Primary spec |
-|---|-----------|-------|--------------|
-| **M1** | Contract & Identity foundation | 30 contracts, canonical encoding, identity, manifest | Doc 03 |
-| **M2** | Kernel primitives & transport | transition base, tick math, clocks, partitioning, ledger, journal/replay, lease, ingress, telemetry, health | Doc 02 §02.2, Doc 04, Doc 05 |
-| **M3** | Structure semantics | feature primitives + typed levels + structure state (BOS/CHOCH) + FVG + order block + reclaim + flow atoms | Doc 02 §§02.3–02.11, Doc 04 §§04.4–04.7 |
-| **M4** | Reaction, capsules & candidates | reaction engine, capsule host, 5 capsules, opportunity clusterer, candidate publisher | Doc 02 §§02.12–02.13, Doc 04 §04.8 |
-| **M5** | Config artifacts, wiring & services | signed config, comparator, authority router, legacy bridge, replay-runner, service main | Doc 05, Doc 00 config inventory |
-| **M6** | Verification matrix & runbooks | falsification-first test registry, migration/rollback runbooks, read-only evidence faces | Doc 08, Doc 09 |
+## 4 · Specification/control authority
 
-Sequencing: M1 → M2 → M3 → M4 → M5 → M6. M3 depends on M2; M4 on M3; M5 on M1–M4; M6 spans all.
-Detail is in [`01_MILESTONE_BREAKDOWN.md`](01_MILESTONE_BREAKDOWN.md).
+The supplied RC2 package outranks the old RC1 plan only after its package completeness and internal
+compatibility are proven. It currently cannot be declared canonical because:
 
-## 5 · PR & merge cadence
+- its linked complete checklist and `canonical/` bundle were not supplied;
+- its workbook has broken control references and no evidence-backed task state;
+- its prose conflicts on contracts, clocks, numeric representation, formulas, lifecycle, clustering,
+  and capsule identity.
 
-- One PR per milestone into `main`, merged (squash) immediately once green, per the operator's
-  directive to minimize local-only work.
-- After each merge, the feature branch `claude/triad-origin-implementation-xz7uct` is re-based on the
-  fresh `main` (`git checkout -B … origin/main`) and the next milestone begins.
-- Every PR body carries the milestone scope, the verification evidence (test count + manifest check),
-  and the coupled spec sections.
+All such items are named in [`05_RC2_CONFLICT_REGISTER.md`](05_RC2_CONFLICT_REGISTER.md).
+Resolution changes the spec/control artifacts first; implementation follows in a later PR.
 
-## 6 · Verification strategy
+## 5 · Corrected build sequence
 
-Falsification-first (Doc 08). Each milestone lands with tests that could *destroy* an apparent
-property, not merely confirm it:
-- **Contracts:** golden valid/invalid vectors under both validators; closed-enum, stale-epoch,
-  forbidden-field, manifest byte-integrity.
-- **Kernel:** hash-chain tamper/torn-frame detection, single-writer, fencing monotonicity,
-  checkpoint/replay determinism (prefix/restart/duplicate invariance).
-- **Structures/capsules (Doc 02 §02.16 proof obligations):** prefix invariance, restart invariance,
-  duplicate invariance, LONG/SHORT mirror, scale metamorphism, lifecycle monotonicity, identity
-  stability, risk independence, null honesty, and falsification (placebo timestamps/signs, future
-  mutation, ablations).
-- **Gate:** `python3 -m pytest` green **and** `python3 tools/verify_manifest.py` exit-0 on every PR.
+| ID | Theme | RC2 relationship |
+|---|---|---|
+| R00 | Repository integrity refreeze | Repairs known M1/M2/review/CI truth without claiming RC2 |
+| B00 | RC2 authority and E02 scope freeze | Resolves package, compatibility, ownership, and blockers |
+| B01 | Contract and identity refreeze | RC2 G0 E02 slice |
+| B02 | Kernel, transport, and replay refreeze | RC2 G0/G1 substrate within E02 |
+| B03 | Parameter substrate, features, and typed levels | RC2 G2 F02–F07, after ratification |
+| B04 | Structure truth | RC2 G2 F08–F13 |
+| B05 | Flow and reaction | RC2 G2 F14–F17 |
+| B06 | Geometry, clustering, and candidate publication | RC2 G3 F18–F19 |
+| B07 | Five capsules and trial integrity | RC2 G3 |
+| B08 | DARK E02 service integration | W02 consume; W03–W06 own; W23–W25 E02 facts |
+| B09 | Full verification and operator artifacts | Offline/paired replay/read-only evidence only |
 
-## 7 · Risks & mitigations
+Build IDs deliberately differ from RC2 gates `G-1…G9`.
 
-| Risk | Mitigation |
-|------|-----------|
-| Threshold values are TBD | Kept symbolic; tests supply parameters; `require()` fails closed — no hidden defaults ship |
-| Structure semantics ambiguity | Faithful to Doc 02/04 tables; every rule cites its section; golden vectors pin behavior |
-| Workflow-authored drift | Shared base pre-authored; each agent self-tests; full-suite re-verify before merge |
-| Live-venue coupling creep | ORIGIN has no venue/keys/order code paths; contract schema forbids money fields on candidates; ACL posture documented |
-| Transport assumption (NATS) | File-ledger is the authoritative binding; JetStream is a deferred, separately certified option |
+## 6 · PR and merge gate
 
-## 8 · Explicitly deferred (Doc 10 / inventory `DEFER`/`BLOCKED`)
+Each milestone uses a fresh `agent/<milestone>-<description>` branch from verified `main`.
+The PR body identifies exact scope, coupled requirement IDs, root cause, checks, rollback, and
+residual blockers.
 
-Hyperliquid & non-Binance adapters (VEN-019/020), object-store archive (DAT-018), the optional
-JetStream transport binding, live economic certification (M7–M9 of Doc 09, which require real market
-data + governance ceremony and are **not** agent-executable here), and every numeric detector
-threshold value. These are **named, not silently chosen**.
+R00 alone is a documented bootstrap exception: it combines replacement of the already-invalid plan
+with bounded foundation remediation because the audit discovered both before a corrected process
+existed. This exception ends at the R00 merge; B00 onward follows the prior-plan-PR rule without
+exception.
+
+Mandatory evidence:
+
+- authority-basis digest and status (`RATIFIED_BUNDLE` or explicitly noncanonical audit basis), plus
+  exact scope digest;
+- base, PR-head, and merge SHAs;
+- build/toolchain, dependency-specification, and resolved dependency-snapshot identity;
+- test IDs, commands, exit codes, skips/xfails, and result digest;
+- contract-manifest, golden-vector, and replay output digests where applicable, with every
+  non-applicable item named, owned, reasoned, and assigned to a later milestone;
+- negative-capability scan;
+- CI run identity and independent review state;
+- post-merge fresh-main reproduction;
+- supersession linkage to any earlier receipt.
+
+Repository ruleset enforcement is **not yet evidenced** by the available repository API. Issue
+[#5](https://github.com/TriadAgentic/TriadOrigin/issues/5) is therefore a B00 control blocker. R00
+may use only the documented bootstrap merge procedure: re-read the immutable PR head, require its
+exact-head `CI / test-and-verify` run to be green, require zero unresolved actionable PR #4 threads,
+and submit the merge with that same head SHA as the expected value. A direct/admin merge outside
+that procedure invalidates the receipt; it does not prove a durable ruleset.
+
+For that pre-merge guard, “zero actionable threads” means PR #4's current review threads. The 14
+inherited PR #1–#3 threads remain inventoried until the post-merge remediation reply can cite the
+actual squash SHA and receipt path; they are then resolved and captured in the sealed receipt.
+
+The merge SHA and fresh-main result do not exist before merge, so an R00 receipt cannot truthfully
+live in PR #4. After the squash merge, it is generated and schema-validated at
+`evidence/receipts/R00.json`; its canonical test-ID/results, commands, toolchain, review,
+post-merge, manifest, dependency, source, sdist, and wheel preimages are persisted beneath
+`evidence/R00/` (or referenced repository paths) and bound through `evidence_files`. It is validated
+by both the JSON Schema and
+`tools/validate_milestone_receipt.py` cross-field identity checks, then anchored by a commit on
+`evidence/r00-receipt` whose parent is the
+R00 merge SHA. The immutable receipt-commit URL is posted back to PR #4. R00 remains
+`MERGED_UNVERIFIED` and B00 may not start unless that post-merge mechanism succeeds.
+
+## 7 · Verification strategy
+
+Acceptance is falsification-first:
+
+- prefix, future-mutation, duplicate, cold/warm/checkpoint/restart, and correction invariance;
+- LONG/SHORT mirror and scale metamorphism;
+- integer boundary, one-unit neighbor, null/stale/gap, and overflow tests;
+- lifecycle monotonicity and identity stability;
+- contract compatibility and installed-wheel conformance;
+- same-code live-driver/replay-driver byte equality;
+- forbidden credential/network/order/risk/money capability scans.
+
+Test count is descriptive only. A test that encodes the wrong behavior does not prove conformance.
+
+## 8 · External dependencies and stop conditions
+
+B00 cannot pass until the complete RC2 bundle and compatibility decisions exist. B03 cannot start
+until every formula it uses has resolved semantics and ratified-or-explicit-DARK parameters.
+No B-stage may absorb out-of-repository estate work merely to make a checklist appear complete.

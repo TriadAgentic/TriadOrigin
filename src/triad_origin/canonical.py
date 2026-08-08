@@ -36,18 +36,21 @@ def nfc(s: str) -> str:
 
 
 def _normalize(obj: Any) -> Any:
-    """Recursively NFC-normalize string keys/values and reject non-finite floats."""
+    """Recursively NFC-normalize strings and reject every floating-point value.
+
+    Canonical wire v1 has one numeric representation: JSON integers.  Semantic decimal values are
+    represented as canonical base-10 strings at the boundary.  Accepting even a finite float would
+    give equivalent values such as ``1`` and ``1.0`` different bytes and therefore different IDs.
+    """
     if isinstance(obj, str):
         return nfc(obj)
     if isinstance(obj, bool):
         return obj
     if isinstance(obj, float):
-        # Floats are not a canonical numeric form for semantic values; only allow finite,
-        # and forbid NaN/Infinity outright.
-        if obj != obj or obj in (float("inf"), float("-inf")):
-            raise CanonicalError("NaN/Infinity is not permitted on the canonical wire")
-        return obj
+        raise CanonicalError("floating-point values are not permitted on the canonical wire")
     if isinstance(obj, int):
+        if obj < INT64_MIN or obj > INT64_MAX:
+            raise CanonicalError("integer value out of signed 64-bit range")
         return obj
     if obj is None:
         return None
@@ -71,15 +74,20 @@ def canonical_json(obj: Any) -> bytes:
 
     Keys are sorted, strings NFC-normalized, and NaN/Infinity rejected.
     """
-    normalized = _normalize(obj)
-    text = json.dumps(
-        normalized,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    )
-    return text.encode("utf-8")
+    try:
+        normalized = _normalize(obj)
+        text = json.dumps(
+            normalized,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=False,
+            allow_nan=False,
+        )
+        return text.encode("utf-8")
+    except CanonicalError:
+        raise
+    except (TypeError, ValueError, UnicodeError, RecursionError) as exc:
+        raise CanonicalError("value cannot be encoded on the canonical wire") from exc
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -92,10 +100,49 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def loads_canonical(data: bytes | str) -> Any:
-    """Decode canonical JSON, rejecting duplicate keys and non-finite numbers."""
-    if isinstance(data, bytes):
-        data = data.decode("utf-8")
-    return json.loads(data, object_pairs_hook=_reject_duplicate_keys, parse_constant=_reject_const)
+    """Decode canonical JSON, rejecting duplicate keys and every floating-point number."""
+    try:
+        if isinstance(data, bytes):
+            source = data
+            data = data.decode("utf-8")
+        elif isinstance(data, str):
+            source = data.encode("utf-8")
+        else:
+            raise CanonicalError("canonical JSON input must be bytes or text")
+        if not isinstance(data, str):
+            raise CanonicalError("canonical JSON input must be bytes or text")
+        value = json.loads(
+            data,
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_float=_reject_float,
+            parse_int=_parse_int,
+            parse_constant=_reject_const,
+        )
+        if canonical_json(value) != source:
+            raise CanonicalError("JSON bytes are not in exact canonical form")
+        return value
+    except CanonicalError:
+        raise
+    except (TypeError, ValueError, UnicodeError, RecursionError) as exc:
+        raise CanonicalError("invalid canonical JSON") from exc
+
+
+def _parse_int(token: str) -> int:
+    """Parse only a signed-int64 JSON integer without invoking an unbounded ``int`` conversion."""
+    neg = token.startswith("-")
+    body = token[1:] if neg else token
+    if not body or len(body) > 19:
+        raise CanonicalError("JSON integer is outside the signed 64-bit domain")
+    if token == "-0":
+        raise CanonicalError("negative zero is not a canonical JSON integer")
+    value = int(token)
+    if value < INT64_MIN or value > INT64_MAX:
+        raise CanonicalError("JSON integer is outside the signed 64-bit domain")
+    return value
+
+
+def _reject_float(token: str) -> Any:
+    raise CanonicalError(f"floating-point JSON number is not permitted: {token}")
 
 
 def _reject_const(token: str) -> Any:  # pragma: no cover - defensive
@@ -108,7 +155,7 @@ def tick_to_str(value: int) -> str:
     if isinstance(value, bool) or not isinstance(value, int):
         raise CanonicalError("tick/step value must be a Python int")
     if value < INT64_MIN or value > INT64_MAX:
-        raise CanonicalError(f"tick/step value out of signed 64-bit range: {value}")
+        raise CanonicalError("tick/step value out of signed 64-bit range")
     return str(value)
 
 
@@ -122,12 +169,16 @@ def str_to_tick(text: str) -> int:
     s = text
     neg = s.startswith("-")
     body = s[1:] if neg else s
-    if body == "" or not body.isdigit():
+    if body == "" or any(ch < "0" or ch > "9" for ch in body):
         raise CanonicalError(f"not a canonical integer string: {text!r}")
     if len(body) > 1 and body[0] == "0":
         raise CanonicalError(f"leading zero not permitted: {text!r}")
     if neg and body == "0":
         raise CanonicalError("negative zero not permitted")
+    # Signed int64 has at most 19 decimal digits. Bound before int() so Python's configurable
+    # large-integer parsing limit can never leak a raw ValueError at this boundary.
+    if len(body) > 19:
+        raise CanonicalError(f"tick/step value out of signed 64-bit range: {text!r}")
     value = int(s)
     if value < INT64_MIN or value > INT64_MAX:
         raise CanonicalError(f"tick/step value out of signed 64-bit range: {text!r}")
@@ -143,6 +194,8 @@ def _as_bytes(field: Any) -> bytes:
     if isinstance(field, bool):
         return b"\x01" if field else b"\x00"
     if isinstance(field, int):
+        if field < INT64_MIN or field > INT64_MAX:
+            raise CanonicalError("digest integer field is outside the signed 64-bit domain")
         return str(field).encode("ascii")
     # Structured field -> canonical JSON bytes.
     return canonical_json(field)

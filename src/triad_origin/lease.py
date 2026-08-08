@@ -1,16 +1,20 @@
-"""Producer lease and fencing machine (CON-023 / Doc 04 §04.16).
+"""Verify-only producer-lease fencing at the E02 boundary (CON-023 / Doc 04 §04.16).
 
-Deploy is not authority. A candidate/money topic is written only by the holder of a scoped producer
-lease carrying a **monotonic fencing token**. Consumers persist the highest accepted token per scope
-and reject lower/expired/revoked tokens even when a later-timestamped payload arrives — clock
-ordering never beats fencing. A restart never inherits a lease; a replacement requests a strictly
-higher token.
+Deploy is not authority. An E02-owned topic is written only by the holder of a scoped producer
+lease carrying a **monotonic fencing token**. This in-process verifier tracks the highest accepted
+token per scope and rejects lower/expired/revoked tokens even when a later-timestamped payload
+arrives — clock ordering never beats fencing. Durable per-scope restore remains a B02 blocker;
+ORIGIN never issues, activates, coordinates, or supersedes a lease, which are external governance
+responsibilities.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from threading import RLock
+
+from .canonical import INT64_MAX, CanonicalError, canonical_json, nfc
 
 
 class LeaseState(str, Enum):
@@ -19,10 +23,6 @@ class LeaseState(str, Enum):
     REVOKED = "REVOKED"
     EXPIRED = "EXPIRED"
     SUPERSEDED = "SUPERSEDED"
-
-
-class LeaseError(RuntimeError):
-    pass
 
 
 @dataclass(frozen=True)
@@ -35,84 +35,81 @@ class Lease:
     activation_manifest_id: str
     state: LeaseState
 
-    def with_state(self, state: LeaseState) -> "Lease":
-        return Lease(self.lease_id, self.scope, self.producer_service, self.producer_instance_id,
-                     self.fencing_token, self.activation_manifest_id, state)
-
-
-@dataclass
-class LeaseCoordinator:
-    """Issues strictly monotonic fencing tokens per authority scope."""
-
-    _highest: dict[str, int] = field(default_factory=dict)
-    _active: dict[str, Lease] = field(default_factory=dict)
-    _counter: int = 0
-
-    def issue(self, scope: str, producer_service: str, producer_instance_id: str,
-              activation_manifest_id: str) -> Lease:
-        token = self._highest.get(scope, 0) + 1
-        self._highest[scope] = token
-        self._counter += 1
-        lease = Lease(
-            lease_id=f"lease_{self._counter}",
-            scope=scope,
-            producer_service=producer_service,
-            producer_instance_id=producer_instance_id,
-            fencing_token=token,
-            activation_manifest_id=activation_manifest_id,
-            state=LeaseState.ISSUED,
-        )
-        return lease
-
-    def activate(self, lease: Lease) -> Lease:
-        prior = self._active.get(lease.scope)
-        if prior is not None and prior.fencing_token >= lease.fencing_token:
-            raise LeaseError("cannot activate a lease with a non-greater token")
-        active = lease.with_state(LeaseState.ACTIVE)
-        self._active[lease.scope] = active
-        return active
-
-    def revoke(self, scope: str) -> Lease | None:
-        active = self._active.get(scope)
-        if active is None:
-            return None
-        revoked = active.with_state(LeaseState.REVOKED)
-        del self._active[scope]
-        return revoked
-
-    def supersede(self, scope: str, producer_service: str, producer_instance_id: str,
-                  activation_manifest_id: str) -> Lease:
-        """Rollback/promotion: revoke the entry authority, then issue a strictly higher token."""
-        self.revoke(scope)
-        return self.activate(self.issue(scope, producer_service, producer_instance_id,
-                                        activation_manifest_id))
-
 
 @dataclass
 class ConsumerFence:
-    """A consumer's per-scope fence. Accepts only strictly-higher tokens (Doc 04 §04.16)."""
+    """A consumer's per-scope fence for already validated external leases.
 
-    _highest: dict[str, int] = field(default_factory=dict)
-    _revoked: set[str] = field(default_factory=set)
+    Lease acceptance advances only to a structurally valid, externally activated token. Writes
+    must then carry that exact accepted token: an unseen higher value is not authority.
+    """
+
+    _highest: dict[str, int] = field(default_factory=dict, init=False, repr=False)
+    _revoked: set[str] = field(default_factory=set, init=False, repr=False)
+    _lock: RLock = field(default_factory=RLock, init=False, repr=False, compare=False)
 
     def accept(self, lease: Lease) -> bool:
-        """Return True iff this lease may write its scope now; persist the token if so."""
-        if lease.state in (LeaseState.REVOKED, LeaseState.EXPIRED, LeaseState.SUPERSEDED):
+        """Fence an externally validated active lease; this method never issues authority."""
+        if not isinstance(lease, Lease):
             return False
-        if lease.scope in self._revoked and lease.fencing_token <= self._highest.get(lease.scope, 0):
+        if lease.state is not LeaseState.ACTIVE:
             return False
-        highest = self._highest.get(lease.scope, 0)
-        if lease.fencing_token <= highest:
-            return False  # stale epoch; reject even if it "arrives later"
-        self._highest[lease.scope] = lease.fencing_token
-        self._revoked.discard(lease.scope)
-        return True
+        text_fields = (
+            lease.lease_id,
+            lease.scope,
+            lease.producer_service,
+            lease.producer_instance_id,
+            lease.activation_manifest_id,
+        )
+        if (
+            not all(_canonical_nonempty_text(value) is not None for value in text_fields)
+            or isinstance(lease.fencing_token, bool)
+            or not isinstance(lease.fencing_token, int)
+            or lease.fencing_token <= 0
+            or lease.fencing_token > INT64_MAX
+        ):
+            return False
+        # A revocation is terminal for this verifier instance. Re-authorizing a scope requires a
+        # separately ratified, cryptographically verified replacement path, which is blocked by
+        # B00 and intentionally absent from this repository today.
+        scope = _canonical_nonempty_text(lease.scope)
+        assert scope is not None  # checked above
+        with self._lock:
+            if scope in self._revoked:
+                return False
+            highest = self._highest.get(scope, 0)
+            if lease.fencing_token <= highest:
+                return False  # stale epoch; reject even if it "arrives later"
+            self._highest[scope] = lease.fencing_token
+            return True
 
     def revoke(self, scope: str) -> None:
-        self._revoked.add(scope)
+        normalized = _canonical_nonempty_text(scope)
+        if normalized is None:
+            return
+        with self._lock:
+            self._revoked.add(normalized)
 
     def accepts_write(self, scope: str, fencing_token: int) -> bool:
-        """Would a message stamped with ``fencing_token`` be accepted for ``scope``?"""
-        if scope in self._revoked:
-            return fencing_token > self._highest.get(scope, 0)
-        return fencing_token >= self._highest.get(scope, 0) and fencing_token > 0
+        """Accept only the exact token of an active lease previously accepted for ``scope``."""
+        normalized = _canonical_nonempty_text(scope)
+        if normalized is None:
+            return False
+        if isinstance(fencing_token, bool) or not isinstance(fencing_token, int):
+            return False
+        with self._lock:
+            if normalized in self._revoked:
+                return False
+            accepted = self._highest.get(normalized)
+            return accepted is not None and fencing_token == accepted
+
+
+def _canonical_nonempty_text(value: object) -> str | None:
+    if not isinstance(value, str) or not value or len(value) > 256:
+        return None
+    normalized = nfc(value)
+    try:
+        canonical_json(normalized)
+    except (CanonicalError, UnicodeError, RecursionError):
+        return None
+    return normalized

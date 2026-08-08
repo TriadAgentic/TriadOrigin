@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from decimal import localcontext
+
 import pytest
 
 from triad_origin import instrument_math as im
@@ -32,6 +34,17 @@ def test_qty_roundtrip():
     assert im.steps_to_qty(BTC, steps) == "0.012"
 
 
+def test_boundary_formatting_is_independent_of_global_decimal_context():
+    expected = ("62123.40", "123.456")
+    for precision in (2, 5, 28):
+        with localcontext() as context:
+            context.prec = precision
+            assert (
+                im.ticks_to_price(BTC, 621234),
+                im.steps_to_qty(BTC, 123456),
+            ) == expected
+
+
 def test_overflow_is_fail_closed():
     with pytest.raises(im.InstrumentError):
         im.add_ticks(im.INT64_MAX, 1)
@@ -40,6 +53,53 @@ def test_overflow_is_fail_closed():
 def test_bps_ceiling_is_integer_exact():
     # ceil(621234 * 7 / 10000) = ceil(434.86) = 435
     assert im.bps_of_ticks(621234, 7) == 435
+
+
+@pytest.mark.parametrize("bad", [True, 1.5, "1"])
+def test_integer_helpers_reject_non_integer_operands(bad):
+    with pytest.raises(im.InstrumentError):
+        im.add_ticks(bad, 1)
+    with pytest.raises(im.InstrumentError):
+        im.bps_of_ticks(bad, 1)
+
+
+@pytest.mark.parametrize("bad", [-1, True, 1.5, "7"])
+def test_bps_rejects_negative_or_non_integer_values(bad):
+    with pytest.raises(im.InstrumentError):
+        im.bps_of_ticks(100, bad)
+
+
+@pytest.mark.parametrize(
+    "bad", [
+        True, 1.0, " 1.00", "+1.00", "01.00", "1e0", "1.0", "1.000", "-0.00",
+        "9" * 5_000,
+    ]
+)
+def test_decimal_boundary_requires_canonical_string(bad):
+    with pytest.raises(im.InstrumentError):
+        im.price_to_ticks(BTC, bad)
+
+
+def test_bps_rejects_signed_int64_intermediate_overflow():
+    with pytest.raises(im.InstrumentError, match="bps numerator"):
+        im.bps_of_ticks(im.INT64_MAX, 2)
+
+
+def test_half_even_rounding_is_integer_exact_for_negative_and_positive_ties():
+    unit = Instrument("I", "V", "1.00", "1.00", "0", "r")
+    assert im.price_to_ticks(unit, "2.50", Rounding.HALF_EVEN) == 2
+    assert im.price_to_ticks(unit, "3.50", Rounding.HALF_EVEN) == 4
+    assert im.price_to_ticks(unit, "-2.50", Rounding.HALF_EVEN) == -2
+    assert im.price_to_ticks(unit, "-3.50", Rounding.HALF_EVEN) == -4
+
+
+@pytest.mark.parametrize(
+    "tick, step, expected",
+    [("0.25", "0.5", "0.125"), ("0.125", "0.2", "0.0250"), ("0.50", "0.05", "0.0250")],
+)
+def test_notional_format_uses_original_decimal_coefficients(tick, step, expected):
+    instrument = Instrument("I", "V", tick, step, "0", "r")
+    assert im.notional_quote(instrument, 1, 1) == expected
 
 
 def test_bad_instrument_metadata_fails_closed():

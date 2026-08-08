@@ -1,60 +1,68 @@
 # TRIAD ORIGIN V7 — Deterministic Causal Edge Core
 
-**Engineering name:** TRIAD ORIGIN V7 · **Descriptive name:** Deterministic Causal Edge Core
-**Repository:** `TriadAgentic/TriadOrigin` · **Service:** `triad-origin-e02` · **Topology node:** `E02-V7`
-**Namespace:** `triad.origin.v7` · **Shorthand:** `ORIGIN`
+**Repository:** `TriadAgentic/TriadOrigin` · **Service:** `triad-origin-e02` · **Node:** `E02-V7`  
+**Namespace:** `triad.origin.v7` · **Posture:** `DARK / SAFE_HOLD`
 
-> **No profitability claim.** ORIGIN is an engineering and research specification. Profitability
-> remains an empirical hypothesis. **No live activation is authorized by this repository.** Every
-> route ships **DARK** (no venue credentials, no order verbs, no money authority).
+TRIAD ORIGIN is the clean-room deterministic **E02-only** service in the TRIAD estate. It consumes
+canonical E01 state and, after the governing specification is ratified, may produce deterministic
+feature, structure, reaction, hypothesis, candidate, quarantine, replay, and evidence facts.
+It is not an E00–E10 monolith.
 
-ORIGIN is a **clean-room replacement for the deterministic E02** feature/structure/candidate
-authority inside the existing TRIAD chassis. It is not a new E00–E10 monolith and copies no legacy
-detector wholesale. It reuses only independently verified contracts, venue mechanics, exact
-arithmetic, safety rails and operational patterns.
+> **No live activation or profitability claim.** This repository has no venue credential, order,
+> E07 policy, E08 risk/size/authorization, E09 execution, E10 accounting, lease-issuance, or money
+> publication capability. A healthy current process can reach only `READY_NO_AUTHORITY`.
 
-This repository implements the governed baseline defined by the **TRIAD ORIGIN V7 1.0.0-RC1**
-specification set (see [`docs/spec/`](docs/spec/) and [`docs/SPEC_INDEX.md`](docs/SPEC_INDEX.md)).
+## Governing status
 
-## Constitution (the load-bearing laws)
+- The merged foundation originated against `1.0.0-RC1` and failed the later repository audit.
+- The supplied `1.0.0-RC2` package is a `RATIFICATION_CANDIDATE_NOT_ARMED`; it is incomplete and
+  internally contradictory.
+- Vendored [`docs/spec/`](docs/spec/) is therefore **historical RC1 provenance**, not sufficient
+  authority for new detector work.
+- RC2 conflicts enter `SAFE_HOLD`. M3 and every detector milestone remain blocked until B00 closes
+  the package, compatibility, ownership, formula, parameter, and lifecycle decisions.
 
-- **Deterministic control bypasses intelligence.** ORIGIN is pure, causal state machines over an
-  explicitly ordered input stream. `transition(prior_state, ordered_input, immutable_params,
-  dependency_quality) -> (new_state, events)` — **no system clock, no I/O, no randomness, no
-  unordered output.**
-- **Maker-first / post-only.** Normal entry and exit are post-only maker. Taker is an E09-owned,
-  governed, position-reducing **emergency escape only** — never open, add or reverse exposure.
-- **One live mode.** Replay/simulation exist only as offline harnesses. No dry-run/testnet/paper
-  production mode.
-- **Five isolated capsules.** No vote ensemble. Every capsule has its own formula, parameter, trial
-  and denominator.
-- **RR ≥ 2.0 candidate floor** before costs; stop placement is natural/learned, never a fixed
-  legacy distance.
-- **No legacy-value inheritance.** Numeric detector thresholds are **symbolic** until a registered
-  trial and a signed activation manifest supply them. A code default is a hidden experiment and is
-  forbidden — ORIGIN **fails closed** when a required parameter is absent.
-- **Deploy is not authority.** A healthy dark process holds no money authority. Authority is a
-  scoped producer lease with monotonic fencing, issued by governance — never inherited on restart.
+The controlled execution law is [`docs/plan/README.md`](docs/plan/README.md). Audited status is in
+[`docs/plan/04_STATUS.md`](docs/plan/04_STATUS.md), and release blockers are in
+[`docs/plan/05_RC2_CONFLICT_REGISTER.md`](docs/plan/05_RC2_CONFLICT_REGISTER.md).
 
-## Layout
+## E02 boundary
 
-```
-contracts/         Signed contract schemas, bundle manifest, registry, golden vectors
-src/triad_origin/  The deterministic kernel, structures, capsules and read-only faces
-config/            Signed canonical config artifacts (schemas + owner + change control)
-docs/spec/         The vendored 1.0.0-RC1 specification set (00–10) — the normative source
-docs/              SPEC_INDEX, ADRs, runbooks, verification matrix
-tools/             Deterministic generators and manifest verifiers
-tests/             Falsification-first invariant, golden, compatibility and property tests
+ORIGIN consumes W02, owns W03–W06 and its E02-specific W23–W25 facts, and treats downstream
+decision/risk/execution/outcome contracts as conformance references only. It may verify an externally
+issued lease; it never issues, activates, coordinates, or supersedes one. Runtime legacy bridges,
+authority routers, risk/exit policy ownership, venue adapters, order compilers, and fill parsers are
+out of repository.
+
+## Repository layout
+
+```text
+contracts/         RC1 byte-pinned contracts and conformance vectors pending B01 refreeze
+src/triad_origin/  DARK deterministic foundation and read-only/verify-only faces
+docs/spec/         Historical vendored RC1 source set
+docs/plan/         Audited R00/B00–B09 execution plan and blocker registers
+tools/             Verification, packaging, and negative-capability gates
+tests/             Falsification and regression suites
 ```
 
-## Build status
-
-Implemented milestone-by-milestone; see [`docs/SPEC_INDEX.md`](docs/SPEC_INDEX.md) for the
-inventory→module map and current coverage. Run the suite:
+## Required local gate
 
 ```bash
-python3 -m pip install -e '.[test]'
-python3 -m pytest
-python3 tools/verify_manifest.py   # contract bundle byte-integrity
+PIP_CONSTRAINT=constraints/ci.txt python -m pip install -e '.[test]'
+PYTHONHASHSEED=0 python -m pytest
+PYTHONHASHSEED=1 python -m pytest
+python tools/collect_test_ids.py
+python tools/verify_manifest.py
+python tools/validate_contract_manifest.py
+python tools/verify_reproducible_build.py
+python tools/test_wheel_install.py
+python tools/verify_no_forbidden_capabilities.py
 ```
+
+Test count is descriptive, not acceptance evidence. A milestone also requires exact-head CI, review
+completion, squash merge, fresh-main reproduction, and an immutable receipt.
+
+R00 source artifacts use package version `7.0.0rc1.post1`; this distinguishes the repaired RC1
+foundation from pre-R00 `7.0.0rc1` bytes and does not claim RC2 specification acceptance. The R00
+ledger implementation is Linux/POSIX-only (`fcntl` inode locking); cross-platform transport is not
+claimed.

@@ -1,93 +1,93 @@
-# 02 · Traceability
+# 02 · Traceability and Ownership
 
-Maps the specification bill of materials (Doc 06 inventory / Doc 07 checklist / Doc 08 verification)
-to the milestone and module that implements it. Status: ✅ merged · 🔜 planned · ⏸ deferred (named).
+This plan classifies requirements before assigning implementation. Status is derived from receipts,
+not from the existence of a file.
 
-## Repositories & processes (Doc 06 REP/SRV)
+## Ownership vocabulary
 
-| ID | Item | Target | Milestone |
-|----|------|--------|-----------|
-| REP-017 | TriadOrigin repo | clean-room repo | M1 ✅ |
-| SRV-004 | `triad-origin-e02` | standalone no-credential service | scaffold M1 ✅ · main M5 🔜 |
-| SRV-005 | legacy-input-bridge | control-only dark bridge | M5 🔜 |
-| SRV-006 | edge-comparator | side-effect-free diff | M5 🔜 |
-| SRV-007 | edge-authority-router | single candidate writer | M5 🔜 |
-| SRV-024 | lease-coordinator | monotonic fencing | M2 ✅ (`lease.py`) |
-| SRV-025 | replay-runner | same-code deterministic runner | M5 🔜 |
-| REP-001…016, SRV-001…003/008…023 | estate repos/processes | audit/repair/retain/defer **in their own repos** | out of TriadOrigin scope (referenced only) |
+| Class | Meaning |
+|---|---|
+| `OWN` | ORIGIN runtime is authoritative producer |
+| `CONSUME` | ORIGIN validates and consumes an external authoritative fact |
+| `VERIFY_ONLY` | Offline/conformance code may verify; runtime does not own |
+| `REFERENCE_ONLY` | Needed for end-to-end reasoning, never implemented here |
+| `OUT_OF_REPO` | A named external service/repository owns implementation |
+| `DEFERRED` | Explicitly deferred with an owner and later gate |
 
-## ORIGIN modules (Doc 06 MOD)
+## Wiring ownership
 
-| ID | Module | Milestone |
-|----|--------|-----------|
-| MOD-001 contract_ingress | `ingress.py` | M2 ✅ |
-| MOD-002 partition_coordinator | `partition.py` | M2 ✅ |
-| MOD-003 clock_watermark | `clock_watermark.py` | M2 ✅ |
-| MOD-004 instrument_math | `instrument_math.py` | M2 ✅ |
-| MOD-005 feature_primitives | `feature_primitives.py` | M3 🔜 |
-| MOD-006 typed_level_registry | `structures/typed_level_registry.py` | M3 🔜 |
-| MOD-007 structure_state | `structures/structure_state.py` | M3 🔜 |
-| MOD-008 fvg_registry | `structures/fvg_registry.py` | M3 🔜 |
-| MOD-009 order_block_registry | `structures/order_block_registry.py` | M3 🔜 |
-| MOD-010 excursion_reclaim_registry | `structures/excursion_reclaim_registry.py` | M3 🔜 |
-| MOD-011 flow_atoms | `structures/flow_atoms.py` | M3 🔜 |
-| MOD-012 reaction_engine | `reaction_engine.py` | M4 🔜 |
-| MOD-013 capsule_host | `capsule_host.py` | M4 🔜 |
-| MOD-014 opportunity_clusterer | `opportunity_clusterer.py` | M4 🔜 |
-| MOD-015 candidate_publisher | `candidate_publisher.py` | M4 🔜 |
-| MOD-016 state_journal | `journal.py` | M2 ✅ |
-| MOD-017 checkpoint_restore | `checkpoint.py` | M2 ✅ |
-| MOD-018 replay_adapter | `journal.py::replay` | M2 ✅ |
-| MOD-019 evidence_telemetry | `telemetry.py` | M2 ✅ |
-| MOD-020 health_readface | `health.py` | M2 ✅ |
+| W IDs | Class | Origin responsibility | Build |
+|---|---|---|---|
+| W00–W01 | REFERENCE_ONLY | Raw venue/E00 normalization boundary | B09 conformance only |
+| W02 | CONSUME | Validate canonical E01 state, order, quality, watermark, identity | B01–B03/B08 |
+| W03–W06 | OWN | Features, structures, lifecycle, treatment candidates | B03–B08 |
+| W07–W09 | OUT_OF_REPO | Legacy control, comparator authority, router/governance | B09 frozen-fixture comparison only |
+| W10–W13 | REFERENCE_ONLY | E07 decision and E08 risk/reservation/authorization | Contract conformance only |
+| W14–W19 | OUT_OF_REPO | E09 command/order/fill/account/position/protection | Never runtime-imported |
+| W20–W21 | OUT_OF_REPO | E10 outcomes/learning recommendation | Evidence reference only |
+| W22 | CONSUME | Verify externally issued producer lease/fence | B01/B02/B08 |
+| W23–W24 | OWN | E02 lifecycle/attestation and quarantine facts | B01/B02/B08 |
+| W25 | OWN | Read-only E02 evidence projection | B08/B09 |
 
-## Contracts (Doc 06 CON) — all M1 ✅
+## Formula ownership
 
-C-001…C-030 → `contracts/schemas/*.schema.json` + registry + golden vectors + bundle manifest.
-Producer/consumer implementations that *exercise* each contract land with their owning milestone
-(structures M3, candidates M4, comparator/lease/router M5, receipts/faces M6).
+| F IDs | Class | Build |
+|---|---|---|
+| F00 | OWN boundary utility, subject to B00 representation decision | B01 |
+| F01 | CONSUME/VERIFY_ONLY; E01 owns bar construction | B03/B09 |
+| F02–F06 | OWN | B03 |
+| F07 | CONSUME/VERIFY_ONLY unless B00 explicitly assigns derived final session facts | B03 |
+| F08–F13 | OWN | B04 |
+| F14–F17 | OWN | B05 |
+| F18–F19 | OWN | B06 |
+| F20 | REFERENCE_ONLY, E08 | Out of repo |
+| F21–F22 | REFERENCE_ONLY, E09 | Out of repo |
+| F23 | REFERENCE_ONLY, E10 | Out of repo |
 
-## Topics (Doc 06 TOP)
+## Contract families
 
-Logical topics bind to the **file-ledger** first (`ledger.py`, M2 ✅). The per-topic
-writer/reader/retention wiring + `transport_bindings.v1` lands in **M5** 🔜. JetStream binding is
-⏸ deferred (optional, separately certified).
+Contracts owned by ORIGIN are limited to its envelope/identity/config verification, feature,
+structure, reaction/hypothesis/candidate, transition/withdrawal, checkpoint/replay, quarantine,
+heartbeat/attestation, and read-only evidence facts. Decision, risk, reservation, authorization,
+command, order, fill, position, protection, outcome, and learning contracts may be vendored as
+immutable conformance references; their producer implementations are out of repository.
 
-## Configuration (Doc 06 CFG)
+The canonical version map is `BLOCKED_BY_B00` because the supplied RC2 wiring uses conflicting
+v1/v2/v3 names. No published schema byte may be edited in place.
 
-CFG-013…027 signed artifacts → **M5** 🔜. Current-estate configs (CFG-001…012) are audited in their
-home repos, not re-homed here (referenced only). `live.env` global inheritance is ⏸ RETIRE (estate).
+## Parameter and golden-vector mapping
 
-## Storage & data (Doc 06 DAT)
+Every in-scope F implementation must list exact `PAR-*` IDs and `GV-*` vectors in its module
+metadata and tests. Parameters with `PROPOSED_RC2_MUST_RATIFY` may appear only in a clearly named
+DARK proposal bundle. `NOT_RATIFIED`, missing units, ambiguous formulas, or unbound prose aliases
+make the formula instance `NOT_READY`.
 
-| ID | Milestone |
-|----|-----------|
-| DAT-001 raw ledger, DAT-005 checkpoint store, DAT-008 lease ledger | M2 ✅ |
-| DAT-004 structure journal, DAT-006 candidate ledgers, DAT-007 divergence, DAT-010 quarantine | M3/M4/M5 🔜 |
-| DAT-014 golden corpus, DAT-015 replay receipts, DAT-016 trial registry | M5/M6 🔜 |
-| DAT-012 shadow.cf_trades | ⏸ BLOCKED (owner unknown — estate) |
-| DAT-018 object-store archive | ⏸ DEFER |
+The supplied workbook's formula bindings and capsule ordinals are not accepted traceability until
+B00 repairs the defects listed in the conflict register.
 
-## Venue & ingress (Doc 06 VEN)
+## OPS allocation
 
-VEN-001…018 Binance route/book/algo/emergency semantics are **specified** and gated at ORIGIN's
-boundary, but ORIGIN holds **no venue code path** — these live in the VGP/E09 estate. ORIGIN encodes
-the *contract* expectations (route family enum, environment=LIVE-only, no testnet) in M1 schemas and
-the *ingress* discipline in M2. VEN-019/020 (Hyperliquid/other) ⏸ DEFER.
+| OPS work | Class | Build/owner |
+|---|---|---|
+| Immutable build artifact and SBOM/provenance | OWN | B01/B09 |
+| Dedicated `triad-origin-e02` service definition | OWN | B08 |
+| Deployment remains DARK/no authority | OWN | B08 |
+| Post-deploy replay smoke | OWN | B08/B09 |
+| 26-hour ingress soak | CONSUME/OPERATOR | B09 external-evidence register |
+| Secrets/ACL negative proof | OWN | R00/B08 |
+| Rollback and DR rehearsal procedure | OWN docs; operator executes | B09 |
+| Venue/account/environment certification | OUT_OF_REPO | G-1/G1 estate owner |
+| Lease coordinator and durable fencing ledger | OUT_OF_REPO | Platform/Governance |
 
-## Security (Doc 06 SEC)
+## Repository milestone truth
 
-SEC-004/005/006 ORIGIN OS/network/filesystem ACL posture → documented in M5 service main + M6
-runbooks; SEC-002/003/013/014 are estate incident/venue items (⏸ referenced). ORIGIN's structural
-guarantee: no import that signs, holds a key, or writes an order.
+| Prior claim | Audited state | Remediation |
+|---|---|---|
+| RC1 M1 complete | MERGED_IMPLEMENTATION / FAILED_AUDIT | R00 then B01 |
+| RC1 M2 complete | MERGED_IMPLEMENTATION / FAILED_AUDIT | R00 then B02 |
+| M3 base/drafts laid | NON_AUDITABLE_OFF_TREE | Discard or re-review after B00–B03 |
+| M4–M6 planned | SUPERSEDED | B06–B09 |
 
-## Observability (Doc 06 OBS)
+Every future trace row must carry requirement ID, ownership class, path/symbol, test ID, PR, head
+SHA, merge SHA, CI run, receipt ID, status, and superseded-by linkage.
 
-OBS metrics are modeled by `telemetry.py` (M2 ✅) + the read faces (M6 🔜) with bounded cardinality
-and named zero reasons. Prometheus wiring is a deployment concern (documented, not required for CI).
-
-## Verification matrix (Doc 08)
-
-The offline-feasible subset (determinism, contract, structure/capsule proof obligations) is
-implemented as tests across M1–M4 and consolidated into `tests/matrix/` with Doc 08 IDs in **M6**.
-Tests requiring live venue data or a running bus are ⏸ named as operator/on-box gates (Doc 09 M5–M9).

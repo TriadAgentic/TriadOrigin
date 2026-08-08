@@ -15,7 +15,7 @@ from __future__ import annotations
 PRODUCT_NAME = "TRIAD ORIGIN V7"
 DESCRIPTIVE_NAME = "Deterministic Causal Edge Core"
 SPEC_VERSION = "1.0.0-RC1"
-PACKAGE_VERSION = "7.0.0rc1"
+PACKAGE_VERSION = "7.0.0rc1.post1"
 
 SERVICE_ID = "triad-origin-e02"
 TOPOLOGY_NODE = "E02-V7"
@@ -27,8 +27,10 @@ SHORTHAND = "ORIGIN"
 POSTURE = "DARK"  # DARK | READY_NO_AUTHORITY are the only postures this package can hold.
 ALLOW_MONEY_PUBLISH = False  # Enforced by capability/ACL, not merely this boolean (Doc 09 §09.4).
 
-# The three modes are a promotion ladder, not a venue switch (Doc 00 ADR-005).
-MODES = ("shadow", "paper", "live")
+# Production has exactly one venue mode (Doc 00 ADR-005). Replay and simulation are offline
+# harnesses; they are deliberately not production modes or venue switches.
+PRODUCTION_MODES = ("live",)
+OFFLINE_HARNESSES = ("replay", "simulation")
 
 __all__ = [
     "PRODUCT_NAME",
@@ -41,5 +43,6 @@ __all__ = [
     "SHORTHAND",
     "POSTURE",
     "ALLOW_MONEY_PUBLISH",
-    "MODES",
+    "PRODUCTION_MODES",
+    "OFFLINE_HARNESSES",
 ]
