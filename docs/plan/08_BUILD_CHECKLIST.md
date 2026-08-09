@@ -44,12 +44,12 @@ separate gate receipt._
 - [x] Bundle descriptor v2; inherited bundle bytes unchanged — PR #9, RC1/R00 pins held
 - [x] Catalog all ten RC4 contracts, including `execution_authorization.v3` and `fill.v3` — PR #9
 - [x] Contract schemas have positive and negative golden fixtures — 42 contracts, valid+invalid goldens, wheel smoke
-- [ ] `binding.v2` schema + semantic slot/cardinality/condition/scope/precedence validator — **GAP → B01R**
-- [ ] All 105 binding rows migrated and source status preserved — **GAP → B01R**
-- [ ] Blocked bindings cannot be consumed — **GAP → B01R**
+- [x] `binding.v2` schema + semantic slot/cardinality/condition/scope/precedence validator — B01R (`triad.binding.v2` + payload-level semantic law)
+- [x] All 105 binding rows migrated and source status preserved — B01R (`binding_registry.v2.json`: 3 ACTIVE / 4 BLOCKED / 98 BLOCKED_BINDING_V2_MIGRATION)
+- [x] Blocked bindings cannot be consumed — B01R (`bindings.resolve` refuses by name; forgery drill in `test_binding_v2.py`)
 - [x] Compatibility manifest + producer-lease verification; no lease issuance in ORIGIN — `lease.py` verify-only
 - [x] Epoch/scope/wildcard/stale/split-brain regression battery — PR #9
-- [ ] End-to-end identity/binding/contract stage — identity/contract walks live (`identity_v2_walk`, `epoch_fence`, `contracts_manifest`); binding walk lands with B01R
+- [x] End-to-end identity/binding/contract stage — `identity_v2_walk` + `epoch_fence` + `contracts_manifest` + `binding_walk` (B01R, e2e stage 17)
 - [x] Source PR merged green — PR #9, CI `31294503427`
 - [x] Post-merge B01 receipt passed — `evidence/receipts/B01.json` binds `a00e2ee…` (in-band cadence; disposition A3)
 

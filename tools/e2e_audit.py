@@ -389,6 +389,28 @@ def combined_dag() -> None:
     _run_tool("validate_combined_dag.py")
 
 
+@stage("binding_walk", "binding.v2 registry: 105 rows migrated statuses-preserved; ACTIVE "
+                       "resolves, BLOCKED refuses by name (B01R)")
+def binding_walk() -> None:
+    _run_tool("gen_binding_registry.py", "--verify")
+    from triad_origin import bindings
+
+    registry = bindings.load_registry()
+    counts = registry.status_counts()
+    if counts != {"ACTIVE": 3, "BLOCKED": 4, "BLOCKED_BINDING_V2_MIGRATION": 98}:
+        raise AssertionError(f"source statuses not preserved: {counts}")
+    row = registry.resolve("ingress_price_wire_integer_ticks")
+    if row["binding_id"] != "FPB-0001":
+        raise AssertionError("active F00 price binding did not resolve")
+    try:
+        registry.resolve_for_formula("F08")
+    except bindings.BindingBlockedError as err:
+        if "NOT_RATIFIED" not in err.disposition and not err.status.startswith("BLOCKED"):
+            raise AssertionError("F08 refusal is not named") from err
+    else:
+        raise AssertionError("blocked F08 binding must not be consumable")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")
