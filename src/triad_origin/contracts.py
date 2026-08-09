@@ -295,7 +295,8 @@ def _semantic_task_status_event_v2(event: dict) -> None:
 
 
 def _semantic_gate_receipt_v2(event: dict) -> None:
-    """RC3 receipt law: gate PASS requires zero blockers, task+verification+rollback evidence."""
+    """RC3/B00C gate-receipt law: PASS requires exact scope, digests, a valid validity window,
+    zero blockers, task+verification+rollback evidence, and an independent approver."""
     payload = _payload_of(event)
     if payload.get("result") != "PASS":
         return
@@ -307,6 +308,21 @@ def _semantic_gate_receipt_v2(event: dict) -> None:
         raise ContractError("GATE_PASS_WITHOUT_ROLLBACK_PROOF")
     if not payload.get("approver") or not payload.get("signature"):
         raise ContractError("GATE_PASS_MISSING_APPROVAL")
+    scope = payload.get("scope")
+    if not scope:
+        raise ContractError("GATE_PASS_EMPTY_SCOPE")
+    _reject_wildcard_scope(scope, "scope")
+    observed = payload.get("observed_at_us")
+    expires = payload.get("expires_at_us")
+    if not isinstance(observed, int) or not isinstance(expires, int) or expires <= observed:
+        raise ContractError("GATE_PASS_INVALID_VALIDITY_WINDOW")
+    digests = payload.get("producer_digests")
+    if not isinstance(digests, dict) or not digests or any(
+            not isinstance(v, str) or len(v) != 64 or v == "0" * 64
+            for v in digests.values()):
+        raise ContractError("GATE_PASS_MISSING_OR_PLACEHOLDER_DIGESTS")
+    if payload.get("approver") == event.get("producer_service"):
+        raise ContractError("GATE_PASS_APPROVER_NOT_INDEPENDENT")
 
 
 SEMANTIC_VALIDATORS = {

@@ -1,249 +1,436 @@
-# 01 · Milestone Breakdown — B-Series
+# 01 · Milestone Breakdown — Reconciled B-Series and Estate Gates
 
-Each milestone lists **scope**, **deliverables**, **acceptance evidence**, **control-bundle
-slice** (ledger lane), and **dependencies**. Legacy M1/M2 deliverables (merged PRs #1/#2, audited
-and remediated by R00 PR #4/#7) are the substrate; the B-series builds on them.
+_Revision: 2026-08-09 · Formula IDs and owners follow the RC3 effective registry; RC4 controls
+apply last. “Gate correspondence” never means a gate has passed._
 
-Every milestone PR must satisfy: full CI gate green (pytest ×2 hash seeds, collection identity,
-manifest + manifest schema, reproducible build, wheel smoke, capability boundary) **+
-`tools/e2e_audit.py` all stages + `tools/build_ledger.py --verify`**, and must extend the e2e
-walk with each new capability (E2E growth law).
+## Common entry and exit law
+
+Every repository milestone requires:
+
+- a reviewed, dependency-closed task slice with source authority preserved;
+- task → criterion → verification links created in the same PR;
+- full unit/falsification suite under both required hash seeds;
+- exact collection identity, immutable manifest/schema validation, reproducible build, wheel
+  smoke, capability/import boundary scan, build-ledger validation, and the growing end-to-end walk;
+- zero unresolved P0/P1 findings in its scope;
+- a source PR merged on current exact-head CI; and
+- a post-merge, evidence-only receipt over the actual merged hash before the next branch opens.
+
+The milestone result is `IMPLEMENTED_UNVERIFIED / DENIED_SAFE_HOLD` until its estate gate has a
+separate valid receipt. A blocked mandatory verification remains blocked; it is never counted as
+complete because it was named.
+
+## Track A · TriadOrigin repository
+
+### B00 · Historical control-package import — source merged, receipt open
+
+**Recorded outcome.** RC2/RC3/RC4 sources, initial machine ledger, build tools, and the uploaded
+plan set were merged in PR #8 at commit `121729751dcd23addce897e4d81c35283a40562c` with successful
+CI run `31293420164`.
+
+**Not closed.** The post-merge B00 receipt is absent, the earlier R00 receipt is absent, branch
+protection issue #5 remains open, and the uploaded plan/ledger contain material spec drift.
+
+**Status.** `B00_SOURCE_MERGED`; `B00_RECEIPT_OPEN`; B01 blocked.
 
 ---
 
-## B00 · Authority & control baseline
+### B00C · Corrective control closure — required before B01
 
-**Scope.** Make the complete RC2/RC3/RC4 control package the repository's machine-readable law;
-re-plan the build under the operator's 2026-08-09 directive; install the e2e audit walk and the
-build ledger; open the questions register.
+**Scope.** Repair the planning/control layer before semantic implementation consumes it.
 
 **Deliverables.**
-- `docs/control/` — RC3 overlay schema + normative overlay + effective control bundle + bundle
-  manifest + validation report + RC3 executable builder; RC4 control bundle + addendum builder;
-  `SOURCE_HASHES.sha256`; `build_ledger.json` + overrides file.
-- `docs/spec_rc2/` (complete RC2 package incl. previously-missing checklist + workbook),
-  `docs/spec_rc3/`, `docs/spec_rc4/`, `docs/reports/` (sign-off + cross-engine reports).
-- `tools/build_ledger.py`, `tools/e2e_audit.py` (9 stages v0), CI wiring for both.
-- Plan rewrite: `00_MASTER_PLAN.md`, this file, `04_STATUS.md`, `06_RC2_SOURCE_INVENTORY.md`
-  update, `08_BUILD_CHECKLIST.md`, `09_OPEN_QUESTIONS.md`; `CLAUDE.md` authority update.
 
-**Acceptance.** CI green; e2e 9/9; ledger verifies (1,250 rows partitioned); hashes recorded.
-**Slice.** Ledger B00 rows (governance/cross-cutting baseline). **Deps.** none.
+- Replace the five plan files with this reconciled set and add the alignment audit.
+- Correct every formula/owner reference to F00–F23; prove no F24 reference remains.
+- Review all 1,250 scheduling rows. The existing `HEURISTIC_V1` assignment may suggest a lane but
+  cannot be represented as reviewed without a row-level reviewer/disposition record.
+- Validate the combined RC3+RC4 DAG for referential closure, cycles, milestone inversions,
+  cross-lane blockers, one scheduling owner, and preservation of source owner/gate/dependency.
+- Land strict additive `evidence_receipt.v2`, `task_status_event.v2`, and `gate_receipt.v2`
+  schemas plus semantic validator and invalid fixtures.
+- Configure the `main` ruleset required by issue #5, or attach a signed, time-bounded waiver that
+  supplies equivalent exact-head/review/no-bypass evidence.
+- Resolve the R00 ceremony by either sealing R00 under its existing law or issuing a signed
+  supersession that maps every R00 field and invariant into receipt v2. No silent waiver.
+- Seal a post-merge B00 receipt against the actual current `main` hash.
+- Add `required_before_milestone`, decision owner, status, evidence, and failure behavior to every
+  parameter/question row.
+
+**Acceptance evidence.**
+
+- formula registry equality test passes against RC3;
+- combined DAG/ledger validator passes with reviewer identity and digest;
+- invalid receipt combinations fail semantic validation;
+- branch ruleset or waiver evidence is current;
+- R00 disposition and B00 receipt exist, validate, and reference current immutable evidence.
+
+**Exit.** `B00_RECEIPT_PASS`; only then may B01 open.
 
 ---
 
-## B01 · Foundation corrections (G0)
+### B01 · Contract, identity, and binding foundation
 
-**Scope.** Close the inherited foundation findings that must precede all semantic work, and land
-the strict contract/identity v2 layer RC3/RC4 demand.
+**Scope.** Close inherited foundation defects and make every downstream semantic dependency
+machine-verifiable.
 
 **Deliverables.**
-- **CTRL-B01-003 / BLK-RC2-017:** typed identity v2 — field-type-tagged digest framing as a new
-  identity schema version with migration vectors; RC1 IDs remain valid under their version.
-- **CTRL-B01-002 / BLK-RC2-016:** `engine_attestation.v2` with envelope/payload equality
-  constraints + corrected golden vectors; v1 preserved immutable.
-- **CTRL-B01-001:** additive bundle descriptor v2 correcting media-type labels; RC1 bundle bytes
-  and hash unchanged.
-- **RC4 L2 slice:** `engine_control_manifest.v2` schema, strict receipt schemas v2 (exact enums,
-  semantic combination validation), `fill.v3`, `structure_atom.v2`, `edge_candidate.v2` (+
-  transition contract), `producer_lease` verify-only contract alignment — schema + golden
-  vectors + registry + manifest re-pin.
-- Epoch-law regression audit (current-epoch equality accepted; lower rejected) across contracts
-  and ingress — verifying the R00 corrections and extending vectors.
-- Dependency-pin refresh policy note (B01 owns reviewed refreshes per R00).
 
-**Acceptance.** All new/changed schemas have valid+invalid goldens; manifest re-pinned; identity
-migration vectors prove v1 stability; e2e gains a v2-identity stage. **Slice.** B01 ledger rows
-(Contracts node, G0 gate-control in-repo parts). **Deps.** B00.
+- Typed identity v2 with field-type-tagged framing and migration vectors; v1 IDs remain stable.
+- Additive `engine_attestation.v2` with envelope/payload equality and corrected goldens.
+- Additive bundle descriptor v2 with corrected media types; inherited bytes unchanged.
+- Immutable schema catalog and valid/invalid fixtures for the RC3 contracts used by ORIGIN.
+- All ten RC4 contracts, including controlling `execution_authorization.v3` and strict `fill.v3`.
+- `binding.v2` schema and semantic validator covering slot, cardinality, condition, scope,
+  precedence, consuming node/edge, overlap, and digest identity.
+- Structural migration of all 105 effective bindings. Preserve the source states: blocked rows do
+  not become active merely because they are encoded in v2.
+- Compatibility manifest and producer-lease verification rules. ORIGIN issues neither technical
+  writer nor money-selection authority.
+- Epoch-law regression tests: current exact epoch accepted; stale/lower/wildcard/mismatched scope
+  rejected.
+
+**Acceptance evidence.** Every schema has positive and negative fixtures; the bundle is
+byte-pinned; all 105 bindings are accounted for; the semantic validator detects overlap,
+cardinality, precedence, and scope defects; no blocked binding is consumable.
+
+**Gate correspondence.** G0 subset only. **Dependency.** B00C receipt.
 
 ---
 
-## B02 · Kernel hardening (G0/G1 in-repo)
+### B02 · Deterministic kernel and E01 interfaces
 
-**Scope.** Close the two structural kernel findings and land the deterministic timing law.
+**Scope.** Harden the journal/checkpoint/fencing substrate and implement only the formula work
+owned by the repository.
 
 **Deliverables.**
-- **CTRL-B02-001:** external durable anchor binding for ledger output (chain head + segment +
-  offset + file identity + recovery receipt); falsification tests for tail deletion/replacement;
-  cold/warm exactly-once parity.
-- **CTRL-B02-002:** closed per-scope fence state (accepted-token high-water per scope) sealed
-  into checkpoints, restored before consumption; falsification: lower-token acceptance across
-  restart.
-- **RC4 timings registry:** the 17 declared timing bounds as a versioned data artifact + loader
-  (pure; consumers receive values, never read clocks).
-- F00 (exact tick/step conversion) golden vectors wired to `instrument_math`.
 
-**Acceptance.** New falsification tests; e2e gains anchor + fence-restore stages. **Slice.** B02
-rows (W22/W24 in-repo, G1 in-repo). **Deps.** B01.
+- F00 exact tick/step conversion with integer/rational boundary vectors.
+- `market_state.v2` and E01-produced F01 finalized-bar/F07 UTC-session validators and adapters;
+  ORIGIN does not author either fact.
+- External durable journal anchor binding with chain head, segment, offset, file identity, and
+  recovery receipt; tail-deletion/replacement falsification.
+- Per-scope accepted-token high-water sealed into checkpoints and restored before consumption.
+- Deterministic partition/watermark coordinator, semantic checkpoint, replay receipt, and honest
+  readiness inputs.
+- All 17 RC4 timing bounds imported as versioned data; age/time injected into pure consumers.
 
----
+**Acceptance evidence.** Cold/warm/restart exactly-once parity; deletion/replacement detected;
+stale token rejected across restart; F00 boundaries pass; malformed or provisional E01 facts
+quarantine; host timezone cannot redefine a session.
 
-## B03 · Structure semantics I (F01–F09)
-
-**Scope.** The first half of the pure causal detector core.
-
-**Deliverables** (each a pure state machine over `transition()` with its RC3 formula):
-- `feature_primitives.py` — F01 finalized time-bar aggregation, F02 true range/trailing ATR in
-  ticks, F05 trailing rolling extreme; warm-up honest-null.
-- `structures/typed_level_registry.py` — F03 directional-change swing, F04 closed fractal pivot,
-  F06 anchored equal-level cluster (span bound symbolic → RESEARCH), F07 UTC session level.
-- `structures/structure_state.py` — F08 directional structure + protected swing (reducer version
-  symbolic → RESEARCH), F09 accepted break / BOS / CHOCH with precedence law.
-- `structure_atom.v2` / `structure_transition.v2` emission shapes wired to the journal.
-
-**Acceptance.** Per-detector: formation predicate, lifecycle-to-terminal, precedence, LONG/SHORT
-mirror, prefix/restart/duplicate invariance, fail-closed-on-missing-param, null honesty; RC2/RC3
-golden vectors for F01–F09; e2e gains a synthetic market-state → structures stage.
-**Execution.** Ultracode fan-out (one agent per module family, self-tested), full-suite re-verify.
-**Slice.** B03 rows (W03/W04, F01–F09, ORIGIN feature/structure nodes). **Deps.** B02.
+**Gate correspondence.** G0/G1 subset. **Dependency.** B01 receipt.
 
 ---
 
-## B04 · Structure semantics II (F10–F13, F15–F17)
+### B03 · Causal features and directional structure — F02–F09
 
-**Scope.** The second half: gap/block/reclaim structures and flow atoms, plus the lifecycle
+**Scope.** Build the first causal structure layer while refusing output that depends on unresolved
+research or parameter bindings.
+
+**Deliverables.**
+
+- F02 true range/trailing ATR using finalized bars strictly before the evaluation origin.
+- F03 directional-change swing.
+- F04 closed fractal pivot with strict tie rejection.
+- F05 trailing rolling extreme.
+- F06 anchored equal-level cluster interface and named abstention until
+  `EQUAL_LEVEL_MAX_SPAN` is measured and ratified.
+- F08 directional structure/protected-swing interface and named abstention until an exact reducer
+  version and goldens are ratified.
+- F09 generic accepted-break primitive; BOS/CHOCH labels emit only when F08 state is valid.
+- Append-only `structure_atom.v2` and `structure_transition.v2` publication.
+- Consume, never author, E01 F07 session levels.
+
+**Acceptance evidence.** Formation/confirmation separation; no lookahead; prefix/restart/duplicate
+invariance; LONG/SHORT mirror; exact boundary vectors; blocked parameter causes the specified
+named abstention; no substitute/default; lifecycle and ID stability.
+
+**Hard blockers.** Every consumed `binding.v2` row, PAR-036/F03 if still unresolved, F05 goldens,
+F06 research value, F08 reducer/goldens, and E01 source evidence. Interfaces/refusals may land;
+semantic result access may not.
+
+**Gate correspondence.** G2 subset. **Dependency.** B02 receipt.
+
+---
+
+### B04 · Gaps, blocks, reclaim, and flow — F10–F13, F15–F17
+
+**Scope.** Complete the remaining structure and microstructure primitives plus the lifecycle
 reducer.
 
 **Deliverables.**
-- `structures/fvg_registry.py` — F10 three-bar fair-value gap + penetration lifecycle.
-- `structures/order_block_registry.py` — F11 qualified displacement + F12 causal order block
-  (origin + displacement + linked BOS).
-- `structures/excursion_reclaim_registry.py` — F13 frozen-level excursion → timed reclaim → hold.
-- `structures/flow_atoms.py` — F15 trade-flow imbalance, F16 best-level order-flow imbalance
-  (min-depth symbolic → RESEARCH), F17 book depth tilt; no-future-venue law; null honesty.
-- Lifecycle reducer (W05): structure lifecycle transitions with illegal-transition rejection.
 
-**Acceptance.** Same proof-obligation battery per module; goldens for F10–F17; e2e stage extends
-the walk through gaps/blocks/reclaims/flow. **Execution.** Ultracode fan-out. **Slice.** B04 rows
-(W05, F10–F17, lifecycle reducer node). **Deps.** B03.
+- F10 three-bar FVG and penetration lifecycle.
+- F11 qualified displacement.
+- F12 causal order block linked to same-direction accepted BOS.
+- F13 frozen-level excursion and timed reclaim.
+- F15 trade-flow imbalance.
+- F16 best-level order-flow imbalance.
+- F17 depth tilt interface and named abstention until
+  `BOOK_TILT_MIN_QUOTE_DEPTH` is measured and ratified.
+- Append-only lifecycle reducer with invalid-transition rejection, withdrawal, expiry, and frozen
+  original geometry.
+
+**Acceptance evidence.** Same-bar/future-touch rejection; first-qualifying-event law; TTL and
+invalidation boundaries; missing/gapped market data refusal; exact mirror; restart parity;
+no-future-venue-state law; all formula-specific goldens.
+
+**Hard blockers.** F10 TTL/invalidation, F11/PAR-158, F12 zone/TTL/goldens, F13 parameter set,
+F16 goldens, F17 measured depth, and every corresponding binding. Blocked emitters stay silent.
+
+**Gate correspondence.** G2 subset. **Dependency.** B03 receipt.
 
 ---
 
-## B05 · Reaction, capsules & candidates (F14, F18, F19)
+### B05 · Four-plane substrate before candidate publication
 
-**Scope.** Confirmed structures → immutable trade hypotheses → published candidates.
+**Scope.** Implement RC4's control, capture, PAPER, and health substrate before any deployable
+candidate publisher exists.
 
 **Deliverables.**
-- `reaction_engine.py` — F14 departure + first retest/touch; location → freshness → departure →
-  trigger → confirmation → geometry.
-- `capsule_host.py` — isolated per-capsule runtime (one formula/parameter/trial identity each).
-- `capsules/` — the five capsules (`dc_swing_bos_first_retest.v1`,
-  `protected_swing_choch_first_retest.v1`, `fvg_displacement_first_touch.v1`,
-  `ob_displacement_bos_first_touch.v1`, `level_excursion_reclaim_flow_confirmed.v1`).
-- `opportunity_clusterer.py` — F19 clustering + alias control with the non-circular prospective
-  cluster-root law (BLK-RC2-012 disposition per RC3).
-- `candidate_publisher.py` — F18 candidate geometry + geometric RR (directional stop-side
-  invariant per BLK-RC2-014 disposition), RR ≥ 2.0 floor, immutable `edge_candidate.v2`,
-  lifecycle with named abstention + withdrawal (BLK-RC2-013 disposition), forbidden-money-field
-  guard.
 
-**Acceptance.** End-to-end synthetic sequence market-state → structures → reaction → candidate,
-with RR-floor rejection, withdrawal on invalidation, capsule isolation (no cross-capsule vote),
-contract validity; e2e full-funnel stage. **Execution.** Host/engine authored directly; capsules
-fanned out. **Slice.** B05 rows (W06, F14/F18/F19, capsule/candidate nodes). **Deps.** B04.
+- Exact lever enums; fixed `shadow_activation=LIVE`; all 35 invalid aliases imported from the
+  signed bundle; all 10 valid combinations; all 32 refusal codes and exact containment actions.
+- Strict `engine_control_manifest.v2` validation, revision fencing, digest/scope binding, and
+  staleness-to-OFF resolution.
+- Required baseline manifest: `OFF/OFF/OFF/LIVE` in the field order defined in the master plan.
+- Durable SHADOW outbox/ledger, `shadow_rejection_audit.v1`, causal resolver, heartbeat, backlog,
+  coverage, persistence deadline, and recovery.
+- SHADOW model identity: frozen pre-disposition geometry/watermark, fixed evaluation notional,
+  versioned latency/fill/fee/funding/slippage assumptions, bps/R output, and honest `NO_FILL`.
+- Keyless PAPER executor with separate virtual order/fill/position/outcome ledger; static and
+  runtime proof that it has no venue adapter or credential path.
+- Physical identity/storage/query/aggregate separation for SHADOW, PAPER, TESTNET, and LIVE.
+- Health law: missed SHADOW persistence deadline or stale writer/resolver forces effective venue
+  and PAPER activation `OFF`; SHADOW recovery continues.
+- ADR-005 supersession artifact prepared for owner signature. No non-OFF activation is possible
+  without the signed ADR and gate receipt.
+
+**Acceptance evidence.** Every alias and refusal fixture; typed null/boolean/integer and whitespace
+negative cases; staleness/revision/scope failures; writer/resolver crash; missed persistence;
+backlog/coverage failure; no venue side effect; PAPER keylessness; population-separation queries.
+
+**Gate correspondence.** RC4 L0–L6 repository subset. **Dependency.** B04 receipt.
 
 ---
 
-## B06 · Lever & four-plane control (RC4 L0–L5)
+### B06 · Reaction, semantic capsules, and candidate publication — F14, F18, F19
 
-**Scope.** The RC4 lever/plane law as ORIGIN-side code and data. ORIGIN enforces the law for its
-own artifacts and candidate routing; venue-side enforcement is estate-owned and stays named.
+**Scope.** Turn confirmed causal structures into complete immutable hypotheses with mandatory
+SHADOW capture and no money authority.
 
 **Deliverables.**
-- Canonical lever model: `venue_environment {LIVE,TESTNET,OFF}` / `venue_activation {LIVE,OFF}` /
-  `paper_activation {LIVE,OFF}` / `shadow_activation` (constant LIVE), case-sensitive, no
-  coercion; the 34-alias invalid table as data + parser tests.
-- The 32-code refusal registry as data + a pure refusal engine mapping each refusal to its exact
-  containment action (from the RC4 bundle) + golden tests per code.
-- `engine_control_manifest.v2` validation (exact scopes, no wildcards, digest binding) + lever
-  resolver with `lever_cache_max_age_ms` staleness→OFF law (age injected, never wall-clock).
-- Runtime lever attestation record shapes + revision fencing (stale revision refusal).
-- Shadow-law: ORIGIN dispositions — every rejected shadow-tradeable candidate must produce a
-  durable SHADOW disposition record (persist-deadline law as data); tradeability contract;
-  no-fabricated-geometry rule; population separation guards (SHADOW/PAPER/TESTNET/LIVE never
-  blend in one aggregate).
-- ADR-005 supersession record + `10_DECISION_REGISTER` note (L0 slice, in-repo documentation of
-  the owner directive; the signed ADR itself is an OPERATOR row).
 
-**Acceptance.** Every refusal code has a triggering test; alias table fully rejected;
-lever-combination truth table (10 valid combinations) proven; staleness resolves OFF; e2e gains a
-lever/refusal stage. **Slice.** B06 rows (RC4 L0/L2–L5 in-repo). **Deps.** B05 (candidates exist
-to route/record).
+- F14 location → freshness → departure → first retest/touch reaction engine.
+- F18 candidate geometry and exact geometric RR with directional stop invariant and RR ≥ 2.0.
+- F19 clustering with a frozen earliest prospective root ordered by
+  `(availability, candidate_id)`; no re-rooting.
+- Explicit semantic capsule registry using stable semantic IDs:
+  - `dc_swing_bos_first_retest.v1`
+  - `protected_swing_choch_first_retest.v1`
+  - `fvg_displacement_first_touch.v1`
+  - `ob_displacement_bos_first_touch.v1`
+  - `level_excursion_reclaim_flow_confirmed.v1`
+- No guessed ordinal mapping from RC2 `CAP01_*…CAP05_*` parameters. Replace them with explicit
+  semantic-ID-bound parameter rows or keep the capsule unavailable.
+- Isolated capsule host: no voting/ensemble, one formula/parameter/trial identity per instance.
+- `edge_candidate.v2` publication and append-only withdrawal/expiry/data-invalid transitions;
+  forbidden-money-field guard.
+- Atomic SHADOW fork for `REJECTED`, `ACCEPTED_NOT_EXECUTED`, and—only after authoritative
+  reconciliation—`PROVEN_NO_VENUE_EFFECT`. Malformed inputs go to
+  `shadow_rejection_audit.v1/SHADOW_UNTRADEABLE`.
+- Preregistered trial family and leave-one-conjunct ablations before result access.
+
+**Acceptance evidence.** Full synthetic causal walk; no candidate path without durable SHADOW
+write; persistence failure containment; RR boundary and one-tick stop tests; capsule isolation;
+withdrawal; cluster-root stability; trial/result-access refusal; zero money/venue capability.
+
+**Gate correspondence.** G3 subset. **Dependency.** B05 receipt and semantic parameter closure.
 
 ---
 
-## B07 · Config, wiring & services (G4)
+### B07 · Signed configuration, comparison, and replay services
 
-**Scope.** Signed configuration, the comparator/authority control plane, service main.
+**Scope.** Materialize configuration and zero-venue-capability services without crossing E07.
 
 **Deliverables.**
-- `config/` signed artifacts + JSON-Schemas + fail-closed loader with owner/change-control/
-  digest: capsules, geometry, lifecycle, regime eligibility, symbols, staleness bounds, latency
-  budgets, risk policy (catalog), exit policy (catalog), transport bindings,
-  `engine_control_manifest.v2` instance (all levers OFF/DARK), treatment/rollback manifests,
-  secret allowlist, compatibility manifest.
-- **Parameter registry materialization:** all 192 effective parameter records as a versioned data
-  artifact with per-row ratification status; `require()` integration so `PROPOSED_*` /
-  `NOT_RATIFIED` rows fail closed at runtime unless a ratified activation bundle supplies them.
-- `comparator.py` (side-effect-free divergence → `divergence_record.v1`), `authority_router.py`
-  (single-writer, lease-gated, split-brain/stale-epoch rejection), `legacy_bridge.py` (control
-  candidate, dark), `replay_runner.py` + CLI (same-code deterministic runner → replay receipt),
-  `service/main.py` reaching `READY_NO_AUTHORITY`.
 
-**Acceptance.** Configs validate + digest-pin; comparator has no authority-write import; router
-admits exactly one candidate per allocation; service main reaches `READY_NO_AUTHORITY` with zero
-side effects; e2e gains config-load + comparator + router + replay-runner stages. **Slice.** B07
-rows (W07–W09, parameter declarations, Configuration node). **Deps.** B06.
+- Signed, schema-validated configuration for capsules, geometry, lifecycle, regime eligibility,
+  symbols, staleness, timing, selected-policy references, transport bindings, compatibility,
+  treatment/rollback, secrets allowlist, and exact four-plane manifest.
+- All 192 parameter rows materialized with source status and digest. `require()` refuses
+  `PROPOSED_*`, `NOT_RATIFIED`, stale, missing, or scope-mismatched values.
+- `comparator.py`, side-effect-free, with independent axes:
+  `engine_cohort={LEGACY_COMPARATOR,ORIGIN_CANDIDATE}` and
+  `intelligence_arm={DETERMINISTIC_CONTROL,INTELLIGENCE_TREATMENT}`.
+- Replace the misleading `authority_router.py` admission behavior with
+  `authority_fact_verifier.py`: verify externally issued `candidate_authority.v1` and a technical
+  writer lease; never admit/arbitrate candidates, issue leases, or select money authority.
+- Frozen legacy bridge that preserves source omissions and exact bytes; no semantic repair.
+- Same-code deterministic replay runner with exact tape/config/build/checkpoint/output receipt.
+- Service main that reaches `READY_NO_AUTHORITY` only when its declared inputs are current and has
+  no venue/order/credential imports.
 
----
+**Acceptance evidence.** Config/digest/scope failure tests; two-axis type safety; exact-offset
+comparison; stale/split-brain fact rejection; bridge restart/omission tests; replay identity;
+capability scan; zero side effect.
 
-## B08 · Read faces & evidence projections (G5 in-repo, RC4 L6)
-
-**Scope.** Honest read-only evidence, closing CTRL-B08-001's narrowness the right way.
-
-**Deliverables.** Read-only faces for: attestation/activation/lease scope; input offsets/
-watermarks/coverage/quality; structure & lifecycle lineage with all clocks; candidate funnel with
-named zero reasons; divergence; lever/plane state incl. shadow-health; replay receipts. Honest
-`unavailable` for absent dependencies; no secrets; no control verbs; bounded cardinality.
-
-**Acceptance.** Face outputs contract-valid; secret/control-verb absence tests; readiness stays
-explicitly `READY_NO_AUTHORITY` with named missing-evidence inputs; e2e stage reads every face.
-**Slice.** B08 rows (W23/W25, Observability, MCP & evidence UI, RC4 L6). **Deps.** B07.
+**Gate correspondence.** G4 repository subset. **Dependency.** B06 receipt.
 
 ---
 
-## B09 · Verification matrix & runbooks
+### B08 · Exact read faces and evidence projections
 
-**Scope.** Consolidate verification into the Doc 08 / RC3 registry shape; write runbooks.
+**Scope.** Build honest, read-only evidence surfaces; this is not G5 prospective proof.
 
 **Deliverables.**
-- `tests/matrix/` — offline-feasible verification rows tagged with RC3 verification IDs; a
-  conformance report tool mapping implemented tests → registry rows (counts by gate).
-- Estate-formula catalog (F20–F23): contract shapes + golden vectors only, clearly marked
-  CATALOG (no execution semantics in this repo).
-- `docs/runbooks/` — migration/rollback/incident/DR runbooks distilled from Doc 09 + RC4 L7
-  (procedures only); `docs/VERIFICATION.md` obligations → tests map.
 
-**Acceptance.** Matrix report shows every in-repo verification row either implemented (test ID)
-or named-deferred with reason; runbooks cross-linked; e2e unchanged but re-verified. **Slice.**
-B09 rows (Tests & evidence, Validation, F21–F24). **Deps.** B08.
+- `get_engine_lever_registry`
+- `get_engine_lever_attestation`
+- `get_engine_lever_history`
+- `get_shadow_health`
+- `get_four_plane_status`
+- `get_engine_inventory_reconciliation`
+- Read-only projections for contract/config/build identity, input offsets/watermarks/quality,
+  structure/lifecycle lineage, candidate funnel and named zeros, trial/result-access state,
+  divergence, replay, receipts, and readiness.
+- Requested/effective/proof fields shown separately; SHADOW activation shown separately from
+  SHADOW health.
+- Named `UNAVAILABLE`/`NOT_MEASURABLE` with source, freshness, and completeness; never empty green
+  or substituted zero.
+
+**Acceptance evidence.** Read-only/capability scan; no secret/control verbs; bounded queries and
+cardinality; stale/unavailable dependencies; plane/population filters; every response identifies
+source and freshness.
+
+**Gate correspondence.** G5 evidence-surface subset. **Dependency.** B07 receipt.
 
 ---
 
-## B10 · Audit rounds, reports & checkpoint seal
+### B09 · Conformance matrix, estate formula catalog, and runbooks
 
-**Scope.** The operator-directed multi-round audit and closure.
+**Scope.** Consolidate—not retroactively create—traceability, and publish estate interface
+artifacts without implementing foreign authority.
 
 **Deliverables.**
-- ≥2 independent adversarial audit rounds (ultracode fan-out: spec-conformance auditors per
-  milestone slice + falsification hunters + boundary/capability auditors); every finding fixed
-  forward or honestly registered.
-- `docs/reports/IMPLEMENTATION_REPORT.md` — what was built, evidence, deviations, deferred lanes.
-- `docs/reports/CLARIFICATIONS.md` — final consolidated questionnaire (from
-  `09_OPEN_QUESTIONS.md`) for the operator to answer.
-- Checkpoint seal: `checkpoint/<date>-origin-v7-build` branch + `CHECKPOINTS.md` ledger row;
-  milestone receipts for B01–B09 sealed under `evidence/receipts/`.
-- Final `04_STATUS.md`.
 
-**Acceptance.** All audits dispositioned; full gate + e2e green on final `main`; checkpoint
-branch pushed; reports delivered to the operator. **Deps.** B09.
+- Conformance view accounting for 408 inherited RC1 tests, 1,523 RC3 effective verifications, and
+  125 RC4 fixtures, each linked to task/criterion/gate and current result.
+- F20 E08 sizing contract and vectors using one already-selected signed policy reference/digest;
+  no environment/rollout input and no RC3 `activation_mode` branch.
+- F21 E09 maker compilation vectors; F22 E09 reduction-only emergency IOC vectors; F23 E10
+  outcome/P&L/cost/R/markout vectors. Mark all owning implementations `ESTATE`.
+- Migration, rollback, split-brain, SHADOW degradation, PAPER isolation, TESTNET, incident,
+  fill-lineage, reconciliation, protection, and disaster-recovery runbooks.
+
+**Acceptance evidence.** No F24; no mandatory blocked test reported green; registry equality;
+F20 rejects missing/invalid selected policy and ignores environment metadata; runbooks contain
+owner, trigger, stop, rollback, evidence, and escalation.
+
+**Gate correspondence.** G6 interface subset. **Dependency.** B08 receipt.
+
+---
+
+### B10 · Independent audits, terminal receipt, and local checkpoint
+
+**Scope.** Close the repository program honestly without implying estate certification.
+
+**Deliverables.**
+
+- At least two independent audit rounds: authority/spec/DAG conformance; then falsification,
+  four-plane, capability, and evidence-integrity attack.
+- Every finding fixed forward or recorded as a blocking deviation with owner and consuming gate.
+- Implementation report separating built, verified, blocked, estate-owned, and operator-owned.
+- Updated status and decision registers.
+- Source PR merge, then detached post-merge B10 receipt over the exact merge hash.
+- TriadOrigin-local checkpoint only after the terminal receipt; G9 later owns the estate-wide
+  checkpoint.
+
+**Acceptance evidence.** No unresolved P0/P1 in repository scope; all code receipts current; full
+suite reproducible on merged main; checkpoint references the terminal receipt. Activation remains
+`DENIED_SAFE_HOLD` unless separate estate gate receipts exist.
+
+## Track B · Estate integration and certification milestones
+
+Track B uses one PR per affected owning repository per gate, followed by one cross-repository gate
+receipt. It may proceed in parallel only when it does not consume a blocked Track A output.
+
+### G-1 · Security and as-built truth
+
+- Rotate/revoke exposed or stale credentials; record fingerprints, never secrets.
+- Attest account, venue environment, position mode, permissions, routes, writers, processes,
+  deployed/source/config/contract digests, clocks, storage, and network reachability.
+- Freeze scope and declare all unavailable evidence. NATS/Prometheus absence is blocking where a
+  gate requires them.
+
+### G0 · Estate contract and authority foundation
+
+- Deploy strict schemas/validators, manifests, leases, quarantine, compatibility, and receipts at
+  every authoritative boundary.
+- Prove only the named producer can publish each fact; schema compatibility grants no authority.
+
+### G1 · Binance ingress and canonical state
+
+- Re-verify current official routes and limits at gate time.
+- Implement deterministic sharding/reconnect, raw-before-normalize, U/u/pu local-book bootstrap,
+  gap reset, finalized bars, UTC session levels, instrument metadata, and replay.
+- Produce current freshness, clock, and data-quality receipts.
+
+### G2 · Semantic readiness
+
+- Close every consumed formula parameter/binding/golden blocker.
+- Prove identical input ranges, watermarks, causality, restart, scale/mirror, and named abstention.
+
+### G3 · Trial-integrity candidate proof
+
+- Freeze semantic capsule registry and dependency-closed parameter bundle.
+- Preregister hypotheses/families and leave-one-conjunct ablations before result access.
+- Prove complete immutable hypotheses, lifecycle, clustering, isolation, and zero money authority.
+
+### G4 · Paired replay and divergence
+
+- Freeze legacy and ORIGIN builds/configs and exact input offsets.
+- Classify missing/extra/retimed/reidentified/geometry/lifecycle/unexplained divergence.
+- Run restart/gap/fault campaigns, chronological OOS, PBO/DSR/multiplicity controls, and maker-fill
+  calibration.
+
+### G5 · Prospective OFF/OFF/OFF/LIVE operation
+
+- Run a frozen prospective window with physical venue denial, current SHADOW writer/resolver
+  health, complete capture, PAPER disabled, and honest read faces.
+- Any side effect, stale health, missing capture, or unmeasurable dependency fails the gate.
+
+### G6 · Risk, execution, money, and outcome rehearsal
+
+- E07 admission/arbitration, E08 selected-policy sizing/reservation, E09 maker execution and
+  strict fill.v3/reconciliation/protection, and E10 outcomes.
+- Prove quantity/P&L conservation, account mode, ambiguous-submit containment, late fills,
+  reductions, and complete lineage.
+
+### TESTNET · Same-digest venue certificate
+
+- Promote the same signed build/config/contracts/parameters from OFF/PAPER rehearsal into isolated
+  TESTNET; no semantic rebuild.
+- Prove venue routing, private lifecycle, filters, fills, reconciliation, protection, stop, and
+  rollback. TESTNET must pass before LIVE.
+
+### G7 · One isolated canary
+
+- Exactly one semantic capsule, instrument, side, and isolated account/risk cell.
+- Owner-signed canary risk/stop values, current strict lineage, physical isolation, and automatic
+  stop/rollback. No scope expansion during the evidence window.
+
+### G8 · Economic proof
+
+- Use strict fill.v3/outcome lineage and disjoint SHADOW/PAPER/TESTNET/LIVE populations.
+- No money win rate or EV may be computed from the dated fill.v1 snapshot; unresolved lineage is
+  `NOT_MEASURABLE`.
+
+### G9 · Production decision and cutover
+
+- Owner-sign production risk budget and gross exposure cap only after G8.
+- Move one progressive scope step at a time; prove monitoring, stop, rollback, and current
+  receipts.
+- Seal the estate-wide checkpoint across every affected repository and process.
+

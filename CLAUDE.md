@@ -7,17 +7,20 @@ this repository.
 
 ## Current authority and stop condition
 
-**Updated 2026-08-09 (B00).** The complete control package now exists and is vendored: the RC3
-Complete Master Specification (embedding the full RC2 canonical registries and the RC3 effective
-control bundle) and the RC4 Four-Plane/Lever Master Addendum live under `docs/spec_rc3/`,
-`docs/spec_rc4/`, `docs/spec_rc2/` with extracted machine-readable law in `docs/control/`. The
-operator directed on 2026-08-09 (authority rank 1): build the complete ORIGIN V7 engine
-end-to-end in this repository, DARK, milestone PRs merged on green, per the B-series plan in
-`docs/plan/`. The prior B00 SAFE_HOLD is closed by that directive **for DARK implementation
-only** — nothing here arms, activates, or ratifies an activation value; every
+**Updated 2026-08-09 (B00C).** The complete control package is vendored (RC2/RC3/RC4 under
+`docs/spec_*/` with machine law in `docs/control/`), and the operator supplied a **reconciled
+plan baseline** (`docs/plan/00…10`, incl. `10_MASTER_SPEC_ALIGNMENT_AUDIT.md`) correcting the
+uploaded plan's P0 defects. Controlling states: `AUTHORIZED_OFFLINE_IMPLEMENTATION_ONLY` for
+repository work; activation result **`DENIED_SAFE_HOLD`** always. The required non-authoritative
+baseline manifest is exactly `venue_environment=OFF / venue_activation=OFF / paper_activation=OFF
+/ shadow_activation=LIVE` (`shadow_activation` fixed LIVE, not switchable; `DARK` and every
+RC4-invalid alias are refusals, not states). Key reconciled laws: **F01 finalized bars and F07
+UTC session levels are E01-owned — ORIGIN consumes/validates, never authors**; the four-plane
+substrate (B05) precedes any candidate publisher (B06); F20 consumes one already-selected signed
+policy (no environment/rollout input); no guessed ordinal↔semantic capsule mapping; every
 `BLOCKING_OWNER_DECISION` / `BLOCKING_RESEARCH_DECISION` / `PROPOSED_*` parameter stays
-fail-closed data. Open ambiguities are batched in `docs/plan/09_OPEN_QUESTIONS.md` for the
-operator, never resolved silently in code.
+fail-closed data with named abstention. Decisions live in `docs/plan/09_OPEN_QUESTIONS.md` — a
+**disposition register** with per-row due-before milestones, never resolved silently in code.
 
 Authority order:
 
@@ -79,13 +82,17 @@ python tools/test_wheel_install.py
 python tools/verify_no_forbidden_capabilities.py
 python tools/e2e_audit.py
 python tools/build_ledger.py --verify
+python tools/validate_combined_dag.py
 ```
 
 **The E2E growth law:** every milestone that lands a capability extends `tools/e2e_audit.py`
 with a walk stage for it in the same PR; a capability with no walk stage is an incomplete
 milestone.
 
-Use one fresh branch and one PR per build milestone. Merge only after exact-head CI is green and all
-actionable review threads are resolved. Then reproduce the checks from fresh merged `main` and seal
-the milestone receipt before opening the next build branch. No self-reported test count, workbook
-colour, force-push, or off-tree draft is acceptance evidence.
+Use one fresh branch and one **source PR** per build milestone; merge only after exact-head CI is
+green and all actionable review threads are resolved. After the source PR merges, reproduce the
+checks against the exact merged `main` hash and land a **separate evidence-only receipt PR**; the
+next milestone branch may not open until that receipt is merged and validated (the one-behind
+scheme is rejected — reconciled plan §9.3). A code-merge receipt and a gate receipt are distinct;
+no Track A milestone is a G-gate pass. No self-reported test count, workbook colour, force-push,
+or off-tree draft is acceptance evidence.

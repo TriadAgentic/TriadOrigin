@@ -463,6 +463,13 @@ CONTRACTS = [
        payload_overrides={"result": "PASS", "task_receipt_ids": ["t-1"],
                           "verification_receipt_ids": ["v-1"],
                           "rollback_proof_ids": ["r-1"], "open_blockers": [],
+                          # B00C gate-receipt law: exact non-wildcard scope, real digests,
+                          # a positive validity window, and an approver independent of the
+                          # producing service.
+                          "scope": {"gate": "G0", "repository": "TriadAgentic/TriadOrigin"},
+                          "producer_digests": {"contract_manifest": "4" * 64},
+                          "observed_at_us": 1786156800123456,
+                          "expires_at_us": 1786243200123456,
                           "approver": "approver-a", "signature": "sig-1"},
        invalid_payload_overrides={"result": "PASS", "open_blockers": ["BLK-1"],
                                   "task_receipt_ids": ["t-1"],

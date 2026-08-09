@@ -1,8 +1,8 @@
 {
-  "artifact_sha256": "069b346e521d5a9846625922fb5408fc6b921c8bf6ea3913a5a91fc50c720485",
+  "artifact_sha256": "ca7449f75dfff7e2b2744e146a38f5f37c0d10725fc87094e41576690bcb8b2b",
   "build_commit": "UNBOUND_DARK_BUILD",
   "config_bundle_sha256": "fabdc1c16d4044a051c99d2b4230a6273ff5c899a53d7151cc384d6674c12297",
-  "contract_manifest_sha256": "069b346e521d5a9846625922fb5408fc6b921c8bf6ea3913a5a91fc50c720485",
+  "contract_manifest_sha256": "ca7449f75dfff7e2b2744e146a38f5f37c0d10725fc87094e41576690bcb8b2b",
   "emitted_at_us": 0,
   "event_id": "contract_bundle_manifest_origin.contract-bundle-descriptor.b01.v2",
   "event_kind": "CONTRACT_BUNDLE_MANIFEST",
@@ -181,12 +181,12 @@
       {
         "media_type": "application/json",
         "path": "contracts/golden/triad.gate_receipt.v2/invalid.json",
-        "sha256": "a62af1b2fec3a4289578956a85ed9dd26f076c2709a31f5658724d9b9da5ba05"
+        "sha256": "3d11afe9edb1260ff869f02f0c769d9b34a00680771c9046cdfc3cbd798a6480"
       },
       {
         "media_type": "application/json",
         "path": "contracts/golden/triad.gate_receipt.v2/valid.json",
-        "sha256": "e3198c0b1bdc6941bf3d9dc3c4a729c1ed9b77945470262be9cca8be49603810"
+        "sha256": "8b87093d761dae9c1428dce7adaa62c2b4b665654cbf7375383e7592daa61e13"
       },
       {
         "media_type": "application/json",
@@ -645,7 +645,7 @@
       }
     ],
     "bundle_version": "origin.contracts.1.1.0-B01",
-    "canonical_manifest_hash": "069b346e521d5a9846625922fb5408fc6b921c8bf6ea3913a5a91fc50c720485",
+    "canonical_manifest_hash": "ca7449f75dfff7e2b2744e146a38f5f37c0d10725fc87094e41576690bcb8b2b",
     "descriptor_version": "origin.contract-bundle-descriptor.b01.v2"
   },
   "producer_instance_id": "offline-build",
