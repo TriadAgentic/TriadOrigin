@@ -119,7 +119,7 @@ separate gate receipt._
 
 - [x] F14 departure/first-retest reaction engine — `structures/reaction.py` `DepartureAndFirstTouch`, `ELIGIBLE→DEPARTED→FIRST_TOUCH_CONSUMED|EXPIRED|INVALIDATED`, GV-012
 - [x] F18 directional geometry/RR; one-tick stop and RR ≥ 2.0 boundaries — `structures/candidate_geometry.py` `evaluate_candidate_geometry`, exact cross-multiplication `reward*1>=risk*2`, GV-015 (T=104 admits, T=103 abstains one tick below)
-- [x] F19 frozen earliest prospective cluster root; no re-root — `structures/clustering.py` `OpportunityClusterRegistry`, connected-components join, `F19_AMBIGUOUS_CLUSTER_MERGE` on a genuine two-cluster match, GV-016
+- [x] F19 frozen earliest prospective cluster root; no re-root — `structures/clustering.py` `OpportunityClusterRegistry`, connected-components join; a genuine two-cluster match resolves per the RC3 errata (earliest root wins deterministically, the other cluster is RECORDED as an alias — `CLUSTER_ALIASED`, never a merge, never a refusal), GV-016
 - [x] Semantic capsule registry with five stable IDs — `structures/capsules.py` `CANONICAL_SEMANTIC_IDS` (5), each bound by NAME and/or `formula_refs` evidence, never by ordinal position
 - [x] RC2 ordinal capsule parameters removed from executable binding unless explicitly remapped — `capsules.resolve_capsule` refuses every `CAP01..CAP05` ordinal spelling (`CapsuleUnavailableError`); PAR-178 registered honestly as `ORPHANED_LEGACY_PARAMETERS`, bound to no capsule
 - [x] Isolated capsule host; no voting/ensemble — `resolve_capsule` returns exactly one `CapsuleDefinition` or raises; no blending code path exists

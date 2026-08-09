@@ -49,19 +49,29 @@ closed and terminal, mirroring :mod:`triad_origin.structures.lifecycle_reducer`:
 illegal transition (unknown candidate, already-terminal, or a transition attempted before
 publication) is refused by name, the state left unchanged.
 
-**Trial + capsule identity are verified, not assumed.** ``capsule_id`` must resolve through
-:func:`triad_origin.structures.capsules.resolve_capsule`; ``trial_id`` must resolve through
-:func:`triad_origin.structures.trial_registry.resolve_trial` against a caller-supplied,
+**Trial + capsule identity are verified, not assumed — and NEVER a raise.** ``capsule_id`` must
+resolve through :func:`triad_origin.structures.capsules.resolve_capsule`; ``trial_id`` must resolve
+through :func:`triad_origin.structures.trial_registry.resolve_trial` against a caller-supplied,
 already-current trial-registry state snapshot (``trial_registry_state`` — this publisher does not
-own trial state, mirroring the one-module-one-concern law; it reads it purely, never mutates it).
-Either raises its own typed ``Unavailable`` error, propagated rather than swallowed — an
-unregistered trial or an RC2-ordinal capsule spelling is a wiring defect, not an ordinary refusal.
+own trial state, mirroring the one-module-one-concern law; it reads it purely, never mutates it);
+and the resolved trial's OWN ``capsule_semantic_id`` must equal the candidate's ``capsule_id`` — a
+candidate is never attributed to a preregistered trial of a DIFFERENT capsule, which would corrupt
+that trial's own conjunct/ablation results. All three checks live inside :func:`_semantically_valid`
+and feed the ``semantically_valid`` tradeability conjunct: an unresolvable capsule/trial or a
+capsule/trial mismatch is a semantic FACT about a malformed or misattributed candidate — it takes
+the SHADOW-audited untradeable path exactly like every other failed conjunct, never an exception
+that could halt partition processing on one poison envelope. Nothing in this module's own
+``PUBLISH_CANDIDATE`` handling ever raises on untrusted candidate CONTENT (a missing/wrong-typed
+``candidate_id``, ``capsule_id``, ``trial_id``, or any other ``edge_candidate`` field always
+resolves to a published row or a shadow audit); a raise here is reserved for a defect in the
+publisher's OWN calling envelope — ``event_time_us``, ``market_watermark``, and the four
+version/quote strings the publisher's own wiring supplies, never the candidate itself.
 """
 
 from __future__ import annotations
 
 from .. import contracts
-from ..canonical import canonical_json, sha256_hex
+from ..canonical import CanonicalError, canonical_json, sha256_hex, str_to_tick
 from ..control.shadow_ledger import ShadowLedger
 from ..transition import Envelope, Params, Quality, State, TransitionResult
 from . import capsules, common, trial_registry
@@ -95,6 +105,8 @@ ORIGIN_PUBLICATION_SENTINEL_STAGE = "N/A_ORIGIN_PUBLICATION"
 ORIGIN_PUBLICATION_SENTINEL_REASON = (
     "not_a_rejection_this_is_the_mandatory_shadow_fork_of_an_origin_publication")
 
+CANDIDATE_ALREADY_PUBLISHED_DISAGREEMENT = "CANDIDATE_ALREADY_PUBLISHED_DISAGREEMENT"
+
 # The twelve TRADEABILITY_REQUIREMENTS this module can itself re-derive from the already-validated
 # edge_candidate.v2 payload (RC4 shadow_law.tradeability_requirements, same order as
 # shadow_ledger.TRADEABILITY_REQUIREMENTS).
@@ -106,6 +118,10 @@ _REQUIRED_STRING_FIELDS_FOR_FLAGS = {
     "horizon": "horizon",
     "stable_identity": "candidate_id",
 }
+
+# The PAR-061 MIN_GEOMETRIC_RR floor (declared_value "2/1"), re-asserted here as the same exact
+# cross-multiplication F18 itself uses (candidate_geometry.py) — never a float division.
+_MIN_GEOMETRIC_RR_FRACTION = (2, 1)
 
 
 class CandidatePublisherError(ValueError):
@@ -124,17 +140,95 @@ def _require_int(value: object, name: str) -> int:
     return value
 
 
-def _derive_tradeability_flags(payload: dict, edge_candidate_valid: bool) -> dict[str, bool]:
+def _parse_tick(value: object) -> int | None:
+    """A canonical tick string parsed to ``int``, or ``None`` on anything not canonical."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return str_to_tick(value)
+    except CanonicalError:
+        return None
+
+
+def _semantically_valid(edge_candidate_payload: dict, trial_registry_state: dict) -> bool:
+    """Re-derive semantic validity independently of mere JSON-schema shape.
+
+    ``schema_valid`` only proves the WIRE SHAPE is legal (required fields present, patterns match,
+    no forbidden money field). This recomputes the actual geometric/referential invariants a
+    schema cannot express, from the SAME frozen wire fields, mirroring F18's own "never trust,
+    recompute" discipline (:mod:`triad_origin.structures.candidate_geometry`'s own
+    ``ABSTAIN_NONPOSITIVE_REWARD`` re-verification): the capsule/trial identities actually resolve
+    AND the trial is bound to the candidate's OWN capsule (a candidate must never be attributed to
+    a preregistered trial of a DIFFERENT capsule — that would corrupt the trial's own conjunct/
+    ablation results); the directional stop-side invariant (the same law
+    ``candidate_geometry.evaluate_candidate_geometry`` enforces at emission time); the PAR-061 2:1
+    RR floor by exact cross-multiplication; and that every declared target is a well-formed,
+    positive-reward occurrence, never a hollow placeholder. Every check is defensive (no raise) —
+    an unresolvable/malformed identity here is a semantic FACT about the candidate, never a crash.
+    """
+    direction = edge_candidate_payload.get("direction")
+    if direction not in common.DIRECTIONS:
+        return False
+
+    capsule_id = edge_candidate_payload.get("capsule_id")
+    try:
+        capsules.resolve_capsule(capsule_id)
+    except capsules.CapsuleUnavailableError:
+        return False
+
+    trial_id = edge_candidate_payload.get("trial_id")
+    try:
+        trial = trial_registry.resolve_trial(trial_registry_state, trial_id)
+    except trial_registry.TrialUnavailableError:
+        return False
+    if trial.capsule_semantic_id != capsule_id:
+        return False  # a candidate must be bound to a trial of its OWN capsule
+
+    entry = _parse_tick(edge_candidate_payload.get("entry_reference_ticks"))
+    stop = _parse_tick(edge_candidate_payload.get("natural_invalidation_ticks"))
+    rr_numerator = _parse_tick(edge_candidate_payload.get("rr_numerator"))
+    rr_denominator = _parse_tick(edge_candidate_payload.get("rr_denominator"))
+    if entry is None or stop is None or rr_numerator is None or rr_denominator is None:
+        return False
+    if direction == common.LONG and stop >= entry:
+        return False
+    if direction == common.SHORT and stop <= entry:
+        return False
+    floor_num, floor_den = _MIN_GEOMETRIC_RR_FRACTION
+    if rr_denominator <= 0 or rr_numerator * floor_den < rr_denominator * floor_num:
+        return False
+
+    targets = edge_candidate_payload.get("targets")
+    if not isinstance(targets, list) or not targets:
+        return False
+    for raw_target in targets:
+        if not isinstance(raw_target, dict):
+            return False
+        target_ticks = _parse_tick(raw_target.get("target_ticks"))
+        if target_ticks is None:
+            return False
+        reward = (target_ticks - entry) if direction == common.LONG else (entry - target_ticks)
+        if reward <= 0:
+            return False
+    return True
+
+
+def _derive_tradeability_flags(
+    payload: dict, edge_candidate_valid: bool, trial_registry_state: dict,
+) -> dict[str, bool]:
     """Re-derive the 12 tradeability conjuncts from the payload's own content — never a blind True.
 
-    ``schema_valid``/``semantically_valid`` reflect whether ``triad.edge_candidate.v2`` validation
-    (schema + the forbidden-money-field guard) already passed. Every other conjunct is checked
-    against the ACTUAL field the caller supplied, so a structurally-valid-but-hollow payload (e.g.
-    an empty ``targets`` array) still fails the flag it should fail, never a rubber stamp.
+    ``schema_valid`` reflects whether ``triad.edge_candidate.v2`` validation (schema + the
+    forbidden-money-field guard) already passed. ``semantically_valid`` is derived INDEPENDENTLY
+    via :func:`_semantically_valid` — the two conjuncts test genuinely different things (wire shape
+    vs. actual geometric/referential validity), never the same boolean twice. Every other conjunct
+    is checked against the ACTUAL field the caller supplied, so a structurally-valid-but-hollow
+    payload (e.g. an empty ``targets`` array) still fails the flag it should fail, never a rubber
+    stamp.
     """
     flags = {
         "schema_valid": edge_candidate_valid,
-        "semantically_valid": edge_candidate_valid,
+        "semantically_valid": _semantically_valid(payload, trial_registry_state),
     }
     for flag_name, field_name in _REQUIRED_STRING_FIELDS_FOR_FLAGS.items():
         value = payload.get(field_name)
@@ -165,8 +259,12 @@ def _shadow_candidate_envelope(
 ) -> Envelope:
     payload = dict(tradeability_flags)
     payload.update({
-        "candidate_id": edge_candidate_payload["candidate_id"],
-        "hypothesis_id": edge_candidate_payload["hypothesis_id"],
+        # .get(), never a direct subscript: a malformed candidate that reaches this mandatory
+        # SHADOW fork may be missing EITHER field entirely (the schema_valid/stable_identity
+        # tradeability flags will already be False for such a payload — this write must still
+        # happen, honestly carrying None, never crash the whole partition on a poison envelope).
+        "candidate_id": edge_candidate_payload.get("candidate_id"),
+        "hypothesis_id": edge_candidate_payload.get("hypothesis_id"),
         "origin_disposition": "ACCEPTED_NOT_EXECUTED",
         "rejection_stage": ORIGIN_PUBLICATION_SENTINEL_STAGE,
         "rejection_reason": ORIGIN_PUBLICATION_SENTINEL_REASON,
@@ -219,21 +317,32 @@ class CandidatePublisher:
         resolver_version = _require_str(payload.get("resolver_version"), "resolver_version")
         cost_model_version = _require_str(payload.get("cost_model_version"), "cost_model_version")
 
-        candidate_id = _require_str(edge_candidate_payload.get("candidate_id"), "candidate_id")
-        if candidate_id in state["candidates"]:
-            existing = state["candidates"][candidate_id]
+        # candidate_id is read raw, never through _require_str: it is UNTRUSTED CANDIDATE CONTENT,
+        # and a malformed candidate (this field missing/empty/wrong-typed among any other) must
+        # never raise and halt the whole partition — it must always resolve to either a published
+        # row or a shadow-audited refusal. A candidate lacking a usable identity simply fails the
+        # "stable_identity" tradeability conjunct below and takes the untradeable path; nothing
+        # here can ever key state["candidates"] on a non-string, since that dict is only ever
+        # written in the ALL-tradeability-flags-true branch, which requires stable_identity=True.
+        candidate_id = edge_candidate_payload.get("candidate_id")
+        existing = state["candidates"].get(candidate_id) if isinstance(candidate_id, str) else None
+        if existing is not None:
             if existing == edge_candidate_payload:
                 return TransitionResult(state)  # identical redelivery: idempotent no-op
-            raise CandidatePublisherError(
-                f"candidate_id {candidate_id!r} already published with a disagreeing payload — "
-                "a published candidate's geometry is immutable")
+            # A disagreeing redelivery is a DATA fact about conflicting candidate content, never an
+            # envelope defect — named abstention, state left untouched, mirroring
+            # shadow_ledger.py's own LEV-0070 identity-collision law (never a raise).
+            event = common.abstention(
+                CANDIDATE_ALREADY_PUBLISHED_DISAGREEMENT, formula=FORMULA_CANDIDATE_PUBLISHER,
+                detail=f"candidate_id {candidate_id!r} is already published with disagreeing "
+                       "content; a published candidate's geometry is immutable",
+                refs={"candidate_id": candidate_id})
+            return TransitionResult(state, (event,))
 
-        # Identity verification: an unresolvable capsule/trial is a wiring defect, propagated.
-        capsule_id = edge_candidate_payload.get("capsule_id")
-        capsules.resolve_capsule(capsule_id)
-        trial_id = edge_candidate_payload.get("trial_id")
-        trial_registry.resolve_trial(trial_registry_state, trial_id)
-
+        # Contract validation (schema_valid) and semantic re-verification (semantically_valid --
+        # capsule/trial identity resolution AND trial<->capsule binding, the directional stop-side
+        # invariant, the RR floor, non-hollow targets) are two INDEPENDENT tradeability conjuncts,
+        # never the same check twice, and NEITHER can ever raise on malformed candidate content.
         try:
             contracts.validate_payload("triad.edge_candidate.v2", edge_candidate_payload)
             edge_candidate_valid = True
@@ -242,7 +351,8 @@ class CandidatePublisher:
 
         flags_payload = dict(edge_candidate_payload)
         flags_payload["_market_watermark"] = market_watermark
-        tradeability_flags = _derive_tradeability_flags(flags_payload, edge_candidate_valid)
+        tradeability_flags = _derive_tradeability_flags(
+            flags_payload, edge_candidate_valid, trial_registry_state)
 
         shadow_envelope = _shadow_candidate_envelope(
             edge_candidate_payload, f"shadow_{event_id}", event_time_us=event_time_us,

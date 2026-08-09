@@ -49,13 +49,17 @@ excluded.
 resolves (an unknown ``capsule_semantic_id`` raises
 :class:`triad_origin.structures.capsules.CapsuleUnavailableError`, never swallowed) -> the four
 declared-rule parameters check -> ``ATR14_ticks`` present (``F18_NO_ATR``) -> the buffered stop ->
-``risk_ticks > 0`` (``F18_ZERO_RISK``) -> target filter+select (``F18_NO_TARGET``) -> the winner's
-recomputed ``reward_ticks > 0`` (``F18_NONPOSITIVE_REWARD`` — structurally unreachable through this
-module's own public entry point, since the selector's own PAR-173 filter already excludes a
-nonpositive-reward target before it can ever win; kept as ORIGIN's "never trust, recompute"
-re-verification, the same discipline F11 applies to its own qualification conjuncts) -> the PAR-061
-floor, decided by exact integer cross-multiplication ``reward_ticks*1 >= risk_ticks*2`` — never a
-float division — ``F18_GEOMETRY_BELOW_FLOOR`` below it, inclusive at equality (PAR-009).
+**the directional stop-side invariant** (``F18_INVALID_STOP_SIDE`` — the buffered stop must land
+strictly on the risk-bearing side of entry: below for LONG, above for SHORT; checked BEFORE
+``risk_ticks = abs(entry - stop)`` can launder a wrong-side stop into a positive "risk", which would
+otherwise admit directionally-invalid geometry) -> ``risk_ticks > 0`` (``F18_ZERO_RISK``, the
+exact-equality boundary) -> target filter+select (``F18_NO_TARGET``) -> the winner's recomputed
+``reward_ticks > 0`` (``F18_NONPOSITIVE_REWARD`` — structurally unreachable through this module's own
+public entry point, since the selector's own PAR-173 filter already excludes a nonpositive-reward
+target before it can ever win; kept as ORIGIN's "never trust, recompute" re-verification, the same
+discipline F11 applies to its own qualification conjuncts) -> the PAR-061 floor, decided by exact
+integer cross-multiplication ``reward_ticks*1 >= risk_ticks*2`` — never a float division —
+``F18_GEOMETRY_BELOW_FLOOR`` below it, inclusive at equality (PAR-009).
 
 An abstention result carries every field legitimately determined before the abstention point and
 ``None`` for everything past it — nothing later is fabricated to fill in the shape.
@@ -86,6 +90,7 @@ DECLARED_MIN_GEOMETRIC_RR = "2/1"  # PAR-061, declared_value "2/1"
 _MIN_GEOMETRIC_RR_FRACTION = (2, 1)  # admit iff reward_ticks*1 >= risk_ticks*2
 
 ABSTAIN_NO_ATR = "F18_NO_ATR"
+ABSTAIN_INVALID_STOP_SIDE = "F18_INVALID_STOP_SIDE"
 ABSTAIN_ZERO_RISK = "F18_ZERO_RISK"
 ABSTAIN_NO_TARGET = "F18_NO_TARGET"
 ABSTAIN_NONPOSITIVE_REWARD = "F18_NONPOSITIVE_REWARD"
@@ -238,6 +243,26 @@ def evaluate_candidate_geometry(
     buffer_ticks = common.evaluate_declared_rational(buffer_rule, atr)
     dir_sign = _dir_sign(direction)
     stop = source - buffer_ticks if direction == common.LONG else source + buffer_ticks
+
+    # Directional stop-side invariant, checked BEFORE abs() can launder it: a LONG stop must land
+    # strictly below entry and a SHORT stop strictly above it. Without this, a wrong-side
+    # natural_invalidation_source (e.g. an edge already past entry, or a buffer too small to cross
+    # back over it) produces a stop on the WRONG side of entry, and abs(entry - stop) turns that
+    # invalid geometry into a positive "risk" that can admit — exactly backwards, since the
+    # candidate's true directional risk is unbounded on that side. The exact-equality case
+    # (stop == entry) is deliberately left to the existing risk_ticks<=0 check below, which already
+    # names it ABSTAIN_ZERO_RISK — this catches only the strictly-wrong-side case.
+    if direction == common.LONG and stop > entry:
+        return _abstain(
+            ABSTAIN_INVALID_STOP_SIDE,
+            "the buffered LONG stop landed at or above entry — directionally invalid geometry",
+            refs, entry_reference_ticks=entry, natural_invalidation_ticks=stop)
+    if direction == common.SHORT and stop < entry:
+        return _abstain(
+            ABSTAIN_INVALID_STOP_SIDE,
+            "the buffered SHORT stop landed at or below entry — directionally invalid geometry",
+            refs, entry_reference_ticks=entry, natural_invalidation_ticks=stop)
+
     risk_ticks = abs(entry - stop)
 
     if risk_ticks <= 0:

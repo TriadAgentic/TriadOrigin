@@ -182,17 +182,18 @@ class TestUntradeablePath:
         assert audit["attempt_identity"] == {"candidate_id": "C2", "hypothesis_id": "H1"}
 
     def test_malformed_schema_is_untradeable_no_candidate_published(self):
-        # cost_model_id is a required edge_candidate.v2 payload field, and no tradeability flag
-        # reads it directly — omitting it fails ONLY schema_valid/semantically_valid, proving the
-        # contract-validation result itself (not a coincidentally-also-false content flag) routes
-        # a malformed candidate to the untradeable path.
+        # cost_model_id is a required edge_candidate.v2 payload field; omitting it fails
+        # schema_valid on its own (semantically_valid is derived INDEPENDENTLY and is unaffected,
+        # since it never reads cost_model_id) -- proving the contract-validation result itself
+        # routes a malformed candidate to the untradeable path.
         candidate = edge_candidate("C3")
         del candidate["cost_model_id"]
         result = run([publish_envelope(candidate, event_id="pub3")])
 
         refusal = result.events[0]
         assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
-        assert set(refusal["failed_conjuncts"]) == {"schema_valid", "semantically_valid"}
+        assert "schema_valid" in refusal["failed_conjuncts"]
+        assert "semantically_valid" not in refusal["failed_conjuncts"]
         assert result.final_state["candidates"] == {}
 
     def test_forbidden_money_field_is_untradeable_never_published(self):
@@ -218,17 +219,39 @@ class TestUntradeablePath:
 
 
 class TestIdentityVerification:
-    def test_unknown_capsule_id_propagates_as_wiring_defect(self):
-        candidate = edge_candidate("C6", capsule_id="CAP01_OB_ENTRY")  # RC2 ordinal spelling
-        with pytest.raises(capsules.CapsuleUnavailableError):
-            transition.run(
-                CandidatePublisher(), [publish_envelope(candidate, event_id="pub6")], {})
+    def test_unknown_capsule_id_is_untradeable_never_raises(self):
+        # An unresolvable capsule_id is a semantic FACT about a malformed candidate -- it must
+        # never crash the whole partition on one poison envelope (an RC2 ordinal spelling here).
+        candidate = edge_candidate("C6", capsule_id="CAP01_OB_ENTRY")
+        result = run([publish_envelope(candidate, event_id="pub6")])
+        refusal = result.events[0]
+        assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+        assert "semantically_valid" in refusal["failed_conjuncts"]
+        assert result.final_state["candidates"] == {}
+        assert len(result.final_state["shadow"]["audits"]) == 1
 
-    def test_unknown_trial_id_propagates_as_wiring_defect(self):
+    def test_unknown_trial_id_is_untradeable_never_raises(self):
         candidate = edge_candidate("C7", trial_id="never_preregistered")
-        with pytest.raises(trial_registry.TrialUnavailableError):
-            transition.run(
-                CandidatePublisher(), [publish_envelope(candidate, event_id="pub7")], {})
+        result = run([publish_envelope(candidate, event_id="pub7")])
+        refusal = result.events[0]
+        assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+        assert "semantically_valid" in refusal["failed_conjuncts"]
+        assert result.final_state["candidates"] == {}
+
+    def test_capsule_trial_mismatch_is_untradeable_never_published(self):
+        # trial_id resolves, but the trial's OWN capsule differs from the candidate's declared
+        # capsule -- attributing this candidate to that trial would corrupt its conjunct/ablation
+        # results, so this is untradeable regardless of otherwise-valid geometry.
+        other_capsule = next(c for c in capsules.CANONICAL_SEMANTIC_IDS if c != CAPSULE_ID)
+        mismatched_trial_state = build_trial_registry_state(
+            trial_id="TX-MISMATCH", capsule=other_capsule)
+        candidate = edge_candidate("C-MISMATCH", capsule_id=CAPSULE_ID, trial_id="TX-MISMATCH")
+        result = run([publish_envelope(
+            candidate, event_id="pub-mismatch", trial_registry_state=mismatched_trial_state)])
+        refusal = result.events[0]
+        assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+        assert "semantically_valid" in refusal["failed_conjuncts"]
+        assert result.final_state["candidates"] == {}
 
     def test_valid_capsule_and_trial_publish_cleanly(self):
         for capsule_id in capsules.CANONICAL_SEMANTIC_IDS:
@@ -237,6 +260,67 @@ class TestIdentityVerification:
             result = run([
                 publish_envelope(candidate, event_id="pub8", trial_registry_state=trial_state)])
             assert result.events[0]["event_kind"] == CANDIDATE_PUBLISHED
+
+
+class TestSemanticReVerification:
+    """The publisher recomputes F18-shaped invariants independently of schema_valid (never trust,
+    recompute) -- a schema-valid-but-geometrically-impossible or hollow candidate is untradeable."""
+
+    def test_wrong_side_stop_for_long_is_untradeable(self):
+        # LONG, but natural_invalidation_ticks is ABOVE entry_reference_ticks: directionally
+        # invalid, mirroring the F18 ABSTAIN_INVALID_STOP_SIDE law at the publisher's own layer.
+        candidate = edge_candidate("C-WRONGSIDE", direction="LONG",
+                                   entry_reference_ticks="1000",
+                                   natural_invalidation_ticks="1100")
+        result = run([publish_envelope(candidate, event_id="pub-wrongside")])
+        refusal = result.events[0]
+        assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+        assert "semantically_valid" in refusal["failed_conjuncts"]
+        assert "schema_valid" not in refusal["failed_conjuncts"]  # shape is fine; geometry is not
+
+    def test_rr_below_floor_at_the_wire_is_untradeable(self):
+        # Schema-valid rr_numerator/rr_denominator (both well-formed canonical ints) but below the
+        # PAR-061 2:1 floor -- semantically_valid must independently catch this.
+        candidate = edge_candidate("C-BELOWFLOOR", rr_numerator="3", rr_denominator="2")
+        result = run([publish_envelope(candidate, event_id="pub-belowfloor")])
+        refusal = result.events[0]
+        assert "semantically_valid" in refusal["failed_conjuncts"]
+        assert "schema_valid" not in refusal["failed_conjuncts"]
+
+    def test_hollow_target_is_untradeable(self):
+        # targets=[{}] satisfies the schema (bare "array" type, no per-item schema) and the
+        # target_or_terminal_rule flag (a non-empty list) -- only the semantic re-verification's
+        # own target-shape/reward recomputation catches this.
+        candidate = edge_candidate("C-HOLLOW", targets=[{}])
+        result = run([publish_envelope(candidate, event_id="pub-hollow")])
+        refusal = result.events[0]
+        assert "semantically_valid" in refusal["failed_conjuncts"]
+        assert "target_or_terminal_rule" not in refusal["failed_conjuncts"]
+
+    def test_missing_candidate_id_is_untradeable_never_raises(self):
+        # The reviewer's own poison-envelope case: candidate_id entirely absent must never crash
+        # the whole partition -- it must still produce a durable shadow_rejection_audit row.
+        candidate = edge_candidate("C-NOID")
+        del candidate["candidate_id"]
+        result = run([publish_envelope(candidate, event_id="pub-noid")])
+        refusal = result.events[0]
+        assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+        assert "stable_identity" in refusal["failed_conjuncts"]
+        assert "schema_valid" in refusal["failed_conjuncts"]
+        assert result.final_state["candidates"] == {}
+        audits = result.final_state["shadow"]["audits"]
+        assert len(audits) == 1
+        audit = next(iter(audits.values()))
+        assert audit["attempt_identity"]["candidate_id"] is None
+
+    def test_missing_hypothesis_id_is_untradeable_never_raises(self):
+        candidate = edge_candidate("C-NOHYP")
+        del candidate["hypothesis_id"]
+        result = run([publish_envelope(candidate, event_id="pub-nohyp")])
+        assert result.events[0]["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+        assert result.final_state["candidates"] == {}
+        audit = next(iter(result.final_state["shadow"]["audits"].values()))
+        assert audit["attempt_identity"]["hypothesis_id"] is None
 
 
 class TestRedelivery:
@@ -254,15 +338,19 @@ class TestRedelivery:
         assert len(result.final_state["candidates"]) == 1
         assert len(result.final_state["shadow"]["trades"]) == 1
 
-    def test_disagreeing_redelivery_raises(self):
-        candidate = edge_candidate("C10", direction="LONG")
-        disagreeing = edge_candidate("C10", direction="SHORT")
-        with pytest.raises(CandidatePublisherError):
-            transition.run(
-                CandidatePublisher(),
-                [publish_envelope(candidate, event_id="pub10a"),
-                 publish_envelope(disagreeing, event_id="pub10b")],
-                {})
+    def test_disagreeing_redelivery_is_a_named_abstention_never_a_raise(self):
+        # A disagreeing redelivery on an already-published candidate_id is a DATA fact about
+        # conflicting content, never an envelope defect -- mirrors shadow_ledger.py's own LEV-0070
+        # identity-collision law (a named abstention, state left untouched, never a crash).
+        candidate = edge_candidate("C10", entry_reference_ticks="1000")
+        disagreeing = edge_candidate("C10", entry_reference_ticks="1001")
+        result = run([
+            publish_envelope(candidate, event_id="pub10a"),
+            publish_envelope(disagreeing, event_id="pub10b"),
+        ])
+        assert result.events[-1]["event_kind"] == "NAMED_ABSTENTION"
+        assert result.events[-1]["reason_code"] == "CANDIDATE_ALREADY_PUBLISHED_DISAGREEMENT"
+        assert result.final_state["candidates"]["C10"] == candidate  # the first write stands
 
 
 class TestLifecycleTransitions:

@@ -1,5 +1,5 @@
 """F19 opportunity-clustering battery: GV-016, boundary, mirror, transitive join, redelivery,
-ambiguous merge, fail-closed, invariance."""
+cross-cluster alias (earliest root wins), fail-closed, invariance."""
 
 from __future__ import annotations
 
@@ -16,11 +16,12 @@ from triad_origin.structures import common  # noqa: E402
 from triad_origin.structures.common import StructureLawError  # noqa: E402
 from triad_origin.structures.clustering import (  # noqa: E402
     CANDIDATE_REVISED,
+    CLUSTER_ALIASED,
     CLUSTER_FORMED,
     CLUSTER_JOINED,
-    F19_AMBIGUOUS_CLUSTER_MERGE,
     F19_CANDIDATE_CONTENT_MISMATCH,
     OpportunityClusterRegistry,
+    resolve_canonical_cluster_id,
 )
 
 PARAMS = {"cluster_window_ms": 30000}
@@ -132,15 +133,67 @@ class TestTransitiveJoin:
         assert root_after_a == root_after_all == "A"
 
 
-class TestAmbiguousMerge:
-    def test_ambiguous_simultaneous_merge_is_named_not_silently_resolved(self):
+class TestCrossClusterAlias:
+    """RC3 errata (docs/control/rc3_executable_builder.py formula_errata, "Stable opportunity
+    identity"): cross-cluster attachment chooses the earliest root deterministically and records
+    the other matched cluster(s) as aliases -- never a merge, never a re-root, never a refusal."""
+
+    def test_bridging_occurrence_joins_earliest_root_and_aliases_the_other(self):
         a = occurrence("A", zone_low=0, zone_high=10, availability_us=0)
         d = occurrence("D", zone_low=100, zone_high=110, availability_us=0)
         x = occurrence("X", zone_low=5, zone_high=105, availability_us=0)
         result = run([a, d, x])
-        assert F19_AMBIGUOUS_CLUSTER_MERGE in reason_codes(result)
-        assert "X" not in result.final_state["candidates"]
-        assert len(result.final_state["clusters"]) == 2  # only A's and D's; X was refused
+
+        assert event_kinds(result) == [CLUSTER_FORMED, CLUSTER_FORMED, CLUSTER_ALIASED]
+        x_event = result.events[-1]
+        assert x_event["root_candidate_id"] == "A"  # earliest by (availability, candidate_id)
+
+        candidates = result.final_state["candidates"]
+        clusters = result.final_state["clusters"]
+        assert "X" in candidates  # bridging occurrence is admitted, never refused
+        winner_cluster_id = candidates["X"]["cluster_id"]
+        assert winner_cluster_id == x_event["cluster_id"]
+        assert clusters[winner_cluster_id]["member_candidate_ids"] == ["A", "X"]
+
+        # D's own cluster record is FROZEN exactly as it stood -- never re-rooted, never merged.
+        d_cluster_id = candidates["D"]["cluster_id"]
+        assert d_cluster_id != winner_cluster_id
+        assert clusters[d_cluster_id] == {
+            "root_candidate_id": "D", "member_candidate_ids": ["D"]}
+        assert x_event["aliased_cluster_ids"] == [d_cluster_id]
+        assert result.final_state["cluster_aliases"] == {d_cluster_id: winner_cluster_id}
+        assert resolve_canonical_cluster_id(result.final_state, d_cluster_id) == winner_cluster_id
+
+    def test_a_later_occurrence_resolves_through_the_alias_transparently(self):
+        # E touches ONLY D's (now-aliased) zone; it must land on the WINNER cluster directly, not
+        # re-trigger a spurious cross-cluster attachment against an already-unified pair.
+        a = occurrence("A", zone_low=0, zone_high=10, availability_us=0)
+        d = occurrence("D", zone_low=100, zone_high=110, availability_us=0)
+        x = occurrence("X", zone_low=5, zone_high=105, availability_us=0)
+        e = occurrence("E", zone_low=100, zone_high=110, availability_us=0)
+        result = run([a, d, x, e])
+
+        assert event_kinds(result)[-1] == CLUSTER_JOINED
+        winner_cluster_id = result.final_state["candidates"]["A"]["cluster_id"]
+        assert result.final_state["candidates"]["E"]["cluster_id"] == winner_cluster_id
+        assert len(result.final_state["clusters"]) == 2  # A's (now incl. X, E) + D's frozen one
+
+    def test_earliest_root_ties_break_by_candidate_id(self):
+        # Same availability_us on both roots -- the tie breaks by candidate_id ascending ("A"<"D").
+        a = occurrence("A", zone_low=0, zone_high=10, availability_us=500)
+        d = occurrence("D", zone_low=100, zone_high=110, availability_us=500)
+        x = occurrence("X", zone_low=5, zone_high=105, availability_us=500)
+        result = run([a, d, x])
+        assert result.events[-1]["root_candidate_id"] == "A"
+
+    def test_later_root_availability_still_wins_by_earliest(self):
+        # D's root is EARLIER in availability_us than A's, despite A's candidate_id sorting first
+        # lexicographically -- availability_us is compared FIRST, candidate_id only breaks a tie.
+        a = occurrence("A", zone_low=0, zone_high=10, availability_us=1_000)
+        d = occurrence("D", zone_low=100, zone_high=110, availability_us=0)
+        x = occurrence("X", zone_low=5, zone_high=105, availability_us=0)
+        result = run([a, d, x])
+        assert result.events[-1]["root_candidate_id"] == "D"
 
 
 class TestRedeliveryIdempotent:

@@ -80,6 +80,39 @@ class TestGv015:
         assert result.abstain_reason == candidate_geometry.ABSTAIN_GEOMETRY_BELOW_FLOOR
 
 
+class TestInvalidStopSide:
+    def test_long_wrong_side_stop_abstains_never_admits(self):
+        # LONG E=100, source=105, atr=20 -> buffer=1 -> stop=105-1=104, ABOVE entry: invalid.
+        # abs(100-104)=4 would otherwise read as a valid positive risk; must abstain instead.
+        result = evaluate(direction=common.LONG, entry=100, source=105, atr=20,
+                          targets=[target("PROTECTED_SWING", 110)])
+        assert result.admitted is False
+        assert result.abstain_reason == candidate_geometry.ABSTAIN_INVALID_STOP_SIDE
+        assert result.risk_ticks is None
+        assert result.reward_ticks is None
+        assert result.entry_reference_ticks == 100
+        assert result.natural_invalidation_ticks == 104
+
+    def test_short_wrong_side_stop_abstains_never_admits(self):
+        # SHORT mirror: E=100, source=95, atr=20 -> buffer=1 -> stop=95+1=96, BELOW entry: invalid.
+        result = evaluate(direction=common.SHORT, entry=100, source=95, atr=20,
+                          targets=[target("PROTECTED_SWING", 90)])
+        assert result.admitted is False
+        assert result.abstain_reason == candidate_geometry.ABSTAIN_INVALID_STOP_SIDE
+        assert result.natural_invalidation_ticks == 96
+
+    def test_stop_exactly_at_entry_still_reaches_zero_risk_not_invalid_side(self):
+        # The exact-equality boundary is untouched: LONG stop==entry stays ABSTAIN_ZERO_RISK.
+        result = evaluate(direction=common.LONG, entry=100, source=101, atr=20,
+                          targets=[target("PROTECTED_SWING", 110)])
+        assert result.abstain_reason == candidate_geometry.ABSTAIN_ZERO_RISK
+
+    def test_long_correct_side_stop_still_admits(self):
+        # The valid, documented GV-015 case is unaffected by the new side check.
+        result = evaluate(targets=[target("PROTECTED_SWING", 104)])
+        assert result.admitted is True
+
+
 class TestZeroRisk:
     def test_entry_and_buffered_stop_coincide_abstains(self):
         # source=101, atr=20 -> buffer=1 -> stop=101-1=100 == entry.

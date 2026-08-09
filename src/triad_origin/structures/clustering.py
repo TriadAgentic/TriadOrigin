@@ -53,11 +53,29 @@ existing cluster — root or not — puts that cluster's id in the matched set (
 third candidate joining only through a non-root member still land in the right cluster). Exactly one
 matched cluster -> join it (append-only; ``root_candidate_id`` NEVER changes once a cluster exists —
 "never re-root"). Zero matched clusters -> this occurrence roots a brand-new cluster
-(``root_candidate_id = candidate_id``). **Two or more matched clusters simultaneously is a genuine
-conflict the formula's "never re-root" law forbids resolving by picking one or by fabricating a
-merge** (merging would require moving one cluster's members under the other's root, i.e. re-rooting
-it) — this occurrence is refused with the named abstention ``F19_AMBIGUOUS_CLUSTER_MERGE``: no
-candidate row is written, no cluster is touched, the conflict is named, not silently picked.
+(``root_candidate_id = candidate_id``).
+
+**Cross-cluster attachment (two or more matched clusters simultaneously) — earliest root wins, the
+other clusters are RECORDED as aliases, never merged, never picked arbitrarily.** The RC3 errata
+table's own F19 correction (``docs/control/rc3_executable_builder.py``'s ``formula_errata``, "Stable
+opportunity identity") states this exactly: *"cross-cluster attachment chooses earliest root
+deterministically and records aliases"* — a stronger, more specific instruction than the plain
+formula-row text this module's earlier revision read alone, and per this repository's own authority
+order the RC3 errata/executable-builder layer controls over the bare formula text. The winner is the
+matched cluster whose OWN root is earliest by ``(root's availability_us, root_candidate_id)`` — the
+SAME tie-break the formula's ``root fixed at creation by min(availability,candidate_id)`` clause
+already establishes for an ordinary root; every OTHER matched cluster is recorded in
+``state["cluster_aliases"]`` (``{losing_cluster_id: winning_cluster_id}``) and the new occurrence
+itself joins the winner. **Never re-root either side:** the losing cluster's OWN
+``root_candidate_id``/``member_candidate_ids`` record is frozen exactly as it stood at alias time —
+an alias is a pointer recorded alongside the frozen record, never a merge that would move members
+under a different root. Every future match resolves a candidate's raw stored ``cluster_id`` through
+the alias chain (:func:`_canonical_cluster_id`) BEFORE comparing, so a later occurrence that would
+otherwise re-discover the same now-aliased pair collapses to the single canonical (winner) cluster
+id, never re-triggering a spurious ambiguity. This event is distinctly named ``CLUSTER_ALIASED``
+(carrying the winner's ``cluster_id`` plus the full ``aliased_cluster_ids`` list) — distinguishable
+from an ordinary single-cluster ``CLUSTER_JOINED``, so a reader can see exactly when and which
+clusters were unified by alias.
 
 **``root fixed at creation by min(availability,candidate_id)`` — how it is realized here.** This
 machine processes one envelope per ``transition()`` call, in the caller's deterministic partition
@@ -121,9 +139,9 @@ _KIND_CANDIDATE_OCCURRENCE = "CANDIDATE_OCCURRENCE"
 
 CLUSTER_FORMED = "CLUSTER_FORMED"
 CLUSTER_JOINED = "CLUSTER_JOINED"
+CLUSTER_ALIASED = "CLUSTER_ALIASED"
 CANDIDATE_REVISED = "CANDIDATE_REVISED"
 
-F19_AMBIGUOUS_CLUSTER_MERGE = "F19_AMBIGUOUS_CLUSTER_MERGE"
 F19_CANDIDATE_CONTENT_MISMATCH = "F19_CANDIDATE_CONTENT_MISMATCH"
 
 # The candidate row fields compared for the redelivery/revision law (see module docstring). This
@@ -231,16 +249,51 @@ def _cluster_id(parsed: dict) -> str:
     return canonical.sha256_hex(canonical.canonical_json(payload))
 
 
+def _canonical_cluster_id(cluster_aliases: dict, cluster_id: str) -> str:
+    """Resolve a raw stored ``cluster_id`` through the alias chain to its canonical (winner) id.
+
+    A cluster that has never been aliased away resolves to itself. The chain has no cycles by
+    construction (an alias entry is only ever added for a cluster NOT already itself a winner of
+    some other alias in the SAME resolution pass — see :meth:`OpportunityClusterRegistry._admit_new`),
+    but the walk is still cycle-guarded so a future invariant break fails loud rather than looping.
+    """
+    seen: set[str] = set()
+    current = cluster_id
+    while current in cluster_aliases:
+        if current in seen:
+            raise common.StructureLawError(
+                f"F19 cluster alias cycle detected at {current!r} — an invariant was broken")
+        seen.add(current)
+        current = cluster_aliases[current]
+    return current
+
+
+def resolve_canonical_cluster_id(state: State, cluster_id: str) -> str:
+    """Public read helper: the canonical (winner) cluster id for any raw stored ``cluster_id``."""
+    return _canonical_cluster_id(state.get("cluster_aliases", {}), cluster_id)
+
+
+def _earliest_root(state: State, cluster_ids: set) -> str:
+    """The matched cluster whose OWN root is earliest by ``(availability_us, candidate_id)`` —
+    the same tie-break the formula's ordinary root-fixing law already uses."""
+    def sort_key(cid: str) -> tuple:
+        cluster = state["clusters"][cid]
+        root_id = cluster["root_candidate_id"]
+        root_row = state["candidates"][root_id]
+        return (root_row["availability_us"], root_id)
+    return min(cluster_ids, key=sort_key)
+
+
 class OpportunityClusterRegistry:
     """F19 — opportunity clustering and alias control
     (:class:`triad_origin.transition.DeterministicMachine`).
 
     See the module docstring for the RC3/RC2 formula text, the mirror law, the unit conversion,
-    the connected-components join/root/ambiguous-merge law and the redelivery/revision law.
+    the connected-components join/root/cross-cluster-alias law and the redelivery/revision law.
     """
 
     def initial_state(self) -> State:
-        return {"candidates": {}, "clusters": {}}
+        return {"candidates": {}, "clusters": {}, "cluster_aliases": {}}
 
     def transition(
         self, state: State, envelope: Envelope, params: Params, quality: Quality
@@ -298,12 +351,15 @@ class OpportunityClusterRegistry:
             "from_occurrence_version": old_version, "to_occurrence_version": new_version,
         }
         return TransitionResult(
-            state={"candidates": candidates, "clusters": state["clusters"]}, events=(event,))
+            state={"candidates": candidates, "clusters": state["clusters"],
+                  "cluster_aliases": state["cluster_aliases"]},
+            events=(event,))
 
     def _admit_new(
         self, state: State, parsed: dict, event_id: str, window_us: int
     ) -> TransitionResult:
         candidate_id = parsed["candidate_id"]
+        cluster_aliases = state["cluster_aliases"]
         matched_cluster_ids: set[str] = set()
         for other_row in state["candidates"].values():
             if other_row["instrument"] != parsed["instrument"]:
@@ -311,21 +367,40 @@ class OpportunityClusterRegistry:
             if other_row["side"] != parsed["side"]:
                 continue  # LONG and SHORT never cluster together — absolute, checked first.
             if _clusters_together(parsed, other_row, window_us):
-                matched_cluster_ids.add(other_row["cluster_id"])
-
-        if len(matched_cluster_ids) > 1:
-            event = common.abstention(
-                F19_AMBIGUOUS_CLUSTER_MERGE, formula=FORMULA_F19,
-                detail="candidate matches members of two or more existing clusters at once; a "
-                       "cluster root is fixed at creation and never re-rooted, so no merge is "
-                       "performed and this occurrence is refused",
-                refs={"event_id": event_id, "candidate_id": candidate_id,
-                      "matched_cluster_ids": sorted(matched_cluster_ids)})
-            return TransitionResult(state=state, events=(event,))
+                # Resolve through the alias chain BEFORE adding to the matched set, so an
+                # already-unified pair never re-triggers a spurious cross-cluster attachment.
+                matched_cluster_ids.add(
+                    _canonical_cluster_id(cluster_aliases, other_row["cluster_id"]))
 
         candidates = dict(state["candidates"])
         clusters = dict(state["clusters"])
+        aliases = dict(cluster_aliases)
         row = {key: parsed[key] for key in _SEMANTIC_FIELDS}
+
+        if len(matched_cluster_ids) > 1:
+            # Cross-cluster attachment: earliest root wins deterministically, the other matched
+            # clusters are RECORDED as aliases (never merged, never re-rooted) — the RC3 errata
+            # correction (see the module docstring). Every alias entry maps a canonical (not yet
+            # aliased) loser to the winner, so this can never overwrite an existing alias.
+            winner_cluster_id = _earliest_root(state, matched_cluster_ids)
+            loser_cluster_ids = sorted(matched_cluster_ids - {winner_cluster_id})
+            for loser_cluster_id in loser_cluster_ids:
+                aliases[loser_cluster_id] = winner_cluster_id
+            cluster = state["clusters"][winner_cluster_id]
+            clusters[winner_cluster_id] = {
+                "root_candidate_id": cluster["root_candidate_id"],
+                "member_candidate_ids": list(cluster["member_candidate_ids"]) + [candidate_id],
+            }
+            row["cluster_id"] = winner_cluster_id
+            candidates[candidate_id] = row
+            event = {
+                "event_kind": CLUSTER_ALIASED, "formula": FORMULA_F19,
+                "cluster_id": winner_cluster_id, "root_candidate_id": cluster["root_candidate_id"],
+                "candidate_id": candidate_id, "aliased_cluster_ids": loser_cluster_ids,
+            }
+            return TransitionResult(
+                state={"candidates": candidates, "clusters": clusters, "cluster_aliases": aliases},
+                events=(event,))
 
         if len(matched_cluster_ids) == 1:
             cluster_id = next(iter(matched_cluster_ids))
@@ -342,7 +417,8 @@ class OpportunityClusterRegistry:
                 "candidate_id": candidate_id,
             }
             return TransitionResult(
-                state={"candidates": candidates, "clusters": clusters}, events=(event,))
+                state={"candidates": candidates, "clusters": clusters, "cluster_aliases": aliases},
+                events=(event,))
 
         cluster_id = _cluster_id(parsed)
         clusters[cluster_id] = {
@@ -354,4 +430,5 @@ class OpportunityClusterRegistry:
             "cluster_id": cluster_id, "root_candidate_id": candidate_id,
         }
         return TransitionResult(
-            state={"candidates": candidates, "clusters": clusters}, events=(event,))
+            state={"candidates": candidates, "clusters": clusters, "cluster_aliases": aliases},
+            events=(event,))
