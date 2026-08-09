@@ -26,16 +26,16 @@ separate gate receipt._
 
 ## B00C · Corrective control closure — next milestone
 
-- [ ] Merge reconciled 00/01/04/08/09 documents and alignment audit
-- [ ] Correct all formula/owner references to F00–F23; remove F24
-- [ ] Row-review all 1,250 schedule assignments; record reviewer/disposition
-- [ ] Combined RC3+RC4 referential/cycle/inversion/one-owner/source-authority validator
-- [ ] `evidence_receipt.v2`, `task_status_event.v2`, `gate_receipt.v2` + semantic validator
-- [ ] Invalid receipt fixtures: stale/scope/digest/reviewer/blocker/rollback/composition failures
+- [x] Merge reconciled 00/01/04/08/09 documents and alignment audit — PR #12, merge `b641edc…`
+- [x] Correct all formula/owner references to F00–F23; remove F24 — registry-equality + no-affirmative-F24 tests
+- [x] Row-review all 1,250 schedule assignments; record reviewer/disposition — `build_ledger_review.v1.json`, `--verify`-enforced
+- [x] Combined RC3+RC4 referential/cycle/inversion/one-owner/source-authority validator — `tools/validate_combined_dag.py` (CI + e2e stage 16)
+- [x] `evidence_receipt.v2`, `task_status_event.v2`, `gate_receipt.v2` + semantic validator — landed B01, gate-receipt PASS law hardened at B00C
+- [x] Invalid receipt fixtures: stale/scope/digest/reviewer/blocker/rollback/composition failures — `tests/test_b00c_control_closure.py` refusal battery
 - [ ] Configure main ruleset from issue #5 or sign time-bounded equivalent waiver
-- [ ] Seal R00 disposition and exact-current-main B00 receipt
-- [ ] B00C source PR merged green
-- [ ] B00C post-merge receipt passed; B01 may open
+- [x] Seal R00 disposition and exact-current-main B00 receipt — `R00_SUPERSESSION.md` + `evidence/receipts/{R00,B00}.json`
+- [x] B00C source PR merged green — PR #12, CI `31296105920`
+- [x] B00C post-merge receipt passed; B01R may open — `evidence/receipts/B00C.json` binds `b641edc…` (this receipt PR)
 
 ## B01 · Contract, identity, and binding foundation
 
