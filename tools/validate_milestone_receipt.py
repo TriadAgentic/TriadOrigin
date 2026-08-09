@@ -132,7 +132,7 @@ R00_FAILED_ATTEMPT = {
     "tree_sha": R00_IMPLEMENTATION_TREE_SHA,
 }
 # Exact corrective-review roots observed before the final head. Every row must be live-resolved.
-R00_KNOWN_PR7_THREADS: set[str] = {"3741593887"}
+R00_KNOWN_PR7_THREADS: set[str] = {"3741593887", "3742096931"}
 
 # Immutable pre-merge review-root manifest. The full finding text is source-reviewed here
 # so a post-merge export cannot legitimize an edited or substituted finding.
@@ -347,6 +347,16 @@ R00_REVIEWED_ROOTS: dict[str, dict[str, str | int]] = {
         "thread_node_id": "PRRT_kwDOTyUBrM6XgoL6",
         "url": "https://github.com/TriadAgentic/TriadOrigin/pull/7#discussion_r3741593887",
     },
+    "3742096931": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P1 Badge](https://img.shields.io/badge/P1-orange?style=flat)</sub></sub>  Match the merge event to the resulting merge SHA**\n\nAfter PR #7 is squash-merged, GitHub's timeline `merged` event identifies the resulting merge commit in `commit_id`, which `_normalize_live_pr7_timeline_event` exposes as `commit_sha`; it does not identify the pre-merge PR tip in `head_sha`. Filtering this event against `head_sha` therefore leaves `merge_timeline` empty and makes `timeline_ok` false, so the post-merge R00 receipt cannot be sealed despite valid evidence. Match this event against the already supplied `merge_sha` instead; the same incorrect comparison also exists in the final-review acceptance arm.\n\nUseful? React with 👍 / 👎.",
+        "path": "tools/validate_milestone_receipt.py",
+        "pr_number": 7,
+        "review_id": "4890177398",
+        "root_node_id": "PRRC_kwDOTyUBrM7fC94j",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XiB9O",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/7#discussion_r3742096931",
+    },
 }
 
 R00_AUTHORITY_INVENTORY_PATH = "docs/plan/06_RC2_SOURCE_INVENTORY.md"
@@ -458,6 +468,7 @@ def _r00_pr7_preacceptance_review_baseline() -> list[dict[str, str]]:
     """
     first_head = "61f5c417a4a66f769e9ce534fd97ef074f654784"
     pin_head = "71d0400d0610ece52efcaacc958ef4f748418ddd"
+    timeline_head = "8380348c43d8d7626bf3c89976d19f43275ca9ce"
     return [
         {
             "body": _expected_codex_review_body(first_head),
@@ -526,6 +537,20 @@ def _r00_pr7_preacceptance_review_baseline() -> list[dict[str, str]]:
                 "#pullrequestreview-4889942759"
             ),
         },
+        {
+            "body": _expected_codex_review_body(timeline_head),
+            "commit_id": timeline_head,
+            "raw_reviewer": "chatgpt-codex-connector[bot]",
+            "review_id": "4890177398",
+            "reviewer": R00_REQUIRED_REVIEWER,
+            "reviewer_id": R00_REQUIRED_REVIEWER_ID,
+            "state": "COMMENTED",
+            "submitted_at": "2026-08-09T00:31:56Z",
+            "url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                "#pullrequestreview-4890177398"
+            ),
+        },
     ]
 
 
@@ -533,6 +558,7 @@ def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
     """Reviewed PR #7 top-level comment prefix, before the final fresh pair."""
     pin_head = "71d0400d0610ece52efcaacc958ef4f748418ddd"
     observed_head = "73771e53105a915756ae14fac93dc616190c4d1a"
+    timeline_head = "8380348c43d8d7626bf3c89976d19f43275ca9ce"
     rows = [
         (
             "5228488965",
@@ -586,6 +612,16 @@ def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
             R00_REQUIRED_REVIEWER_ID,
             _expected_codex_clean_comment_body(observed_head),
             "2026-08-08T22:48:28Z",
+        ),
+        (
+            "5228983837",
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR_ID,
+            _expected_codex_review_request_body(
+                timeline_head, "31286109671", "93175141486"
+            ),
+            "2026-08-09T00:28:58Z",
         ),
     ]
     return [
@@ -3150,6 +3186,9 @@ def _validate_live_r00_review(
         and item.get("object_id") == review_id
         and item.get("commit_sha") == head_sha
     ]
+    # GitHub's documented ``merged.commit_id`` is the PR HEAD commit that was
+    # merged, not the resulting squash commit.  The pull response separately
+    # binds ``merge_commit_sha`` to ``merge_sha`` below.
     merge_timeline = [
         item for item in live_timeline
         if item.get("event") == "merged" and item.get("commit_sha") == head_sha
@@ -3494,6 +3533,9 @@ def _validate_live_r00_reaction(
         item for item in timeline
         if item.get("event") == "commented" and item.get("object_id") == clean_id
     ]
+    # GitHub's documented ``merged.commit_id`` is the PR HEAD commit that was
+    # merged, not the resulting squash commit.  The pull response separately
+    # binds ``merge_commit_sha`` to ``merge_sha`` below.
     merge_timeline = [
         item for item in timeline
         if item.get("event") == "merged" and item.get("commit_sha") == head_sha

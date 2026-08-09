@@ -1900,6 +1900,51 @@ def test_r00_live_graphql_rejects_extra_historical_root_as_nonactionable(tmp_pat
         )
 
 
+def test_r00_source_pinned_inline_finding_cannot_be_coordinately_deleted(tmp_path):
+    _materialize_evidence(tmp_path)
+    receipt = _valid_receipt()
+    deleted_id = "3742096931"
+
+    review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
+    review["threads"] = [
+        row for row in review["threads"] if row["thread_id"] != deleted_id
+    ]
+    _rewrite_bound_record(tmp_path, receipt, "review", review)
+
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    corrective = next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    corrective["inline_threads"] = [
+        row for row in corrective["inline_threads"] if row["id"] != deleted_id
+    ]
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def deleted_root_get(pr_number: int):
+        record = copy.deepcopy(_fake_github_get_review_threads(pr_number))
+        if pr_number == R00_RECEIPT_PR:
+            connection = record["data"]["repository"]["pullRequest"][
+                "reviewThreads"
+            ]
+            connection["nodes"] = [
+                node for node in connection["nodes"]
+                if str(node["comments"]["nodes"][0]["fullDatabaseId"])
+                != deleted_id
+            ]
+            connection["totalCount"] = len(connection["nodes"])
+        return record
+
+    with pytest.raises(ReceiptValidationError, match="PR #7|controlled root"):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=_fake_github_get_json,
+            github_get_review_threads=deleted_root_get,
+        )
+
+
 @pytest.mark.parametrize("connection", ["threads", "comments"])
 def test_r00_live_graphql_rejects_incomplete_pagination(tmp_path, connection):
     _materialize_evidence(tmp_path)
@@ -2561,6 +2606,56 @@ def test_r00_final_review_arm_rejects_coordinated_timeline_mutation(
             _schema(),
             evidence_root=tmp_path,
             github_get_json=coordinated_timeline_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+@pytest.mark.parametrize("arm", ["review", "reaction"])
+def test_r00_merged_timeline_event_binds_pr_head_not_squash_commit(
+    tmp_path, arm
+):
+    if arm == "reaction":
+        receipt = _reaction_receipt(tmp_path)
+        raw_timeline = _reaction_raw_timeline()
+        base_get = _fake_reaction_github_get_json
+    else:
+        _materialize_evidence(tmp_path)
+        receipt = _valid_receipt()
+        raw_timeline = _final_review_raw_timeline()
+        base_get = _fake_github_get_json
+
+    merged = next(item for item in raw_timeline if item.get("event") == "merged")
+    assert merged["commit_id"] == HEAD40
+    merged["commit_id"] = MERGE40
+    merged["commit_url"] = (
+        f"https://api.github.com/repos/TriadAgentic/TriadOrigin/commits/{MERGE40}"
+    )
+    normalized = []
+    for position, item in enumerate(raw_timeline):
+        row = _normalize_live_pr7_timeline_event(item)
+        row["position"] = position
+        normalized.append(row)
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )["timeline"] = normalized
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def resulting_squash_get(path: str):
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=1":
+            return copy.deepcopy(raw_timeline)
+        return copy.deepcopy(base_get(path))
+
+    with pytest.raises(
+        ReceiptValidationError,
+        match="independent exact-head pre-merge|clean-comment/reaction",
+    ):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=resulting_squash_get,
             github_get_review_threads=_fake_github_get_review_threads,
         )
 

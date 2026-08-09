@@ -71,7 +71,9 @@ the corrective chain honestly. The exception expires only when the corrective re
 B00 onward requires any semantic spec/scope change to merge in a prior, separate PR.
 
 For R00 specifically, PR #4 threads closed before its merge. Corrective PR #7's observed actionable
-roots—including `3741593887`—must be named, fixed, replied to, and resolved; two complete live
+roots—including `3741593887` and `3742096931`—must be named, dispositioned, replied to, and resolved;
+the latter is preserved as an official-contract rebuttal because GitHub documents a merged timeline
+event's `commit_id` as the PR head that was merged, not the resulting squash. Two complete live
 GraphQL snapshots must equal the persisted root/resolution/reply inventory and the reviewed
 immutable root manifest. Two complete stable snapshots of PR #7's reviews, top-level issue comments,
 PR-root reactions, and issue timeline must likewise equal the persisted v2 export. A current

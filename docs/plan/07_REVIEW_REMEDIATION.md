@@ -33,7 +33,14 @@ state; it does not rewrite when or against which merge those historical replies 
 PR #4's first post-merge receipt attempt failed closed on the sdist/dependency-snapshot mismatch.
 PR #7 is the only authorized corrective continuation. Adversarial review created actionable root
 `3741593887`; later top-level review `4889942759` identified non-concrete dependency-pin acceptance.
-This reviewed plan names both findings instead of erasing history. Every observed PR #7 root enters
+Exact-head review `4890177398` then created root `3742096931`, claiming that the timeline
+`merged.commit_id` is the squash result. GitHub's official event contract defines it as the PR head
+that was merged, while the pull response and raw Git bind the resulting squash separately. The
+controlled disposition preserves that root, retains the `head_sha` comparison, and regression-tests
+rejection of a coordinated `merge_sha` substitution. Because the finding initially existed only as
+a deletable inline comment, the corrective source also pins its exact root/review/trigger bytes and
+IDs and rejects coordinated removal from both the live API and persisted export. This reviewed plan
+names every finding instead of erasing history. Every observed PR #7 root enters
 the controlled set, is fixed/replied/resolved before merge, and receives an authenticated
 post-merge closure reply citing the corrective squash and receipt path. The sealer compares two
 complete live GraphQL snapshots against every persisted PR #1–#4/#7 root, resolution, and selected
@@ -56,7 +63,7 @@ top-level review, issue-comment, PR-root-reaction, and issue-timeline inventorie
 current `CHANGES_REQUESTED`, every review at or after the selected final-head trigger, every
 unbound post-merge review, every inventory race or omission, and every commit, force-push,
 head-ref deletion/restoration, `automatic_base_change_succeeded`, or other head/base ref mutation
-between trigger and guarded merge. The reviewed law also pins the exact three-review/four-comment
+between trigger and guarded merge. The reviewed law also pins the exact four-review/five-comment
 pre-final history, including raw and numeric actors, complete bodies, commit/state, IDs, times, and
 URLs. Every top-level comment must remain unedited; any changed historical review or post-trigger
 review dismissal fails closed. The selected trigger must be
@@ -72,6 +79,8 @@ pretend otherwise. The selected top-level result must be the exact clean artifac
 adverse results must remain visible through the durable review/thread inventory. If the service is
 ever observed emitting an adverse result whose only durable form is a deletable top-level or inline
 comment, PR #7 remains blocked until a reviewed capture law covers that new protocol shape.
+Root `3742096931` triggered that extension; source-pinning its complete identity and requiring exact
+live-set equality closes this observed shape only. It does not create a generic deletion history.
 
 After merge, post the canonical inline closure replies first, then wait for two identical complete
 API snapshots containing the merge and replies. Build and seal the receipt without any later PR #7

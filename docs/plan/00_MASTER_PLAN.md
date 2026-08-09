@@ -129,7 +129,16 @@ PR #4's actual squash SHA and receipt path and were resolved. The final receipt 
 historical API states and replies; it does not require them to cite PR #7's later corrective merge.
 PR #7 acquired actionable root `3741593887` during adversarial review and later top-level review
 `4889942759` identified non-concrete dependency-pin acceptance, so the evidence law is explicitly
-extended here rather than erasing either finding. Every PR #1–#4 and PR #7 root, live resolution
+extended here rather than erasing either finding. Exact-head review `4890177398` then opened root
+`3742096931`, asserting that a timeline `merged.commit_id` is the resulting squash SHA. GitHub's
+[official event contract](https://docs.github.com/en/rest/using-the-rest-api/issue-event-types#merged)
+states that this field is the PR `HEAD` commit that was merged; the squash identity is separately
+bound by the pull response and raw Git lineage. The reviewed disposition therefore preserves the
+finding, retains the documented `head_sha` comparison, and adds a regression that rejects a
+self-consistent substitution of `merge_sha`. Because this adverse result initially existed only as
+a deletable inline comment, it also triggers the reviewed capture-law extension: the next source
+head pins its exact root/review/trigger text and identities, and a coordinated live-plus-export
+deletion must still fail against that immutable set. Every PR #1–#4 and PR #7 root, live resolution
 state, and selected remediation reply must match two identical complete GitHub GraphQL snapshots.
 The reviewed control set pins each root's immutable author, full finding text, path,
 PR/review/comment/thread IDs, and URL; a post-merge export cannot redefine the finding it claims to
@@ -154,7 +163,7 @@ ID and is supporting corroboration only: it need not be recreated for every trig
 independently establish which head was reviewed.
 
 Because submitted GitHub reviews have no review-body update timestamp, the reviewed source pins the
-exact three-review and four-comment PR #7 history that existed before this law: IDs, raw and numeric
+exact four-review and five-comment PR #7 history that existed before this law: IDs, raw and numeric
 actors, commit/state, complete bodies, submission/creation times, and URLs. The live export must
 start with that exact review/comment baseline; it cannot redefine history after merge. Every
 top-level comment, including the fresh selected pair, must remain unedited (`created_at ==
@@ -174,7 +183,8 @@ claim that it does. The accepted issue comment must be the exact clean artifact;
 results are required to remain represented by the durable review/thread inventory. If Codex is ever
 observed emitting an adverse result whose only durable form is a deletable top-level or inline
 comment, the merge blocks pending a reviewed evidence-law extension rather than treating absence as
-PASS.
+PASS. Root `3742096931` is the first such inline observation; the source-pinned controlled-root
+extension above is its required disposition, and head `8380348c…` remains non-mergeable.
 After merge and the canonical inline closure replies, receipt construction waits for two identical
 complete snapshots and seals them without any later PR #7 top-level comment or head-branch deletion;
 GitHub timeline eventual consistency is never papered over with a guessed export.
