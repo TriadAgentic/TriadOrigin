@@ -135,17 +135,48 @@ separate gate receipt._
 
 ## B07 · Configuration, comparison, bridge, replay
 
-- [ ] Signed/digest-pinned configuration families + fail-closed loader
-- [ ] Exact OFF/OFF/OFF/LIVE control manifest instance
-- [ ] All 192 parameter rows materialized with source status
-- [ ] `require()` rejects proposed/unratified/stale/missing/scope-mismatched values
-- [ ] Comparator keeps `engine_cohort` and `intelligence_arm` independent
-- [ ] Authority component verifies external facts/technical-writer lease only
-- [ ] No ORIGIN candidate admission/arbitration or money-selection lease path
-- [ ] Frozen legacy bridge preserves bytes and omissions; exact source/path bound
-- [ ] Same-code replay runner + digest-complete replay receipt
-- [ ] Service reaches `READY_NO_AUTHORITY` with zero venue/order/credential capability
-- [ ] End-to-end config/comparison/authority-fact/bridge/replay stage
+- [x] Signed/digest-pinned configuration families + fail-closed loader — `config/parameters.py`
+  (192-row `ParameterRegistry`, `parameter_digest`, `require()`) + `config/signed_bundle.py`
+  (the 13-domain self-signing bundle, `build_signed_bundle`/`verify_signed_bundle`)
+- [x] Exact OFF/OFF/OFF/LIVE control manifest instance — already built in B05
+  (`control/lever_law.BASELINE_MANIFEST`); reused, not re-built
+- [x] All 192 parameter rows materialized with source status — `ParameterRegistry.status_counts()`
+  (16 statuses, 141 refused + 51 materialized, verified programmatically; disposition row E25(b))
+- [x] `require()` rejects proposed/unratified/stale/missing/scope-mismatched values —
+  `ParameterRegistry.require()` (`ParameterRefusedError`/`ParameterDigestMismatchError`/
+  `ParameterUnknownError`/`ParameterScopeMismatchError`); `tests/config/test_parameters.py` (37 tests)
+- [x] Comparator keeps `engine_cohort` and `intelligence_arm` independent —
+  `control/comparator.py` (`compare_engine_cohort`/`compare_intelligence_arm`, each refusing a
+  candidate mislabeled for its own axis, AND (PR #24 review, row E27 finding 3) refusing when the
+  non-compared axis disagrees between control/treatment — never a possibly-confounded
+  divergence); `tests/control/test_comparator.py` (26 tests, incl. the vendored-enum drift-lock)
+- [x] Authority component verifies external facts/technical-writer lease only —
+  `control/authority_fact_verifier.py` (`AuthorityLedger`, verify-only over
+  `candidate_authority.v1` + `producer_lease.v1`; row A7; PR #24 review, row E27 findings 1/4/5:
+  an optional injected `signature_verifier`, a currency check in `admit_fact` before any stateful
+  ordering logic, and exact-scope-match conjuncts in `readiness()`); `tests/control/test_authority_fact_verifier.py`
+  (58 tests, incl. the ordering/stale/duplicate/split-brain law + the no-write-verb structural check)
+- [x] No ORIGIN candidate admission/arbitration or money-selection lease path — `AuthorityLedger`
+  exposes `admit_fact`/`current_for_scope`/`clear_split_brain` only (a fencing-token bookkeeping
+  law, never a candidate/order verb); `assert_strictly_higher_token` proves a rollback token
+  lawful but issues nothing
+- [x] Frozen legacy bridge preserves bytes and omissions; exact source/path bound —
+  `control/legacy_bridge.py` (`bridge_legacy_record`/`LegacyBridgeState`,
+  `verify_byte_preservation`; row F2's exact path stays an OPEN operator decision, the mechanism
+  is generic over any caller-supplied source; PR #24 review, row E27 finding 2: `legacy_payload`
+  is a canonical-round-trip-detached copy, and every `LegacyBridgeState` read path returns a deep
+  copy, so neither the caller's own `raw_record` nor a previously-returned envelope can corrupt
+  cached state); `tests/control/test_legacy_bridge.py` (23 tests)
+- [x] Same-code replay runner + digest-complete replay receipt — `control/replay_runner.py`
+  (wraps `journal.replay`, the SAME live/replay code path; emits a schema-valid
+  `triad.replay_receipt.v1` payload); `tests/control/test_replay_runner.py` (21 tests, incl. two
+  independent runs byte-identical + checkpoint-resume state identity vs a cold full-tape run)
+- [x] Service reaches `READY_NO_AUTHORITY` with zero venue/order/credential capability —
+  `service.py` (`compute_service_readiness` composes the R00 bootstrap conjuncts with the new B07
+  control-plane conjunct; never exceeds `READY_NO_AUTHORITY` — the enum has no state beyond it);
+  `tests/test_service.py` (13 tests) + `tools/verify_no_forbidden_capabilities.py` green
+- [x] End-to-end config/comparison/authority-fact/bridge/replay stage — `tools/e2e_audit.py`
+  stage 22 `b07_control_plane_walk`
 - [ ] Source PR merged green
 - [ ] Post-merge B07 receipt passed
 
