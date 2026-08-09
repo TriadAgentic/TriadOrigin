@@ -120,6 +120,9 @@ No skip/xfail is accepted silently; each has an owner and receipt disposition.
   acceptance for that same immutable head.
 - A clean acceptance is head-scoped. Any later commit invalidates it and requires new exact-head CI,
   a fresh full-head trigger, and a fresh clean artifact.
+- Pull-request CI checks out `github.event.pull_request.head.sha`, never an unqualified short
+  `head_ref`. Creation of the local `evidence/r00-receipt` branch and execution of its sealer both
+  require the PR head repository to equal `github.repository`.
 - In the clean-comment arm, the response must have the exact fixed clean declaration, a bounded
   one-line ASCII display reason with no renderer/control syntax, the exact reviewed-head marker, and
   the exact common tail. The full body is still persisted, compared, and hashed byte-for-byte; the

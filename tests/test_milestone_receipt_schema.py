@@ -80,15 +80,15 @@ SETUP_BYTES = b"from setuptools import setup\nsetup()\n"
 CONSTRAINT_BYTES = b"pytest==9.1.1\n"
 THREAD_ROOT_AT = "2026-08-08T00:00:00Z"
 THREAD_HISTORICAL_REPLY_AT = "2026-08-09T00:10:00Z"
-THREAD_CORRECTIVE_REPLY_AT = "2026-08-09T02:10:00Z"
+THREAD_CORRECTIVE_REPLY_AT = "2026-08-09T04:10:00Z"
 REACTION_REQUEST_ID = "6100000001"
 REACTION_CLEAN_ID = "6100000002"
 REACTION_ID = "7100000001"
-REACTION_REQUEST_AT = "2026-08-09T01:40:00Z"
-REACTION_CLEAN_AT = "2026-08-09T01:45:00Z"
+REACTION_REQUEST_AT = "2026-08-09T03:40:00Z"
+REACTION_CLEAN_AT = "2026-08-09T03:45:00Z"
 # The selected connector +1 must be fresh: after the exact-head trigger and no
 # later than the clean response.
-REACTION_CREATED_AT = "2026-08-09T01:44:59Z"
+REACTION_CREATED_AT = "2026-08-09T03:44:59Z"
 COLLECTOR_BYTES = (REPO_ROOT / "tools" / "collect_test_ids.py").read_bytes()
 CONTRACT_SOURCE_FILES = {
     str(path.relative_to(REPO_ROOT)): path.read_bytes()
@@ -162,9 +162,9 @@ def _fake_github_get_json(path: str) -> object:
             "html_url": "https://github.com/TriadAgentic/TriadOrigin/pull/7",
             "merge_commit_sha": MERGE40,
             "merged": True,
-            "merged_at": "2026-08-09T02:00:00Z",
+            "merged_at": "2026-08-09T04:00:00Z",
             "number": R00_RECEIPT_PR,
-            "updated_at": "2026-08-09T02:00:00Z",
+            "updated_at": "2026-08-09T04:00:00Z",
             "user": {"id": int(R00_PR_AUTHOR_ID), "login": R00_PR_AUTHOR},
         }
     if path == "/repos/TriadAgentic/TriadOrigin/actions/runs/1":
@@ -219,7 +219,7 @@ def _fake_github_get_json(path: str) -> object:
             ),
             "id": int(final_review_id),
             "state": "COMMENTED",
-            "submitted_at": "2026-08-09T01:00:00Z",
+            "submitted_at": "2026-08-09T03:00:00Z",
             "user": {
                 "id": int(R00_REQUIRED_REVIEWER_ID),
                 "login": "chatgpt-codex-connector[bot]",
@@ -235,7 +235,7 @@ def _fake_github_get_json(path: str) -> object:
             ),
             "id": int(final_review_id),
             "state": "COMMENTED",
-            "submitted_at": "2026-08-09T01:00:00Z",
+            "submitted_at": "2026-08-09T03:00:00Z",
             "user": {
                 "id": int(R00_REQUIRED_REVIEWER_ID),
                 "login": "chatgpt-codex-connector[bot]",
@@ -344,7 +344,7 @@ def _reaction_raw_timeline() -> list[dict]:
             "node_id": "PRR_kwD_timeline_review",
             "pull_request_url": "https://api.github.com/repos/TriadAgentic/TriadOrigin/pulls/7",
             "state": "commented",
-            "submitted_at": "2026-08-09T01:00:00Z",
+            "submitted_at": "2026-08-09T03:00:00Z",
             "user": {
                 "id": int(R00_REQUIRED_REVIEWER_ID),
                 "login": "chatgpt-codex-connector[bot]",
@@ -358,7 +358,7 @@ def _reaction_raw_timeline() -> list[dict]:
             "commit_url": (
                 f"https://api.github.com/repos/TriadAgentic/TriadOrigin/commits/{HEAD40}"
             ),
-            "created_at": "2026-08-09T02:00:00Z",
+            "created_at": "2026-08-09T04:00:00Z",
             "event": "merged",
             "id": 8100000001,
             "node_id": "EV_kwD_merged",
@@ -824,7 +824,7 @@ def _materials() -> list[dict]:
                         "reviewer": R00_REQUIRED_REVIEWER,
                         "reviewer_id": R00_REQUIRED_REVIEWER_ID,
                         "state": "COMMENTED",
-                        "submitted_at": "2026-08-09T01:00:00Z",
+                        "submitted_at": "2026-08-09T03:00:00Z",
                         "url": (
                             f"https://github.com/TriadAgentic/TriadOrigin/pull/{R00_RECEIPT_PR}"
                             f"#pullrequestreview-{final_review_id}"
@@ -1476,7 +1476,7 @@ def test_r00_live_review_requires_connector_and_author_separation(
 
 
 @pytest.mark.parametrize(
-    "submitted_at", ["2026-08-09T03:00:00Z", "2026-08-09T01:00:00"]
+    "submitted_at", ["2026-08-09T04:00:00Z", "2026-08-09T03:00:00"]
 )
 def test_r00_live_review_must_precede_merge(tmp_path, submitted_at):
     _materialize_evidence(tmp_path)
@@ -1901,10 +1901,12 @@ def test_r00_live_graphql_rejects_extra_historical_root_as_nonactionable(tmp_pat
         )
 
 
-def test_r00_source_pinned_inline_finding_cannot_be_coordinately_deleted(tmp_path):
+@pytest.mark.parametrize("deleted_id", sorted(R00_KNOWN_PR7_THREADS))
+def test_r00_source_pinned_inline_finding_cannot_be_coordinately_deleted(
+    tmp_path, deleted_id
+):
     _materialize_evidence(tmp_path)
     receipt = _valid_receipt()
-    deleted_id = "3742096931"
 
     review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
     review["threads"] = [
@@ -2664,9 +2666,9 @@ def test_r00_merged_timeline_event_binds_pr_head_not_squash_commit(
 @pytest.mark.parametrize(
     ("created_at", "updated_at"),
     [
-        ("2026-08-09T01:30:00Z", "2026-08-09T01:30:00Z"),
-        ("2026-08-09T01:00:00Z", "2026-08-09T01:00:00Z"),
-        ("2026-08-09T00:50:00Z", "2026-08-09T01:00:00Z"),
+        ("2026-08-09T03:30:00Z", "2026-08-09T03:30:00Z"),
+        ("2026-08-09T03:00:00Z", "2026-08-09T03:00:00Z"),
+        ("2026-08-09T02:50:00Z", "2026-08-09T03:00:00Z"),
     ],
 )
 def test_r00_final_review_arm_rejects_thread_activity_at_or_after_acceptance(
@@ -2964,6 +2966,8 @@ def test_pr7_preacceptance_source_baselines_pin_live_history():
         "4889942759",
         "4890177398",
         "4890205850",
+        "4890352011",
+        "4890384420",
     ]
     assert [row["id"] for row in comments] == [
         "5228488965",
@@ -2975,9 +2979,89 @@ def test_pr7_preacceptance_source_baselines_pin_live_history():
         "5229058332",
         "5229144298",
         "5229158255",
+        "5229377643",
     ]
-    assert _sha(comments[-1]["body"].encode()) == (
+    assert _sha(comments[-2]["body"].encode()) == (
         "88119e331f350d9a1f16a90a6a33419d75c310fdf51a0815696f6b0155a93005"
+    )
+    assert comments[-1]["body"] == _expected_codex_review_request_body(
+        "17a0645f9e915110ea6bd03d64f67770e79d8689",
+        "31290259737",
+        "93186092170",
+    )
+
+
+def test_fork_checkout_review_artifacts_are_byte_pinned():
+    root = R00_REVIEWED_ROOTS["3742370663"]
+    assert root["author"] == R00_REQUIRED_REVIEWER
+    assert root["path"] == ".github/workflows/ci.yml"
+    assert root["pr_number"] == R00_RECEIPT_PR
+    assert root["review_id"] == "4890352011"
+    assert root["root_node_id"] == "PRRC_kwDOTyUBrM7fEAtn"
+    assert root["thread_node_id"] == "PRRT_kwDOTyUBrM6Xi3xr"
+    assert root["url"] == (
+        "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+        "#discussion_r3742370663"
+    )
+    assert len(root["body"].encode()) == 757
+    assert _sha(root["body"].encode()) == (
+        "4edba83dbc8301d7c2a99b5cf05575086fed7b73963cf6df15469c40f8e6cddf"
+    )
+
+    review = next(
+        row for row in _r00_pr7_preacceptance_review_baseline()
+        if row["review_id"] == "4890352011"
+    )
+    assert review["commit_id"] == "17a0645f9e915110ea6bd03d64f67770e79d8689"
+    assert review["raw_reviewer"] == "chatgpt-codex-connector[bot]"
+    assert review["reviewer"] == R00_REQUIRED_REVIEWER
+    assert review["reviewer_id"] == R00_REQUIRED_REVIEWER_ID
+    assert review["state"] == "COMMENTED"
+    assert review["submitted_at"] == "2026-08-09T02:34:21Z"
+    assert review["url"] == (
+        "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+        "#pullrequestreview-4890352011"
+    )
+    assert len(review["body"].encode()) == 631
+    assert _sha(review["body"].encode()) == (
+        "86d411560e1657138318124566388c70ddf98093a9efad4e2160288101683e87"
+    )
+
+    carrier = next(
+        row for row in _r00_pr7_preacceptance_review_baseline()
+        if row["review_id"] == "4890384420"
+    )
+    assert carrier == {
+        "body": "",
+        "commit_id": "17a0645f9e915110ea6bd03d64f67770e79d8689",
+        "raw_reviewer": R00_PR_AUTHOR,
+        "review_id": "4890384420",
+        "reviewer": R00_PR_AUTHOR,
+        "reviewer_id": R00_PR_AUTHOR_ID,
+        "state": "COMMENTED",
+        "submitted_at": "2026-08-09T02:54:07Z",
+        "url": (
+            "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+            "#pullrequestreview-4890384420"
+        ),
+    }
+
+    trigger = next(
+        row for row in _r00_pr7_preacceptance_comment_baseline()
+        if row["id"] == "5229377643"
+    )
+    assert trigger["author"] == R00_PR_AUTHOR
+    assert trigger["raw_author"] == R00_PR_AUTHOR
+    assert trigger["author_id"] == R00_PR_AUTHOR_ID
+    assert trigger["created_at"] == "2026-08-09T02:30:41Z"
+    assert trigger["updated_at"] == trigger["created_at"]
+    assert trigger["url"] == (
+        "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+        "#issuecomment-5229377643"
+    )
+    assert len(trigger["body"].encode()) == 181
+    assert _sha(trigger["body"].encode()) == (
+        "83ef560bed3215a8d5c34c223831a9aaab600464d0572f914132a236b3fb2ef8"
     )
 
 
@@ -2985,7 +3069,7 @@ def test_r00_timeline_normalizes_reviewed_event_submitted_at():
     reviewed = _reaction_raw_timeline()[1]
     normalized = _normalize_live_pr7_timeline_event(reviewed)
     assert normalized["event"] == "reviewed"
-    assert normalized["created_at"] == "2026-08-09T01:00:00Z"
+    assert normalized["created_at"] == "2026-08-09T03:00:00Z"
     assert "created_at" not in reviewed
 
 
@@ -3269,7 +3353,7 @@ def test_r00_timeline_rejects_coordinated_head_or_comment_mutation(tmp_path, eve
         raw_event = {
             "actor": {"id": 9, "login": "attacker"},
             "commit_id": HEAD40,
-            "created_at": "2026-08-09T01:42:00Z",
+            "created_at": "2026-08-09T03:42:00Z",
             "event": event,
             "id": 8200000001,
             "node_id": "EV_kwD_intervening",
@@ -3437,13 +3521,13 @@ def test_r00_reaction_arm_rejects_post_trigger_negative_thread_reply(tmp_path):
     negative = {
         "author": "review-bot",
         "body_sha256": _sha(negative_body.encode()),
-        "created_at": "2026-08-09T01:42:00Z",
+        "created_at": "2026-08-09T03:42:00Z",
         "id": "9999999995",
         "node_id": "PRRC_negative_after_acceptance",
         "path": thread["path"],
         "reply_to_id": thread["id"],
         "review_id": thread["review_id"],
-        "updated_at": "2026-08-09T01:42:00Z",
+        "updated_at": "2026-08-09T03:42:00Z",
         "url": (
             "https://github.com/TriadAgentic/TriadOrigin/pull/7"
             "#discussion_r9999999995"
@@ -3495,7 +3579,7 @@ def test_r00_all_pr_roots_are_frozen_before_final_review_trigger(tmp_path, arm):
     export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
     pr1 = next(pull for pull in export["pull_requests"] if pull["pr_number"] == 1)
     persisted = next(row for row in pr1["inline_threads"] if row["id"] == thread_id)
-    persisted["root"]["updated_at"] = "2026-08-09T01:42:00Z"
+    persisted["root"]["updated_at"] = "2026-08-09T03:42:00Z"
     _rewrite_bound_record(tmp_path, receipt, "review-api", export)
 
     def edited_root_threads(pr_number: int):
@@ -3506,7 +3590,7 @@ def test_r00_all_pr_roots_are_frozen_before_final_review_trigger(tmp_path, arm):
                 row for row in nodes
                 if str(row["comments"]["nodes"][0]["fullDatabaseId"]) == thread_id
             )
-            live["comments"]["nodes"][0]["updatedAt"] = "2026-08-09T01:42:00Z"
+            live["comments"]["nodes"][0]["updatedAt"] = "2026-08-09T03:42:00Z"
         return value
 
     with pytest.raises(
@@ -3548,7 +3632,7 @@ def test_r00_all_pr_ordinary_replies_are_frozen_before_final_review_trigger(
         "path": persisted["path"],
         "reply_to_id": thread_id,
         "review_id": persisted["review_id"],
-        "updated_at": "2026-08-09T01:42:00Z",
+        "updated_at": "2026-08-09T03:42:00Z",
         "url": (
             "https://github.com/TriadAgentic/TriadOrigin/pull/1"
             f"#discussion_r{reply_id}"

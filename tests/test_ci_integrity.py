@@ -29,11 +29,18 @@ def test_ci_actions_are_sha_pinned_and_solver_uses_committed_constraints():
     assert "contents: read" in workflow
     assert "issues: read" in workflow
     assert "fetch-depth: 2" in workflow
-    assert "ref: ${{ github.head_ref || github.sha }}" in workflow
+    assert "ref: ${{ github.event.pull_request.head.sha || github.sha }}" in workflow
+    assert "ref: ${{ github.head_ref || github.sha }}" not in workflow
     assert "name: Checkout exact head" in workflow
+    assert "name: Establish receipt evidence branch" in workflow
+    assert "git switch --force-create evidence/r00-receipt" in workflow
+    assert '"${{ github.event.pull_request.head.sha }}"' in workflow
     assert "name: Set up Python 3.11" in workflow
     assert "hashFiles('evidence/receipts/R00.json')" in workflow
     assert "github.head_ref == 'evidence/r00-receipt'" in workflow
+    assert workflow.count(
+        "github.event.pull_request.head.repo.full_name == github.repository"
+    ) == 2
     assert "github.event_name == 'pull_request'" in workflow
     assert "GITHUB_TOKEN: ${{ github.token }}" in workflow
     assert (

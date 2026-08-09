@@ -71,8 +71,9 @@ the corrective chain honestly. The exception expires only when the corrective re
 B00 onward requires any semantic spec/scope change to merge in a prior, separate PR.
 
 For R00 specifically, PR #4 threads closed before its merge. Corrective PR #7's observed actionable
-roots—including `3741593887` and `3742096931`—must be named, dispositioned, replied to, and resolved;
-the latter is preserved as an official-contract rebuttal because GitHub documents a merged timeline
+roots—including `3741593887`, `3742096931`, and `3742370663`—must be named, dispositioned, replied
+to, and resolved; root `3742096931` is preserved as an official-contract rebuttal because GitHub
+documents a merged timeline
 event's `commit_id` as the PR head that was merged, not the resulting squash. Two complete live
 GraphQL snapshots must equal the persisted root/resolution/reply inventory and the reviewed
 immutable root manifest. Two complete stable snapshots of PR #7's reviews, top-level issue comments,
@@ -85,6 +86,10 @@ head deletion before receipt sealing are forbidden.
 For either clean-acceptance arm, thread roots and ordinary replies must predate the selected review
 object or final review trigger; only the single canonical unedited closure reply may follow,
 strictly after merge.
+
+Pull-request CI checks out the immutable event head SHA. The named local receipt branch and its
+receipt-auth step run only when the head repository is this repository and the short head branch is
+exactly `evidence/r00-receipt`; a fork cannot acquire the canonical evidence identity.
 
 The clean-review-object arm requires an exact-head review object with no findings and the same
 complete historical comment/review, reaction, pull-boundary, and timeline checks. The observed

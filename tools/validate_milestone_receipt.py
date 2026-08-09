@@ -132,7 +132,9 @@ R00_FAILED_ATTEMPT = {
     "tree_sha": R00_IMPLEMENTATION_TREE_SHA,
 }
 # Exact corrective-review roots observed before the final head. Every row must be live-resolved.
-R00_KNOWN_PR7_THREADS: set[str] = {"3741593887", "3742096931"}
+R00_KNOWN_PR7_THREADS: set[str] = {
+    "3741593887", "3742096931", "3742370663",
+}
 
 # Immutable pre-merge review-root manifest. The full finding text is source-reviewed here
 # so a post-merge export cannot legitimize an edited or substituted finding.
@@ -357,6 +359,16 @@ R00_REVIEWED_ROOTS: dict[str, dict[str, str | int]] = {
         "thread_node_id": "PRRT_kwDOTyUBrM6XiB9O",
         "url": "https://github.com/TriadAgentic/TriadOrigin/pull/7#discussion_r3742096931",
     },
+    "3742370663": {
+        "author": "chatgpt-codex-connector",
+        "body": "**<sub><sub>![P2 Badge](https://img.shields.io/badge/P2-yellow?style=flat)</sub></sub>  Restore fork-compatible exact-head checkout**\n\nFor a pull request originating from a fork, `github.head_ref` is only the short branch name, while `actions/checkout` still defaults to the base repository. The action therefore tries to fetch that branch from `TriadOrigin` rather than the contributor's fork, causing the checkout to fail—or to select a same-named base-repository branch before the following SHA assertion fails. Since this workflow runs for every `pull_request`, keep using `github.event.pull_request.head.sha` for the checkout and establish the named local branch separately where the R00 evidence sealer requires it.\n\nUseful? React with 👍 / 👎.",
+        "path": ".github/workflows/ci.yml",
+        "pr_number": 7,
+        "review_id": "4890352011",
+        "root_node_id": "PRRC_kwDOTyUBrM7fEAtn",
+        "thread_node_id": "PRRT_kwDOTyUBrM6Xi3xr",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/7#discussion_r3742370663",
+    },
 }
 
 R00_AUTHORITY_INVENTORY_PATH = "docs/plan/06_RC2_SOURCE_INVENTORY.md"
@@ -525,6 +537,7 @@ def _r00_pr7_preacceptance_review_baseline() -> list[dict[str, str]]:
     pin_head = "71d0400d0610ece52efcaacc958ef4f748418ddd"
     timeline_head = "8380348c43d8d7626bf3c89976d19f43275ca9ce"
     disposition_head = "52656010d28d010a71a2fefa92c32e728fc28b87"
+    fork_checkout_head = "17a0645f9e915110ea6bd03d64f67770e79d8689"
     return [
         {
             "body": _expected_codex_review_body(first_head),
@@ -621,6 +634,34 @@ def _r00_pr7_preacceptance_review_baseline() -> list[dict[str, str]]:
                 "#pullrequestreview-4890205850"
             ),
         },
+        {
+            "body": _expected_codex_review_body(fork_checkout_head),
+            "commit_id": fork_checkout_head,
+            "raw_reviewer": "chatgpt-codex-connector[bot]",
+            "review_id": "4890352011",
+            "reviewer": R00_REQUIRED_REVIEWER,
+            "reviewer_id": R00_REQUIRED_REVIEWER_ID,
+            "state": "COMMENTED",
+            "submitted_at": "2026-08-09T02:34:21Z",
+            "url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                "#pullrequestreview-4890352011"
+            ),
+        },
+        {
+            "body": "",
+            "commit_id": fork_checkout_head,
+            "raw_reviewer": R00_PR_AUTHOR,
+            "review_id": "4890384420",
+            "reviewer": R00_PR_AUTHOR,
+            "reviewer_id": R00_PR_AUTHOR_ID,
+            "state": "COMMENTED",
+            "submitted_at": "2026-08-09T02:54:07Z",
+            "url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                "#pullrequestreview-4890384420"
+            ),
+        },
     ]
 
 
@@ -631,6 +672,7 @@ def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
     timeline_head = "8380348c43d8d7626bf3c89976d19f43275ca9ce"
     disposition_head = "52656010d28d010a71a2fefa92c32e728fc28b87"
     reason_phrase_head = "2c9fbf09e41dce1cc21a8737042c12eb0dc349f5"
+    fork_checkout_head = "17a0645f9e915110ea6bd03d64f67770e79d8689"
     rows = [
         (
             "5228488965",
@@ -736,6 +778,16 @@ def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
                 opening=R00_CODEX_CLEAN_COMMENT_OPENINGS[2],
             ),
             "2026-08-09T01:21:30Z",
+        ),
+        (
+            "5229377643",
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR_ID,
+            _expected_codex_review_request_body(
+                fork_checkout_head, "31290259737", "93186092170"
+            ),
+            "2026-08-09T02:30:41Z",
         ),
     ]
     return [

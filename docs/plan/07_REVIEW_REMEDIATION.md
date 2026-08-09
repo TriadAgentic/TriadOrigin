@@ -68,12 +68,21 @@ The `2c9fbf09…` observation is trigger `5229144298`, clean comment `5229158255
 `444992088` at `2026-08-09T01:21:29Z`; it is historical evidence, not authorization for the next
 source head.
 
+Review `4890352011` on head `17a0645f…` then opened root `3742370663`: using the short
+`github.head_ref` as the checkout ref fails for fork PRs because checkout still targets the base
+repository. The correction checks out the immutable event head SHA and creates the named local
+`evidence/r00-receipt` branch only for a same-repository receipt PR; the receipt-auth step has the
+same origin guard. Trigger `5229377643`, review `4890352011`, root `3742370663`, and their exact
+identities/bodies are historical source-pinned evidence, not a clean result. Its non-claiming
+acknowledgment created blank carrier review `4890384420`, which is likewise source-pinned; the root
+remains unresolved until the corrected head passes CI.
+
 For the final head, the versioned v3 evidence fetches twice and persists the complete PR #7
 top-level review, issue-comment, PR-root-reaction, and issue-timeline inventories. It rejects every
 current `CHANGES_REQUESTED`, every review at or after the selected final-head trigger, every
 unbound post-merge review, every inventory race or omission, and every commit, force-push,
 head-ref deletion/restoration, `automatic_base_change_succeeded`, or other head/base ref mutation
-between trigger and guarded merge. The reviewed law also pins the exact five-review/nine-comment
+between trigger and guarded merge. The reviewed law also pins the exact seven-review/ten-comment
 pre-final history, including raw and numeric actors, complete bodies, commit/state, IDs, times, and
 URLs. Every top-level comment must remain unedited; any changed historical review or post-trigger
 review dismissal fails closed. The selected trigger must be
@@ -92,8 +101,9 @@ pretend otherwise. The selected top-level result must be the exact clean artifac
 adverse results must remain visible through the durable review/thread inventory. If the service is
 ever observed emitting an adverse result whose only durable form is a deletable top-level or inline
 comment, PR #7 remains blocked until a reviewed capture law covers that new protocol shape.
-Root `3742096931` triggered that extension; source-pinning its complete identity and requiring exact
-live-set equality closes this observed shape only. It does not create a generic deletion history.
+Roots `3742096931` and `3742370663` are covered by that extension; source-pinning their complete
+identities and requiring exact live-set equality closes these observed shapes only. It does not
+create a generic deletion history.
 
 After merge, post the canonical inline closure replies first, then wait for two identical complete
 API snapshots containing the merge and replies. Build and seal the receipt without any later PR #7

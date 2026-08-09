@@ -29,11 +29,20 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 resolved 2026-08-08
         with:
           # pull_request defaults to GitHub's synthetic merge ref. Milestone evidence is bound to
-          # the immutable PR head instead; mergeability is checked separately before merge.
-          ref: ${{ github.head_ref || github.sha }}
+          # the immutable PR head instead; a SHA also works when the head branch lives in a fork.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           # The receipt branch is exactly one commit atop the corrective merge; the sealer reads
           # both raw commit objects and therefore must not use checkout's depth-1 default.
           fetch-depth: 2
+      - name: Establish receipt evidence branch
+        if: >-
+          ${{ github.event_name == 'pull_request' &&
+              github.event.pull_request.head.repo.full_name == github.repository &&
+              github.head_ref == 'evidence/r00-receipt' }}
+        shell: bash
+        run: >-
+          git switch --force-create evidence/r00-receipt
+          "${{ github.event.pull_request.head.sha }}"
       - name: Bind checks to exact event head
         shell: bash
         run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
@@ -65,6 +74,7 @@ jobs:
       - name: Authenticate sealed milestone receipt
         if: >-
           ${{ github.event_name == 'pull_request' &&
+              github.event.pull_request.head.repo.full_name == github.repository &&
               github.head_ref == 'evidence/r00-receipt' &&
               hashFiles('evidence/receipts/R00.json') != '' }}
         env:

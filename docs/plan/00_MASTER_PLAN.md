@@ -150,6 +150,16 @@ trigger. The one selected canonical closure reply must be
 created strictly after merge, remain unedited, and occur exactly once; tied, intermediate, later,
 edited, missing, or duplicate thread activity invalidates acceptance.
 
+Exact-head review `4890352011` then opened root `3742370663` against the CI checkout: a fork PR's
+`github.head_ref` is only a short source-branch name, while `actions/checkout` otherwise reads the
+base repository. The correction checks out `github.event.pull_request.head.sha` and creates the
+local `evidence/r00-receipt` branch only for a same-repository receipt PR. Both the branch setup and
+receipt-auth step require `head.repo.full_name == github.repository`, so a fork cannot mint the
+canonical evidence-branch identity. This review, root, and its exact-head trigger are source-pinned
+before the next acceptance window. The single pre-fix acknowledgment is deliberately non-claiming;
+its blank carrier review `4890384420` is also source-pinned, and the thread remains unresolved until
+the corrected head passes CI.
+
 The versioned `origin.review-evidence.v3` and `origin.github-review-export.v3` preimages fetch twice,
 with complete pagination, PR #7's top-level review, issue-comment, PR-root-reaction, and
 issue-timeline inventories and require both live snapshots to equal the persisted export. Any
@@ -173,14 +183,14 @@ authenticated reaction, exact CI/head/timeline bindings, and complete zero-findi
 not from the cosmetic reason phrase by itself.
 
 Because submitted GitHub reviews have no review-body update timestamp, the reviewed source pins the
-exact five-review and nine-comment PR #7 history that existed before this law: IDs, raw and numeric
+exact seven-review and ten-comment PR #7 history that existed before this law: IDs, raw and numeric
 actors, commit/state, complete bodies, submission/creation times, and URLs. The live export must
 start with that exact review/comment baseline; it cannot redefine history after merge. Every
 top-level comment, including the fresh selected pair, must remain unedited (`created_at ==
 updated_at`). Any extra pre-merge review, changed historical review, or `review_dismissed` event
 after the final trigger fails closed.
 
-The nine-comment baseline preserves all three observed clean display phrases—“What shall we delve
+The ten-comment baseline preserves all three observed clean display phrases—“What shall we delve
 into next?”, “Bravo.”, and “Breezy!”—and their exact full bodies. Their variation is why v3 isolates
 the bounded reason phrase instead of interpreting or matching its words. Each observation is
 historical only; the final source head still requires its own successful CI, trigger, fresh
@@ -199,8 +209,9 @@ claim that it does. The accepted issue comment must be the exact clean artifact;
 results are required to remain represented by the durable review/thread inventory. If Codex is ever
 observed emitting an adverse result whose only durable form is a deletable top-level or inline
 comment, the merge blocks pending a reviewed evidence-law extension rather than treating absence as
-PASS. Root `3742096931` is the first such inline observation; the source-pinned controlled-root
-extension above is its required disposition, and head `8380348c…` remains non-mergeable.
+PASS. Root `3742096931` is the first such inline observation and root `3742370663` is preserved by
+the same controlled-root law; the source-pinned extension above is their required disposition, and
+their reviewed heads remain non-mergeable.
 After merge and the canonical inline closure replies, receipt construction waits for two identical
 complete snapshots and seals them without any later PR #7 top-level comment or head-branch deletion;
 GitHub timeline eventual consistency is never papered over with a guessed export.
