@@ -24,7 +24,8 @@
       "service-ready-no-authority-ceiling-never-exceeded",
       "pr-24-review-5-findings-addressed-signature-verifier-seam-bridge-detachment-comparator-axis-hold-admit-fact-currency-readiness-scope-match",
       "disposition-register-rows-e25-e26-e27",
-      "ultracode-marathon-build-session"
+      "ultracode-marathon-build-session",
+      "gate-reproduction-log-evidence/receipts/B07.gate_reproduction.log"
     ],
     "evidence_sha256s": [
       "f62dcf9c9f4c33e93bf2ce353560ebf9cde0e6f6bf0d6db0723377dbb01e8a90"
@@ -43,7 +44,7 @@
       "pull_request": "24",
       "repository": "TriadAgentic/TriadOrigin"
     },
-    "signature": "690d0ff9286ee384f20339c91ae25cf37ffb446abcf95c371bf789cb56c7cdc6"
+    "signature": "fe9d77a992bb5d8aa3afbfeaa7435ba3ad74e252ef85ee33092b0bd0eeeb1cb9"
   },
   "producer_instance_id": "b-series-build",
   "producer_service": "governance-evidence",
