@@ -478,6 +478,18 @@
       "producer": "every-producer",
       "schema_path": "contracts/schemas/triad.engine_attestation.v2.schema.json",
       "schema_version": "2.0.0"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "origin-authority-fact-verifier",
+        "comparator",
+        "audit"
+      ],
+      "contract_id": "triad.candidate_authority.v1",
+      "producer": "governance-lease-issuer",
+      "schema_path": "contracts/schemas/triad.candidate_authority.v1.schema.json",
+      "schema_version": "1.0.0"
     }
   ],
   "identity_schema_version": "origin.identity.v1",

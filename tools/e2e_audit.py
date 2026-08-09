@@ -1086,6 +1086,152 @@ def candidate_publisher_walk() -> None:
         raise AssertionError("withdrawal must reach the terminal WITHDRAWN state")
 
 
+# ---------------------------------------------------------------- stage 22
+@stage("b07_control_plane_walk",
+       "B07: 192-row config materialize/require -> the 13-domain signed bundle -> comparator "
+       "two-axis divergence -> authority-fact ordering/split-brain -> frozen legacy bridge -> "
+       "same-code replay identity -> READY_NO_AUTHORITY service composition")
+def b07_control_plane_walk() -> None:
+    from triad_origin import contracts, service, transition
+    from triad_origin.config import parameters as config_parameters
+    from triad_origin.config import signed_bundle as config_signed_bundle
+    from triad_origin.control import authority_fact_verifier as afv
+    from triad_origin.control import comparator
+    from triad_origin.control import legacy_bridge as lb
+    from triad_origin.control import replay_runner as rr
+    from triad_origin.health import Readiness
+
+    # 1 · Config materialization: the 192-row partition and the require() refusal/admit law.
+    registry = config_parameters.load_registry()
+    if len(registry.materialized_ids()) != 51 or len(registry.refused_ids()) != 141:
+        raise AssertionError(
+            f"192-row partition drifted: materialized={len(registry.materialized_ids())} "
+            f"refused={len(registry.refused_ids())} (expected 51/141)")
+    try:
+        registry.require("PAR-070")  # BLOCKING_OWNER_DECISION — must refuse
+    except config_parameters.ParameterRefusedError:
+        pass
+    else:
+        raise AssertionError("PAR-070 (BLOCKING_OWNER_DECISION) must refuse via require()")
+    ratified_row = registry.require("PAR-001")  # RATIFIED_RC1 — must admit
+    if ratified_row["status"] != "RATIFIED_RC1":
+        raise AssertionError("PAR-001 must materialize as RATIFIED_RC1")
+
+    # 2 · The 13-domain signed bundle: builds, self-verifies, and every anchor id resolves.
+    known_contracts = frozenset(contracts.known_contracts())
+    bundle = config_signed_bundle.build_signed_bundle(registry, known_contracts)
+    if set(bundle["domains"]) != set(config_signed_bundle.DOMAINS):
+        raise AssertionError("signed bundle must cover exactly the thirteen named domains")
+    if not config_signed_bundle.verify_signed_bundle(bundle):
+        raise AssertionError("freshly built signed bundle must self-verify")
+
+    # 3 · Comparator: identical candidates diverge nowhere; a geometry mismatch classifies
+    #     GEOMETRY on the ENGINE_COHORT axis, never conflated with the INTELLIGENCE_ARM axis.
+    control_candidate = {
+        "engine_cohort": "LEGACY_COMPARATOR", "candidate_id": "cand-1", "direction": "LONG",
+        "entry_reference_ticks": "100", "natural_invalidation_ticks": "90", "targets": ["110"],
+        "rr_numerator": "2", "rr_denominator": "1", "source_structure_id": "s1",
+        "source_reaction_id": "r1", "state": "PROPOSED", "quality": {}, "arm": "SHADOW",
+        "provenance_hash": "a" * 64,
+    }
+    treatment_candidate = dict(control_candidate, engine_cohort="ORIGIN_CANDIDATE",
+                               entry_reference_ticks="999")
+    divergence = comparator.compare_engine_cohort(
+        control_candidate, treatment_candidate, input_offset=1, evaluated_at_us=1000,
+        divergence_id="e2e-div-1")
+    if divergence is None or divergence["divergence_class"] != "GEOMETRY":
+        raise AssertionError("a real geometry mismatch on the engine_cohort axis must classify "
+                             "GEOMETRY")
+    contracts.validate_payload("triad.divergence_record.v1", divergence)
+
+    # 4 · Authority-fact verifier: the ordering law (highest token wins exact scope), a stale
+    #     token refuses, a disagreeing same-token duplicate latches split brain, and split brain
+    #     blocks even a strictly higher token until an explicit proof-bearing clear.
+    def authority_fact(**overrides):
+        base = {
+            "authority_id": "auth-1", "authoritative_topic": "edge.authority.v1",
+            "scope": {"instrument": "BTCUSDT"}, "selected_engine_cohort": "ORIGIN_CANDIDATE",
+            "fencing_token": "5", "epoch": "1", "issued_at_us": 1000, "not_before_us": 1000,
+            "expires_at_us": 5000, "revoked_at_us": 1000, "renewed_at_us": 1000,
+            "activation_manifest_id": "am-1", "issuer": "governance-lease-issuer",
+            "state": "ACTIVE", "allocation": {}, "conflicts": [], "signature": "sig-1",
+        }
+        base.update(overrides)
+        return base
+
+    ledger = afv.AuthorityLedger()
+    first = ledger.admit_fact(authority_fact(), now_us=1100)
+    if not first.accepted:
+        raise AssertionError("the first authority fact for a fresh scope must be accepted")
+    stale = ledger.admit_fact(authority_fact(fencing_token="1"), now_us=1200)
+    if stale.accepted or stale.reason != afv.REFUSED_STALE:
+        raise AssertionError("a lower fencing token for the same scope must refuse as STALE")
+    conflict = ledger.admit_fact(authority_fact(issuer="rogue-issuer"), now_us=1300)
+    if conflict.accepted or not conflict.split_brain:
+        raise AssertionError("a same-token disagreeing fact must latch split brain")
+    blocked = ledger.admit_fact(authority_fact(fencing_token="99"), now_us=1400)
+    if blocked.accepted:
+        raise AssertionError("split brain must block even a strictly higher token")
+    ledger.clear_split_brain({"instrument": "BTCUSDT"}, proof="e2e walk proof")
+    recovered = ledger.admit_fact(authority_fact(fencing_token="99"), now_us=1500)
+    if not recovered.accepted:
+        raise AssertionError("admission must resume once split brain is explicitly cleared")
+
+    # 5 · Frozen legacy bridge: an omission-carrying legacy record passes through byte-identical,
+    #     and a restart resumes from the correct next offset with no reprocessing.
+    legacy_state = lb.LegacyBridgeState()
+    legacy_raw = {"id": "legacy-1", "symbol": "BTCUSDT"}  # deliberately missing modern fields
+    envelope = legacy_state.bridge(
+        legacy_raw, intelligence_arm="DETERMINISTIC_CONTROL", source_topic="legacy.candidates.v1",
+        input_offset=0, bridged_at_us=1000)
+    if envelope["legacy_payload"] != legacy_raw or "targets" in envelope["legacy_payload"]:
+        raise AssertionError("the legacy bridge must never repair/backfill a source omission")
+    if not lb.verify_byte_preservation(envelope):
+        raise AssertionError("the bridged envelope must verify byte-identical to its source")
+    if legacy_state.resume_from_offset("legacy.candidates.v1") != 1:
+        raise AssertionError("resume_from_offset must advance past the highest bridged offset")
+
+    # 6 · Same-code replay runner: two independent runs over byte-identical inputs produce
+    #     byte-identical receipts, each schema-valid.
+    class _CounterMachine:
+        def initial_state(self):
+            return {"count": 0}
+
+        def transition(self, state, envelope, params, quality):
+            new_state = dict(state)
+            new_state["count"] = state["count"] + 1
+            return transition.TransitionResult(
+                new_state, ({"event_kind": "TICK", "n": new_state["count"]},))
+
+    machine = _CounterMachine()
+    replay_inputs = [{"event_id": f"e2e-{i}"} for i in range(4)]
+    replay_kwargs = dict(
+        partition="e2e-replay", build_commit="e" * 40, config_bundle_sha256="0" * 64,
+        contract_manifest_sha256="1" * 64, parameter_digest=registry.parameter_digest,
+        instrument_digest="3" * 64, platform="linux-x86_64", run_seed="e2e-seed",
+        receipt_id="e2e-receipt", signer="e2e-signer")
+    receipt_a = rr.run_replay(machine, replay_inputs, {}, **replay_kwargs)
+    receipt_b = rr.run_replay(machine, replay_inputs, {}, **replay_kwargs)
+    if receipt_a != receipt_b:
+        raise AssertionError("two independent replay runs over identical inputs must be "
+                             "byte-identical")
+    contracts.validate_payload("triad.replay_receipt.v1", receipt_a)
+
+    # 7 · The service composes every conjunct into READY_NO_AUTHORITY — and never further.
+    readiness, _detail = service.compute_service_readiness(
+        manifest_ok=True, warmup_complete=True, checkpoint_parity=True, ledgers_writable=True,
+        parameter_registry=registry, known_contract_ids=known_contracts)
+    if readiness is not Readiness.READY_NO_AUTHORITY:
+        raise AssertionError(f"expected READY_NO_AUTHORITY with every conjunct satisfied, "
+                             f"got {readiness}")
+    degraded, _detail2 = service.compute_service_readiness(
+        manifest_ok=True, warmup_complete=True, checkpoint_parity=True, ledgers_writable=True,
+        parameter_registry=registry, known_contract_ids=frozenset())
+    if degraded is Readiness.READY_NO_AUTHORITY:
+        raise AssertionError("an unresolvable control-plane conjunct must never report "
+                             "READY_NO_AUTHORITY")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")

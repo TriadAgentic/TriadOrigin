@@ -112,7 +112,7 @@ import json
 import pathlib
 import triad_origin
 from triad_origin import contracts
-assert len(contracts.known_contracts()) == 43
+assert len(contracts.known_contracts()) == 44
 assert contracts._CONTRACTS_DIR.name == '_contracts'
 root = contracts._CONTRACTS_DIR
 manifest_text = root / 'MANIFEST.sha256'
@@ -140,7 +140,7 @@ for line in manifest_text.read_text(encoding='utf-8').splitlines():
         assert target.is_file(), name
         assert hashlib.sha256(target.read_bytes()).hexdigest() == digest, name
         entries.append(relative)
-assert len(entries) == 130
+assert len(entries) == 133
 actual = {{str(path.relative_to(root)) for path in root.rglob('*') if path.is_file()}}
 expected = set(entries) | {{
     'MANIFEST.sha256',
@@ -169,7 +169,7 @@ for schema_id in contracts.known_contracts():
         print(f"FAIL: isolated wheel smoke failed: {exc}", file=sys.stderr)
         return 1
     print(
-        "OK: sdist-built wheel byte-matches runtime, verifies 130 artifacts and all 43 goldens"
+        "OK: sdist-built wheel byte-matches runtime, verifies 133 artifacts and all 44 goldens"
     )
     return 0
 

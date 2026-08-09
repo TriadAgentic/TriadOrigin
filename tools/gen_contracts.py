@@ -535,6 +535,25 @@ CONTRACTS = [
                                   "build_commit": "0000000000000000000000000000000000000000",
                                   "artifact_sha256": "3" * 64,
                                   "producer_epoch": "42"}),
+
+    # ---------------------------------------------------------------- B07 additions
+    # RC3 W09 (rc3_effective_control_bundle task[114..145,636]) + rc3_normative_overlay
+    # wiring_only_contracts: the externally issued governance-lease fact that names which
+    # engine_cohort is the SELECTED producer for a candidate-publishing scope. ORIGIN is
+    # VERIFY-ONLY here (row A7 / CLAUDE.md BUILD_DARK_LIBRARY): authority_fact_verifier reads
+    # and cross-checks this fact; it never issues, activates, or supersedes one. Shape mirrors
+    # producer_lease.v1 (fencing_token/epoch/issued/expires/revoked/state/signature) plus the
+    # W09-named telemetry: active epoch, expiry, renewal, allocation, conflicts (split-brain
+    # evidence) and the two-axis selection (engine_cohort — mirrors RC3-WOP-001/002's
+    # required_typing).
+    _c("triad.candidate_authority.v1", "1.0.0", "governance-lease-issuer",
+       ["origin-authority-fact-verifier", "comparator", "audit"], ["CANDIDATE_AUTHORITY"], False,
+       ["authority_id", "authoritative_topic", "scope", "selected_engine_cohort",
+        "fencing_token", "epoch", "issued_at_us", "not_before_us", "expires_at_us",
+        "revoked_at_us", "renewed_at_us", "activation_manifest_id", "issuer", "state",
+        "allocation", "conflicts", "signature"],
+       {"selected_engine_cohort": ["ORIGIN_CANDIDATE", "LEGACY_COMPARATOR"],
+        "state": ["ISSUED", "ACTIVE", "REVOKED", "EXPIRED", "SUPERSEDED"]}),
 ]
 
 
@@ -557,7 +576,7 @@ _ARRAY = {"levers", "signatures", "evidence_ids", "evidence_sha256s",
           "services", "capsules", "symbols", "sides", "timeframes", "regimes", "data_revisions",
           "approvals", "allowed_readers", "allowed_writers", "transformations",
           "non_material_fields", "fills", "markouts", "input_segment_hashes", "input_offsets",
-          "output_segment_hashes", "divergence_links", "venue_sequences"}
+          "output_segment_hashes", "divergence_links", "venue_sequences", "conflicts"}
 _OBJECT = {"activations", "venue_binding", "account_binding", "route_binding",
            "testnet_promotion_receipt", "process_identity", "route_proof", "account_proof",
            "health", "market_watermark", "proposed_geometry", "fill_model_result",
@@ -580,7 +599,7 @@ _DECIMAL_UINT_FIELDS = {"producer_epoch", "fencing_token", "state_seq", "geometr
                         "instrument_revision", "first_touch_ordinal", "rr_numerator",
                         "rr_denominator", "retry_budget", "horizon",
                         "revision", "accepted_revision", "activation_revision",
-                        "venue_activation_revision", "lease_epoch",
+                        "venue_activation_revision", "lease_epoch", "epoch",
                         "rejection_persist_latency_ms", "resolver_lag_ms", "freshness_age_ms",
                         "dedupe_count", "collision_count", "contamination_count"}
 
