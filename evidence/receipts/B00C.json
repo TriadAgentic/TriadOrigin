@@ -1,0 +1,45 @@
+{
+  "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "build_commit": "b641edcf7e921e93030f681ae3e6339933f2bcc8",
+  "config_bundle_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "contract_manifest_sha256": "22148f164f4b0c0f5837974c0f0b907eecd7be2164e629cceb1649f59247eddc",
+  "emitted_at_us": 1786252000000000,
+  "event_id": "evt_receipt_B00C",
+  "event_kind": "EVIDENCE_RECEIPT",
+  "payload": {
+    "builder": "claude-fable-5-build-session",
+    "evidence_ids": [
+      "pr-12-ci-run-31296105920",
+      "gate-reproduced-on-merged-main-b641edcf",
+      "pytest-seed0-seed1-140-tests-green",
+      "e2e-audit-16-stages",
+      "build-ledger-reviewed-v2-1250-rows",
+      "combined-dag-2383-hard-edges-no-cycles",
+      "reconciled-plan-set-vendored",
+      "r00-supersession-sealed-countersignature-requested",
+      "open-blocker-named:branch-ruleset-issue-5"
+    ],
+    "evidence_sha256s": [
+      "ca286a4b5ba79ff93d08c39fc9fa5ac3527a4a522c80b6ad5e74645e271aeb57"
+    ],
+    "expires_at_us": 1788842000000000,
+    "observed_at_us": 1786252000000000,
+    "producer_digests": {
+      "canonical_manifest_hash": "22148f164f4b0c0f5837974c0f0b907eecd7be2164e629cceb1649f59247eddc"
+    },
+    "receipt_id": "receipt-B00C",
+    "result": "PASS",
+    "reviewer": "github-actions-ci-run-31296105920",
+    "scope": {
+      "merged_main_sha": "b641edcf7e921e93030f681ae3e6339933f2bcc8",
+      "milestone": "B00C",
+      "pull_request": "12",
+      "repository": "TriadAgentic/TriadOrigin"
+    },
+    "signature": "8bdb5131bcc67ebde88626861459acb1bce00c30f9fe507c5d218d8648b93d07"
+  },
+  "producer_instance_id": "b-series-build",
+  "producer_service": "governance-evidence",
+  "schema": "triad.evidence_receipt.v2",
+  "schema_version": "2.0.0"
+}
