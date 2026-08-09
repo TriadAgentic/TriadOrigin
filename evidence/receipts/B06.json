@@ -1,0 +1,48 @@
+{
+  "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "build_commit": "33ff02a6e039ed00f008e8030438b7ce62b281cc",
+  "config_bundle_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "contract_manifest_sha256": "13c4788c7bb3a1a7c9b7802f7d5bf5ac9d473e46a66bae37ccdcaeca4717073e",
+  "emitted_at_us": 1786276800000000,
+  "event_id": "evt_receipt_B06",
+  "event_kind": "EVIDENCE_RECEIPT",
+  "payload": {
+    "builder": "claude-fable-5-build-session",
+    "evidence_ids": [
+      "pr-22-ci-run-31308196194",
+      "gate-reproduced-on-merged-main-33ff02a6",
+      "pytest-seed0-seed1-1296-tests-green",
+      "e2e-audit-21-stages-candidate-publisher-walk",
+      "f14-departure-first-touch-gv-012-second-touch-ignored-proven",
+      "f18-candidate-geometry-gv-015-unreduced-rr-directional-stop-side-proven",
+      "f19-clustering-gv-016-window-boundary-cross-cluster-alias-proven",
+      "semantic-capsule-registry-five-stable-ids-no-ordinal-guess-proven",
+      "trial-registry-preregistration-immutable-leave-one-out-ablations-proven",
+      "candidate-publisher-mandatory-atomic-shadow-fork-no-poison-envelope-proven",
+      "pr-22-review-5-findings-addressed-directional-stop-independent-semantic-validity-no-raise-trial-capsule-binding-cross-cluster-alias",
+      "ultracode-fanout-3-agents-0-errors"
+    ],
+    "evidence_sha256s": [
+      "7a6e8b61fcf58110dbaf9c274ad86812c2261f3c893156113044367e19d6aa82"
+    ],
+    "expires_at_us": 1788868800000000,
+    "observed_at_us": 1786276800000000,
+    "producer_digests": {
+      "canonical_manifest_hash": "13c4788c7bb3a1a7c9b7802f7d5bf5ac9d473e46a66bae37ccdcaeca4717073e"
+    },
+    "receipt_id": "receipt-B06",
+    "result": "PASS",
+    "reviewer": "github-actions-ci-run-31308196194",
+    "scope": {
+      "merged_main_sha": "33ff02a6e039ed00f008e8030438b7ce62b281cc",
+      "milestone": "B06",
+      "pull_request": "22",
+      "repository": "TriadAgentic/TriadOrigin"
+    },
+    "signature": "6739817f967dffb55eade8e364b29fcf1f8e22e47d350c4bdd68286b75e8675b"
+  },
+  "producer_instance_id": "b-series-build",
+  "producer_service": "governance-evidence",
+  "schema": "triad.evidence_receipt.v2",
+  "schema_version": "2.0.0"
+}
