@@ -1,0 +1,47 @@
+{
+  "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "build_commit": "831cc22c938df5db35d78e2ea7443b139892b620",
+  "config_bundle_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "contract_manifest_sha256": "13c4788c7bb3a1a7c9b7802f7d5bf5ac9d473e46a66bae37ccdcaeca4717073e",
+  "emitted_at_us": 1786688000000000,
+  "event_id": "evt_receipt_B04",
+  "event_kind": "EVIDENCE_RECEIPT",
+  "payload": {
+    "builder": "claude-fable-5-build-session",
+    "evidence_ids": [
+      "pr-18-ci-run-31300989327",
+      "gate-reproduced-on-merged-main-831cc22c",
+      "pytest-seed0-seed1-983-tests-green",
+      "e2e-audit-19-stages-structure-flow-walk",
+      "gv-009-fvg-formation-proven",
+      "gv-010-displacement-qualification-proven",
+      "gv-011-excursion-reclaim-proven",
+      "gv-013-tfi-proven",
+      "f17-not-ratified-abstention-proven",
+      "w05-lifecycle-illegal-transition-wall-proven",
+      "ultracode-fanout-4-agents-plus-direct-f13-0-errors"
+    ],
+    "evidence_sha256s": [
+      "c3195cc79c5d3bb924c1f3653d8b9b495d1d2ab602aae09eea0f1d02123e5e56"
+    ],
+    "expires_at_us": 1789280000000000,
+    "observed_at_us": 1786688000000000,
+    "producer_digests": {
+      "canonical_manifest_hash": "13c4788c7bb3a1a7c9b7802f7d5bf5ac9d473e46a66bae37ccdcaeca4717073e"
+    },
+    "receipt_id": "receipt-B04",
+    "result": "PASS",
+    "reviewer": "github-actions-ci-run-31300989327",
+    "scope": {
+      "merged_main_sha": "831cc22c938df5db35d78e2ea7443b139892b620",
+      "milestone": "B04",
+      "pull_request": "18",
+      "repository": "TriadAgentic/TriadOrigin"
+    },
+    "signature": "9e5d9b0b47e74d46fef66ee58d68a3b8a8f4c0f0eddc74ad2aec92938f64f270"
+  },
+  "producer_instance_id": "b-series-build",
+  "producer_service": "governance-evidence",
+  "schema": "triad.evidence_receipt.v2",
+  "schema_version": "2.0.0"
+}

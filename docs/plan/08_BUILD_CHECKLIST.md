@@ -93,8 +93,8 @@ separate gate receipt._
 - [x] F17 depth-tilt interface; named abstention while minimum depth is unratified — GV-014 exact under TEST ratification, F17_UNAVAILABLE_MIN_DEPTH_NOT_RATIFIED
 - [x] Append-only lifecycle reducer + illegal transition/withdrawal/expiry tests — closed 7-state graph, zero-mutation-on-illegal proven
 - [x] End-to-end gaps/blocks/reclaim/flow stage — e2e stage 19 structure_flow_walk
-- [ ] Source PR merged green
-- [ ] Post-merge B04 receipt passed
+- [x] Source PR merged green — PR #18, CI `31300989327`
+- [x] Post-merge B04 receipt passed — `evidence/receipts/B04.json` binds `831cc22c…`
 
 ## B05 · Four-plane substrate
 
