@@ -86,12 +86,15 @@ DECLARED_DC_REVERSAL = "max(5,ceil(ATR14_ticks*1/4))"          # PAR-036 (F03)
 DECLARED_EQUAL_LEVEL_TOLERANCE = "max(2,ceil(ATR14_ticks*1/10))"  # PAR-041 (F06)
 DECLARED_BOS_CLOSE_BUFFER = "max(1,ceil(ATR14_ticks*1/20))"    # PAR-043 (F09)
 DECLARED_PROTECTED_SWING_TOLERANCE = "max(1,ceil(ATR14_ticks*1/20))"  # PAR-156 (F08)
+DECLARED_MIN_DEPARTURE = "max(2,ceil(ATR14_ticks*1/10))"       # PAR-050 (F14)
 
 _RATIONAL_RULES = {
     DECLARED_DC_REVERSAL: (5, 4),
     DECLARED_EQUAL_LEVEL_TOLERANCE: (2, 10),
     DECLARED_BOS_CLOSE_BUFFER: (1, 20),
     # PAR-156 shares the byte-string of PAR-043 — same floor/divisor by declaration.
+    # PAR-050 (F14 MIN_DEPARTURE) shares the byte-string of PAR-041 — same floor/divisor by
+    # declaration.
 }
 
 
