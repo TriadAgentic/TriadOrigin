@@ -130,8 +130,8 @@ separate gate receipt._
 - [x] Trial family preregistered before result access — `structures/trial_registry.py` `TrialRegistry`, append-only/immutable-once-set; `resolve_trial` (candidate_publisher's own read) raises `TrialUnavailableError` for an unregistered `trial_id`
 - [x] Leave-one-conjunct ablations registered — `trial_registry._derive_ablations`, N conjuncts → N deterministic ablation ids, auto-derived, never hand-picked
 - [x] End-to-end structures → reaction → candidate → SHADOW stage — e2e stage 21 `candidate_publisher_walk` (F14 GV-012 → F18 GV-015 → F19 GV-016 → capsule/trial identity → the atomic fork → untradeable path → lifecycle withdrawal)
-- [ ] Source PR merged green
-- [ ] Post-merge B06 receipt passed
+- [x] Source PR merged green — PR #22 (5 Codex review findings addressed in the same PR, all threads resolved), CI `31308196194`, merged `33ff02a6`
+- [x] Post-merge B06 receipt passed — `evidence/receipts/B06.json` binds `33ff02a6…`
 
 ## B07 · Configuration, comparison, bridge, replay
 
