@@ -59,8 +59,14 @@ python tools/test_wheel_install.py
 python tools/verify_no_forbidden_capabilities.py
 ```
 
-Test count is descriptive, not acceptance evidence. A milestone also requires exact-head CI, review
-completion, squash merge, fresh-main reproduction, and an immutable receipt.
+Test count is descriptive, not acceptance evidence. A milestone also requires exact-head CI,
+resolved actionable findings, authenticated clean acceptance for that same immutable head, guarded
+squash merge, fresh-main reproduction, and an immutable receipt. For corrective R00, a persistent
+connector PR-root `+1` is corroboration only; final-head acceptance requires its own fresh clean
+Codex artifact, an exact reviewed historical review/comment baseline, unedited top-level comments,
+and a complete timeline proving no later head/base mutation or review dismissal. Both acceptance
+routes also reject thread activity at or after acceptance except the one canonical unedited
+post-merge closure reply.
 
 R00 source artifacts use package version `7.0.0rc1.post1`; this distinguishes the repaired RC1
 foundation from pre-R00 `7.0.0rc1` bytes and does not claim RC2 specification acceptance. The R00

@@ -116,7 +116,24 @@ No skip/xfail is accepted silently; each has an owner and receipt disposition.
   repairing the audit defects that made the prior law unsafe; after PR #4's receipt failed closed,
   the exception expires only when the corrective R00 receipt is sealed.
 - No normal force-push or reused long-lived milestone branch.
-- Merge only after exact-head CI and review completion.
+- Merge only after exact-head CI, zero unresolved actionable threads, and an authenticated clean
+  acceptance for that same immutable head.
+- A clean acceptance is head-scoped. Any later commit invalidates it and requires new exact-head CI,
+  a fresh full-head trigger, and a fresh clean artifact.
+- In the clean-comment arm, the exact Codex clean-response comment is the head-specific acceptance
+  artifact. The persistent connector PR-root `+1` is corroboration only and never substitutes for
+  that comment or binds a later head by itself.
+- Complete review, top-level issue-comment, PR-root-reaction, and issue-timeline inventories are
+  fetched twice, persisted exactly, and fail closed on pagination gaps, races, or disagreement.
+- The reviewed source pins PR #7's exact pre-final review/comment baseline, including immutable
+  numeric actors and complete bodies. Every top-level comment must remain unedited; a changed
+  historical review or any post-trigger `review_dismissed` event fails closed.
+- No commit, force-push, head-ref deletion/restoration, base-ref deletion, or head/base ref mutation may occur between
+  the accepted trigger and guarded merge. `automatic_base_change_succeeded` is a base mutation, and
+  head-ref deletion before receipt sealing is forbidden even after merge.
+- In either clean-acceptance arm, every thread root and ordinary reply must predate acceptance.
+  Exactly one selected canonical closure reply may follow, strictly after merge and without edits;
+  tied, intermediate, later, missing, edited, or duplicate thread activity fails closed.
 - Post-merge verification uses a fresh reconstruction of `main`.
 - Old review threads are resolved only after their corrective commit exists and is referenced.
 
@@ -131,3 +148,14 @@ to a persisted repository-relative preimage in `evidence_files`; the semantic va
 those files and rejects missing, tampered, duplicate, escaping, unbound, or opaque evidence.
 Inapplicable formula/parameter/corpus/replay evidence is an explicit owned deferral, never omission.
 A workbook/manual status cannot substitute for a receipt.
+
+For corrective R00, the typed review evidence is versioned as `origin.review-evidence.v2` with a
+matching `origin.github-review-export.v2` and uses a discriminated final-acceptance record. The
+review-object arm requires an exact-head clean review object with no findings and the same complete
+historical comment/review, reaction, pull-boundary, and timeline checks. The clean-comment arm
+requires an unchanged maintainer trigger containing the full final head and successful CI run/job,
+then an unchanged connector clean-response comment naming that head's reviewed prefix. The raw
+connector login and immutable numeric actor ID must agree across the clean comment and the persisted
+PR-root `+1`. Because GitHub retains one reaction of a given type per actor and PR, that reaction is
+persistent protocol corroboration rather than a per-trigger event; its existence cannot excuse a
+missing, stale, or wrong-head clean comment.

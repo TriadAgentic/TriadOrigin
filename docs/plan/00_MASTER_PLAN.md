@@ -107,38 +107,77 @@ Mandatory evidence:
 - contract-manifest, golden-vector, and replay output digests where applicable, with every
   non-applicable item named, owned, reasoned, and assigned to a later milestone;
 - negative-capability scan;
-- CI run identity and independent review state;
+- CI run identity; independent review/thread state; and complete authenticated PR review,
+  top-level issue-comment, PR-root reaction, and issue-timeline inventories;
 - post-merge fresh-main reproduction;
 - supersession linkage to any earlier receipt.
 
 Repository ruleset enforcement is **not yet evidenced** by the available repository API. Issue
 [#5](https://github.com/TriadAgentic/TriadOrigin/issues/5) is therefore a B00 control blocker. R00
 may use only the documented bootstrap merge procedure: re-read the immutable corrective PR #7
-head, require its exact-head `CI / test-and-verify` run and independent review to be green, require
-zero unresolved actionable PR #7 threads, and submit the squash merge with that same head SHA as
-the expected value. A direct/admin merge outside that procedure invalidates the receipt; it does
-not prove a durable ruleset. PR #4 used the same guarded procedure for the first, failed-closed
-attempt; its exact head, review, merge, and artifact failure remain historical evidence rather than
-the final acceptance target.
+head, require its exact-head `CI / test-and-verify` run and authenticated clean Codex acceptance,
+require zero unresolved actionable PR #7 threads, prove that the accepted head remained unchanged
+through the complete issue timeline, and submit the squash merge with that same head SHA as the
+expected value. A direct/admin merge outside that procedure invalidates the receipt; it does not
+prove a durable ruleset. PR #4 used the same guarded procedure for the first, failed-closed attempt;
+its exact head, review, merge, and artifact failure remain historical evidence rather than the final
+acceptance target.
 
 For PR #4's completed pre-merge guard, “zero actionable threads” meant PR #4's six current review
 threads. The 14 inherited PR #1–#3 threads were then given post-merge remediation replies citing
 PR #4's actual squash SHA and receipt path and were resolved. The final receipt preserves those
 historical API states and replies; it does not require them to cite PR #7's later corrective merge.
-PR #7 acquired actionable root `3741593887` during adversarial review, so the evidence law is
-explicitly extended here rather than pretending the root never existed. Every PR #1–#4 and PR #7
-root, live resolution state, and selected remediation reply must match two identical complete
-GitHub GraphQL snapshots. The reviewed control set pins each root's immutable author, full finding
-text, path, PR/review/comment/thread IDs, and URL; a post-merge export cannot redefine the finding it
-claims to close. Each observed PR #7 root must be named in that set, fixed and resolved before
-merge, then receive a live-authenticated post-merge reply citing the corrective squash and receipt
-path. The complete PR #7 top-level review list is fetched twice and must equal the persisted
-inventory; any current `CHANGES_REQUESTED`, later pre-merge review, or unbound post-merge review
-fails closed. The final exact-head Codex acceptance must itself have no findings. Its authentic
-clean-result representation must be observed before merge: if Codex emits only the documented
-👍 reaction rather than a review object, PR #7 remains blocked until that exact live artifact is
-captured and a reviewed, head-bound reaction law replaces the provisional review-object arm.
-Missing, invented, unresolved, changed, or pagination-incomplete review evidence fails closed.
+PR #7 acquired actionable root `3741593887` during adversarial review and later top-level review
+`4889942759` identified non-concrete dependency-pin acceptance, so the evidence law is explicitly
+extended here rather than erasing either finding. Every PR #1–#4 and PR #7 root, live resolution
+state, and selected remediation reply must match two identical complete GitHub GraphQL snapshots.
+The reviewed control set pins each root's immutable author, full finding text, path,
+PR/review/comment/thread IDs, and URL; a post-merge export cannot redefine the finding it claims to
+close. Each observed PR #7 root must be named in that set, fixed and resolved before merge, then
+receive a live-authenticated post-merge reply citing the corrective squash and receipt path.
+For either final-acceptance arm, every root and non-closure reply must be created and last updated
+strictly before the selected acceptance artifact. The one selected canonical closure reply must be
+created strictly after merge, remain unedited, and occur exactly once; tied, intermediate, later,
+edited, missing, or duplicate thread activity invalidates acceptance.
+
+The versioned `origin.review-evidence.v2` and `origin.github-review-export.v2` preimages fetch twice,
+with complete pagination, PR #7's top-level review, issue-comment, PR-root-reaction, and
+issue-timeline inventories and require both live snapshots to equal the persisted export. Any
+current `CHANGES_REQUESTED`, review at or after the selected final-head trigger, unbound post-merge
+review, changed inventory, or pagination gap fails closed. The clean-review-object arm remains valid
+only for an exact-head review object with no findings and is subject to the same historical
+comment/review, reaction, pull-boundary, and timeline law. The observed clean-comment arm requires an
+unchanged maintainer trigger naming the full PR head and successful CI run/job, followed by the
+exact unchanged Codex clean-response comment naming that head's reviewed prefix. The persistent
+PR-level `+1` from `chatgpt-codex-connector[bot]` is authenticated by raw login and immutable actor
+ID and is supporting corroboration only: it need not be recreated for every trigger and can never
+independently establish which head was reviewed.
+
+Because submitted GitHub reviews have no review-body update timestamp, the reviewed source pins the
+exact three-review and four-comment PR #7 history that existed before this law: IDs, raw and numeric
+actors, commit/state, complete bodies, submission/creation times, and URLs. The live export must
+start with that exact review/comment baseline; it cannot redefine history after merge. Every
+top-level comment, including the fresh selected pair, must remain unedited (`created_at ==
+updated_at`). Any extra pre-merge review, changed historical review, or `review_dismissed` event
+after the final trigger fails closed.
+
+The complete issue timeline and boundary PR snapshots must show the same head and base from the
+selected trigger through the guarded squash merge; any intervening commit, force-push, head-ref
+deletion/restoration, base-ref deletion, `automatic_base_change_succeeded`, or other head/base ref mutation fails
+closed. Post-merge head-ref deletion before sealing also fails closed. A clean result is
+head-scoped: any later commit invalidates it
+and requires new exact-head CI, a fresh full-head trigger, and a fresh clean acceptance artifact. An
+earlier protocol observation therefore cannot accept the later commit that ratifies this law.
+Missing, invented, unresolved, changed, stale-head, or pagination-incomplete evidence fails closed.
+GitHub's issue timeline does not expose deleted issue- or review-comment history, so R00 does not
+claim that it does. The accepted issue comment must be the exact clean artifact; Codex adverse
+results are required to remain represented by the durable review/thread inventory. If Codex is ever
+observed emitting an adverse result whose only durable form is a deletable top-level or inline
+comment, the merge blocks pending a reviewed evidence-law extension rather than treating absence as
+PASS.
+After merge and the canonical inline closure replies, receipt construction waits for two identical
+complete snapshots and seals them without any later PR #7 top-level comment or head-branch deletion;
+GitHub timeline eventual consistency is never papered over with a guessed export.
 
 The final merge SHA and fresh-main result do not exist before merge, so an R00 receipt cannot
 truthfully live in PR #4 or PR #7. After PR #7's corrective squash merge, it is generated and
@@ -150,16 +189,19 @@ first by the JSON Schema and semantic cross-field checks, then anchored by one c
 `evidence/r00-receipt` whose sole parent is PR #7's corrective merge SHA. From that committed state,
 `tools/validate_milestone_receipt.py` reruns the semantic checks, reads the raw Git objects to prove
 the merge tree/parent and committed evidence bytes, and re-fetches PR #7 through the authenticated
-GitHub API to prove independent author/reviewer separation. The immutable receipt-commit URL is
-posted back to PR #4 and PR #7. R00 remains `MERGED_UNVERIFIED` and B00 may not start unless that
-post-merge mechanism succeeds.
+GitHub API to prove author/reviewer separation, exact clean-acceptance identity, complete stable
+inventories, and the no-head-mutation timeline. The committed
+`evidence/r00-receipt:evidence/receipts/R00.json` object is the immutable anchor; it is not posted as
+a new PR #7 comment because that would invalidate the authenticated inventory. R00 remains
+`MERGED_UNVERIFIED` and B00 may not start unless that post-merge mechanism succeeds.
 
 The first execution of that mechanism failed closed after PR #4: its reviewed sealer required the
 exact dependency snapshot in the sdist, while the merged package omitted it. No receipt was
 published. Corrective PR #7 is therefore a bounded continuation of R00, not B00 and not a silent
 rewrite of PR #4 evidence. It must add the missing artifact byte, preserve every stronger sealer
-check, bind reviews for PRs #1–#4 plus #7, and pass the same exact-head, guarded-squash, fresh-main,
-and receipt controls. The final R00 receipt binds PR #7's corrective squash and records PR #4's
+check, bind reviews and complete acceptance inventories for PRs #1–#4 plus #7, and pass the same
+fresh-final-head, guarded-squash, fresh-main, and receipt controls. The final R00 receipt binds PR
+#7's corrective squash and records PR #4's
 failed-closed merge, exact rejected sdist digest, CI run, and no-receipt outcome as a typed
 predecessor. Any broader implementation in PR #7 invalidates R00.
 

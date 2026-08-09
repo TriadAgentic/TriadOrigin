@@ -29,8 +29,10 @@ from tools.validate_milestone_receipt import (
     R00_KNOWN_PR4_THREADS,
     R00_KNOWN_PR7_THREADS,
     R00_PR_AUTHOR,
+    R00_PR_AUTHOR_ID,
     R00_RECEIPT_PR,
     R00_REQUIRED_REVIEWER,
+    R00_REQUIRED_REVIEWER_ID,
     R00_REVIEWED_ROOTS,
     R00_REVIEW_PRS,
     R00_REQUIRED_CI_STEPS,
@@ -38,11 +40,19 @@ from tools.validate_milestone_receipt import (
     R00_REVIEW_THREADS_QUERY,
     ReceiptValidationError,
     _exact_dependency_pin_name,
+    _expected_codex_clean_comment_body,
     _expected_codex_review_body,
+    _expected_codex_review_request_body,
     _expected_remediation_reply_body,
     _github_get_json_from_token,
     _github_get_review_threads_from_token,
     _git_tree_sha,
+    _normalize_live_pr7_issue_comment,
+    _normalize_live_pr7_pull,
+    _normalize_live_pr7_reaction,
+    _normalize_live_pr7_timeline_event,
+    _r00_pr7_preacceptance_comment_baseline,
+    _r00_pr7_preacceptance_review_baseline,
     validate_receipt as _validate_receipt_impl,
 )
 
@@ -67,6 +77,17 @@ PYPROJECT_BYTES = (
 )
 SETUP_BYTES = b"from setuptools import setup\nsetup()\n"
 CONSTRAINT_BYTES = b"pytest==9.1.1\n"
+THREAD_ROOT_AT = "2026-08-08T00:00:00Z"
+THREAD_HISTORICAL_REPLY_AT = "2026-08-09T00:10:00Z"
+THREAD_CORRECTIVE_REPLY_AT = "2026-08-09T02:10:00Z"
+REACTION_REQUEST_ID = "6100000001"
+REACTION_CLEAN_ID = "6100000002"
+REACTION_ID = "7100000001"
+REACTION_REQUEST_AT = "2026-08-09T01:40:00Z"
+REACTION_CLEAN_AT = "2026-08-09T01:45:00Z"
+# The PR-level +1 can persist from an earlier exact-head review.  It corroborates
+# connector state but does not bind the selected head.
+REACTION_CREATED_AT = "2026-08-08T23:00:00Z"
 COLLECTOR_BYTES = (REPO_ROOT / "tools" / "collect_test_ids.py").read_bytes()
 CONTRACT_SOURCE_FILES = {
     str(path.relative_to(REPO_ROOT)): path.read_bytes()
@@ -94,14 +115,45 @@ AUTHORITY_MISSING = [
 ]
 
 
+def _raw_pr7_review_baseline() -> list[dict]:
+    return [
+        {
+            "body": row["body"],
+            "commit_id": row["commit_id"],
+            "html_url": row["url"],
+            "id": int(row["review_id"]),
+            "state": row["state"],
+            "submitted_at": row["submitted_at"],
+            "user": {
+                "id": int(row["reviewer_id"]),
+                "login": row["raw_reviewer"],
+            },
+        }
+        for row in _r00_pr7_preacceptance_review_baseline()
+    ]
+
+
+def _raw_pr7_comment_baseline() -> list[dict]:
+    return [
+        {
+            "body": row["body"],
+            "created_at": row["created_at"],
+            "html_url": row["url"],
+            "id": int(row["id"]),
+            "node_id": f"IC_kwD_baseline_{row['id']}",
+            "updated_at": row["updated_at"],
+            "user": {
+                "id": int(row["author_id"]),
+                "login": row["raw_author"],
+            },
+        }
+        for row in _r00_pr7_preacceptance_comment_baseline()
+    ]
+
+
 def _fake_github_get_json(path: str) -> object:
     final_review_id = "5999999999"
     final_review_body = _expected_codex_review_body(HEAD40)
-    initial_pr7_review_id = R00_REVIEWED_ROOTS[next(iter(R00_KNOWN_PR7_THREADS))][
-        "review_id"
-    ]
-    initial_pr7_review_head = "6" * 40
-    initial_pr7_review_body = _expected_codex_review_body(initial_pr7_review_head)
     if path == "/repos/TriadAgentic/TriadOrigin/pulls/7":
         return {
             "base": {"sha": BASE40},
@@ -111,7 +163,8 @@ def _fake_github_get_json(path: str) -> object:
             "merged": True,
             "merged_at": "2026-08-09T02:00:00Z",
             "number": R00_RECEIPT_PR,
-            "user": {"login": R00_PR_AUTHOR},
+            "updated_at": "2026-08-09T02:00:00Z",
+            "user": {"id": int(R00_PR_AUTHOR_ID), "login": R00_PR_AUTHOR},
         }
     if path == "/repos/TriadAgentic/TriadOrigin/actions/runs/1":
         return {
@@ -166,35 +219,27 @@ def _fake_github_get_json(path: str) -> object:
             "id": int(final_review_id),
             "state": "COMMENTED",
             "submitted_at": "2026-08-09T01:00:00Z",
-            "user": {"login": R00_REQUIRED_REVIEWER},
+            "user": {
+                "id": int(R00_REQUIRED_REVIEWER_ID),
+                "login": "chatgpt-codex-connector[bot]",
+            },
         }
     if path == "/repos/TriadAgentic/TriadOrigin/pulls/7/reviews?per_page=100&page=1":
-        return [
-            {
-                "body": initial_pr7_review_body,
-                "commit_id": initial_pr7_review_head,
-                "html_url": (
-                    "https://github.com/TriadAgentic/TriadOrigin/pull/7"
-                    f"#pullrequestreview-{initial_pr7_review_id}"
-                ),
-                "id": int(initial_pr7_review_id),
-                "state": "COMMENTED",
-                "submitted_at": "2026-08-09T00:30:00Z",
-                "user": {"login": R00_REQUIRED_REVIEWER},
+        return _raw_pr7_review_baseline() + [{
+            "body": final_review_body,
+            "commit_id": HEAD40,
+            "html_url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                f"#pullrequestreview-{final_review_id}"
+            ),
+            "id": int(final_review_id),
+            "state": "COMMENTED",
+            "submitted_at": "2026-08-09T01:00:00Z",
+            "user": {
+                "id": int(R00_REQUIRED_REVIEWER_ID),
+                "login": "chatgpt-codex-connector[bot]",
             },
-            {
-                "body": final_review_body,
-                "commit_id": HEAD40,
-                "html_url": (
-                    "https://github.com/TriadAgentic/TriadOrigin/pull/7"
-                    f"#pullrequestreview-{final_review_id}"
-                ),
-                "id": int(final_review_id),
-                "state": "COMMENTED",
-                "submitted_at": "2026-08-09T01:00:00Z",
-                "user": {"login": R00_REQUIRED_REVIEWER},
-            },
-        ]
+        }]
     if path == "/repos/TriadAgentic/TriadOrigin/pulls/7/reviews?per_page=100&page=2":
         return []
     if path == (
@@ -202,12 +247,171 @@ def _fake_github_get_json(path: str) -> object:
         "/comments?per_page=100"
     ):
         return []
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=1":
+        return copy.deepcopy(_raw_pr7_comment_baseline())
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=2":
+        return []
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/reactions?per_page=100&page=1":
+        return copy.deepcopy(_reaction_raw_reactions())
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/reactions?per_page=100&page=2":
+        return []
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=1":
+        return copy.deepcopy(_final_review_raw_timeline())
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=2":
+        return []
     if path in {
         "/repos/TriadAgentic/TriadOrigin/pulls/7/comments?per_page=100&page=1",
         "/repos/TriadAgentic/TriadOrigin/pulls/7/comments?per_page=100&page=2",
     }:
         return []
     raise AssertionError(f"unexpected GitHub REST path: {path}")
+
+
+def _reaction_raw_comments() -> list[dict]:
+    return _raw_pr7_comment_baseline() + [
+        {
+            "body": _expected_codex_review_request_body(HEAD40, "1", "2"),
+            "created_at": REACTION_REQUEST_AT,
+            "html_url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                f"#issuecomment-{REACTION_REQUEST_ID}"
+            ),
+            "id": int(REACTION_REQUEST_ID),
+            "node_id": "IC_kwD_request",
+            "updated_at": REACTION_REQUEST_AT,
+            "user": {"id": int(R00_PR_AUTHOR_ID), "login": R00_PR_AUTHOR},
+        },
+        {
+            "body": _expected_codex_clean_comment_body(HEAD40),
+            "created_at": REACTION_CLEAN_AT,
+            "html_url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                f"#issuecomment-{REACTION_CLEAN_ID}"
+            ),
+            "id": int(REACTION_CLEAN_ID),
+            "node_id": "IC_kwD_clean",
+            "updated_at": REACTION_CLEAN_AT,
+            "user": {
+                "id": int(R00_REQUIRED_REVIEWER_ID),
+                "login": "chatgpt-codex-connector[bot]",
+            },
+        },
+    ]
+
+
+def _reaction_raw_reactions() -> list[dict]:
+    return [{
+        "content": "+1",
+        "created_at": REACTION_CREATED_AT,
+        "id": int(REACTION_ID),
+        "node_id": "REA_kwD_clean",
+        "user": {
+            "id": int(R00_REQUIRED_REVIEWER_ID),
+            "login": "chatgpt-codex-connector[bot]",
+        },
+    }]
+
+
+def _reaction_raw_timeline() -> list[dict]:
+    request, clean = copy.deepcopy(_reaction_raw_comments()[-2:])
+    request.update({"actor": request["user"], "event": "commented"})
+    clean.update({"actor": clean["user"], "event": "commented"})
+    return [
+        {
+            "author": {"name": "R00 Fixture"},
+            "committer": {"name": "R00 Fixture"},
+            "event": "committed",
+            "html_url": f"https://github.com/TriadAgentic/TriadOrigin/commit/{HEAD40}",
+            "message": "final corrective head",
+            "node_id": "C_kwD_final_head",
+            "parents": [],
+            "sha": HEAD40,
+            "tree": {"sha": TREE40},
+            "url": f"https://api.github.com/repos/TriadAgentic/TriadOrigin/commits/{HEAD40}",
+            "verification": {"verified": False},
+        },
+        {
+            "author_association": "NONE",
+            "body": _expected_codex_review_body(HEAD40),
+            "commit_id": HEAD40,
+            "event": "reviewed",
+            "html_url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                "#pullrequestreview-5999999999"
+            ),
+            "id": 5999999999,
+            "node_id": "PRR_kwD_timeline_review",
+            "pull_request_url": "https://api.github.com/repos/TriadAgentic/TriadOrigin/pulls/7",
+            "state": "commented",
+            "submitted_at": "2026-08-09T01:00:00Z",
+            "user": {
+                "id": int(R00_REQUIRED_REVIEWER_ID),
+                "login": "chatgpt-codex-connector[bot]",
+            },
+        },
+        request,
+        clean,
+        {
+            "actor": {"id": int(R00_PR_AUTHOR_ID), "login": R00_PR_AUTHOR},
+            "commit_id": HEAD40,
+            "commit_url": (
+                f"https://api.github.com/repos/TriadAgentic/TriadOrigin/commits/{HEAD40}"
+            ),
+            "created_at": "2026-08-09T02:00:00Z",
+            "event": "merged",
+            "id": 8100000001,
+            "node_id": "EV_kwD_merged",
+            "url": "https://api.github.com/repos/TriadAgentic/TriadOrigin/issues/events/8100000001",
+        },
+    ]
+
+
+def _final_review_raw_timeline() -> list[dict]:
+    reaction_timeline = _reaction_raw_timeline()
+    baseline_events: list[dict] = []
+    for review in _raw_pr7_review_baseline():
+        event = copy.deepcopy(review)
+        event.update({
+            "author_association": "NONE",
+            "event": "reviewed",
+            "node_id": f"PRR_kwD_baseline_{review['id']}",
+            "pull_request_url": (
+                "https://api.github.com/repos/TriadAgentic/TriadOrigin/pulls/7"
+            ),
+        })
+        baseline_events.append(event)
+    for comment in _raw_pr7_comment_baseline():
+        event = copy.deepcopy(comment)
+        event.update({"actor": event["user"], "event": "commented"})
+        baseline_events.append(event)
+    return (
+        baseline_events
+        + [reaction_timeline[0], reaction_timeline[1], reaction_timeline[-1]]
+    )
+
+
+def _fake_reaction_github_get_json(path: str) -> object:
+    if path == "/repos/TriadAgentic/TriadOrigin/pulls/7/reviews?per_page=100&page=1":
+        return copy.deepcopy(_raw_pr7_review_baseline())
+    if path == "/repos/TriadAgentic/TriadOrigin/pulls/7/reviews?per_page=100&page=2":
+        return []
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=1":
+        return copy.deepcopy(_reaction_raw_comments())
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=2":
+        return []
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/reactions?per_page=100&page=1":
+        return copy.deepcopy(_reaction_raw_reactions())
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/reactions?per_page=100&page=2":
+        return []
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=1":
+        return copy.deepcopy(_reaction_raw_timeline())
+    if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=2":
+        return []
+    if path.startswith(
+        "/repos/TriadAgentic/TriadOrigin/issues/comments/"
+    ) and "/reactions?per_page=100&page=" in path:
+        return []
+    return copy.deepcopy(_fake_github_get_json(path))
 
 
 def _fake_github_get_review_threads(pr_number: int) -> object:
@@ -225,11 +429,13 @@ def _fake_github_get_review_threads(pr_number: int) -> object:
         root = {
             "author": {"login": root_record["author"]},
             "body": R00_REVIEWED_ROOTS[row["id"]]["body"],
+            "createdAt": root_record["created_at"],
             "fullDatabaseId": row["id"],
             "id": root_record["node_id"],
             "path": row["path"],
             "pullRequestReview": {"fullDatabaseId": root_record["review_id"]},
             "replyTo": None,
+            "updatedAt": root_record["updated_at"],
             "url": root_record["url"],
         }
         comments = [root]
@@ -239,11 +445,13 @@ def _fake_github_get_review_threads(pr_number: int) -> object:
             comments.append({
                 "author": {"login": reply["author"]},
                 "body": reply["body"],
+                "createdAt": reply_record["created_at"],
                 "fullDatabaseId": reply["id"],
                 "id": reply_record["node_id"],
                 "path": reply_record["path"],
                 "pullRequestReview": {"fullDatabaseId": reply_record["review_id"]},
                 "replyTo": {"fullDatabaseId": row["id"]},
+                "updatedAt": reply_record["updated_at"],
                 "url": reply["url"],
             })
         threads.append({
@@ -540,11 +748,6 @@ def _materials() -> list[dict]:
     ]
     final_review_id = "5999999999"
     final_review_body = _expected_codex_review_body(HEAD40)
-    initial_pr7_review_id = R00_REVIEWED_ROOTS[next(iter(R00_KNOWN_PR7_THREADS))][
-        "review_id"
-    ]
-    initial_pr7_review_head = "6" * 40
-    initial_pr7_review_body = _expected_codex_review_body(initial_pr7_review_head)
     review = _canonical({
         "final_review": {
             "body_sha256": _sha(final_review_body.encode()),
@@ -563,7 +766,7 @@ def _materials() -> list[dict]:
         "pr_author": R00_PR_AUTHOR,
         "reviewed_prs": sorted(R00_REVIEW_PRS),
         "reviewer": R00_REQUIRED_REVIEWER,
-        "schema": "origin.review-evidence.v1",
+        "schema": "origin.review-evidence.v2",
         "threads": threads,
         "unresolved_actionable_threads": 0,
         "verdict": "PASS",
@@ -612,22 +815,13 @@ def _materials() -> list[dict]:
                 ],
                 "pr_number": pr_number,
                 "reviews": (
-                    [{
-                        "body": initial_pr7_review_body,
-                        "commit_id": initial_pr7_review_head,
-                        "review_id": initial_pr7_review_id,
-                        "reviewer": R00_REQUIRED_REVIEWER,
-                        "state": "COMMENTED",
-                        "submitted_at": "2026-08-09T00:30:00Z",
-                        "url": (
-                            f"https://github.com/TriadAgentic/TriadOrigin/pull/{R00_RECEIPT_PR}"
-                            f"#pullrequestreview-{initial_pr7_review_id}"
-                        ),
-                    }, {
+                    _r00_pr7_preacceptance_review_baseline() + [{
                         "body": final_review_body,
                         "commit_id": HEAD40,
+                        "raw_reviewer": "chatgpt-codex-connector[bot]",
                         "review_id": final_review_id,
                         "reviewer": R00_REQUIRED_REVIEWER,
+                        "reviewer_id": R00_REQUIRED_REVIEWER_ID,
                         "state": "COMMENTED",
                         "submitted_at": "2026-08-09T01:00:00Z",
                         "url": (
@@ -648,7 +842,7 @@ def _materials() -> list[dict]:
             for pr_number in sorted(R00_REVIEW_PRS)
         ],
         "repository": "TriadAgentic/TriadOrigin",
-        "schema": "origin.github-review-export.v1",
+        "schema": "origin.github-review-export.v2",
     }
     for pull in review_api_record["pull_requests"]:
         for row in pull["inline_threads"]:
@@ -661,20 +855,53 @@ def _materials() -> list[dict]:
             row["root"] = {
                 "author": reviewed["author"],
                 "body_sha256": _sha(str(reviewed["body"]).encode()),
+                "created_at": THREAD_ROOT_AT,
                 "node_id": reviewed["root_node_id"],
                 "review_id": reviewed["review_id"],
+                "updated_at": THREAD_ROOT_AT,
                 "url": reviewed["url"],
             }
+            reply_at = (
+                THREAD_CORRECTIVE_REPLY_AT
+                if pull["pr_number"] == R00_RECEIPT_PR
+                else THREAD_HISTORICAL_REPLY_AT
+            )
             row["reply_inventory"] = [{
                 "author": reply["author"],
                 "body_sha256": _sha(reply["body"].encode()),
+                "created_at": reply_at,
                 "id": reply["id"],
                 "node_id": "PRRC_reply_" + reply["id"],
                 "path": row["path"],
                 "reply_to_id": row["id"],
                 "review_id": row["review_id"],
+                "updated_at": reply_at,
                 "url": reply["url"],
             }]
+    corrective = next(
+        pull for pull in review_api_record["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    corrective.update({
+        "issue_comments": [
+            _normalize_live_pr7_issue_comment(item)
+            for item in _raw_pr7_comment_baseline()
+        ],
+        "pr_reactions": [
+            _normalize_live_pr7_reaction(item)
+            for item in _reaction_raw_reactions()
+        ],
+        "pull_snapshot": _normalize_live_pr7_pull(
+            _fake_github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+        ),
+        "timeline": [
+            {
+                **_normalize_live_pr7_timeline_event(item),
+                "position": position,
+            }
+            for position, item in enumerate(_final_review_raw_timeline())
+        ],
+    })
     review_api = _canonical(review_api_record)
     merge = _canonical({
         "base_sha": BASE40,
@@ -1052,6 +1279,77 @@ def _rewrite_bound_bytes(root: pathlib.Path, receipt: dict, evidence_id: str, da
     _set_pointer(receipt, item["binds"][0], digest)
 
 
+def _normalized_reaction_timeline() -> list[dict]:
+    result = []
+    for position, item in enumerate(_reaction_raw_timeline()):
+        normalized = _normalize_live_pr7_timeline_event(item)
+        normalized["position"] = position
+        result.append(normalized)
+    return result
+
+
+def _reaction_receipt(root: pathlib.Path) -> dict:
+    _materialize_evidence(root)
+    receipt = _valid_receipt()
+    request_body = _expected_codex_review_request_body(HEAD40, "1", "2")
+    clean_body = _expected_codex_clean_comment_body(HEAD40)
+    review = json.loads((root / "evidence/R00/review.json").read_bytes())
+    review.pop("final_review")
+    review["final_reaction"] = {
+        "accepted_at": REACTION_CLEAN_AT,
+        "actor": R00_REQUIRED_REVIEWER,
+        "actor_id": R00_REQUIRED_REVIEWER_ID,
+        "ci_job_id": "2",
+        "ci_run_id": "1",
+        "clean_comment_body_sha256": _sha(clean_body.encode()),
+        "clean_comment_id": REACTION_CLEAN_ID,
+        "clean_comment_url": (
+            "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+            f"#issuecomment-{REACTION_CLEAN_ID}"
+        ),
+        "content": "+1",
+        "head_sha": HEAD40,
+        "mode": "codex-clean-comment-pr-confirmation",
+        "reaction_id": REACTION_ID,
+        "reaction_node_id": "REA_kwD_clean",
+        "request_body_sha256": _sha(request_body.encode()),
+        "request_comment_id": REACTION_REQUEST_ID,
+        "request_url": (
+            "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+            f"#issuecomment-{REACTION_REQUEST_ID}"
+        ),
+        "verdict": "PASS",
+    }
+    _rewrite_bound_record(root, receipt, "review", review)
+
+    export = json.loads((root / "evidence/R00/review-api.json").read_bytes())
+    corrective = next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    corrective.update({
+        "reviews": _r00_pr7_preacceptance_review_baseline(),
+        "issue_comments": [
+            _normalize_live_pr7_issue_comment(item)
+            for item in _reaction_raw_comments()
+        ],
+        "pr_reactions": [
+            _normalize_live_pr7_reaction(item)
+            for item in _reaction_raw_reactions()
+        ],
+        "pull_snapshot": _normalize_live_pr7_pull(
+            _fake_github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+        ),
+        "selected_comment_reactions": {
+            "clean_response": [],
+            "trigger": [],
+        },
+        "timeline": _normalized_reaction_timeline(),
+    })
+    _rewrite_bound_record(root, receipt, "review-api", export)
+    return receipt
+
+
 def _set_pointer(document: dict, pointer: str, value: str) -> None:
     parts = pointer[1:].split("/")
     node = document
@@ -1165,7 +1463,7 @@ def test_r00_live_review_requires_connector_and_author_separation(
 
     with pytest.raises(
         ReceiptValidationError,
-        match="not an independent exact-head pre-merge review",
+        match="live GitHub REST|not an independent exact-head pre-merge review",
     ):
         _validate_receipt_impl(
             _valid_receipt(),
@@ -1262,14 +1560,16 @@ def test_r00_live_review_rejects_an_uninventoried_pr7_thread(tmp_path):
             connection = record["data"]["repository"]["pullRequest"]["reviewThreads"]
             connection["nodes"].append({
                 "comments": {
-                    "nodes": [{
-                        "author": {"login": "review-bot"},
-                        "body": "late finding",
+                        "nodes": [{
+                            "author": {"login": "review-bot"},
+                            "body": "late finding",
+                            "createdAt": THREAD_ROOT_AT,
                         "fullDatabaseId": "4999999999",
                         "id": "PRRC_late",
                         "path": "late.py",
                         "pullRequestReview": {"fullDatabaseId": "5999999998"},
-                        "replyTo": None,
+                            "replyTo": None,
+                            "updatedAt": THREAD_ROOT_AT,
                         "url": (
                             "https://github.com/TriadAgentic/TriadOrigin/pull/7"
                             "#discussion_r4999999999"
@@ -1408,11 +1708,13 @@ def test_r00_selected_remediation_must_be_the_final_live_thread_reply(tmp_path):
             thread["comments"]["nodes"].append({
                 "author": {"login": "review-bot"},
                 "body": "P1 CRITICAL: remediation is invalid; DO NOT MERGE",
+                "createdAt": "2026-08-09T02:11:00Z",
                 "fullDatabaseId": "9999999996",
                 "id": "PRRC_later_negative",
                 "path": root["path"],
                 "pullRequestReview": {"fullDatabaseId": root["pullRequestReview"]["fullDatabaseId"]},
                 "replyTo": {"fullDatabaseId": root["fullDatabaseId"]},
+                "updatedAt": "2026-08-09T02:11:00Z",
                 "url": (
                     "https://github.com/TriadAgentic/TriadOrigin/pull/7"
                     "#discussion_r9999999996"
@@ -1536,11 +1838,13 @@ def test_r00_live_graphql_rejects_extra_historical_root_as_nonactionable(tmp_pat
         "remediation_reply": None,
         "reply_inventory": [],
         "review_id": "5999999997",
-        "root": {
-            "author": "review-bot",
-            "body_sha256": _sha(b"P1 CRITICAL: DO NOT MERGE"),
+            "root": {
+                "author": "review-bot",
+                "body_sha256": _sha(b"P1 CRITICAL: DO NOT MERGE"),
+                "created_at": THREAD_ROOT_AT,
             "node_id": "PRRC_extra_historical",
-            "review_id": "5999999997",
+                "review_id": "5999999997",
+                "updated_at": THREAD_ROOT_AT,
             "url": root_url,
         },
         "thread_node_id": "PRRT_extra_historical",
@@ -1565,14 +1869,16 @@ def test_r00_live_graphql_rejects_extra_historical_root_as_nonactionable(tmp_pat
             connection = record["data"]["repository"]["pullRequest"]["reviewThreads"]
             connection["nodes"].append({
                 "comments": {
-                    "nodes": [{
-                        "author": {"login": "review-bot"},
-                        "body": "P1 CRITICAL: DO NOT MERGE",
+                        "nodes": [{
+                            "author": {"login": "review-bot"},
+                            "body": "P1 CRITICAL: DO NOT MERGE",
+                            "createdAt": THREAD_ROOT_AT,
                         "fullDatabaseId": root_id,
                         "id": "PRRC_extra_historical",
                         "path": "critical.py",
                         "pullRequestReview": {"fullDatabaseId": "5999999997"},
-                        "replyTo": None,
+                            "replyTo": None,
+                            "updatedAt": THREAD_ROOT_AT,
                         "url": root_url,
                     }],
                     "pageInfo": {"hasNextPage": False},
@@ -2036,8 +2342,10 @@ def test_r00_complete_review_inventory_rejects_later_premerge_review(
     normalized = {
         "body": body,
         "commit_id": HEAD40,
+        "raw_reviewer": "independent-reviewer",
         "review_id": review_id,
         "reviewer": "independent-reviewer",
+        "reviewer_id": "900",
         "state": state,
         "submitted_at": submitted_at,
         "url": (
@@ -2063,7 +2371,7 @@ def test_r00_complete_review_inventory_rejects_later_premerge_review(
                 "id": int(review_id),
                 "state": state,
                 "submitted_at": normalized["submitted_at"],
-                "user": {"login": normalized["reviewer"]},
+                "user": {"id": 900, "login": normalized["raw_reviewer"]},
             })
         return value
 
@@ -2093,7 +2401,7 @@ def test_r00_complete_review_inventory_rejects_unpersisted_live_review(tmp_path)
                 "id": 6999999998,
                 "state": "CHANGES_REQUESTED",
                 "submitted_at": "2026-08-09T01:30:00Z",
-                "user": {"login": "independent-reviewer"},
+                "user": {"id": 900, "login": "independent-reviewer"},
             })
         return value
 
@@ -2114,8 +2422,10 @@ def test_r00_complete_review_inventory_rejects_earlier_changes_requested(tmp_pat
     normalized = {
         "body": "P1 CRITICAL: DO NOT MERGE",
         "commit_id": HEAD40,
+        "raw_reviewer": "independent-reviewer",
         "review_id": review_id,
         "reviewer": "independent-reviewer",
+        "reviewer_id": "900",
         "state": "CHANGES_REQUESTED",
         "submitted_at": "2026-08-09T00:45:00Z",
         "url": (
@@ -2141,7 +2451,7 @@ def test_r00_complete_review_inventory_rejects_earlier_changes_requested(tmp_pat
                 "id": int(review_id),
                 "state": normalized["state"],
                 "submitted_at": normalized["submitted_at"],
-                "user": {"login": normalized["reviewer"]},
+                "user": {"id": 900, "login": normalized["raw_reviewer"]},
             })
         return value
 
@@ -2175,7 +2485,7 @@ def test_r00_complete_review_inventory_rejects_snapshot_race(tmp_path):
                     "id": 6999999996,
                     "state": "COMMENTED",
                     "submitted_at": "2026-08-09T01:15:00Z",
-                    "user": {"login": "independent-reviewer"},
+                    "user": {"id": 900, "login": "independent-reviewer"},
                 })
         return value
 
@@ -2187,6 +2497,651 @@ def test_r00_complete_review_inventory_rejects_snapshot_race(tmp_path):
             github_get_json=racing_reviews_get,
             github_get_review_threads=_fake_github_get_review_threads,
         )
+
+
+@pytest.mark.parametrize(
+    ("event", "postmerge"),
+    [
+        ("automatic_base_change_succeeded", False),
+        ("base_ref_deleted", False),
+        ("head_ref_deleted", True),
+    ],
+)
+def test_r00_final_review_arm_rejects_coordinated_timeline_mutation(
+    tmp_path, event, postmerge
+):
+    _materialize_evidence(tmp_path)
+    receipt = _valid_receipt()
+    raw_timeline = _final_review_raw_timeline()
+    raw_event = {
+        "actor": {"id": 9, "login": "attacker"},
+        "commit_id": HEAD40,
+        "created_at": (
+            "2026-08-09T02:01:00Z" if postmerge else "2026-08-09T01:30:00Z"
+        ),
+        "event": event,
+        "id": 8200000003,
+        "node_id": f"EV_kwD_{event}",
+        "url": (
+            "https://api.github.com/repos/TriadAgentic/TriadOrigin/"
+            "issues/events/8200000003"
+        ),
+    }
+    if postmerge:
+        raw_timeline.append(raw_event)
+    else:
+        merge_position = next(
+            index for index, item in enumerate(raw_timeline)
+            if item.get("event") == "merged"
+        )
+        raw_timeline.insert(merge_position, raw_event)
+    normalized = []
+    for position, item in enumerate(raw_timeline):
+        row = _normalize_live_pr7_timeline_event(item)
+        row["position"] = position
+        normalized.append(row)
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )["timeline"] = normalized
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def coordinated_timeline_get(path: str):
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=1":
+            return copy.deepcopy(raw_timeline)
+        return copy.deepcopy(_fake_github_get_json(path))
+
+    with pytest.raises(
+        ReceiptValidationError,
+        match="independent exact-head pre-merge review",
+    ):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=coordinated_timeline_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+@pytest.mark.parametrize(
+    ("created_at", "updated_at"),
+    [
+        ("2026-08-09T01:30:00Z", "2026-08-09T01:30:00Z"),
+        ("2026-08-09T01:00:00Z", "2026-08-09T01:00:00Z"),
+        ("2026-08-09T00:50:00Z", "2026-08-09T01:00:00Z"),
+    ],
+)
+def test_r00_final_review_arm_rejects_thread_activity_at_or_after_acceptance(
+    tmp_path, created_at, updated_at
+):
+    _materialize_evidence(tmp_path)
+    receipt = _valid_receipt()
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    corrective = next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    thread = corrective["inline_threads"][0]
+    negative_body = "P1 CRITICAL: later thread activity; DO NOT MERGE"
+    negative = {
+        "author": "review-bot",
+        "body_sha256": _sha(negative_body.encode()),
+        "created_at": created_at,
+        "id": "9999999994",
+        "node_id": "PRRC_final_review_negative",
+        "path": thread["path"],
+        "reply_to_id": thread["id"],
+        "review_id": thread["review_id"],
+        "updated_at": updated_at,
+        "url": (
+            "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+            "#discussion_r9999999994"
+        ),
+    }
+    thread["reply_inventory"].insert(-1, negative)
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def negative_reply_threads(pr_number: int):
+        value = copy.deepcopy(_fake_github_get_review_threads(pr_number))
+        if pr_number == R00_RECEIPT_PR:
+            live_thread = value["data"]["repository"]["pullRequest"][
+                "reviewThreads"
+            ]["nodes"][0]
+            root = live_thread["comments"]["nodes"][0]
+            live_thread["comments"]["nodes"].insert(-1, {
+                "author": {"login": negative["author"]},
+                "body": negative_body,
+                "createdAt": negative["created_at"],
+                "fullDatabaseId": negative["id"],
+                "id": negative["node_id"],
+                "path": negative["path"],
+                "pullRequestReview": {
+                    "fullDatabaseId": negative["review_id"]
+                },
+                "replyTo": {"fullDatabaseId": root["fullDatabaseId"]},
+                "updatedAt": negative["updated_at"],
+                "url": negative["url"],
+            })
+            live_thread["comments"]["totalCount"] += 1
+        return value
+
+    with pytest.raises(
+        ReceiptValidationError,
+        match="independent exact-head pre-merge review",
+    ):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=_fake_github_get_json,
+            github_get_review_threads=negative_reply_threads,
+        )
+
+
+def test_r00_clean_comment_and_persistent_pr_reaction_arm_validates(tmp_path):
+    receipt = _reaction_receipt(tmp_path)
+    _validate_receipt_impl(
+        receipt,
+        _schema(),
+        evidence_root=tmp_path,
+        github_get_json=_fake_reaction_github_get_json,
+        github_get_review_threads=_fake_github_get_review_threads,
+    )
+
+
+def test_observed_clean_comment_protocol_bytes_are_pinned():
+    observed_head = "73771e53105a915756ae14fac93dc616190c4d1a"
+    request = _expected_codex_review_request_body(
+        observed_head, "31282292552", "93165454686"
+    ).encode()
+    clean = _expected_codex_clean_comment_body(observed_head).encode()
+    assert len(request) == 181
+    assert _sha(request) == "9590d034d80de84df77b6496be65ab1a018861adb1f0ea2bbef191960e8cb935"
+    assert len(clean) == 611
+    assert _sha(clean) == "4da9d5102224c087c981ee2ccb4111e10e8ff7dee08a60a6d124b1e30163a661"
+
+
+def test_r00_timeline_normalizes_reviewed_event_submitted_at():
+    reviewed = _reaction_raw_timeline()[1]
+    normalized = _normalize_live_pr7_timeline_event(reviewed)
+    assert normalized["event"] == "reviewed"
+    assert normalized["created_at"] == "2026-08-09T01:00:00Z"
+    assert "created_at" not in reviewed
+
+
+def test_r00_timeline_normalizes_cross_reference_without_numeric_or_node_id():
+    event = {
+        "actor": {"id": 9, "login": "external"},
+        "created_at": "2026-08-08T23:30:00Z",
+        "event": "cross-referenced",
+        "source": {"issue": {"number": 5}},
+        "updated_at": "2026-08-08T23:30:00Z",
+    }
+    normalized = _normalize_live_pr7_timeline_event(event)
+    assert normalized["event"] == "cross-referenced"
+    assert normalized["identity"].startswith("cross-referenced:")
+    assert normalized["node_id"] == ""
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "request-author",
+        "request-author-id",
+        "request-body",
+        "request-edited",
+        "clean-author",
+        "clean-author-id",
+        "clean-body",
+        "clean-edited",
+        "reaction-author",
+        "reaction-author-id",
+        "reaction-content",
+        "reaction-duplicate",
+        "reaction-missing",
+        "reaction-after-clean",
+        "later-comment",
+        "comment-reaction",
+        "review-after-trigger",
+        "comment-page-two",
+        "comment-snapshot-race",
+        "pull-snapshot-race",
+        "timeline-page-two",
+        "timeline-snapshot-race",
+    ],
+)
+def test_r00_clean_comment_reaction_arm_rejects_live_mutations(tmp_path, mutation):
+    receipt = _reaction_receipt(tmp_path)
+    comment_page_one_calls = 0
+    pull_calls = 0
+    timeline_page_one_calls = 0
+
+    def mutated_get(path: str):
+        nonlocal comment_page_one_calls, pull_calls, timeline_page_one_calls
+        value = copy.deepcopy(_fake_reaction_github_get_json(path))
+        if path == "/repos/TriadAgentic/TriadOrigin/pulls/7":
+            pull_calls += 1
+            if mutation == "pull-snapshot-race" and pull_calls == 2:
+                value["updated_at"] = "2026-08-09T02:01:00Z"
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=1":
+            comment_page_one_calls += 1
+            request, clean = value
+            if mutation == "request-author":
+                request["user"]["login"] = "attacker"
+            elif mutation == "request-author-id":
+                request["user"]["id"] = 9
+            elif mutation == "request-body":
+                request["body"] += "\nwrong_head=1"
+            elif mutation == "request-edited":
+                request["updated_at"] = "2026-08-09T01:41:00Z"
+            elif mutation == "clean-author":
+                clean["user"]["login"] = "attacker[bot]"
+            elif mutation == "clean-author-id":
+                clean["user"]["id"] = 9
+            elif mutation == "clean-body":
+                clean["body"] += "\nP1 CRITICAL: DO NOT MERGE"
+            elif mutation == "clean-edited":
+                clean["updated_at"] = "2026-08-09T01:46:00Z"
+            elif mutation == "later-comment":
+                later = copy.deepcopy(clean)
+                later.update({
+                    "body": "P1 CRITICAL: DO NOT MERGE",
+                    "created_at": "2026-08-09T01:46:00Z",
+                    "html_url": (
+                        "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                        "#issuecomment-6100000003"
+                    ),
+                    "id": 6100000003,
+                    "node_id": "IC_kwD_later",
+                    "updated_at": "2026-08-09T01:46:00Z",
+                })
+                value.append(later)
+            elif mutation == "comment-snapshot-race" and comment_page_one_calls == 2:
+                later = copy.deepcopy(clean)
+                later.update({
+                    "created_at": "2026-08-09T01:46:00Z",
+                    "html_url": (
+                        "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                        "#issuecomment-6100000004"
+                    ),
+                    "id": 6100000004,
+                    "node_id": "IC_kwD_race",
+                    "updated_at": "2026-08-09T01:46:00Z",
+                })
+                value.append(later)
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=2" and mutation == "comment-page-two":
+            later = copy.deepcopy(_reaction_raw_comments()[-1])
+            later.update({
+                "created_at": "2026-08-09T01:46:00Z",
+                "html_url": (
+                    "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                    "#issuecomment-6100000005"
+                ),
+                "id": 6100000005,
+                "node_id": "IC_kwD_page_two",
+                "updated_at": "2026-08-09T01:46:00Z",
+            })
+            value = [later]
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/reactions?per_page=100&page=1":
+            if mutation == "reaction-author":
+                value[0]["user"]["login"] = "attacker[bot]"
+            elif mutation == "reaction-author-id":
+                value[0]["user"]["id"] = 9
+            elif mutation == "reaction-content":
+                value[0]["content"] = "-1"
+            elif mutation == "reaction-duplicate":
+                duplicate = copy.deepcopy(value[0])
+                duplicate["id"] = 7100000002
+                duplicate["node_id"] = "REA_kwD_duplicate"
+                value.append(duplicate)
+            elif mutation == "reaction-missing":
+                value = []
+            elif mutation == "reaction-after-clean":
+                value[0]["created_at"] = "2026-08-09T01:46:00Z"
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=1":
+            timeline_page_one_calls += 1
+            if mutation == "timeline-snapshot-race" and timeline_page_one_calls == 2:
+                value.append({
+                    "actor": {"id": 9, "login": "attacker"},
+                    "created_at": "2026-08-09T02:01:00Z",
+                    "event": "labeled",
+                    "id": 8200000004,
+                    "node_id": "EV_kwD_timeline_race",
+                })
+        if (
+            mutation == "timeline-page-two"
+            and path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=2"
+        ):
+            value = [{
+                "actor": {"id": 9, "login": "attacker"},
+                "created_at": "2026-08-09T02:01:00Z",
+                "event": "labeled",
+                "id": 8200000005,
+                "node_id": "EV_kwD_timeline_page_two",
+            }]
+        if mutation == "comment-reaction" and path == (
+            "/repos/TriadAgentic/TriadOrigin/issues/comments/6100000001"
+            "/reactions?per_page=100&page=1"
+        ):
+            value = copy.deepcopy(_reaction_raw_reactions())
+        if mutation == "review-after-trigger" and path == (
+            "/repos/TriadAgentic/TriadOrigin/pulls/7/reviews?per_page=100&page=1"
+        ):
+            value.append({
+                "body": "P1 CRITICAL: DO NOT MERGE",
+                "commit_id": HEAD40,
+                "html_url": (
+                    "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                    "#pullrequestreview-6999999991"
+                ),
+                "id": 6999999991,
+                "state": "COMMENTED",
+                "submitted_at": "2026-08-09T01:41:00Z",
+                "user": {"id": 900, "login": "independent-reviewer"},
+            })
+        return value
+
+    with pytest.raises(
+        ReceiptValidationError,
+        match="clean-reaction|clean-comment/reaction",
+    ):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=mutated_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        "automatic_base_change_succeeded",
+        "base_ref_deleted",
+        "base_ref_changed",
+        "base_ref_force_pushed",
+        "committed",
+        "head_ref_force_pushed",
+        "head_ref_deleted",
+        "head_ref_restored",
+        "review_dismissed",
+    ],
+)
+def test_r00_timeline_rejects_coordinated_head_or_comment_mutation(tmp_path, event):
+    receipt = _reaction_receipt(tmp_path)
+    if event == "committed":
+        raw_event = {
+            "author": {"name": "Attacker"},
+            "committer": {"name": "Attacker"},
+            "event": "committed",
+            "html_url": "https://github.com/TriadAgentic/TriadOrigin/commit/" + "2" * 10 + "3" * 30,
+            "message": "alternate same-prefix head",
+            "node_id": "C_kwD_intervening",
+            "parents": [],
+            "sha": "2" * 10 + "3" * 30,
+            "tree": {"sha": "4" * 40},
+            "url": "https://api.github.com/repos/TriadAgentic/TriadOrigin/commits/" + "2" * 10 + "3" * 30,
+            "verification": {"verified": False},
+        }
+    else:
+        raw_event = {
+            "actor": {"id": 9, "login": "attacker"},
+            "commit_id": HEAD40,
+            "created_at": "2026-08-09T01:42:00Z",
+            "event": event,
+            "id": 8200000001,
+            "node_id": "EV_kwD_intervening",
+            "url": "https://api.github.com/repos/TriadAgentic/TriadOrigin/issues/events/8200000001",
+        }
+    raw_timeline = _reaction_raw_timeline()
+    request_position = next(
+        index for index, item in enumerate(raw_timeline)
+        if item.get("event") == "commented" and item.get("id") == int(REACTION_REQUEST_ID)
+    )
+    raw_timeline.insert(request_position + 1, raw_event)
+    normalized = []
+    for position, item in enumerate(raw_timeline):
+        row = _normalize_live_pr7_timeline_event(item)
+        row["position"] = position
+        normalized.append(row)
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )["timeline"] = normalized
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def coordinated_timeline_get(path: str):
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=1":
+            return copy.deepcopy(raw_timeline)
+        return copy.deepcopy(_fake_reaction_github_get_json(path))
+
+    with pytest.raises(ReceiptValidationError, match="clean-comment/reaction"):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=coordinated_timeline_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+def test_r00_reaction_arm_rejects_coordinated_historical_comment_edit(tmp_path):
+    receipt = _reaction_receipt(tmp_path)
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    corrective = next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    poisoned_body = "P1 CRITICAL: historical comment rewritten; DO NOT MERGE"
+    corrective["issue_comments"][0]["body"] = poisoned_body
+    corrective["issue_comments"][0]["updated_at"] = "2026-08-09T01:46:00Z"
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def edited_comment_get(path: str):
+        value = copy.deepcopy(_fake_reaction_github_get_json(path))
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=1":
+            value[0]["body"] = poisoned_body
+            value[0]["updated_at"] = "2026-08-09T01:46:00Z"
+        return value
+
+    with pytest.raises(ReceiptValidationError, match="clean-comment/reaction"):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=edited_comment_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+@pytest.mark.parametrize("mutation", ["body", "state", "actor", "commit"])
+def test_r00_reaction_arm_rejects_coordinated_historical_review_mutation(
+    tmp_path, mutation
+):
+    receipt = _reaction_receipt(tmp_path)
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    corrective = next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    row = corrective["reviews"][0]
+    if mutation == "body":
+        row["body"] = "P1 CRITICAL: historical review rewritten; DO NOT MERGE"
+    elif mutation == "state":
+        row["state"] = "DISMISSED"
+    elif mutation == "actor":
+        row["raw_reviewer"] = row["reviewer"] = "attacker"
+        row["reviewer_id"] = "900"
+    else:
+        row["commit_id"] = "9" * 40
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def edited_review_get(path: str):
+        value = copy.deepcopy(_fake_reaction_github_get_json(path))
+        if path == "/repos/TriadAgentic/TriadOrigin/pulls/7/reviews?per_page=100&page=1":
+            raw = value[0]
+            if mutation == "body":
+                raw["body"] = row["body"]
+            elif mutation == "state":
+                raw["state"] = row["state"]
+            elif mutation == "actor":
+                raw["user"] = {"id": 900, "login": "attacker"}
+            else:
+                raw["commit_id"] = row["commit_id"]
+        return value
+
+    with pytest.raises(ReceiptValidationError, match="clean-comment/reaction"):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=edited_review_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+def test_r00_reaction_arm_rejects_postmerge_head_deletion(tmp_path):
+    receipt = _reaction_receipt(tmp_path)
+    raw_timeline = _reaction_raw_timeline()
+    raw_timeline.append({
+        "actor": {"id": 9, "login": "attacker"},
+        "commit_id": HEAD40,
+        "created_at": "2026-08-09T02:01:00Z",
+        "event": "head_ref_deleted",
+        "id": 8200000002,
+        "node_id": "EV_kwD_postmerge_delete",
+        "url": (
+            "https://api.github.com/repos/TriadAgentic/TriadOrigin/"
+            "issues/events/8200000002"
+        ),
+    })
+    normalized = []
+    for position, item in enumerate(raw_timeline):
+        row = _normalize_live_pr7_timeline_event(item)
+        row["position"] = position
+        normalized.append(row)
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )["timeline"] = normalized
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def deleted_head_get(path: str):
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=1":
+            return copy.deepcopy(raw_timeline)
+        return copy.deepcopy(_fake_reaction_github_get_json(path))
+
+    with pytest.raises(ReceiptValidationError, match="clean-comment/reaction"):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=deleted_head_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+def test_r00_reaction_arm_rejects_intermediate_negative_thread_reply(tmp_path):
+    receipt = _reaction_receipt(tmp_path)
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    corrective = next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    thread = corrective["inline_threads"][0]
+    negative_body = "P1 CRITICAL: remediation invalid; DO NOT MERGE"
+    negative = {
+        "author": "review-bot",
+        "body_sha256": _sha(negative_body.encode()),
+        "created_at": "2026-08-09T01:46:00Z",
+        "id": "9999999995",
+        "node_id": "PRRC_negative_after_acceptance",
+        "path": thread["path"],
+        "reply_to_id": thread["id"],
+        "review_id": thread["review_id"],
+        "updated_at": "2026-08-09T01:46:00Z",
+        "url": (
+            "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+            "#discussion_r9999999995"
+        ),
+    }
+    thread["reply_inventory"].insert(-1, negative)
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def negative_reply_threads(pr_number: int):
+        value = copy.deepcopy(_fake_github_get_review_threads(pr_number))
+        if pr_number == R00_RECEIPT_PR:
+            live_thread = value["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"][0]
+            root = live_thread["comments"]["nodes"][0]
+            live_thread["comments"]["nodes"].insert(-1, {
+                "author": {"login": negative["author"]},
+                "body": negative_body,
+                "createdAt": negative["created_at"],
+                "fullDatabaseId": negative["id"],
+                "id": negative["node_id"],
+                "path": negative["path"],
+                "pullRequestReview": {"fullDatabaseId": negative["review_id"]},
+                "replyTo": {"fullDatabaseId": root["fullDatabaseId"]},
+                "updatedAt": negative["updated_at"],
+                "url": negative["url"],
+            })
+            live_thread["comments"]["totalCount"] += 1
+        return value
+
+    with pytest.raises(ReceiptValidationError, match="clean-comment/reaction"):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=_fake_reaction_github_get_json,
+            github_get_review_threads=negative_reply_threads,
+        )
+
+
+@pytest.mark.parametrize("missing_or_mixed", ["missing", "mixed"])
+def test_r00_review_evidence_requires_exactly_one_acceptance_arm(
+    tmp_path, missing_or_mixed
+):
+    receipt = _reaction_receipt(tmp_path)
+    review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
+    if missing_or_mixed == "missing":
+        review.pop("final_reaction")
+    else:
+        review["final_review"] = {
+            "body_sha256": "a" * 64,
+            "head_sha": HEAD40,
+            "review_id": "5999999999",
+            "reviewer": R00_REQUIRED_REVIEWER,
+            "url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                "#pullrequestreview-5999999999"
+            ),
+            "verdict": "PASS",
+        }
+    _rewrite_bound_record(tmp_path, receipt, "review", review)
+    with pytest.raises(ReceiptValidationError, match="exactly one final acceptance arm"):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=_fake_reaction_github_get_json,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+def test_r00_review_evidence_requires_additive_v2_record_identity(tmp_path):
+    _materialize_evidence(tmp_path)
+    receipt = _valid_receipt()
+    review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
+    review["schema"] = "origin.review-evidence.v1"
+    _rewrite_bound_record(tmp_path, receipt, "review", review)
+    with pytest.raises(ReceiptValidationError, match="typed evidence claim mismatch"):
+        validate_receipt(receipt, _schema(), evidence_root=tmp_path)
 
 
 def test_r00_sdist_must_carry_the_reviewed_dependency_snapshot(tmp_path):

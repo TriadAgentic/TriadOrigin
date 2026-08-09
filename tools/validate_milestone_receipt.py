@@ -100,7 +100,9 @@ R00_KNOWN_PR4_THREADS = {
 R00_RECEIPT_PR = 7
 R00_REVIEW_PRS = {1, 2, 3, 4, R00_RECEIPT_PR}
 R00_PR_AUTHOR = "likosubakti"
+R00_PR_AUTHOR_ID = "41339678"
 R00_REQUIRED_REVIEWER = "chatgpt-codex-connector"
+R00_REQUIRED_REVIEWER_ID = "199175422"
 R00_IMPLEMENTATION_MERGE_SHA = "241b301d1144e3e2a0a15f4bfe9ffef5b51068ed"
 R00_IMPLEMENTATION_BASE_SHA = "69dfd7245fb462992f17e4af06e6746ac2f9d2f0"
 R00_IMPLEMENTATION_HEAD_SHA = "b66a95ca84b8660e26c6ff12b3af73cb32aebc04"
@@ -385,6 +387,8 @@ R00_REVIEW_THREADS_QUERY = """query R00ReviewThreads($owner: String!, $repo: Str
               url
               body
               path
+              createdAt
+              updatedAt
               replyTo { fullDatabaseId }
               author { login }
               pullRequestReview { fullDatabaseId }
@@ -412,6 +416,194 @@ def _expected_codex_review_body(head_sha: str) -> str:
         "Codex can also answer questions or update the PR. Try commenting "
         "\"@codex address that feedback\".\n            \n</details>"
     )
+
+
+def _expected_codex_review_request_body(
+    head_sha: str, ci_run_id: str, ci_job_id: str
+) -> str:
+    return (
+        "@codex review\n\n"
+        "R00_EXACT_HEAD_REVIEW_V1\n"
+        f"head_sha={head_sha}\n"
+        f"ci_run_id={ci_run_id}\n"
+        f"ci_job_id={ci_job_id}\n"
+        "scope=R00_CORRECTIVE_RECEIPT\n"
+        "required=P0=0,P1=0"
+    )
+
+
+def _expected_codex_clean_comment_body(head_sha: str) -> str:
+    return (
+        "Codex Review: Didn't find any major issues. What shall we delve into next?\n\n"
+        f"**Reviewed commit:** `{head_sha[:10]}`\n\n"
+        "<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n"
+        "[Your team has set up Codex to review pull requests in this repo]"
+        "(https://chatgpt.com/codex/cloud/settings/general). Reviews are triggered when you\n"
+        "- Open a pull request for review\n"
+        "- Mark a draft as ready\n"
+        "- Comment \"@codex review\".\n\n"
+        "If Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\n"
+        "Codex can also answer questions or update the PR. Try commenting "
+        "\"@codex address that feedback\".\n            \n</details>"
+    )
+
+
+def _r00_pr7_preacceptance_review_baseline() -> list[dict[str, str]]:
+    """Reviewed, immutable PR #7 review objects that precede final acceptance.
+
+    GitHub does not expose a review-body update timestamp.  Persisting whatever
+    the API returns after merge would therefore let a coordinated edit rewrite
+    history.  These exact objects were observed before this evidence law was
+    committed and are part of the reviewed source, not receipt-authored input.
+    """
+    first_head = "61f5c417a4a66f769e9ce534fd97ef074f654784"
+    pin_head = "71d0400d0610ece52efcaacc958ef4f748418ddd"
+    return [
+        {
+            "body": _expected_codex_review_body(first_head),
+            "commit_id": first_head,
+            "raw_reviewer": "chatgpt-codex-connector[bot]",
+            "review_id": "4889698522",
+            "reviewer": R00_REQUIRED_REVIEWER,
+            "reviewer_id": R00_REQUIRED_REVIEWER_ID,
+            "state": "COMMENTED",
+            "submitted_at": "2026-08-08T20:46:32Z",
+            "url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                "#pullrequestreview-4889698522"
+            ),
+        },
+        {
+            "body": "",
+            "commit_id": pin_head,
+            "raw_reviewer": R00_PR_AUTHOR,
+            "review_id": "4889935294",
+            "reviewer": R00_PR_AUTHOR,
+            "reviewer_id": R00_PR_AUTHOR_ID,
+            "state": "COMMENTED",
+            "submitted_at": "2026-08-08T22:26:09Z",
+            "url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                "#pullrequestreview-4889935294"
+            ),
+        },
+        {
+            "body": (
+                "\n### 💡 Codex Review\n\n"
+                "https://github.com/TriadAgentic/TriadOrigin/blob/"
+                f"{pin_head}/tools/validate_milestone_receipt.py#L1050-L1051\n"
+                "**<sub><sub>![P2 Badge](https://img.shields.io/badge/"
+                "P2-yellow?style=flat)</sub></sub>  Reject wildcard versions in the "
+                "dependency snapshot**\n\n"
+                "When a receipt lists an additional package such as `example==1.*`, "
+                "this condition treats it as exactly pinned merely because the string "
+                "contains `==`; the reviewed constraint lines can still be a subset, so "
+                "the receipt seals while its claimed resolved environment includes a "
+                "floating dependency. Parse each package requirement and require a "
+                "concrete, non-wildcard version (and reject empty or otherwise malformed "
+                "pins) before accepting the toolchain snapshot.\n    \n\n"
+                "<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n"
+                "[Your team has set up Codex to review pull requests in this repo]"
+                "(https://chatgpt.com/codex/cloud/settings/general). Reviews are "
+                "triggered when you\n"
+                "- Open a pull request for review\n"
+                "- Mark a draft as ready\n"
+                "- Comment \"@codex review\".\n\n"
+                "If Codex has suggestions, it will comment; otherwise it will react "
+                "with 👍.\n\n\n\n\n"
+                "Codex can also answer questions or update the PR. Try commenting "
+                "\"@codex address that feedback\".\n            \n</details>"
+            ),
+            "commit_id": pin_head,
+            "raw_reviewer": "chatgpt-codex-connector[bot]",
+            "review_id": "4889942759",
+            "reviewer": R00_REQUIRED_REVIEWER,
+            "reviewer_id": R00_REQUIRED_REVIEWER_ID,
+            "state": "COMMENTED",
+            "submitted_at": "2026-08-08T22:30:51Z",
+            "url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                "#pullrequestreview-4889942759"
+            ),
+        },
+    ]
+
+
+def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
+    """Reviewed PR #7 top-level comment prefix, before the final fresh pair."""
+    pin_head = "71d0400d0610ece52efcaacc958ef4f748418ddd"
+    observed_head = "73771e53105a915756ae14fac93dc616190c4d1a"
+    rows = [
+        (
+            "5228488965",
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR_ID,
+            _expected_codex_review_request_body(
+                pin_head, "31281524242", "93163545926"
+            ),
+            "2026-08-08T22:26:35Z",
+        ),
+        (
+            "5228554814",
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR_ID,
+            (
+                "R00_REVIEW_REMEDIATION_V1\n"
+                "review_id=4889942759\n"
+                "finding=reject-wildcard-dependency-pins\n"
+                f"fixed_head={observed_head}\n"
+                "ci_run_id=31282292552\n"
+                "ci_job_id=93165454686\n"
+                "status=FIXED_PENDING_CLEAN_REVIEW\n\n"
+                "The receipt sealer now accepts only a narrow concrete "
+                "`name==version` grammar, rejects wildcard/range/marker/URL/hash/"
+                "malformed pins and normalized duplicate project names, validates raw "
+                "non-comment constraint lines without whitespace/duplicate erasure, and "
+                "uses the same law in the committed CI snapshot guard. CI passed 465 "
+                "tests under each hash seed; reproducible sdist "
+                "`8061367b223f9ebf15367752fe0bd28c7fdca0e6ec9efd81f08214e93b969804` "
+                "and wheel "
+                "`2f2b8546242020c0f555a2944b5c875d090e87f36f887f682306faa2b444eeb3`."
+            ),
+            "2026-08-08T22:44:51Z",
+        ),
+        (
+            "5228555326",
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR_ID,
+            _expected_codex_review_request_body(
+                observed_head, "31282292552", "93165454686"
+            ),
+            "2026-08-08T22:44:58Z",
+        ),
+        (
+            "5228567753",
+            R00_REQUIRED_REVIEWER,
+            "chatgpt-codex-connector[bot]",
+            R00_REQUIRED_REVIEWER_ID,
+            _expected_codex_clean_comment_body(observed_head),
+            "2026-08-08T22:48:28Z",
+        ),
+    ]
+    return [
+        {
+            "author": author,
+            "author_id": author_id,
+            "body": body,
+            "created_at": created_at,
+            "id": comment_id,
+            "raw_author": raw_author,
+            "updated_at": created_at,
+            "url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                f"#issuecomment-{comment_id}"
+            ),
+        }
+        for comment_id, author, raw_author, author_id, body, created_at in rows
+    ]
 
 
 def _expected_remediation_reply_body(thread_id: str, merge_sha: str) -> str:
@@ -806,7 +998,7 @@ def _validate_typed_evidence(
         _compare_record(
             record,
             {
-                "schema": "origin.review-evidence.v1",
+                "schema": "origin.review-evidence.v2",
                 "head_sha": receipt["head_sha"],
                 "reviewer": receipt["review"]["reviewer"],
                 "unresolved_actionable_threads": receipt["review"][
@@ -820,8 +1012,14 @@ def _validate_typed_evidence(
         expected_review_fields = {
             "schema", "head_sha", "reviewer", "unresolved_actionable_threads", "verdict",
             "reviewed_prs", "inherited_thread_count", "pr4_thread_count", "threads",
-            "final_review",
         }
+        acceptance_fields = {"final_review", "final_reaction"}.intersection(record)
+        if len(acceptance_fields) != 1:
+            problems.append(
+                f"review evidence must contain exactly one final acceptance arm: {item['path']}"
+            )
+        else:
+            expected_review_fields.update(acceptance_fields)
         if receipt["milestone_id"] == "R00":
             expected_review_fields.add("pr_author")
             if record.get("pr_author") != R00_PR_AUTHOR:
@@ -861,7 +1059,8 @@ def _validate_typed_evidence(
                 if record.get("pr4_thread_count") != len(current) or not current:
                     problems.append(f"R00 review evidence omits PR #4 thread inventory: {item['path']}")
                 final_review = record.get("final_review")
-                if (
+                final_reaction = record.get("final_reaction")
+                if final_review is not None and (
                     not isinstance(final_review, dict)
                     or not isinstance(final_review.get("review_id"), str)
                     or not final_review.get("review_id")
@@ -876,6 +1075,33 @@ def _validate_typed_evidence(
                     )
                 ):
                     problems.append(f"R00 final-head review evidence is incomplete: {item['path']}")
+                if final_reaction is not None and (
+                    not isinstance(final_reaction, dict)
+                    or set(final_reaction) != {
+                        "accepted_at", "actor", "actor_id", "ci_job_id", "ci_run_id",
+                        "clean_comment_body_sha256", "clean_comment_id", "clean_comment_url",
+                        "content", "head_sha", "mode", "reaction_id", "reaction_node_id",
+                        "request_body_sha256", "request_comment_id", "request_url", "verdict",
+                    }
+                    or final_reaction.get("mode") != "codex-clean-comment-pr-confirmation"
+                    or final_reaction.get("head_sha") != receipt["head_sha"]
+                    or final_reaction.get("verdict") != "PASS"
+                    or final_reaction.get("actor") != R00_REQUIRED_REVIEWER
+                    or final_reaction.get("actor_id") != R00_REQUIRED_REVIEWER_ID
+                    or final_reaction.get("content") != "+1"
+                    or any(
+                        not isinstance(final_reaction.get(name), str)
+                        or not final_reaction[name]
+                        for name in {
+                            "accepted_at", "ci_job_id", "ci_run_id", "clean_comment_id",
+                            "clean_comment_url", "reaction_id", "reaction_node_id",
+                            "request_comment_id", "request_url",
+                        }
+                    )
+                ):
+                    problems.append(
+                        f"R00 final-head reaction evidence is incomplete: {item['path']}"
+                    )
             required_thread_fields = {
                 "thread_id", "pr_number", "url", "actionable", "resolved", "disposition"
             }
@@ -1427,6 +1653,14 @@ def _validate_r00_evidence_set(
                 "R00 persisted pytest collection does not equal a fresh reviewed-source collection"
             )
 
+    ci_path = target("/ci/evidence_sha256")
+    ci_record = None
+    if ci_path is not None:
+        try:
+            ci_record = json.loads(ci_path.read_bytes())
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            ci_record = None
+
     review_path = target("/review/review_sha256")
     review_api_path = target("/review/api_export_sha256")
     if review_path is not None and review_api_path is not None:
@@ -1437,17 +1671,14 @@ def _validate_r00_evidence_set(
             receipt["base_sha"],
             receipt["merge_sha"],
             receipt["merge_control"]["tree_sha"],
+            receipt["ci"]["run_id"],
+            str(ci_record.get("job_id")) if isinstance(ci_record, dict) else "",
             github_get_json,
             github_get_review_threads,
             problems,
         )
 
-    ci_path = target("/ci/evidence_sha256")
     if ci_path is not None:
-        try:
-            ci_record = json.loads(ci_path.read_bytes())
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            ci_record = None
         _validate_live_r00_ci(
             receipt,
             ci_record,
@@ -1642,6 +1873,8 @@ def _validate_r00_review_export(
     base_sha: str,
     merge_sha: str,
     tree_sha: str,
+    ci_run_id: str,
+    ci_job_id: str,
     github_get_json: GitHubJsonGetter | None,
     github_get_review_threads: GitHubReviewThreadsGetter | None,
     problems: list[str],
@@ -1657,7 +1890,7 @@ def _validate_r00_review_export(
         problems.append("R00 review/API evidence is not exact canonical JSON")
         return
     if (
-        export.get("schema") != "origin.github-review-export.v1"
+        export.get("schema") != "origin.github-review-export.v2"
         or export.get("repository") != "TriadAgentic/TriadOrigin"
         or export.get("pagination_complete") is not True
         or export.get("page_info") != {"has_next_page": False}
@@ -1672,6 +1905,7 @@ def _validate_r00_review_export(
     review_prs: dict[str, int] = {}
     covered_prs: set[int] = set()
     exported_pulls: dict[int, dict[str, Any]] = {}
+    uses_reaction_arm = isinstance(review.get("final_reaction"), dict)
     for pull in export["pull_requests"]:
         if not isinstance(pull, dict) or pull.get("pr_number") not in R00_REVIEW_PRS:
             problems.append("R00 GitHub review export has an invalid pull request row")
@@ -1682,6 +1916,19 @@ def _validate_r00_review_export(
             return
         covered_prs.add(pr_number)
         exported_pulls[pr_number] = pull
+        expected_pull_fields = {"author", "inline_threads", "pr_number", "reviews"}
+        if pr_number == R00_RECEIPT_PR:
+            expected_pull_fields.update({
+                "issue_comments",
+                "pr_reactions",
+                "pull_snapshot",
+                "timeline",
+            })
+        if pr_number == R00_RECEIPT_PR and uses_reaction_arm:
+            expected_pull_fields.add("selected_comment_reactions")
+        if set(pull) != expected_pull_fields:
+            problems.append("R00 GitHub review export has contradictory pull-request fields")
+            return
         if pr_number == R00_RECEIPT_PR and pull.get("author") != R00_PR_AUTHOR:
             problems.append("R00 GitHub review export does not bind the corrective PR author")
         comments = pull.get("inline_threads")
@@ -1830,43 +2077,90 @@ def _validate_r00_review_export(
         github_get_json=github_get_json,
         problems=problems,
     )
-    final = review.get("final_review")
-    if not isinstance(final, dict):
-        problems.append("R00 final review is missing")
-        return
-    api_final = reviews.get(str(final.get("review_id")))
-    final_body = api_final.get("body") if isinstance(api_final, dict) else None
-    expected_final_body = _expected_codex_review_body(head_sha)
-    if (
-        api_final is None
-        or review_prs.get(str(final.get("review_id"))) != R00_RECEIPT_PR
-        or api_final.get("commit_id") != head_sha
-        or api_final.get("url") != final.get("url")
-        or api_final.get("reviewer") != final.get("reviewer")
-        or final.get("reviewer") != R00_REQUIRED_REVIEWER
-        or final.get("reviewer") == R00_PR_AUTHOR
-        or api_final.get("state") != "COMMENTED"
-        or not isinstance(final_body, str)
-        or final_body != expected_final_body
-        or final.get("body_sha256") != hashlib.sha256(final_body.encode("utf-8")).hexdigest()
-    ):
-        problems.append("R00 final review does not match the exact-head GitHub API export")
-    _validate_live_r00_review(
-        final,
-        api_final if isinstance(api_final, dict) else {},
-        persisted_reviews=exported_pulls.get(R00_RECEIPT_PR, {}).get("reviews"),
-        allowed_postmerge_review_ids={
-            str(reply.get("review_id"))
-            for row in exported_rows.values()
-            if exported.get(str(row.get("id")), (None,))[0] == R00_RECEIPT_PR
-            for reply in row.get("reply_inventory", [])
-            if isinstance(reply, dict) and str(reply.get("review_id", "")).isdigit()
-        },
-        head_sha=head_sha,
-        base_sha=base_sha,
-        merge_sha=merge_sha,
-        tree_sha=tree_sha,
-        github_get_json=github_get_json,
+    allowed_postmerge_review_ids = {
+        str(reply.get("review_id"))
+        for row in exported_rows.values()
+        if exported.get(str(row.get("id")), (None,))[0] == R00_RECEIPT_PR
+        for reply in row.get("reply_inventory", [])
+        if isinstance(reply, dict) and str(reply.get("review_id", "")).isdigit()
+    }
+    pr7_export = exported_pulls.get(R00_RECEIPT_PR, {})
+    final_review = review.get("final_review")
+    final_reaction = review.get("final_reaction")
+    if isinstance(final_review, dict) and final_reaction is None:
+        api_final = reviews.get(str(final_review.get("review_id")))
+        final_body = api_final.get("body") if isinstance(api_final, dict) else None
+        expected_final_body = _expected_codex_review_body(head_sha)
+        if (
+            api_final is None
+            or review_prs.get(str(final_review.get("review_id"))) != R00_RECEIPT_PR
+            or api_final.get("commit_id") != head_sha
+            or api_final.get("url") != final_review.get("url")
+            or api_final.get("reviewer") != final_review.get("reviewer")
+            or final_review.get("reviewer") != R00_REQUIRED_REVIEWER
+            or final_review.get("reviewer") == R00_PR_AUTHOR
+            or api_final.get("state") != "COMMENTED"
+            or not isinstance(final_body, str)
+            or final_body != expected_final_body
+            or final_review.get("body_sha256")
+            != hashlib.sha256(final_body.encode("utf-8")).hexdigest()
+        ):
+            problems.append("R00 final review does not match the exact-head GitHub API export")
+        _validate_live_r00_review(
+            final_review,
+            api_final if isinstance(api_final, dict) else {},
+            persisted_comments=pr7_export.get("issue_comments"),
+            persisted_reactions=pr7_export.get("pr_reactions"),
+            persisted_reviews=pr7_export.get("reviews"),
+            persisted_pull=pr7_export.get("pull_snapshot"),
+            persisted_threads=pr7_export.get("inline_threads"),
+            persisted_timeline=pr7_export.get("timeline"),
+            allowed_postmerge_review_ids=allowed_postmerge_review_ids,
+            head_sha=head_sha,
+            base_sha=base_sha,
+            merge_sha=merge_sha,
+            tree_sha=tree_sha,
+            github_get_json=github_get_json,
+            problems=problems,
+        )
+    elif isinstance(final_reaction, dict) and final_review is None:
+        if (
+            not isinstance(pr7_export.get("issue_comments"), list)
+            or not isinstance(pr7_export.get("pr_reactions"), list)
+            or not isinstance(pr7_export.get("timeline"), list)
+            or not isinstance(pr7_export.get("pull_snapshot"), dict)
+            or not isinstance(pr7_export.get("selected_comment_reactions"), dict)
+        ):
+            problems.append("R00 clean-reaction export lacks complete acceptance inventories")
+        _validate_live_r00_reaction(
+            final_reaction,
+            persisted_comments=pr7_export.get("issue_comments"),
+            persisted_reactions=pr7_export.get("pr_reactions"),
+            persisted_reviews=pr7_export.get("reviews"),
+            persisted_pull=pr7_export.get("pull_snapshot"),
+            persisted_selected_comment_reactions=pr7_export.get(
+                "selected_comment_reactions"
+            ),
+            persisted_threads=pr7_export.get("inline_threads"),
+            persisted_timeline=pr7_export.get("timeline"),
+            allowed_postmerge_review_ids=allowed_postmerge_review_ids,
+            head_sha=head_sha,
+            base_sha=base_sha,
+            merge_sha=merge_sha,
+            tree_sha=tree_sha,
+            ci_run_id=ci_run_id,
+            ci_job_id=ci_job_id,
+            github_get_json=github_get_json,
+            problems=problems,
+        )
+    else:
+        problems.append("R00 review evidence must select exactly one final acceptance arm")
+    # Separate the two-pair GraphQL reads with the complete REST acceptance read so a
+    # thread/comment mutation during sealing cannot hide between adjacent snapshots.
+    _validate_live_r00_review_threads(
+        exported,
+        exported_rows,
+        github_get_review_threads=github_get_review_threads,
         problems=problems,
     )
 
@@ -1975,6 +2269,8 @@ def _normalize_live_r00_review_threads(
             )
             root_author = root.get("author")
             root_node_id = root.get("id")
+            root_created_at = root.get("createdAt")
+            root_updated_at = root.get("updatedAt")
             expected_root_url = (
                 f"https://github.com/TriadAgentic/TriadOrigin/pull/{pr_number}"
                 f"#discussion_r{root_id or ''}"
@@ -1993,6 +2289,8 @@ def _normalize_live_r00_review_threads(
                 or not isinstance(root_author, dict)
                 or not isinstance(root_author.get("login"), str)
                 or not root_author["login"]
+                or _parse_github_time(root_created_at) is None
+                or _parse_github_time(root_updated_at) is None
             ):
                 raise ValueError("review root identity is malformed")
             root["body"].encode("utf-8")
@@ -2023,6 +2321,8 @@ def _normalize_live_r00_review_threads(
                     else None
                 )
                 reply_node_id = reply.get("id") if isinstance(reply, dict) else None
+                reply_created_at = reply.get("createdAt") if isinstance(reply, dict) else None
+                reply_updated_at = reply.get("updatedAt") if isinstance(reply, dict) else None
                 if (
                     reply_id is None
                     or reply_id in comment_ids
@@ -2037,6 +2337,8 @@ def _normalize_live_r00_review_threads(
                     or not isinstance(reply_author, dict)
                     or not isinstance(reply_author.get("login"), str)
                     or not reply_author["login"]
+                    or _parse_github_time(reply_created_at) is None
+                    or _parse_github_time(reply_updated_at) is None
                 ):
                     raise ValueError("review reply identity is malformed")
                 reply["body"].encode("utf-8")
@@ -2054,11 +2356,13 @@ def _normalize_live_r00_review_threads(
                     "body_sha256": hashlib.sha256(
                         reply["body"].encode("utf-8")
                     ).hexdigest(),
+                    "created_at": reply_created_at,
                     "id": reply_id,
                     "node_id": reply_node_id,
                     "path": reply["path"],
                     "reply_to_id": root_id,
                     "review_id": reply_review_id,
+                    "updated_at": reply_updated_at,
                     "url": reply["url"],
                 })
             normalized[root_id] = {
@@ -2074,8 +2378,10 @@ def _normalize_live_r00_review_threads(
                     "body_sha256": hashlib.sha256(
                         root["body"].encode("utf-8")
                     ).hexdigest(),
+                    "created_at": root_created_at,
                     "node_id": root_node_id,
                     "review_id": root_review_id,
+                    "updated_at": root_updated_at,
                     "url": root["url"],
                 },
                 "thread_node_id": thread_node_id,
@@ -2136,12 +2442,15 @@ def _validate_live_r00_review_threads(
             "review_id": reviewed["review_id"],
             "url": reviewed["url"],
         }
+        live_reviewed_root = {
+            key: live_row["root"].get(key) for key in reviewed_root
+        }
         if (
             live_row["pr_number"] != reviewed["pr_number"]
             or live_row["path"] != reviewed["path"]
             or live_row["review_id"] != reviewed["review_id"]
             or live_row["thread_node_id"] != reviewed["thread_node_id"]
-            or live_row["root"] != reviewed_root
+            or live_reviewed_root != reviewed_root
         ):
             problems.append("R00 live GitHub root differs from the reviewed pre-merge root")
             return
@@ -2278,9 +2587,16 @@ def _normalize_live_pr7_review(item: Any) -> dict[str, str]:
     if not isinstance(item, dict):
         raise ValueError("review is not an object")
     review_id = _decimal_graphql_id(item.get("id"))
-    reviewer = _normalized_github_login(
-        item.get("user", {}).get("login")
-        if isinstance(item.get("user"), dict)
+    reviewer_record = item.get("user")
+    raw_reviewer = (
+        reviewer_record.get("login")
+        if isinstance(reviewer_record, dict)
+        else None
+    )
+    reviewer = _normalized_github_login(raw_reviewer)
+    reviewer_id = (
+        _decimal_graphql_id(reviewer_record.get("id"))
+        if isinstance(reviewer_record, dict)
         else None
     )
     submitted_at = item.get("submitted_at")
@@ -2294,6 +2610,9 @@ def _normalize_live_pr7_review(item: Any) -> dict[str, str]:
     if (
         review_id is None
         or reviewer is None
+        or not isinstance(raw_reviewer, str)
+        or not raw_reviewer
+        or reviewer_id is None
         or not isinstance(commit_id, str)
         or re.fullmatch(r"[0-9a-f]{40}", commit_id) is None
         or not isinstance(body, str)
@@ -2306,8 +2625,10 @@ def _normalize_live_pr7_review(item: Any) -> dict[str, str]:
     return {
         "body": body,
         "commit_id": commit_id,
+        "raw_reviewer": raw_reviewer,
         "review_id": review_id,
         "reviewer": reviewer,
+        "reviewer_id": reviewer_id,
         "state": state,
         "submitted_at": submitted_at,
         "url": expected_url,
@@ -2344,11 +2665,320 @@ def _fetch_live_pr7_reviews(github_get_json: GitHubJsonGetter) -> list[dict[str,
     return reviews
 
 
+def _review_history_matches_baseline(
+    reviews: list[dict[str, str]],
+    *,
+    selected_review_id: str | None = None,
+) -> bool:
+    baseline = _r00_pr7_preacceptance_review_baseline()
+    if reviews[:len(baseline)] != baseline:
+        return False
+    remainder = reviews[len(baseline):]
+    if selected_review_id is None:
+        return not remainder
+    return len(remainder) == 1 and remainder[0].get("review_id") == selected_review_id
+
+
+def _normalize_live_pr7_issue_comment(item: Any) -> dict[str, str]:
+    if not isinstance(item, dict):
+        raise ValueError("issue comment is not an object")
+    comment_id = _decimal_graphql_id(item.get("id"))
+    node_id = item.get("node_id")
+    author_record = item.get("user")
+    raw_author = author_record.get("login") if isinstance(author_record, dict) else None
+    author = _normalized_github_login(
+        raw_author
+    )
+    author_id = (
+        _decimal_graphql_id(author_record.get("id"))
+        if isinstance(author_record, dict)
+        else None
+    )
+    body = item.get("body")
+    created_at = item.get("created_at")
+    updated_at = item.get("updated_at")
+    expected_url = (
+        "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+        f"#issuecomment-{comment_id or ''}"
+    )
+    if (
+        comment_id is None
+        or not isinstance(node_id, str)
+        or not node_id
+        or author is None
+        or not isinstance(raw_author, str)
+        or not raw_author
+        or author_id is None
+        or not isinstance(body, str)
+        or _parse_github_time(created_at) is None
+        or _parse_github_time(updated_at) is None
+        or item.get("html_url") != expected_url
+    ):
+        raise ValueError("issue comment identity/content is malformed")
+    body.encode("utf-8")
+    return {
+        "author": author,
+        "author_id": author_id,
+        "body": body,
+        "created_at": created_at,
+        "id": comment_id,
+        "node_id": node_id,
+        "raw_author": raw_author,
+        "updated_at": updated_at,
+        "url": expected_url,
+    }
+
+
+def _fetch_live_pr7_issue_comments(
+    github_get_json: GitHubJsonGetter,
+) -> list[dict[str, str]]:
+    comments: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for page in range(1, 12):
+        payload = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page={page}"
+        )
+        if not isinstance(payload, list):
+            raise ValueError("issue-comment page is not a list")
+        if not payload:
+            break
+        if len(payload) > 100:
+            raise ValueError("issue-comment page exceeds the controlled size")
+        for item in payload:
+            normalized = _normalize_live_pr7_issue_comment(item)
+            if normalized["id"] in seen:
+                raise ValueError("duplicate issue-comment identity")
+            seen.add(normalized["id"])
+            comments.append(normalized)
+    else:
+        raise ValueError("issue-comment pagination exceeds the controlled page cap")
+    comments.sort(
+        key=lambda item: (_parse_github_time(item["created_at"]), int(item["id"]))
+    )
+    return comments
+
+
+def _normalize_live_pr7_reaction(item: Any) -> dict[str, str]:
+    if not isinstance(item, dict):
+        raise ValueError("PR reaction is not an object")
+    reaction_id = _decimal_graphql_id(item.get("id"))
+    node_id = item.get("node_id")
+    actor_record = item.get("user")
+    raw_actor = actor_record.get("login") if isinstance(actor_record, dict) else None
+    actor = _normalized_github_login(
+        raw_actor
+    )
+    actor_id = (
+        _decimal_graphql_id(actor_record.get("id"))
+        if isinstance(actor_record, dict)
+        else None
+    )
+    content = item.get("content")
+    created_at = item.get("created_at")
+    if (
+        reaction_id is None
+        or not isinstance(node_id, str)
+        or not node_id
+        or actor is None
+        or not isinstance(raw_actor, str)
+        or not raw_actor
+        or actor_id is None
+        or content not in {"+1", "-1", "laugh", "confused", "heart", "hooray", "rocket", "eyes"}
+        or _parse_github_time(created_at) is None
+    ):
+        raise ValueError("PR reaction identity/content is malformed")
+    return {
+        "actor": actor,
+        "actor_id": actor_id,
+        "content": content,
+        "created_at": created_at,
+        "id": reaction_id,
+        "node_id": node_id,
+        "raw_actor": raw_actor,
+    }
+
+
+def _fetch_live_pr7_reactions(
+    github_get_json: GitHubJsonGetter,
+) -> list[dict[str, str]]:
+    reactions: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for page in range(1, 12):
+        payload = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/issues/7/reactions?per_page=100&page={page}"
+        )
+        if not isinstance(payload, list):
+            raise ValueError("PR-reaction page is not a list")
+        if not payload:
+            break
+        if len(payload) > 100:
+            raise ValueError("PR-reaction page exceeds the controlled size")
+        for item in payload:
+            normalized = _normalize_live_pr7_reaction(item)
+            if normalized["id"] in seen:
+                raise ValueError("duplicate PR-reaction identity")
+            seen.add(normalized["id"])
+            reactions.append(normalized)
+    else:
+        raise ValueError("PR-reaction pagination exceeds the controlled page cap")
+    reactions.sort(
+        key=lambda item: (_parse_github_time(item["created_at"]), int(item["id"]))
+    )
+    return reactions
+
+
+def _normalize_live_pr7_pull(item: Any) -> dict[str, Any]:
+    if not isinstance(item, dict):
+        raise ValueError("pull request is not an object")
+    user = item.get("user")
+    raw_author = user.get("login") if isinstance(user, dict) else None
+    author_id = (
+        _decimal_graphql_id(user.get("id")) if isinstance(user, dict) else None
+    )
+    head = item.get("head")
+    base = item.get("base")
+    merged_at = item.get("merged_at")
+    updated_at = item.get("updated_at")
+    expected_url = "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+    if (
+        item.get("number") != R00_RECEIPT_PR
+        or item.get("html_url") != expected_url
+        or _normalized_github_login(raw_author) != R00_PR_AUTHOR
+        or raw_author != R00_PR_AUTHOR
+        or author_id != R00_PR_AUTHOR_ID
+        or not isinstance(head, dict)
+        or re.fullmatch(r"[0-9a-f]{40}", str(head.get("sha"))) is None
+        or not isinstance(base, dict)
+        or re.fullmatch(r"[0-9a-f]{40}", str(base.get("sha"))) is None
+        or item.get("merged") is not True
+        or re.fullmatch(r"[0-9a-f]{40}", str(item.get("merge_commit_sha"))) is None
+        or _parse_github_time(merged_at) is None
+        or _parse_github_time(updated_at) is None
+    ):
+        raise ValueError("pull request identity/state is malformed")
+    return {
+        "author": R00_PR_AUTHOR,
+        "author_id": author_id,
+        "base_sha": base["sha"],
+        "head_sha": head["sha"],
+        "merge_commit_sha": item["merge_commit_sha"],
+        "merged": True,
+        "merged_at": merged_at,
+        "number": R00_RECEIPT_PR,
+        "updated_at": updated_at,
+        "url": expected_url,
+    }
+
+
+def _normalize_live_pr7_timeline_event(item: Any) -> dict[str, Any]:
+    if not isinstance(item, dict):
+        raise ValueError("timeline event is not an object")
+    event = item.get("event")
+    if not isinstance(event, str) or re.fullmatch(r"[a-z_-]+", event) is None:
+        raise ValueError("timeline event type is malformed")
+    object_id = _decimal_graphql_id(item.get("id")) or ""
+    node_id = item.get("node_id")
+    node_id = node_id if isinstance(node_id, str) else ""
+    commit_value = item.get("sha") if event == "committed" else item.get("commit_id")
+    commit_sha = (
+        commit_value
+        if isinstance(commit_value, str)
+        and re.fullmatch(r"[0-9a-f]{40}", commit_value) is not None
+        else ""
+    )
+    if event == "committed" and not commit_sha:
+        raise ValueError("committed timeline event lacks a commit SHA")
+    created_at = (
+        item.get("submitted_at", "")
+        if event == "reviewed"
+        else item.get("created_at", "")
+    )
+    if event != "committed" and _parse_github_time(created_at) is None:
+        raise ValueError("timeline event timestamp is malformed")
+    if event == "committed" and created_at not in {None, ""}:
+        if _parse_github_time(created_at) is None:
+            raise ValueError("committed timeline timestamp is malformed")
+    raw_sha256 = hashlib.sha256(canonical_json(item)).hexdigest()
+    identity_value = object_id or commit_sha or node_id or raw_sha256
+    return {
+        "commit_sha": commit_sha,
+        "created_at": created_at or "",
+        "event": event,
+        "identity": f"{event}:{identity_value}",
+        "node_id": node_id,
+        "object_id": object_id,
+        "raw_sha256": raw_sha256,
+    }
+
+
+def _fetch_live_pr7_timeline(
+    github_get_json: GitHubJsonGetter,
+) -> list[dict[str, Any]]:
+    timeline: list[dict[str, Any]] = []
+    identities: set[str] = set()
+    for page in range(1, 12):
+        payload = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page={page}"
+        )
+        if not isinstance(payload, list):
+            raise ValueError("timeline page is not a list")
+        if not payload:
+            break
+        if len(payload) > 100:
+            raise ValueError("timeline page exceeds the controlled size")
+        for item in payload:
+            normalized = _normalize_live_pr7_timeline_event(item)
+            if normalized["identity"] in identities:
+                raise ValueError("duplicate timeline-event identity")
+            identities.add(normalized["identity"])
+            normalized["position"] = len(timeline)
+            timeline.append(normalized)
+    else:
+        raise ValueError("timeline pagination exceeds the controlled page cap")
+    return timeline
+
+
+def _fetch_live_comment_reactions(
+    github_get_json: GitHubJsonGetter,
+    comment_id: str,
+) -> list[dict[str, str]]:
+    reactions: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for page in range(1, 12):
+        payload = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/issues/comments/{comment_id}"
+            f"/reactions?per_page=100&page={page}"
+        )
+        if not isinstance(payload, list):
+            raise ValueError("comment-reaction page is not a list")
+        if not payload:
+            break
+        if len(payload) > 100:
+            raise ValueError("comment-reaction page exceeds the controlled size")
+        for item in payload:
+            normalized = _normalize_live_pr7_reaction(item)
+            if normalized["id"] in seen:
+                raise ValueError("duplicate comment-reaction identity")
+            seen.add(normalized["id"])
+            reactions.append(normalized)
+    else:
+        raise ValueError("comment-reaction pagination exceeds the controlled page cap")
+    reactions.sort(
+        key=lambda item: (_parse_github_time(item["created_at"]), int(item["id"]))
+    )
+    return reactions
+
+
 def _validate_live_r00_review(
     final: dict[str, Any],
     persisted_review: dict[str, Any],
     *,
+    persisted_comments: Any,
+    persisted_reactions: Any,
     persisted_reviews: Any,
+    persisted_pull: Any,
+    persisted_threads: Any,
+    persisted_timeline: Any,
     allowed_postmerge_review_ids: set[str],
     head_sha: str,
     base_sha: str,
@@ -2366,7 +2996,8 @@ def _validate_live_r00_review(
         problems.append("R00 live review revalidation lacks a numeric review ID")
         return
     try:
-        pull = github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+        pull_raw = github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+        pull_snapshots = [_normalize_live_pr7_pull(pull_raw)]
         review = github_get_json(
             f"/repos/TriadAgentic/TriadOrigin/pulls/7/reviews/{review_id}"
         )
@@ -2380,23 +3011,48 @@ def _validate_live_r00_review(
             _fetch_live_pr7_reviews(github_get_json),
             _fetch_live_pr7_reviews(github_get_json),
         ]
+        live_comment_snapshots = [
+            _fetch_live_pr7_issue_comments(github_get_json),
+            _fetch_live_pr7_issue_comments(github_get_json),
+        ]
+        live_reaction_snapshots = [
+            _fetch_live_pr7_reactions(github_get_json),
+            _fetch_live_pr7_reactions(github_get_json),
+        ]
+        live_timeline_snapshots = [
+            _fetch_live_pr7_timeline(github_get_json),
+            _fetch_live_pr7_timeline(github_get_json),
+        ]
+        pull_snapshots.append(
+            _normalize_live_pr7_pull(
+                github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+            )
+        )
     except Exception as exc:  # Fail closed on network, API, and provider errors.
         problems.append(f"R00 live GitHub REST revalidation failed: {type(exc).__name__}")
         return
     if (
-        not isinstance(pull, dict)
+        not isinstance(pull_raw, dict)
         or not isinstance(review, dict)
         or not isinstance(head_commit, dict)
         or not isinstance(final_comments, list)
         or not all(isinstance(item, list) for item in live_review_snapshots)
+        or not all(isinstance(item, list) for item in live_comment_snapshots)
+        or not all(isinstance(item, list) for item in live_reaction_snapshots)
+        or not all(isinstance(item, list) for item in live_timeline_snapshots)
     ):
         problems.append("R00 live GitHub review response has the wrong shape")
         return
-    author = _normalized_github_login(
-        pull.get("user", {}).get("login") if isinstance(pull.get("user"), dict) else None
+    pull = pull_snapshots[0]
+    review_user = review.get("user")
+    raw_reviewer = (
+        review_user.get("login") if isinstance(review_user, dict) else None
     )
-    reviewer = _normalized_github_login(
-        review.get("user", {}).get("login") if isinstance(review.get("user"), dict) else None
+    reviewer = _normalized_github_login(raw_reviewer)
+    reviewer_id = (
+        _decimal_graphql_id(review_user.get("id"))
+        if isinstance(review_user, dict)
+        else None
     )
     merged_at = _parse_github_time(pull.get("merged_at"))
     submitted_at = _parse_github_time(review.get("submitted_at"))
@@ -2406,13 +3062,41 @@ def _validate_live_r00_review(
     expected_body = _expected_codex_review_body(head_sha)
     review_snapshots_ok = live_review_snapshots[0] == live_review_snapshots[1]
     live_reviews = live_review_snapshots[0]
+    live_comments = live_comment_snapshots[0]
+    live_reactions = live_reaction_snapshots[0]
+    live_timeline = live_timeline_snapshots[0]
     selected_review = next(
         (item for item in live_reviews if item["review_id"] == review_id),
         None,
     )
-    inventory_ok = isinstance(persisted_reviews, list) and persisted_reviews == live_reviews
-    review_order_ok = selected_review is not None and all(
-        item["state"] != "CHANGES_REQUESTED" for item in live_reviews
+    inventory_ok = (
+        isinstance(persisted_reviews, list)
+        and persisted_reviews == live_reviews
+        and isinstance(persisted_comments, list)
+        and persisted_comments == live_comments
+        and isinstance(persisted_reactions, list)
+        and persisted_reactions == live_reactions
+        and isinstance(persisted_pull, dict)
+        and persisted_pull == pull
+        and isinstance(persisted_timeline, list)
+        and persisted_timeline == live_timeline
+        and pull_snapshots[0] == pull_snapshots[1]
+        and live_review_snapshots[0] == live_review_snapshots[1]
+        and live_comment_snapshots[0] == live_comment_snapshots[1]
+        and live_reaction_snapshots[0] == live_reaction_snapshots[1]
+        and live_timeline_snapshots[0] == live_timeline_snapshots[1]
+    )
+    premerge_reviews = [
+        item for item in live_reviews
+        if merged_at is not None
+        and _parse_github_time(item["submitted_at"]) <= merged_at
+    ]
+    review_order_ok = (
+        selected_review is not None
+        and all(item["state"] != "CHANGES_REQUESTED" for item in live_reviews)
+        and _review_history_matches_baseline(
+            premerge_reviews, selected_review_id=review_id
+        )
     )
     if review_order_ok and submitted_at is not None and merged_at is not None:
         selected_key = (submitted_at, int(review_id))
@@ -2433,12 +3117,94 @@ def _validate_live_r00_review(
             ):
                 review_order_ok = False
                 break
+    comment_baseline = _r00_pr7_preacceptance_comment_baseline()
+    comments_ok = (
+        len(live_comments) == len(comment_baseline)
+        and [
+            {key: item[key] for key in baseline_item}
+            for item, baseline_item in zip(
+                live_comments, comment_baseline, strict=True
+            )
+        ] == comment_baseline
+        and all(
+            item.get("created_at") == item.get("updated_at")
+            for item in live_comments
+        )
+    )
+    connector_reactions = [
+        item for item in live_reactions
+        if item.get("raw_actor") == "chatgpt-codex-connector[bot]"
+        or item.get("actor_id") == R00_REQUIRED_REVIEWER_ID
+    ]
+    reactions_ok = (
+        len(connector_reactions) == 1
+        and connector_reactions[0].get("actor") == R00_REQUIRED_REVIEWER
+        and connector_reactions[0].get("raw_actor")
+        == "chatgpt-codex-connector[bot]"
+        and connector_reactions[0].get("actor_id") == R00_REQUIRED_REVIEWER_ID
+        and connector_reactions[0].get("content") == "+1"
+    )
+    selected_timeline = [
+        item for item in live_timeline
+        if item.get("event") == "reviewed"
+        and item.get("object_id") == review_id
+        and item.get("commit_sha") == head_sha
+    ]
+    merge_timeline = [
+        item for item in live_timeline
+        if item.get("event") == "merged" and item.get("commit_sha") == head_sha
+    ]
+    head_commits = [
+        item for item in live_timeline
+        if item.get("event") == "committed" and item.get("commit_sha") == head_sha
+    ]
+    timeline_ok = (
+        len(selected_timeline) == 1
+        and len(merge_timeline) == 1
+        and bool(head_commits)
+        and max(item["position"] for item in head_commits)
+        < selected_timeline[0]["position"] < merge_timeline[0]["position"]
+        and _parse_github_time(merge_timeline[0].get("created_at")) == merged_at
+    )
+    if timeline_ok:
+        forbidden_head_events = {
+            "automatic_base_change_succeeded",
+            "base_ref_deleted",
+            "base_ref_changed",
+            "base_ref_force_pushed",
+            "committed",
+            "head_ref_deleted",
+            "head_ref_force_pushed",
+            "head_ref_restored",
+        }
+        timeline_ok = not any(
+            (
+                selected_timeline[0]["position"] < item["position"]
+                < merge_timeline[0]["position"]
+                and item["event"] in forbidden_head_events
+            )
+            or (
+                item["position"] > selected_timeline[0]["position"]
+                and item["event"] == "review_dismissed"
+            )
+            or (
+                item["position"] > merge_timeline[0]["position"]
+                and item["event"] == "head_ref_deleted"
+            )
+            for item in live_timeline
+        )
+    thread_activity_ok = _r00_thread_activity_precedes_acceptance(
+        persisted_threads,
+        accepted_at=submitted_at,
+        merged_at=merged_at,
+    )
     if (
         pull.get("number") != R00_RECEIPT_PR
-        or pull.get("html_url") != expected_pr_url
-        or author != R00_PR_AUTHOR
-        or pull.get("head", {}).get("sha") != head_sha
-        or pull.get("base", {}).get("sha") != base_sha
+        or pull.get("url") != expected_pr_url
+        or pull.get("author") != R00_PR_AUTHOR
+        or pull.get("author_id") != R00_PR_AUTHOR_ID
+        or pull.get("head_sha") != head_sha
+        or pull.get("base_sha") != base_sha
         or base_sha != R00_IMPLEMENTATION_MERGE_SHA
         or pull.get("merged") is not True
         or pull.get("merge_commit_sha") != merge_sha
@@ -2448,7 +3214,9 @@ def _validate_live_r00_review(
         or merged_at is None
         or review.get("id") != int(review_id)
         or reviewer != R00_REQUIRED_REVIEWER
-        or reviewer == author
+        or raw_reviewer != "chatgpt-codex-connector[bot]"
+        or reviewer_id != R00_REQUIRED_REVIEWER_ID
+        or reviewer == pull.get("author")
         or final.get("reviewer") != reviewer
         or review.get("commit_id") != head_sha
         or review.get("state") != "COMMENTED"
@@ -2464,9 +3232,398 @@ def _validate_live_r00_review(
         or selected_review != persisted_review
         or not inventory_ok
         or not review_order_ok
+        or not comments_ok
+        or not reactions_ok
+        or not timeline_ok
+        or not thread_activity_ok
         or not review_snapshots_ok
     ):
         problems.append("R00 live GitHub review is not an independent exact-head pre-merge review")
+
+
+def _r00_thread_activity_precedes_acceptance(
+    persisted_threads: Any,
+    *,
+    accepted_at: datetime | None,
+    merged_at: datetime | None,
+) -> bool:
+    """Reject thread activity at/after acceptance except the sealed merge reply."""
+    if (
+        not isinstance(persisted_threads, list)
+        or accepted_at is None
+        or merged_at is None
+        or accepted_at >= merged_at
+    ):
+        return False
+    for thread in persisted_threads:
+        if not isinstance(thread, dict):
+            return False
+        root = thread.get("root")
+        replies = thread.get("reply_inventory")
+        remediation = thread.get("remediation_reply")
+        if (
+            not isinstance(root, dict)
+            or not isinstance(replies, list)
+            or not isinstance(remediation, dict)
+        ):
+            return False
+        selected = str(remediation.get("id", ""))
+        if not selected.isdigit():
+            return False
+        root_created = _parse_github_time(root.get("created_at"))
+        root_updated = _parse_github_time(root.get("updated_at"))
+        if (
+            root_created is None
+            or root_updated is None
+            or root_created >= accepted_at
+            or root_updated >= accepted_at
+        ):
+            return False
+        selected_count = 0
+        for reply in replies:
+            if not isinstance(reply, dict):
+                return False
+            reply_created = _parse_github_time(reply.get("created_at"))
+            reply_updated = _parse_github_time(reply.get("updated_at"))
+            reply_id = str(reply.get("id"))
+            if reply_created is None or reply_updated is None:
+                return False
+            if reply_id == selected:
+                selected_count += 1
+                if reply_created <= merged_at or reply_updated != reply_created:
+                    return False
+            elif reply_created >= accepted_at or reply_updated >= accepted_at:
+                return False
+        if selected_count != 1:
+            return False
+    return True
+
+
+def _validate_live_r00_reaction(
+    final: dict[str, Any],
+    *,
+    persisted_comments: Any,
+    persisted_reactions: Any,
+    persisted_reviews: Any,
+    persisted_pull: Any,
+    persisted_selected_comment_reactions: Any,
+    persisted_threads: Any,
+    persisted_timeline: Any,
+    allowed_postmerge_review_ids: set[str],
+    head_sha: str,
+    base_sha: str,
+    merge_sha: str,
+    tree_sha: str,
+    ci_run_id: str,
+    ci_job_id: str,
+    github_get_json: GitHubJsonGetter | None,
+    problems: list[str],
+) -> None:
+    """Authenticate a full-head trigger and exact Codex clean-comment result.
+
+    GitHub retains one reaction of a given type per actor and PR.  The connector's
+    PR-root ``+1`` is therefore authenticated corroborating state, not the
+    head-binding event.  The unchanged clean comment, full-SHA trigger, and
+    no-head-mutation timeline provide that binding.
+    """
+    if github_get_json is None:
+        problems.append("R00 sealing requires live GitHub REST revalidation")
+        return
+    request_id = final.get("request_comment_id")
+    clean_id = final.get("clean_comment_id")
+    reaction_id = final.get("reaction_id")
+    if any(not isinstance(value, str) or not value.isdigit() for value in (
+        request_id, clean_id, reaction_id, ci_run_id, ci_job_id
+    )):
+        problems.append("R00 clean-reaction evidence lacks decimal live identities")
+        return
+    try:
+        pull_snapshots = [
+            _normalize_live_pr7_pull(
+                github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+            )
+        ]
+        head_commit = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/git/commits/{head_sha}"
+        )
+        run = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/actions/runs/{ci_run_id}"
+        )
+        job = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/actions/jobs/{ci_job_id}"
+        )
+        live_review_snapshots = [
+            _fetch_live_pr7_reviews(github_get_json),
+            _fetch_live_pr7_reviews(github_get_json),
+        ]
+        live_comment_snapshots = [
+            _fetch_live_pr7_issue_comments(github_get_json),
+            _fetch_live_pr7_issue_comments(github_get_json),
+        ]
+        live_reaction_snapshots = [
+            _fetch_live_pr7_reactions(github_get_json),
+            _fetch_live_pr7_reactions(github_get_json),
+        ]
+        live_timeline_snapshots = [
+            _fetch_live_pr7_timeline(github_get_json),
+            _fetch_live_pr7_timeline(github_get_json),
+        ]
+        selected_comment_reaction_snapshots = {
+            "trigger": [
+                _fetch_live_comment_reactions(github_get_json, request_id),
+                _fetch_live_comment_reactions(github_get_json, request_id),
+            ],
+            "clean_response": [
+                _fetch_live_comment_reactions(github_get_json, clean_id),
+                _fetch_live_comment_reactions(github_get_json, clean_id),
+            ],
+        }
+        pull_snapshots.append(
+            _normalize_live_pr7_pull(
+                github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+            )
+        )
+    except Exception as exc:  # Fail closed on network, API, and provider errors.
+        problems.append(f"R00 live GitHub clean-reaction revalidation failed: {type(exc).__name__}")
+        return
+    if (
+        not isinstance(head_commit, dict)
+        or not isinstance(run, dict)
+        or not isinstance(job, dict)
+        or not all(isinstance(item, list) for item in live_review_snapshots)
+        or not all(isinstance(item, list) for item in live_comment_snapshots)
+        or not all(isinstance(item, list) for item in live_reaction_snapshots)
+        or not all(isinstance(item, list) for item in live_timeline_snapshots)
+    ):
+        problems.append("R00 live GitHub clean-reaction response has the wrong shape")
+        return
+
+    expected_pr_url = "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+    pull = pull_snapshots[0]
+    merged_at = _parse_github_time(pull.get("merged_at"))
+    run_completed_at = _parse_github_time(run.get("updated_at"))
+    reviews = live_review_snapshots[0]
+    comments = live_comment_snapshots[0]
+    reactions = live_reaction_snapshots[0]
+    timeline = live_timeline_snapshots[0]
+    request = next((item for item in comments if item["id"] == request_id), None)
+    clean = next((item for item in comments if item["id"] == clean_id), None)
+    reaction = next((item for item in reactions if item["id"] == reaction_id), None)
+    request_at = _parse_github_time(request.get("created_at")) if request else None
+    clean_at = _parse_github_time(clean.get("created_at")) if clean else None
+    reaction_at = _parse_github_time(reaction.get("created_at")) if reaction else None
+    expected_request = _expected_codex_review_request_body(
+        head_sha, ci_run_id, ci_job_id
+    )
+    expected_clean = _expected_codex_clean_comment_body(head_sha)
+    actual_selected_comment_reactions = {
+        name: snapshots[0]
+        for name, snapshots in selected_comment_reaction_snapshots.items()
+    }
+    inventory_ok = (
+        isinstance(persisted_reviews, list)
+        and persisted_reviews == reviews
+        and isinstance(persisted_comments, list)
+        and persisted_comments == comments
+        and isinstance(persisted_reactions, list)
+        and persisted_reactions == reactions
+        and isinstance(persisted_pull, dict)
+        and persisted_pull == pull
+        and isinstance(persisted_timeline, list)
+        and persisted_timeline == timeline
+        and isinstance(persisted_selected_comment_reactions, dict)
+        and persisted_selected_comment_reactions == actual_selected_comment_reactions
+        and pull_snapshots[0] == pull_snapshots[1]
+        and live_review_snapshots[0] == live_review_snapshots[1]
+        and live_comment_snapshots[0] == live_comment_snapshots[1]
+        and live_reaction_snapshots[0] == live_reaction_snapshots[1]
+        and live_timeline_snapshots[0] == live_timeline_snapshots[1]
+        and all(
+            snapshots[0] == snapshots[1] == []
+            for snapshots in selected_comment_reaction_snapshots.values()
+        )
+    )
+    premerge_reviews = [
+        item for item in reviews
+        if merged_at is not None
+        and _parse_github_time(item["submitted_at"]) <= merged_at
+    ]
+    review_order_ok = (
+        all(item["state"] != "CHANGES_REQUESTED" for item in reviews)
+        and _review_history_matches_baseline(premerge_reviews)
+    )
+    if review_order_ok and request_at is not None and merged_at is not None:
+        for item in reviews:
+            item_time = _parse_github_time(item["submitted_at"])
+            if item_time is None:
+                review_order_ok = False
+                break
+            if item_time <= merged_at:
+                if item_time >= request_at:
+                    review_order_ok = False
+                    break
+            elif not (
+                item["review_id"] in allowed_postmerge_review_ids
+                and item["reviewer"] == R00_PR_AUTHOR
+                and item["state"] == "COMMENTED"
+                and item["body"] == ""
+            ):
+                review_order_ok = False
+                break
+    comment_baseline = _r00_pr7_preacceptance_comment_baseline()
+    comments_final = (
+        len(comments) == len(comment_baseline) + 2
+        and [
+            {key: item[key] for key in baseline_item}
+            for item, baseline_item in zip(
+                comments[:len(comment_baseline)], comment_baseline, strict=True
+            )
+        ] == comment_baseline
+        and all(
+            item.get("created_at") == item.get("updated_at")
+            for item in comments
+        )
+        and comments[-2].get("id") == request_id
+        and comments[-1].get("id") == clean_id
+    )
+    request_timeline = [
+        item for item in timeline
+        if item.get("event") == "commented" and item.get("object_id") == request_id
+    ]
+    clean_timeline = [
+        item for item in timeline
+        if item.get("event") == "commented" and item.get("object_id") == clean_id
+    ]
+    merge_timeline = [
+        item for item in timeline
+        if item.get("event") == "merged" and item.get("commit_sha") == head_sha
+    ]
+    head_commits = [
+        item for item in timeline
+        if item.get("event") == "committed" and item.get("commit_sha") == head_sha
+    ]
+    timeline_ok = (
+        len(request_timeline) == 1
+        and len(clean_timeline) == 1
+        and len(merge_timeline) == 1
+        and bool(head_commits)
+        and request_timeline[0]["position"] < clean_timeline[0]["position"]
+        < merge_timeline[0]["position"]
+        and max(item["position"] for item in head_commits)
+        < request_timeline[0]["position"]
+        and _parse_github_time(merge_timeline[0].get("created_at")) == merged_at
+    )
+    if timeline_ok:
+        forbidden_head_events = {
+            "automatic_base_change_succeeded",
+            "base_ref_deleted",
+            "base_ref_changed",
+            "base_ref_force_pushed",
+            "committed",
+            "head_ref_deleted",
+            "head_ref_force_pushed",
+            "head_ref_restored",
+        }
+        timeline_ok = not any(
+            (
+                request_timeline[0]["position"] < item["position"]
+                < merge_timeline[0]["position"]
+                and item["event"] in forbidden_head_events
+            )
+            or (
+                item["position"] > request_timeline[0]["position"]
+                and item["event"] == "review_dismissed"
+            )
+            or (
+                item["position"] > merge_timeline[0]["position"]
+                and item["event"] == "head_ref_deleted"
+            )
+            for item in timeline
+        )
+
+    thread_activity_ok = _r00_thread_activity_precedes_acceptance(
+        persisted_threads,
+        accepted_at=clean_at,
+        merged_at=merged_at,
+    )
+    connector_reactions = [
+        item for item in reactions
+        if item.get("raw_actor") == "chatgpt-codex-connector[bot]"
+        or item.get("actor_id") == R00_REQUIRED_REVIEWER_ID
+    ]
+    if (
+        pull.get("number") != R00_RECEIPT_PR
+        or pull.get("url") != expected_pr_url
+        or pull.get("author") != R00_PR_AUTHOR
+        or pull.get("author_id") != R00_PR_AUTHOR_ID
+        or pull.get("head_sha") != head_sha
+        or pull.get("base_sha") != base_sha
+        or base_sha != R00_IMPLEMENTATION_MERGE_SHA
+        or pull.get("merged") is not True
+        or pull.get("merge_commit_sha") != merge_sha
+        or head_commit.get("sha") != head_sha
+        or not isinstance(head_commit.get("tree"), dict)
+        or head_commit["tree"].get("sha") != tree_sha
+        or run.get("id") != int(ci_run_id)
+        or run.get("head_sha") != head_sha
+        or run.get("status") != "completed"
+        or run.get("conclusion") != "success"
+        or job.get("id") != int(ci_job_id)
+        or job.get("run_id") != int(ci_run_id)
+        or job.get("head_sha") != head_sha
+        or job.get("status") != "completed"
+        or job.get("conclusion") != "success"
+        or merged_at is None
+        or run_completed_at is None
+        or request is None
+        or clean is None
+        or reaction is None
+        or request.get("author") != R00_PR_AUTHOR
+        or request.get("raw_author") != R00_PR_AUTHOR
+        or request.get("author_id") != R00_PR_AUTHOR_ID
+        or request.get("body") != expected_request
+        or request.get("created_at") != request.get("updated_at")
+        or clean.get("author") != R00_REQUIRED_REVIEWER
+        or clean.get("raw_author") != "chatgpt-codex-connector[bot]"
+        or clean.get("author_id") != R00_REQUIRED_REVIEWER_ID
+        or clean.get("body") != expected_clean
+        or clean.get("created_at") != clean.get("updated_at")
+        or reaction.get("actor") != R00_REQUIRED_REVIEWER
+        or reaction.get("raw_actor") != "chatgpt-codex-connector[bot]"
+        or reaction.get("actor_id") != R00_REQUIRED_REVIEWER_ID
+        or reaction.get("content") != "+1"
+        or connector_reactions != [reaction]
+        or request_at is None
+        or clean_at is None
+        or reaction_at is None
+        or not (run_completed_at < request_at < clean_at < merged_at)
+        or reaction_at > clean_at
+        or not comments_final
+        or not inventory_ok
+        or not review_order_ok
+        or not timeline_ok
+        or not thread_activity_ok
+        or final.get("head_sha") != head_sha
+        or final.get("ci_run_id") != ci_run_id
+        or final.get("ci_job_id") != ci_job_id
+        or final.get("accepted_at") != clean.get("created_at")
+        or final.get("actor") != R00_REQUIRED_REVIEWER
+        or final.get("actor_id") != R00_REQUIRED_REVIEWER_ID
+        or final.get("content") != "+1"
+        or final.get("request_comment_id") != request_id
+        or final.get("request_url") != request.get("url")
+        or final.get("request_body_sha256")
+        != hashlib.sha256(expected_request.encode("utf-8")).hexdigest()
+        or final.get("clean_comment_id") != clean_id
+        or final.get("clean_comment_url") != clean.get("url")
+        or final.get("clean_comment_body_sha256")
+        != hashlib.sha256(expected_clean.encode("utf-8")).hexdigest()
+        or final.get("reaction_id") != reaction_id
+        or final.get("reaction_node_id") != reaction.get("node_id")
+    ):
+        problems.append(
+            "R00 live GitHub clean-comment/reaction is not an exact-head pre-merge acceptance"
+        )
 
 
 def _github_get_json_from_token(token: str) -> GitHubJsonGetter:

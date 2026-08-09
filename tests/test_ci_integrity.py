@@ -27,6 +27,7 @@ def test_ci_actions_are_sha_pinned_and_solver_uses_committed_constraints():
     assert "pull-requests: read" in workflow
     assert "actions: read" in workflow
     assert "contents: read" in workflow
+    assert "issues: read" in workflow
     assert "fetch-depth: 2" in workflow
     assert "ref: ${{ github.head_ref || github.sha }}" in workflow
     assert "name: Checkout exact head" in workflow

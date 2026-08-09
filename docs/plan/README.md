@@ -50,12 +50,14 @@ implementation PR. A milestone may merge only when:
 
 1. required CI checks pass on the exact PR head;
 2. every actionable thread required by that milestone's pre-merge gate is resolved;
-3. the approved head SHA is unchanged;
-4. the PR is squash-merged;
-5. a fresh reconstruction of merged `main` reproduces the checks; and
-6. an immutable milestone receipt is sealed.
+3. an authenticated clean acceptance exists for that exact head;
+4. complete live acceptance inventories and the issue timeline prove the accepted head is unchanged;
+5. the PR is squash-merged using that same head as the expected value;
+6. a fresh reconstruction of merged `main` reproduces the checks; and
+7. an immutable milestone receipt is sealed.
 
-No force-push workflow, self-reported test count, or workbook colour is acceptance evidence.
+No force-push workflow, persistent reaction by itself, self-reported test count, or workbook colour
+is acceptance evidence.
 
 ### R00 bootstrap exception
 
@@ -71,11 +73,23 @@ B00 onward requires any semantic spec/scope change to merge in a prior, separate
 For R00 specifically, PR #4 threads closed before its merge. Corrective PR #7's observed actionable
 roots—including `3741593887`—must be named, fixed, replied to, and resolved; two complete live
 GraphQL snapshots must equal the persisted root/resolution/reply inventory and the reviewed
-immutable root manifest. The complete PR #7 review list is likewise fetched twice; a current
-`CHANGES_REQUESTED`, later pre-merge review, or unbound post-merge review blocks closure. Its final
-exact-head Codex acceptance must have no findings, and PR #7 remains blocked until the authentic
-clean-result shape (review object or documented 👍 reaction) is observed and head-bound without
-fabrication. The 14 inherited PR #1–#3 threads closed post-PR #4 merge
+immutable root manifest. Two complete stable snapshots of PR #7's reviews, top-level issue comments,
+PR-root reactions, and issue timeline must likewise equal the persisted v2 export. A current
+`CHANGES_REQUESTED`, review at or after the selected trigger, unbound post-merge review, pagination
+gap, inventory race, or head/base mutation through merge blocks closure. The reviewed source pins
+the exact pre-final review/comment baseline; every top-level comment must remain unedited, any
+changed historical review or post-trigger dismissal fails closed, and automatic base changes or
+head deletion before receipt sealing are forbidden.
+For either clean-acceptance arm, thread roots and ordinary replies must predate acceptance; only the
+single canonical unedited closure reply may follow, strictly after merge.
+
+The clean-review-object arm requires an exact-head review object with no findings and the same
+complete historical comment/review, reaction, pull-boundary, and timeline checks. The observed
+clean-comment arm requires a fresh unchanged full-head/CI trigger followed by the exact unchanged
+Codex clean-response comment for that head. The connector's persistent PR-level `+1` is authenticated
+corroboration only; it need not be recreated after every trigger and never substitutes for a fresh
+head-specific clean comment. Any later commit invalidates the clean result and requires new
+exact-head CI and acceptance. The 14 inherited PR #1–#3 threads closed post-PR #4 merge
 after their replies could cite the actual squash SHA and receipt path. The final receipt inventories
 PRs #1–#4 and #7, as controlled by
 [`00_MASTER_PLAN.md`](00_MASTER_PLAN.md) and [`07_REVIEW_REMEDIATION.md`](07_REVIEW_REMEDIATION.md).
