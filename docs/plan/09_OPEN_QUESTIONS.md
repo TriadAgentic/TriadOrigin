@@ -67,6 +67,10 @@ All eight ship as `NOT_RATIFIED` registry rows; `require()` refuses them; runtim
 | E8 | F18 stop-side `abs()` defect (BLK-RC2-014) | B06 | DEFAULT_IN_FORCE | Directional stop-side invariant; one-tick vectors |
 | E9 | W06 cluster-ID circularity (BLK-RC2-012) | B06 | DEFAULT_IN_FORCE | Frozen earliest prospective root ordered by `(availability, candidate_id)`; never re-root |
 
+| E10 | F09 break-predicate scope: the implementation evaluates BOTH directional predicates against every confirmed frozen level (up_break iff C≥L+b, down_break iff C≤L−b — the literal formula text; first-breach dedup by `(level_id, direction)`), not a kind-scoped single predicate. Both readings satisfy GV-008 and the mirror vectors | B03 semantic merge (implemented; confirm or veto) | Operator/Research | DEFAULT_IN_FORCE | Documented in `structures/structure_state.py`; a kind-scoped veto is a one-line predicate change + re-vector |
+| E11 | F05 rolling extreme has NO linked RC3 golden vector (`BLOCKED_MISSING_LINKED_GOLDEN_VECTOR`); its exact values are pinned by repository tests only | G2 | Research + Operator | OPEN | Repo tests pin warm-up boundary + current-bar exclusion; the linked RC3 vector remains owed |
+| E12 | F06 span-law boundary is INCLUSIVE (span ≤ max_span joins, per PAR-009); an intended strict bound would be a formula-row spec change | B03 (implemented per PAR-009) | Operator | DEFAULT_IN_FORCE | `typed_level_registry.py` + boundary tests |
+
 ## F · Estate wiring handoffs (Track B)
 
 | Row | Question | Required before | Owner | Status |
