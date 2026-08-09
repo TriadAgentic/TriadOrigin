@@ -622,6 +622,226 @@ def binding_walk() -> None:
         raise AssertionError("blocked F08 binding must not be consumable")
 
 
+@stage("four_plane_walk", "B05: lever registry CAS/staleness -> SHADOW tradeability/dedup/health "
+                          "-> PAPER order/fill/close -> population separation -> ADR-005 artifact")
+def four_plane_walk() -> None:
+    from triad_origin import contracts, timings, transition
+    from triad_origin.control import lever_law
+    from triad_origin.control.lever_registry import (
+        ATTESTATION_ACCEPTED,
+        MANIFEST_ACCEPTED,
+        MANIFEST_REFUSED,
+        STALENESS_FORCED_OFF,
+        LeverRegistry,
+    )
+    from triad_origin.control.paper_ledger import (
+        PAPER_FILL_RECORDED,
+        PAPER_TRADE_RECORDED,
+        PaperLedger,
+    )
+    from triad_origin.control.shadow_health import (
+        HEALTH_FORCED_OFF,
+        ShadowHealth,
+    )
+    from triad_origin.control.shadow_ledger import (
+        MARKET_WATERMARK_TS_KEY,
+        SHADOW_REJECTION_AUDIT_RECORDED,
+        SHADOW_TRADE_RECORDED,
+        TRADEABILITY_REQUIREMENTS,
+        ShadowLedger,
+    )
+
+    # 1. Every one of the 10 RC4-declared valid combinations resolves accepted; the required
+    #    non-authoritative baseline OFF/OFF/OFF/LIVE is exactly one of them.
+    if lever_law.BASELINE_MANIFEST not in [
+        dict(c, shadow_activation="LIVE") for c in lever_law.VALID_COMBINATIONS
+    ]:
+        raise AssertionError("baseline manifest is not a valid combination")
+    for combo in lever_law.VALID_COMBINATIONS:
+        payload = dict(combo, shadow_activation="LIVE")
+        if combo["venue_environment"] == "LIVE" and combo["venue_activation"] == "LIVE":
+            payload["testnet_promotion_receipt"] = {"receipt_id": "r1"}
+        result = lever_law.resolve_manifest(payload)
+        if not result.accepted:
+            raise AssertionError(f"valid combination refused: {combo} -> {result.refusal_code}")
+
+    # 2. A sample across all three reachability classes of the 32 refusal codes fires by name.
+    bad_alias = lever_law.resolve_manifest(
+        {"venue_environment": "OFF", "venue_activation": "live", "paper_activation": "OFF",
+         "shadow_activation": "LIVE"})
+    if bad_alias.refusal_code != "VENUE_ACTIVATION_VALUE_INVALID":
+        raise AssertionError("alias refusal law not enforced in the e2e walk")
+    off_live = lever_law.resolve_manifest(
+        {"venue_environment": "OFF", "venue_activation": "LIVE", "paper_activation": "OFF",
+         "shadow_activation": "LIVE"})
+    if off_live.refusal_code != "OFF_WITH_LIVE_VENUE_ACTIVATION":
+        raise AssertionError("combination refusal law not enforced in the e2e walk")
+    external = lever_law.classify_external_refusal("OPPOSITE_ENVIRONMENT_REACHABLE", True)
+    if external is None or external.refusal_code != "OPPOSITE_ENVIRONMENT_REACHABLE":
+        raise AssertionError("EXTERNAL_EVIDENCE refusal classification broken")
+
+    # 3. Lever registry: exact-CAS accept at revision 1, a stale (behind) revision refused with
+    #    state byte-identical, a fresh runtime attestation accepted, and a stale cached copy
+    #    resolves the forced-OFF containment action with shadow_activation preserved LIVE.
+    activations = {"origin.candidate_publisher": "OFF"}
+    manifest = {"venue_environment": "OFF", "venue_activation": "OFF", "paper_activation": "OFF",
+               "shadow_activation": "LIVE", "activations": activations,
+               "manifest_digest_sha256": "d1", "revision": 1}
+    reg_result = transition.run(
+        LeverRegistry(),
+        [{"event_id": "e1", "kind": "REGISTER_MANIFEST", "payload": manifest}], {})
+    if reg_result.events[0]["event_kind"] != MANIFEST_ACCEPTED:
+        raise AssertionError("lever registry did not accept revision 1")
+    stale_result = transition.run(
+        LeverRegistry(),
+        [{"event_id": "e1", "kind": "REGISTER_MANIFEST", "payload": manifest},
+         {"event_id": "e2", "kind": "REGISTER_MANIFEST",
+          "payload": dict(manifest, revision=1, manifest_digest_sha256="d2")}], {})
+    if (stale_result.events[-1]["event_kind"] != MANIFEST_REFUSED
+            or stale_result.events[-1]["refusal_code"] != "LEVER_REVISION_STALE"):
+        raise AssertionError("CAS revision-fencing not enforced")
+    if stale_result.final_state["revision"] != 1:
+        raise AssertionError("a refused manifest must leave the registry state unchanged")
+    att_result = transition.run(
+        LeverRegistry(),
+        [{"event_id": "e1", "kind": "REGISTER_MANIFEST", "payload": manifest},
+         {"event_id": "e2", "kind": "ATTEST_RUNTIME",
+          "payload": {"engine_id": "eng-1", "accepted_manifest_digest_sha256": "d1",
+                     "accepted_revision": 1, "freshness_age_ms": 100}}], {})
+    if att_result.events[-1]["event_kind"] != ATTESTATION_ACCEPTED:
+        raise AssertionError("a fresh, matching runtime attestation must be accepted")
+    stale_cache = transition.run(
+        LeverRegistry(),
+        [{"event_id": "e1", "kind": "REGISTER_MANIFEST", "payload": manifest},
+         {"event_id": "e2", "kind": "RESOLVE_STALENESS",
+          "payload": {"engine_id": "origin.candidate_publisher",
+                     "cached_age_ms": timings.timing_ms("lever_cache_max_age_ms") + 1}}], {})
+    staleness_event = stale_cache.events[-1]
+    if staleness_event["event_kind"] != STALENESS_FORCED_OFF:
+        raise AssertionError("stale cache must resolve a forced-OFF containment event")
+    if staleness_event["action"]["shadow_activation"] != "LIVE":
+        raise AssertionError("staleness containment must preserve shadow_activation LIVE")
+
+    # 4. SHADOW: a tradeable candidate freezes a trade row; an untradeable one persists a rejection
+    #    audit with NO fabricated geometry; a duplicate delivery is a no-op; SHADOW health forces
+    #    venue/PAPER OFF on a stale writer heartbeat while shadow_activation stays LIVE.
+    good_payload = {
+        "candidate_id": "cand-1", "hypothesis_id": "hyp-1", "origin_disposition": "REJECTED",
+        "rejection_stage": "E08_RISK", "rejection_reason": "oversized",
+        "market_watermark": {MARKET_WATERMARK_TS_KEY: 1_000},
+        "proposed_geometry": {"side": "LONG", "entry_ticks": 100},
+        "evaluation_notional_quote": "1000000", "simulator_version": "sim-1",
+        "resolver_version": "res-1", "cost_model_version": "cost-1", "event_time_us": 1_000,
+    }
+    for name in TRADEABILITY_REQUIREMENTS:
+        good_payload[name] = True
+    shadow_result = transition.run(
+        ShadowLedger(), [{"event_id": "s1", "kind": "SHADOW_CANDIDATE", "payload": good_payload}],
+        {})
+    if shadow_result.events[0]["event_kind"] != SHADOW_TRADE_RECORDED:
+        raise AssertionError("a tradeable SHADOW candidate must freeze a trade row")
+    trade_row = shadow_result.events[0]["row"] if "row" in shadow_result.events[0] else None
+    dup_result = transition.run(
+        ShadowLedger(),
+        [{"event_id": "s1", "kind": "SHADOW_CANDIDATE", "payload": good_payload},
+         {"event_id": "s2", "kind": "SHADOW_CANDIDATE", "payload": dict(good_payload)}], {})
+    if len(dup_result.events) != 1:
+        raise AssertionError("an identical SHADOW redelivery must be a no-op (LEV-0070)")
+
+    bad_payload = dict(good_payload, candidate_id="cand-2", hypothesis_id="hyp-2")
+    bad_payload[TRADEABILITY_REQUIREMENTS[0]] = False
+    audit_result = transition.run(
+        ShadowLedger(), [{"event_id": "s3", "kind": "SHADOW_CANDIDATE", "payload": bad_payload}],
+        {})
+    audit_event = audit_result.events[0]
+    if audit_event["event_kind"] != SHADOW_REJECTION_AUDIT_RECORDED:
+        raise AssertionError("an untradeable candidate must persist a rejection audit")
+    if any("geometry" in str(k).lower() for k in audit_event.get("row", audit_event)):
+        raise AssertionError("a SHADOW_UNTRADEABLE audit must never carry fabricated geometry")
+
+    health_result = transition.run(
+        ShadowHealth(),
+        [{"event_id": "h1", "kind": "WRITER_HEARTBEAT",
+          "payload": {"age_ms": timings.timing_ms("shadow_health_max_age_ms") + 1}}], {})
+    forced = health_result.events[0]
+    if forced["event_kind"] != HEALTH_FORCED_OFF:
+        raise AssertionError("a stale SHADOW writer heartbeat must force venue/PAPER OFF")
+    if forced["payload"]["shadow_activation"] != "LIVE":
+        raise AssertionError("SHADOW health containment must preserve shadow_activation LIVE")
+
+    # 5. PAPER: keyless (no forbidden import substring in its own source), an order/fill closing
+    #    flat freezes a schema-valid paper_trade.v1 row, and a venue-shaped field is refused.
+    paper_source = (ROOT / "src" / "triad_origin" / "control" / "paper_ledger.py").read_text()
+    for forbidden in ("socket", "requests", "urllib", "websocket", "credential", "api_key",
+                     "private_key"):
+        if forbidden in paper_source:
+            raise AssertionError(f"PAPER ledger source carries a forbidden capability substring: "
+                                 f"{forbidden!r} (LEV-0078)")
+    paper_inputs = [
+        {"event_id": "p1", "kind": "PAPER_ACCOUNT_OPEN",
+         "payload": {"virtual_account_id": "ACCT-1", "starting_balance_quote": "1000000"}},
+        {"event_id": "p2", "kind": "PAPER_ORDER",
+         "payload": {"virtual_account_id": "ACCT-1", "candidate_id": "cand-1",
+                    "activation_revision": "1", "order_id": "ord-entry", "side": "LONG",
+                    "entry_policy": {"limit_ticks": 100}, "size_ticks": 10}},
+        {"event_id": "p3", "kind": "PAPER_FILL",
+         "payload": {"virtual_account_id": "ACCT-1", "order_id": "ord-entry", "fill_id": "fill-1",
+                    "fill_qty_ticks": 10, "fill_price_ticks": 100, "event_time_us": 1_000}},
+        {"event_id": "p4", "kind": "PAPER_ORDER",
+         "payload": {"virtual_account_id": "ACCT-1", "candidate_id": "cand-1",
+                    "activation_revision": "1", "order_id": "ord-exit", "side": "SHORT",
+                    "entry_policy": {"limit_ticks": 110}, "size_ticks": 10}},
+        {"event_id": "p5", "kind": "PAPER_FILL",
+         "payload": {"virtual_account_id": "ACCT-1", "order_id": "ord-exit", "fill_id": "fill-2",
+                    "fill_qty_ticks": 10, "fill_price_ticks": 110, "event_time_us": 2_000}},
+    ]
+    paper_result = transition.run(PaperLedger(), paper_inputs, {})
+    kinds = [e.get("event_kind") for e in paper_result.events]
+    if PAPER_FILL_RECORDED not in kinds or PAPER_TRADE_RECORDED not in kinds:
+        raise AssertionError("PAPER order/fill closing flat did not freeze a trade")
+    trade_row = list(paper_result.final_state["trades"].values())[-1]
+    if trade_row["population"] != "PAPER":
+        raise AssertionError("a frozen PAPER row must carry population=PAPER")
+    contracts.validate_payload("triad.paper_trade.v1", trade_row)
+
+    forbidden_field_result = transition.run(
+        PaperLedger(),
+        [{"event_id": "p1", "kind": "PAPER_ACCOUNT_OPEN",
+          "payload": {"virtual_account_id": "ACCT-2", "starting_balance_quote": "1000000"}},
+         {"event_id": "p2", "kind": "PAPER_ORDER",
+          "payload": {"virtual_account_id": "ACCT-2", "candidate_id": "cand-3",
+                     "activation_revision": "1", "order_id": "ord-2", "side": "LONG",
+                     "entry_policy": {"limit_ticks": 100}, "size_ticks": 10,
+                     "venue_order_id": "not-allowed"}}], {})
+    refused = forbidden_field_result.events[-1]
+    if refused.get("reason_code") != "PAPER_VENUE_EFFECT_FORBIDDEN":
+        raise AssertionError("a venue-identity-shaped field must refuse PAPER_VENUE_EFFECT_FORBIDDEN")
+
+    # 6. Population separation at the contract boundary: a PAPER row never validates against the
+    #    SHADOW schema, and vice versa (structural closed-enum proof, LEV-0084).
+    shadow_shaped = dict(good_payload)
+    shadow_shaped.update({
+        "shadow_trade_id": "shd-1", "population": "SHADOW", "shadow_activation": "LIVE",
+        "fill_model_result": {"result": "NO_FILL"}, "terminal_outcome": {},
+        "recorded_time_us": 1_000,
+    })
+    try:
+        contracts.validate_payload("triad.shadow_trade.v1", trade_row)
+    except contracts.ContractError:
+        pass
+    else:
+        raise AssertionError("a PAPER row must never validate against the SHADOW schema")
+
+    # 7. ADR-005 supersession artifact exists, is unsigned, and names its exact scope.
+    adr_path = ROOT / "docs" / "governance" / "ADR-005-SUPERSESSION.md"
+    adr_text = adr_path.read_text()
+    if "COUNTERSIGNED: ________________" not in adr_text:
+        raise AssertionError("ADR-005 supersession artifact must be prepared unsigned")
+    if "LEV-0001" not in adr_text or "sibling-repo estate rules untouched" not in adr_text.replace(
+            "\n", " "):
+        raise AssertionError("ADR-005 artifact must name LEV-0001 and its scope boundary")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")

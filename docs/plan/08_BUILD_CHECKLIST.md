@@ -98,20 +98,20 @@ separate gate receipt._
 
 ## B05 · Four-plane substrate
 
-- [ ] Exact lever types; `shadow_activation=LIVE` has no setter
-- [ ] All 35 signed-bundle invalid aliases + typed/whitespace negative cases
-- [ ] All 10 valid combinations and all 32 exact refusal/containment rows
-- [ ] Exact OFF/OFF/OFF/LIVE baseline manifest
-- [ ] Manifest scope/digest/revision/staleness resolver; stale means venue/PAPER OFF
-- [ ] Durable SHADOW outbox, ledger, rejection audit, resolver, heartbeat, backlog, coverage
-- [ ] All SHADOW dispositions and `SHADOW_UNTRADEABLE` malformed path
-- [ ] Frozen geometry/watermark + versioned evaluation model + fixed notional + bps/R + `NO_FILL`
-- [ ] Persistence deadline and writer/resolver stale tests force venue/PAPER OFF
-- [ ] Keyless PAPER executor and separate virtual order/fill/position/outcome ledger
-- [ ] Static/runtime proof of no PAPER venue adapter or credential path
-- [ ] Physical and analytical separation: SHADOW/PAPER/TESTNET/LIVE
-- [ ] ADR-005 supersession artifact prepared; no non-OFF activation without owner signature
-- [ ] End-to-end four-plane/refusal/health stage
+- [x] Exact lever types; `shadow_activation=LIVE` has no setter — `control/lever_law.py` `ACTIVATION_ENUM`/`VENUE_ENVIRONMENT_ENUM`, `SHADOW_CAPTURE_OFF_FORBIDDEN`
+- [x] All 35 signed-bundle invalid aliases + typed/whitespace negative cases — `control/lever_law.py INVALID_ALIASES`, drift-locked + parametrized battery (`test_lever_law.py`)
+- [x] All 10 valid combinations and all 32 exact refusal/containment rows — `control/lever_law.py VALID_COMBINATIONS`/`REFUSAL_CODES`, drift-locked to `rc4_control_bundle.json`
+- [x] Exact OFF/OFF/OFF/LIVE baseline manifest — `control/lever_law.py BASELINE_MANIFEST`
+- [x] Manifest scope/digest/revision/staleness resolver; stale means venue/PAPER OFF — `control/lever_registry.py` (CAS revision fencing, digest binding, `RESOLVE_STALENESS`)
+- [x] Durable SHADOW outbox, ledger, rejection audit, resolver, heartbeat, backlog, coverage — `control/shadow_ledger.py` + `control/shadow_health.py`
+- [x] All SHADOW dispositions and `SHADOW_UNTRADEABLE` malformed path — `shadow_ledger.py` REJECTED/ACCEPTED_NOT_EXECUTED/PROVEN_NO_VENUE_EFFECT + the 12-conjunct tradeability gate
+- [x] Frozen geometry/watermark + versioned evaluation model + fixed notional + bps/R + `NO_FILL` — `shadow_ledger.py` freeze-at-`SHADOW_CANDIDATE` + `SHADOW_FILL_MODEL`'s one designed exception
+- [x] Persistence deadline and writer/resolver stale tests force venue/PAPER OFF — `shadow_health.py` (100/1000/5000/60000 ms bounds via `timings.py`)
+- [x] Keyless PAPER executor and separate virtual order/fill/position/outcome ledger — `control/paper_ledger.py`
+- [x] Static/runtime proof of no PAPER venue adapter or credential path — `paper_ledger.py`'s own import list + source-scan test (LEV-0078)
+- [x] Physical and analytical separation: SHADOW/PAPER/TESTNET/LIVE — `population` is a hardcoded per-module constant, never a caller field; `test_population_separation.py` proves cross-schema validation fails both ways
+- [x] ADR-005 supersession artifact prepared; no non-OFF activation without owner signature — `docs/governance/ADR-005-SUPERSESSION.md` (unsigned)
+- [x] End-to-end four-plane/refusal/health stage — e2e stage 20 `four_plane_walk`
 - [ ] Source PR merged green
 - [ ] Post-merge B05 receipt passed
 
