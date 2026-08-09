@@ -389,6 +389,110 @@ def combined_dag() -> None:
     _run_tool("validate_combined_dag.py")
 
 
+@stage("structures_walk", "B03: E01 bars -> F02 ATR -> F03 swing -> F09 accepted break -> "
+                          "structure atom -> journal; F06/F08 refuse by name")
+def structures_walk() -> None:
+    from triad_origin import contracts, transition
+    from triad_origin.features import AtrCalculator
+    from triad_origin.journal import StateJournal, rebuild_projection
+    from triad_origin.structures import common
+    from triad_origin.structures.structure_state import (
+        BreakDetector, ProtectedSwingStructure, build_structure_atom_payload)
+    from triad_origin.structures.typed_level_registry import DirectionalChangeSwing
+
+    def bar_event(i, o, h, low, c):
+        return {"event_id": f"e2e_bar_{i}", "payload": {
+            "state_kind": "BAR", "bar_finalization_state": "FINALIZED",
+            "watermark_complete": True, "validity": "READY", "bar_index": i,
+            "bar_open_time_us": i * 60_000_000, "bar_close_time_us": (i + 1) * 60_000_000,
+            "open_ticks": o, "high_ticks": h, "low_ticks": low, "close_ticks": c}}
+
+    # 1 · E01-owned finalized bars (consumed, never authored) -> F02 ATR (GV-004 shape).
+    bars = [bar_event(i, 1000, 1008, 1000, 1000) for i in range(15)]
+    atr_run = transition.run(AtrCalculator(), bars, {"atr_period": 14})
+    features = [e for e in atr_run.events if e.get("event_kind") == "FEATURE"]
+    if not features or features[-1]["atr_ticks"] != 8:
+        raise AssertionError("F02 ATR walk did not yield the GV-004 value 8")
+    warmups = [e for e in atr_run.events if e.get("event_kind") == "NAMED_ABSTENTION"]
+    if not warmups:
+        raise AssertionError("F02 warm-up abstentions missing")
+
+    # 2 · F03 DC swing over ATR-carrying bars (GV-005 shape: delta = max(5, ceil(20/4)) = 5).
+    swing_bars = [
+        {"event_id": "s0", "kind": "BAR", "payload": {"high_ticks": 990, "low_ticks": 985,
+                                                      "atr14_ticks": 20, "bar_seq": 0}},
+        {"event_id": "s1", "kind": "BAR", "payload": {"high_ticks": 1000, "low_ticks": 995,
+                                                      "atr14_ticks": 20, "bar_seq": 1}},
+        {"event_id": "s2", "kind": "BAR", "payload": {"high_ticks": 999, "low_ticks": 995,
+                                                      "atr14_ticks": 20, "bar_seq": 2}},
+    ]
+    swing_run = transition.run(
+        DirectionalChangeSwing(), swing_bars,
+        {"dc_reversal_rule": common.DECLARED_DC_REVERSAL})
+    confirmed = [e for e in swing_run.events if e.get("event_kind") == "TYPED_LEVEL"]
+    if not confirmed or confirmed[0]["level_ticks"] != 1000:
+        raise AssertionError("F03 swing did not confirm the frozen extreme 1000")
+
+    # 3 · F09 accepted break of the confirmed level (GV-008: buffer 1; close 1001 breaks).
+    break_inputs = [
+        {"event_id": "lvl", "kind": "LEVEL", "payload": {
+            "level_id": "e2e_L1", "level_ticks": 1000, "direction": common.LONG,
+            "confirmed": True}},
+        {"event_id": "c1", "kind": "BAR", "payload": {"close_ticks": 1000, "atr14_ticks": 20}},
+        {"event_id": "c2", "kind": "BAR", "payload": {"close_ticks": 1001, "atr14_ticks": 20}},
+    ]
+    break_run = transition.run(
+        BreakDetector(), break_inputs,
+        {"break_buffer_rule": common.DECLARED_BOS_CLOSE_BUFFER,
+         "observation_mode": "FINALIZED_CLOSE"})
+    occurrences = [e for e in break_run.events if "break" in str(e.get("event_kind", "")).lower()
+                   or e.get("event_kind") == "BREAK_OCCURRENCE"]
+    if len(occurrences) != 1:
+        raise AssertionError(f"F09 expected exactly one first-breach occurrence, "
+                             f"got {len(occurrences)}")
+    if occurrences[0]["classification"] != "UNCLASSIFIED_STRUCTURE_STATE_UNAVAILABLE":
+        raise AssertionError("F09 classification must abstain while F08 is unratified")
+
+    # 4 · F08 refuses by name; F06 refuses by name while max span is NOT_RATIFIED.
+    f08_run = transition.run(
+        ProtectedSwingStructure(),
+        [{"event_id": "x", "kind": "BAR", "payload": {"close_ticks": 1}}], {})
+    if f08_run.events[0]["reason_code"] != "F08_UNAVAILABLE_REDUCER_VERSION_NOT_RATIFIED":
+        raise AssertionError("F08 must refuse with its named abstention")
+    from triad_origin.structures.typed_level_registry import EqualLevelCluster
+    f06_run = transition.run(
+        EqualLevelCluster(),
+        [{"event_id": "p", "kind": "PIVOT", "payload": {
+            "pivot_kind": "PIVOT_HIGH", "level_ticks": 1000, "atr14_ticks": 30}}],
+        {"equal_level_tolerance_rule": common.DECLARED_EQUAL_LEVEL_TOLERANCE,
+         "equal_level_min_touches": 2, "equal_level_max_span": common.NOT_RATIFIED})
+    if f06_run.events[0]["reason_code"] != "F06_UNAVAILABLE_MAX_SPAN_NOT_RATIFIED":
+        raise AssertionError("F06 must refuse with its named abstention while span unratified")
+
+    # 5 · Structure atom payload -> contract validation -> journal round-trip.
+    payload = build_structure_atom_payload(
+        structure_kind="dc_swing", structure_subtype="swing_high", direction=common.LONG,
+        canonical_instrument_id="BTCUSDT.BINANCE.UMF", venue_model="binance-usdm-futures",
+        timeframe="1m", formula_version="F03.v1", parameter_set_id="pset-e2e",
+        parameter_digest="4" * 64,
+        original_geometry={"level_ticks": 1000, "delta_ticks": 5},
+        origin_source_ids=["s1"], confirmation_source_ids=["s2"],
+        origin_time_us=1, confirmation_time_us=2, availability_time_us=3, knowledge_time_us=3,
+        reference_level_ids=[], source_offset_range=["0", "2"],
+        dependency_quality={"atr": "COMPLETE"}, build_commit="0" * 40,
+        config_bundle_sha256="5" * 64, instrument_digest="6" * 64)
+    contracts.validate_payload("triad.structure_atom.v2", payload)
+    journal = StateJournal(partition="e2e_structure_atoms")
+    atom_event = {"event_kind": "STRUCTURE_CONFIRMED", "payload": payload}
+    record = journal.append(
+        journal.seq, {}, {"last_atom": payload}, "evt_e2e_atom", (atom_event,))
+    if record is None:
+        raise AssertionError("structure atom journal append refused")
+    rebuilt = rebuild_projection(journal.partition, journal.records())
+    if rebuilt != {"last_atom": payload}:
+        raise AssertionError("structure atom journal round-trip mismatch")
+
+
 @stage("binding_walk", "binding.v2 registry: 105 rows migrated statuses-preserved; ACTIVE "
                        "resolves, BLOCKED refuses by name (B01R)")
 def binding_walk() -> None:
