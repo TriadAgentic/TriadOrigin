@@ -20,6 +20,7 @@ import re
 from typing import Any
 
 from .canonical import CanonicalError, canonical_json, str_to_tick
+from .control import lever_law
 
 _PACKAGE_CONTRACTS_DIR = pathlib.Path(__file__).resolve().parent / "_contracts"
 _SOURCE_CONTRACTS_DIR = pathlib.Path(__file__).resolve().parent.parent.parent / "contracts"
@@ -221,32 +222,17 @@ def _semantic_engine_attestation_v2(event: dict) -> None:
 
 
 def _semantic_engine_control_manifest_v2(event: dict) -> None:
-    """RC4 lever-combination law (the four-plane law's manifest-side conjuncts)."""
+    """RC4 lever-combination law (the four-plane law's manifest-side conjuncts).
+
+    Delegates the full EVENT_LOCAL refusal classification to the single source of that law,
+    :func:`triad_origin.control.lever_law.resolve_manifest` (B05) — this boundary never restates
+    the RC4 refusal-code vocabulary a second time; it raises the SAME named code the runtime
+    lever registry and every other consumer of :mod:`triad_origin.control.lever_law` would.
+    """
     payload = _payload_of(event)
-    venue_environment = payload.get("venue_environment")
-    venue_activation = payload.get("venue_activation")
-    if payload.get("shadow_activation") != "LIVE":
-        raise ContractError("SHADOW_CAPTURE_OFF_FORBIDDEN: shadow_activation must be LIVE")
-    if venue_environment == "OFF" and venue_activation == "LIVE":
-        raise ContractError(
-            "OFF_WITH_LIVE_VENUE_ACTIVATION: venue_environment OFF cannot pair with "
-            "venue_activation LIVE")
-    if venue_environment == "LIVE" and venue_activation == "LIVE":
-        receipt = payload.get("testnet_promotion_receipt")
-        if not isinstance(receipt, dict) or not receipt:
-            raise ContractError(
-                "LIVE_PROMOTION_RECEIPT_MISSING: LIVE activation requires a current successful "
-                "TESTNET promotion receipt")
-    activations = payload.get("activations")
-    if isinstance(activations, dict):
-        for lever, value in activations.items():
-            if value not in ("LIVE", "OFF"):
-                raise ContractError(
-                    f"ACTIVATION_VALUE_INVALID: activations[{lever!r}]={value!r} is not exactly "
-                    f"LIVE or OFF")
-    scope = payload.get("scope")
-    if isinstance(scope, dict):
-        _reject_wildcard_scope(scope, "scope")
+    resolution = lever_law.resolve_manifest(payload)
+    if not resolution.accepted:
+        raise ContractError(f"{resolution.refusal_code}: {resolution.meaning}")
 
 
 def _reject_wildcard_scope(node: Any, path: str) -> None:
