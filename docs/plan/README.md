@@ -65,31 +65,39 @@ R00 is the one-time bootstrap exception to the prior-plan-PR rule: the obsolete 
 foundation defects were discovered in the same audit, and no corrected execution law existed under
 which to split them safely. R00 may therefore combine governance refreeze with bounded M1/M2
 integrity remediation. The PR #4 post-merge sealer then failed closed because its source artifact
-omitted the reviewed dependency snapshot. Corrective PR #7 is the bounded closure of that same R00
-exception: it may change only the failed receipt/package path and the evidence law needed to bind
-the corrective chain honestly. The exception expires only when the corrective receipt is sealed.
+omitted the reviewed dependency snapshot. PR #7 repaired that defect but its merged validator also
+failed closed: it used `updatedAt` as an edit witness, imposed the V1 closure body retroactively on
+exact PR #1–#4 prose, and used numeric root-comment IDs as thread IDs. PR #7 remains authenticated
+rejected history. PR #8 is the bounded final-receipt continuation and may change only those failed
+receipt/evidence-law paths. The exception expires only when the PR #8 receipt is sealed.
 B00 onward requires any semantic spec/scope change to merge in a prior, separate PR.
 
-For R00 specifically, PR #4 threads closed before its merge. Corrective PR #7's observed actionable
+For R00 specifically, PR #4 threads closed before its merge. Historical PR #7's observed actionable
 roots—including `3741593887`, `3742096931`, and `3742370663`—must be named, dispositioned, replied
 to, and resolved; root `3742096931` is preserved as an official-contract rebuttal because GitHub
 documents a merged timeline
 event's `commit_id` as the PR head that was merged, not the resulting squash. Two complete live
 GraphQL snapshots must equal the persisted root/resolution/reply inventory and the reviewed
-immutable root manifest. Two complete stable snapshots of PR #7's reviews, top-level issue comments,
-PR-root reactions, and issue timeline must likewise equal the persisted v3 export. A current
+immutable root manifest. The v4 export authenticates PR #7's exact base/head/squash/tree/merge-time
+lineage, ten reviews, and three post-merge closure carriers without deleting, appending, or
+rewriting them. PR #8 starts new current review/comment/reaction/pull/timeline baselines. A current
 `CHANGES_REQUESTED`, review at or after the selected trigger, unbound post-merge review, pagination
 gap, inventory race, or head/base mutation through merge blocks closure. The reviewed source pins
-the exact pre-final review/comment baseline; every top-level comment must remain unedited, any
+the exact historical PR #7 reviews; every current PR #8 top-level comment must remain unedited, any
 changed historical review or post-trigger dismissal fails closed, and automatic base changes or
 head deletion before receipt sealing are forbidden.
 For either clean-acceptance arm, thread roots and ordinary replies must predate the selected review
-object or final review trigger; only the single canonical unedited closure reply may follow,
-strictly after merge.
+object or final review trigger. Historical selected closures must also predate that cutoff. A
+selected PR #8 closure may follow strictly after merge only when `updatedAt >= createdAt` and both
+GraphQL edit witnesses (`editor`, `lastEditedAt`) are null. PR #1–#4 historical prose is accepted
+only by source-pinned exact reply ID and body hash; PR #7 V1 closures bind `PRRT_…` thread IDs.
 
 Pull-request CI checks out the immutable event head SHA. The named local receipt branch and its
 receipt-auth step run only when the head repository is this repository and the short head branch is
 exactly `evidence/r00-receipt`; a fork cannot acquire the canonical evidence identity.
+Same-repository PR #8 CI also runs a raw-GraphQL preflight before merge. It double-fetches all
+controlled review threads and rejects missing/non-null edit-witness fields, root-set drift, changed
+source identities, or changed historical selected closures.
 
 The clean-review-object arm requires an exact-head review object with no findings and the same
 complete historical comment/review, reaction, pull-boundary, and timeline checks. The observed
@@ -101,5 +109,5 @@ input. A unique connector PR-level `+1` must occur strictly after this trigger a
 clean response. Any later commit invalidates the clean result and requires new
 exact-head CI and acceptance. The 14 inherited PR #1–#3 threads closed post-PR #4 merge
 after their replies could cite the actual squash SHA and receipt path. The final receipt inventories
-PRs #1–#4 and #7, as controlled by
+PRs #1–#4, historical PR #7, and current PR #8, as controlled by
 [`00_MASTER_PLAN.md`](00_MASTER_PLAN.md) and [`07_REVIEW_REMEDIATION.md`](07_REVIEW_REMEDIATION.md).

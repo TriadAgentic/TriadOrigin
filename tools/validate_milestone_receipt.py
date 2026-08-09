@@ -53,6 +53,7 @@ R00_REQUIRED_CI_STEPS = [
     ("Reproducible source and wheel artifacts", "success"),
     ("Installed-wheel contract smoke", "success"),
     ("DARK capability boundary", "success"),
+    ("Preflight R00 GraphQL history", "success"),
     ("Authenticate sealed milestone receipt", "skipped"),
 ]
 R00_REQUIRED_ARTIFACT_KINDS = {"source-tree", "sdist", "wheel"}
@@ -97,8 +98,10 @@ R00_KNOWN_PR4_THREADS = {
     "3741134194", "3741134196", "3741134197",
     "3741211095", "3741211096", "3741211097",
 }
-R00_RECEIPT_PR = 7
-R00_REVIEW_PRS = {1, 2, 3, 4, R00_RECEIPT_PR}
+R00_HISTORICAL_CORRECTIVE_PR = 7
+R00_RECEIPT_PR = 8
+R00_RECEIPT_BRANCH = "agent/r00-receipt-closure-v2"
+R00_REVIEW_PRS = {1, 2, 3, 4, R00_HISTORICAL_CORRECTIVE_PR, R00_RECEIPT_PR}
 R00_PR_AUTHOR = "likosubakti"
 R00_PR_AUTHOR_ID = "41339678"
 R00_REQUIRED_REVIEWER = "chatgpt-codex-connector"
@@ -116,24 +119,221 @@ R00_IMPLEMENTATION_REVIEW_URL = (
 R00_IMPLEMENTATION_REVIEW_BODY = (
     f"R00_REVIEW_VERDICT: PASS\nHEAD: {R00_IMPLEMENTATION_HEAD_SHA}\nP0: 0\nP1: 0\n"
 )
+R00_CORRECTIVE_BASE_SHA = R00_IMPLEMENTATION_MERGE_SHA
+R00_CORRECTIVE_HEAD_SHA = "202798f1a1a2c444c888b2acca841967a3f2e108"
+R00_CORRECTIVE_MERGE_SHA = "0012e89214c7e0321592684b3b866323f891ace9"
+R00_CORRECTIVE_TREE_SHA = "e3f35d7444dad9866850c22e2a66f6acb50506d9"
+R00_CORRECTIVE_MERGED_AT = "2026-08-09T03:16:24Z"
+R00_CORRECTIVE_HISTORY = {
+    "author": R00_PR_AUTHOR,
+    "author_id": R00_PR_AUTHOR_ID,
+    "base_sha": R00_CORRECTIVE_BASE_SHA,
+    "head_sha": R00_CORRECTIVE_HEAD_SHA,
+    "merge_sha": R00_CORRECTIVE_MERGE_SHA,
+    "merged": True,
+    "merged_at": R00_CORRECTIVE_MERGED_AT,
+    "number": R00_HISTORICAL_CORRECTIVE_PR,
+    "tree_sha": R00_CORRECTIVE_TREE_SHA,
+    "url": (
+        "https://github.com/TriadAgentic/TriadOrigin/pull/"
+        f"{R00_HISTORICAL_CORRECTIVE_PR}"
+    ),
+}
 R00_FAILED_ATTEMPT = {
-    "base_sha": R00_IMPLEMENTATION_BASE_SHA,
-    "ci_job_id": "93149756437",
-    "ci_run_id": "31276105452",
-    "corrective_pr": 7,
-    "failure_code": "SDIST_MISSING_CONSTRAINT_SNAPSHOT",
-    "head_sha": R00_IMPLEMENTATION_HEAD_SHA,
-    "merge_sha": R00_IMPLEMENTATION_MERGE_SHA,
-    "pr_number": 4,
-    "receipt_published": False,
-    "schema": "origin.failed-attempt-evidence.v1",
-    "sdist_sha256": "4b4a0d0fcd731587ed16aa815bd7208bbfd8a48d6aeb97694a5efd120666eb3b",
-    "status": "REJECTED_NO_RECEIPT",
-    "tree_sha": R00_IMPLEMENTATION_TREE_SHA,
+    "attempts": [
+        {
+            "base_sha": R00_IMPLEMENTATION_BASE_SHA,
+            "ci_job_id": "93149756437",
+            "ci_run_id": "31276105452",
+            "corrective_pr": 7,
+            "failure_codes": ["SDIST_MISSING_CONSTRAINT_SNAPSHOT"],
+            "head_sha": R00_IMPLEMENTATION_HEAD_SHA,
+            "merge_sha": R00_IMPLEMENTATION_MERGE_SHA,
+            "pr_number": 4,
+            "receipt_published": False,
+            "sdist_sha256": "4b4a0d0fcd731587ed16aa815bd7208bbfd8a48d6aeb97694a5efd120666eb3b",
+            "status": "REJECTED_NO_RECEIPT",
+            "tree_sha": R00_IMPLEMENTATION_TREE_SHA,
+        },
+        {
+            "base_sha": R00_CORRECTIVE_BASE_SHA,
+            "ci_job_id": "93189504246",
+            "ci_run_id": "31291545371",
+            "corrective_pr": 8,
+            "failure_codes": [
+                "GRAPHQL_UPDATED_AT_NOT_EDIT_WITNESS",
+                "HISTORICAL_CLOSURE_PROTOCOL_RETROACTIVE",
+                "REMEDIATION_ROOT_COMMENT_ID_NOT_THREAD_ID",
+            ],
+            "head_sha": R00_CORRECTIVE_HEAD_SHA,
+            "merge_sha": R00_CORRECTIVE_MERGE_SHA,
+            "pr_number": 7,
+            "receipt_published": False,
+            "status": "REJECTED_NO_RECEIPT",
+            "tree_sha": R00_CORRECTIVE_TREE_SHA,
+        },
+    ],
+    "final_receipt_pr": R00_RECEIPT_PR,
+    "schema": "origin.failed-attempt-evidence.v2",
 }
 # Exact corrective-review roots observed before the final head. Every row must be live-resolved.
 R00_KNOWN_PR7_THREADS: set[str] = {
     "3741593887", "3742096931", "3742370663",
+}
+# PR #8 begins with no review roots. Any finding must be source-pinned here on
+# a corrected head before it can enter a VERIFIED receipt.
+R00_KNOWN_PR8_THREADS: set[str] = set()
+R00_PR7_CLOSURES: dict[str, dict[str, str]] = {
+    "3741593887": {
+        "body_sha256": "5d307b46e2ea5d39b4aeda2323b172e40f5cfa091f751b8e652b06858733b92e",
+        "carrier_review_id": "4890414949",
+        "created_at": "2026-08-09T03:16:57Z",
+        "node_id": "PRRC_kwDOTyUBrM7fEXZT",
+        "reply_id": "3742463571",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XgoL6",
+        "updated_at": "2026-08-09T03:16:57Z",
+    },
+    "3742096931": {
+        "body_sha256": "3492b3ae11495233d62a4246f86f38a24de2c4be10fb9608d8104e90dec14ad0",
+        "carrier_review_id": "4890414975",
+        "created_at": "2026-08-09T03:16:58Z",
+        "node_id": "PRRC_kwDOTyUBrM7fEXaN",
+        "reply_id": "3742463629",
+        "thread_node_id": "PRRT_kwDOTyUBrM6XiB9O",
+        "updated_at": "2026-08-09T03:16:59Z",
+    },
+    "3742370663": {
+        "body_sha256": "cd4a10e8441b0c5e34d1050a990ecf17f009594a8ca12e1e62c9d7e241b06b4f",
+        "carrier_review_id": "4890415002",
+        "created_at": "2026-08-09T03:17:00Z",
+        "node_id": "PRRC_kwDOTyUBrM7fEXbM",
+        "reply_id": "3742463692",
+        "thread_node_id": "PRRT_kwDOTyUBrM6Xi3xr",
+        "updated_at": "2026-08-09T03:17:00Z",
+    },
+}
+R00_HISTORICAL_CLOSURES: dict[str, dict[str, str | int]] = {
+    '3740889446': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` changed `assert_epoch_ge()` to accept equality for the already-active epoch and reject only lower epochs; regressions cover repeated same-epoch events and stale events. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '7a9976bb8547e8ed91f84447ecfb6d4d40bc7e8d9e4526240e022a8fc838bf58',
+        "pr_number": 1,
+        "reply_id": '3741538148',
+    },
+    '3740889448': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` made the stdlib validator enforce the contract vocabulary used here, including `pattern`, `minLength`, required fields, `const`, closed enums, and forbidden additional properties. All 30 valid/invalid golden pairs run through the fallback path, and canonical-wire checks reject unsafe nested values. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '200b999c5e1d8537f831f30fa030959a17e1e9990e8dd0a4e96e3aa21fc7fbd1',
+        "pr_number": 1,
+        "reply_id": '3741538302',
+    },
+    '3740889449': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` preserved the published RC1 descriptor bytes and repaired the defect additively: `contracts/manifest/contract_bundle.manifest.r00.v1.json` is the authoritative enveloped artifact and validates against `triad.contract_bundle.manifest.v1`. Generation and CI validate that envelope without rewriting the legacy provenance bytes. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": 'c97d00a7ab66ddf73c24580fe900c624253e968f1d256b336ccf60eb44bff34f',
+        "pr_number": 1,
+        "reply_id": '3741538647',
+    },
+    '3740889452': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` packages the complete contract tree into both the sdist and wheel as `triad_origin/_contracts`. The isolated wheel-from-sdist test installs without source fallback, loads all 30 contracts, and verifies the registry, schemas, golden vectors, manifests, and byte manifest. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '72f0376d40748432bca19240a305afa54c41b54423cd8efac0114e77effad37b',
+        "pr_number": 1,
+        "reply_id": '3741538453',
+    },
+    '3740889453': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` makes canonical encoding and decoding reject every float recursively, including finite values and non-finite constants. Regression coverage proves floats cannot enter canonical bytes or identity digests. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": 'f9e8f1e50e08dcd15e1b8ae56da60185bf5eda49576a82ecfc4e3d9a62e0da18',
+        "pr_number": 1,
+        "reply_id": '3741539029',
+    },
+    '3740901367': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` accepts subsequent ingress events carrying the current active producer epoch while rejecting lower epochs. The check and high-water update are atomic, with repeated-current, stale, and concurrency regressions. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '0ada58e5d116c4e5375f4d0e15f6e43e91a2929a68c090d6d1b8429024f8872d',
+        "pr_number": 2,
+        "reply_id": '3741538548',
+    },
+    '3740901373': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` introduced `origin.checkpoint.v2`, whose checksum authenticates state plus every restore/replay identity field: partition, input/output segments and offsets, input-prefix digest, domain/transition identity, producer epoch, projection, state sequence, build/config/contract/parameter/instrument digests, and checkpoint version. Per-field tampering fails closed, and legacy v1 requires an explicit cold rebuild. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": 'c53a09776d1ea97600a0ed29ca21805d5fd5d7baf56343d540356c843b305752',
+        "pr_number": 2,
+        "reply_id": '3741538922',
+    },
+    '3740901374': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` makes recorded local monotonic receipt the cross-source order and compares receive sequences only within the same venue/route/source/connection epoch. Source-local regressions fail closed, and adversarial independent-connection tests preserve actual receipt order. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '2d40a454672092dfee45d66de9f06961bd970ae8d191d36d696d1c1fde4744c0',
+        "pr_number": 2,
+        "reply_id": '3741538768',
+    },
+    '3740901377': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` permits writes only with the exact token of an already accepted ACTIVE external lease. Revocation is terminal in R00: guessed higher tokens, unseen scopes, and attempted replacement leases remain denied until B00 ratifies a cryptographically verified replacement path. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '62b86dce6491756962282aca8c13b2d248eb3a15fde1dd42936c9cdbe150290e',
+        "pr_number": 2,
+        "reply_id": '3741539221',
+    },
+    '3740901381': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` emits the contract-valid string `side_effect_capability: "NONE"` and validates the heartbeat payload against `triad.service_heartbeat.v1` before returning it. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": 'ea31254223310e686f2b913302154346eec83bc1f8aa68630675e97f18052ba7',
+        "pr_number": 2,
+        "reply_id": '3741539124',
+    },
+    '3740901383': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` serializes `raw_reference` as a contract-valid `sha256:<digest>` string. Invalid and non-canonical inputs still produce a validated, canonical quarantine record without exposing or fabricating raw payload data. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '5a437851166a377471bd0f9869342b65e7eccab95037f1b21bd9f5941f12919b',
+        "pr_number": 2,
+        "reply_id": '3741539165',
+    },
+    '3740938956': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` defines `PRODUCTION_MODES` as exactly `("live",)` and keeps replay and simulation only in `OFFLINE_HARNESSES`; paper, shadow, and testnet are explicitly absent from production posture and covered by regression tests. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": 'bb36355774de2e297fd36f3fb41d46a6a5c21468cc4f3f73040ce44bf41631fc',
+        "pr_number": 3,
+        "reply_id": '3741539335',
+    },
+    '3740938960': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` removed lease issuance/coordinator authority from ORIGIN and retained only a verify-only `ConsumerFence`. The revised plan assigns the durable lease coordinator and fencing ledger to Platform/Governance outside this repository and keeps durable per-scope restore as a named B02 blocker, so the in-process verifier is not represented as durable truth. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '5cc9ac29be0355faeedaf1bf2ffc38f9965fc4fd47b5b83a603eeaeb8b5dec6a',
+        "pr_number": 3,
+        "reply_id": '3741539293',
+    },
+    '3740938963': {
+        "body": 'Post-merge closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` adds an explicit OPS allocation in `docs/plan/02_TRACEABILITY.md`: immutable artifact/SBOM/provenance to B01/B09, dedicated DARK service and deployment to B08, replay smoke to B08/B09, the 26-hour soak to B09 operator evidence, ACL negative proof to R00/B08, rollback/DR to B09, and external certification/lease ownership to their named estate owners. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '41a2ef713fbcc57ad02e3d45df2e9886bbfc342b1d1281f1aba2073614aba763',
+        "pr_number": 3,
+        "reply_id": '3741539265',
+    },
+    '3741134194': {
+        "body": 'Post-merge receipt closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` contains the checkpoint-v2 migration and authenticated restore-context fix described above. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": 'fd978272b6311d71c4f6e5095394c2ed5855f2e8a9380c6e2bf04cb593edb588',
+        "pr_number": 4,
+        "reply_id": '3741546807',
+    },
+    '3741134196': {
+        "body": 'Post-merge receipt closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` contains the sdist contract-tree packaging and isolated wheel-from-sdist verification described above. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '5d2970c9cd523958c6887bdb6c561124c2d26aa412f013b8213c852a653305eb',
+        "pr_number": 4,
+        "reply_id": '3741546871',
+    },
+    '3741134197': {
+        "body": 'Post-merge receipt closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` contains the strict runtime import allowlist and DARK capability regressions described above. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": 'ee619b5459126e524d077a5a4de945885a1a4c6a5a8687780976990872ac9cf6',
+        "pr_number": 4,
+        "reply_id": '3741546917',
+    },
+    '3741211095': {
+        "body": 'Post-merge receipt closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` contains the exact accepted-token ConsumerFence fix and authority-bypass regressions described above. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '621259e6e471c7119e5b0fe8dd33b7126850ddff1155328be3b09bfd8debd2fe',
+        "pr_number": 4,
+        "reply_id": '3741547044',
+    },
+    '3741211096': {
+        "body": 'Post-merge receipt closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` contains the semantic receipt sealer and exact CI/head/evidence bindings described above. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '816fef7edb65cd73863173c59335b706ba5a80e934faff2b131b6144dd24970f',
+        "pr_number": 4,
+        "reply_id": '3741546979',
+    },
+    '3741211097': {
+        "body": 'Post-merge receipt closure: R00 squash merge `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` contains strict canonical signed-int64 ordering and partition identity validation described above. Closure evidence: `evidence/receipts/R00.json`.',
+        "body_sha256": '67c7cc88b285065ae6a929fd5d1c9a1ca7ae54d5c3fa01ec7c41b000ac323107',
+        "pr_number": 4,
+        "reply_id": '3741547083',
+    },
+    **R00_PR7_CLOSURES,
 }
 
 # Immutable pre-merge review-root manifest. The full finding text is source-reviewed here
@@ -411,6 +611,8 @@ R00_REVIEW_THREADS_QUERY = """query R00ReviewThreads($owner: String!, $repo: Str
               path
               createdAt
               updatedAt
+              editor { login }
+              lastEditedAt
               replyTo { fullDatabaseId }
               author { login }
               pullRequestReview { fullDatabaseId }
@@ -665,6 +867,34 @@ def _r00_pr7_preacceptance_review_baseline() -> list[dict[str, str]]:
     ]
 
 
+def _r00_pr7_historical_review_baseline() -> list[dict[str, str]]:
+    """Exact PR #7 history, including the three post-merge closure carriers."""
+    rows = _r00_pr7_preacceptance_review_baseline()
+    rows.extend(
+        {
+            "body": "",
+            "commit_id": R00_CORRECTIVE_HEAD_SHA,
+            "raw_reviewer": R00_PR_AUTHOR,
+            "review_id": closure["carrier_review_id"],
+            "reviewer": R00_PR_AUTHOR,
+            "reviewer_id": R00_PR_AUTHOR_ID,
+            "state": "COMMENTED",
+            "submitted_at": closure["created_at"],
+            "url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                f"#pullrequestreview-{closure['carrier_review_id']}"
+            ),
+        }
+        for closure in R00_PR7_CLOSURES.values()
+    )
+    return rows
+
+
+def _r00_receipt_preacceptance_review_baseline() -> list[dict[str, str]]:
+    """PR #8 starts a new final-acceptance inventory; PR #7 is historical."""
+    return []
+
+
 def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
     """Reviewed PR #7 top-level comment prefix, before the final fresh pair."""
     pin_head = "71d0400d0610ece52efcaacc958ef4f748418ddd"
@@ -808,14 +1038,54 @@ def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
     ]
 
 
-def _expected_remediation_reply_body(thread_id: str, merge_sha: str) -> str:
+def _r00_receipt_preacceptance_comment_baseline() -> list[dict[str, str]]:
+    """PR #8 has no source-pinned top-level comments before its final trigger."""
+    return []
+
+
+def _expected_remediation_reply_body(thread_node_id: str, merge_sha: str) -> str:
+    """Return the canonical closure for a GraphQL review-thread identity.
+
+    ``PullRequestReviewThread.id`` is the thread identity.  A review comment's
+    numeric ``fullDatabaseId`` is only the root-comment identity and must never
+    be serialized as ``thread_id``.
+    """
+    if (
+        not isinstance(thread_node_id, str)
+        or not thread_node_id.startswith("PRRT_")
+        or not thread_node_id.removeprefix("PRRT_")
+    ):
+        raise ValueError("remediation closure requires a GraphQL thread node ID")
     return (
         "R00_REMEDIATION_CLOSURE_V1\n"
-        f"thread_id={thread_id}\n"
+        f"thread_id={thread_node_id}\n"
         f"remediation_merge={merge_sha}\n"
         "receipt=evidence/receipts/R00.json\n"
         "status=RESOLVED\n"
     )
+
+
+def _expected_pr7_closure_inventory(root_id: str) -> dict[str, Any]:
+    closure = R00_PR7_CLOSURES[root_id]
+    reviewed = R00_REVIEWED_ROOTS[root_id]
+    reply_id = closure["reply_id"]
+    return {
+        "author": R00_PR_AUTHOR,
+        "body_sha256": closure["body_sha256"],
+        "created_at": closure["created_at"],
+        "editor": None,
+        "id": reply_id,
+        "last_edited_at": None,
+        "node_id": closure["node_id"],
+        "path": reviewed["path"],
+        "reply_to_id": root_id,
+        "review_id": closure["carrier_review_id"],
+        "updated_at": closure["updated_at"],
+        "url": (
+            "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+            f"#discussion_r{reply_id}"
+        ),
+    }
 
 
 def _walk_strings(value: Any, path: str = "<root>"):
@@ -866,10 +1136,10 @@ def validate_receipt(
             or receipt["merge_control"]["pr_number"] != R00_RECEIPT_PR
         ):
             problems.append(
-                "R00 merge control does not identify the controlled corrective PR #7"
+                "R00 merge control does not identify the controlled receipt PR #8"
             )
-        if receipt["base_sha"] != R00_IMPLEMENTATION_MERGE_SHA:
-            problems.append("R00 corrective base does not equal the PR #4 implementation merge")
+        if receipt["base_sha"] != R00_CORRECTIVE_MERGE_SHA:
+            problems.append("R00 receipt base does not equal the authenticated PR #7 merge")
         if receipt["review"]["reviewer"] != R00_REQUIRED_REVIEWER:
             problems.append("R00 final reviewer is not the independent Codex reviewer")
         if commands != R00_REQUIRED_COMMANDS:
@@ -1200,7 +1470,7 @@ def _validate_typed_evidence(
         _compare_record(
             record,
             {
-                "schema": "origin.review-evidence.v3",
+                "schema": "origin.review-evidence.v4",
                 "head_sha": receipt["head_sha"],
                 "reviewer": receipt["review"]["reviewer"],
                 "unresolved_actionable_threads": receipt["review"][
@@ -1235,7 +1505,7 @@ def _validate_typed_evidence(
             if receipt["milestone_id"] == "R00":
                 if record.get("reviewed_prs") != sorted(R00_REVIEW_PRS):
                     problems.append(
-                        f"R00 review evidence omits PR #1-#4 or corrective PR #7: "
+                        f"R00 review evidence omits PR #1-#4, historical PR #7, or receipt PR #8: "
                         f"{item['path']}"
                     )
                 inherited = [
@@ -1952,7 +2222,7 @@ def _validate_r00_authority_and_manifests(
         failed_attempt != R00_FAILED_ATTEMPT
         or canonical_json(failed_attempt) != failed_raw
     ):
-        problems.append("R00 failed PR #4 receipt attempt is not exactly authenticated")
+        problems.append("R00 ordered PR #4/PR #7 failed-attempt chain is not exactly authenticated")
 
     contract_path = target("/manifests/contracts")
     golden_path = target("/manifests/golden_vectors")
@@ -2100,7 +2370,7 @@ def _validate_r00_review_export(
         set(export) != {
             "head_sha", "page_info", "pagination_complete", "pull_requests", "repository", "schema",
         }
-        or export.get("schema") != "origin.github-review-export.v3"
+        or export.get("schema") != "origin.github-review-export.v4"
         or export.get("repository") != "TriadAgentic/TriadOrigin"
         or export.get("pagination_complete") is not True
         or export.get("page_info") != {"has_next_page": False}
@@ -2127,6 +2397,8 @@ def _validate_r00_review_export(
         covered_prs.add(pr_number)
         exported_pulls[pr_number] = pull
         expected_pull_fields = {"author", "inline_threads", "pr_number", "reviews"}
+        if pr_number == R00_HISTORICAL_CORRECTIVE_PR:
+            expected_pull_fields.add("historical_merge")
         if pr_number == R00_RECEIPT_PR:
             expected_pull_fields.update({
                 "issue_comments",
@@ -2144,6 +2416,13 @@ def _validate_r00_review_export(
             return
         if pr_number == R00_RECEIPT_PR and pull.get("author") != R00_PR_AUTHOR:
             problems.append("R00 GitHub review export does not bind the corrective PR author")
+        if (
+            pr_number == R00_HISTORICAL_CORRECTIVE_PR
+            and pull.get("author") != R00_CORRECTIVE_HISTORY["author"]
+        ):
+            problems.append(
+                "R00 GitHub review export does not bind historical PR #7 author"
+            )
         comments = pull.get("inline_threads")
         if not isinstance(comments, list):
             problems.append("R00 GitHub review export omits inline thread rows")
@@ -2196,7 +2475,7 @@ def _validate_r00_review_export(
             expected_review_fields = {
                 "body", "commit_id", "review_id", "reviewer", "state", "url",
             }
-            if pr_number == R00_RECEIPT_PR:
+            if pr_number in {R00_HISTORICAL_CORRECTIVE_PR, R00_RECEIPT_PR}:
                 expected_review_fields.update({"raw_reviewer", "reviewer_id", "submitted_at"})
             if set(api_review) != expected_review_fields:
                 problems.append("R00 GitHub review export has contradictory review fields")
@@ -2219,8 +2498,24 @@ def _validate_r00_review_export(
                 "R00 GitHub review export does not exactly bind the PR #4 implementation review"
             )
             return
+        if (
+            pr_number == R00_HISTORICAL_CORRECTIVE_PR
+            and pull.get("reviews") != _r00_pr7_historical_review_baseline()
+        ):
+            problems.append(
+                "R00 GitHub review export does not exactly bind historical PR #7 reviews"
+            )
+            return
+        if (
+            pr_number == R00_HISTORICAL_CORRECTIVE_PR
+            and pull.get("historical_merge") != R00_CORRECTIVE_HISTORY
+        ):
+            problems.append(
+                "R00 GitHub review export does not exactly bind historical PR #7 merge"
+            )
+            return
     if covered_prs != R00_REVIEW_PRS:
-        problems.append("R00 GitHub review export does not cover PR #1-#4 and PR #7")
+        problems.append("R00 GitHub review export does not cover PR #1-#4, PR #7, and PR #8")
     _validate_live_r00_review_threads(
         exported,
         exported_rows,
@@ -2235,6 +2530,8 @@ def _validate_r00_review_export(
         problems.append("R00 GitHub review export omits a known PR #4 thread")
     if not R00_KNOWN_PR7_THREADS.issubset(exported):
         problems.append("R00 GitHub review export omits a known PR #7 thread")
+    if not R00_KNOWN_PR8_THREADS.issubset(exported):
+        problems.append("R00 GitHub review export omits a known PR #8 thread")
     review_threads = review.get("threads")
     if not isinstance(review_threads, list):
         problems.append("R00 review inventory is not a list")
@@ -2251,13 +2548,14 @@ def _validate_r00_review_export(
         str(thread.get("thread_id")): thread
         for thread in review_threads if isinstance(thread, dict)
     }
-    historical_actionable = set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS
-    corrective_actionable = {
+    legacy_actionable = set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS
+    historical_actionable = legacy_actionable | R00_KNOWN_PR7_THREADS
+    receipt_actionable = {
         thread_id
         for thread_id, (pr_number, _, _) in exported.items()
         if pr_number == R00_RECEIPT_PR
     }
-    known_actionable = historical_actionable | corrective_actionable
+    known_actionable = historical_actionable | receipt_actionable
     for thread_id in known_actionable:
         api_thread = exported_rows.get(thread_id, {})
         inventory_thread = inventory_rows.get(thread_id, {})
@@ -2267,14 +2565,17 @@ def _validate_r00_review_export(
             f"https://github.com/TriadAgentic/TriadOrigin/pull/{pr_number}"
             f"#discussion_r{reply.get('id') if isinstance(reply, dict) else ''}"
         )
-        expected_closure_merge = (
-            R00_IMPLEMENTATION_MERGE_SHA
-            if thread_id in historical_actionable
-            else merge_sha
-        )
-        expected_reply_body = _expected_remediation_reply_body(
-            thread_id, expected_closure_merge
-        )
+        expected_reply_body: str | None = None
+        historical_closure = R00_HISTORICAL_CLOSURES.get(thread_id)
+        if thread_id in R00_KNOWN_PR7_THREADS:
+            expected_reply_body = _expected_remediation_reply_body(
+                str((historical_closure or {}).get("thread_node_id", "")),
+                R00_CORRECTIVE_MERGE_SHA,
+            )
+        elif thread_id in receipt_actionable:
+            expected_reply_body = _expected_remediation_reply_body(
+                str(api_thread.get("thread_node_id", "")), merge_sha
+            )
         if (
             api_thread.get("is_resolved") is not True
             or inventory_thread.get("actionable") is not True
@@ -2289,7 +2590,27 @@ def _validate_r00_review_export(
             or not reply["author"]
             or reply.get("url") != expected_reply_url
             or not isinstance(reply.get("body"), str)
-            or reply["body"] != expected_reply_body
+            or (
+                expected_reply_body is not None
+                and reply["body"] != expected_reply_body
+            )
+            or (
+                historical_closure is not None
+                and (
+                    reply.get("id") != historical_closure.get("reply_id")
+                    or hashlib.sha256(reply["body"].encode("utf-8")).hexdigest()
+                    != historical_closure.get("body_sha256")
+                    or (
+                        historical_closure.get("body") is not None
+                        and reply["body"] != historical_closure.get("body")
+                    )
+                    or (
+                        historical_closure.get("thread_node_id") is not None
+                        and api_thread.get("thread_node_id")
+                        != historical_closure.get("thread_node_id")
+                    )
+                )
+            )
         ):
             problems.append(
                 "R00 actionable review thread lacks an API-bound resolution reply and fix/receipt reference"
@@ -2307,6 +2628,13 @@ def _validate_r00_review_export(
     ):
         problems.append("R00 PR #4 implementation review is absent from the GitHub API export")
     _validate_live_r00_implementation_review(
+        github_get_json=github_get_json,
+        problems=problems,
+    )
+    historical_pr7 = exported_pulls.get(R00_HISTORICAL_CORRECTIVE_PR, {})
+    _validate_live_r00_pr7_history(
+        persisted_merge=historical_pr7.get("historical_merge"),
+        persisted_reviews=historical_pr7.get("reviews"),
         github_get_json=github_get_json,
         problems=problems,
     )
@@ -2447,6 +2775,35 @@ def _validate_live_r00_implementation_review(
         problems.append("R00 live PR #4 implementation review does not match history")
 
 
+def _normalize_graphql_edit_provenance(
+    comment: dict[str, Any],
+) -> tuple[str | None, str | None]:
+    """Normalize the API's actual edit witnesses for one review comment.
+
+    ``updatedAt`` is not an edit timestamp: GitHub may advance it while creating
+    a reply or performing other server-side bookkeeping.  ``editor`` and
+    ``lastEditedAt`` are the GraphQL fields that distinguish a content edit.
+    Both fields are therefore required in the response and must be null
+    together or populated together.
+    """
+    if "editor" not in comment or "lastEditedAt" not in comment:
+        raise ValueError("review comment omits edit provenance")
+    editor_record = comment.get("editor")
+    last_edited_at = comment.get("lastEditedAt")
+    if editor_record is None and last_edited_at is None:
+        return None, None
+    editor = (
+        editor_record.get("login") if isinstance(editor_record, dict) else None
+    )
+    if (
+        not isinstance(editor, str)
+        or not editor
+        or _parse_github_time(last_edited_at) is None
+    ):
+        raise ValueError("review comment edit provenance is malformed")
+    return editor, last_edited_at
+
+
 def _normalize_live_r00_review_threads(
     payloads: dict[int, Any],
 ) -> dict[str, dict[str, Any]]:
@@ -2508,6 +2865,7 @@ def _normalize_live_r00_review_threads(
             root_node_id = root.get("id")
             root_created_at = root.get("createdAt")
             root_updated_at = root.get("updatedAt")
+            root_editor, root_last_edited_at = _normalize_graphql_edit_provenance(root)
             expected_root_url = (
                 f"https://github.com/TriadAgentic/TriadOrigin/pull/{pr_number}"
                 f"#discussion_r{root_id or ''}"
@@ -2560,6 +2918,9 @@ def _normalize_live_r00_review_threads(
                 reply_node_id = reply.get("id") if isinstance(reply, dict) else None
                 reply_created_at = reply.get("createdAt") if isinstance(reply, dict) else None
                 reply_updated_at = reply.get("updatedAt") if isinstance(reply, dict) else None
+                reply_editor, reply_last_edited_at = _normalize_graphql_edit_provenance(
+                    reply
+                ) if isinstance(reply, dict) else (None, None)
                 if (
                     reply_id is None
                     or reply_id in comment_ids
@@ -2594,7 +2955,9 @@ def _normalize_live_r00_review_threads(
                         reply["body"].encode("utf-8")
                     ).hexdigest(),
                     "created_at": reply_created_at,
+                    "editor": reply_editor,
                     "id": reply_id,
+                    "last_edited_at": reply_last_edited_at,
                     "node_id": reply_node_id,
                     "path": reply["path"],
                     "reply_to_id": root_id,
@@ -2616,6 +2979,8 @@ def _normalize_live_r00_review_threads(
                         root["body"].encode("utf-8")
                     ).hexdigest(),
                     "created_at": root_created_at,
+                    "editor": root_editor,
+                    "last_edited_at": root_last_edited_at,
                     "node_id": root_node_id,
                     "review_id": root_review_id,
                     "updated_at": root_updated_at,
@@ -2625,6 +2990,101 @@ def _normalize_live_r00_review_threads(
                 "url": root["url"],
             }
     return normalized
+
+
+def validate_r00_graphql_preflight(
+    github_get_review_threads: GitHubReviewThreadsGetter,
+) -> None:
+    """Fail closed before PR #8 merge on source-controlled GraphQL history."""
+    snapshots: list[dict[str, dict[str, Any]]] = []
+    try:
+        for _ in range(2):
+            payloads = {
+                pr_number: github_get_review_threads(pr_number)
+                for pr_number in sorted(R00_REVIEW_PRS)
+            }
+            snapshots.append(_normalize_live_r00_review_threads(payloads))
+    except (KeyError, TypeError, UnicodeError, ValueError) as exc:
+        raise ReceiptValidationError(
+            f"R00 GraphQL preflight normalization failed: {type(exc).__name__}"
+        ) from exc
+    if snapshots[0] != snapshots[1]:
+        raise ReceiptValidationError("R00 GraphQL preflight inventory changed between reads")
+    live = snapshots[0]
+    controlled_roots = (
+        set(R00_INHERITED_THREADS)
+        | R00_KNOWN_PR4_THREADS
+        | R00_KNOWN_PR7_THREADS
+        | R00_KNOWN_PR8_THREADS
+    )
+    if set(R00_REVIEWED_ROOTS) != controlled_roots or set(live) != controlled_roots:
+        raise ReceiptValidationError(
+            "R00 GraphQL preflight root set does not equal reviewed source"
+        )
+    for root_id, reviewed in R00_REVIEWED_ROOTS.items():
+        row = live[root_id]
+        root = row.get("root")
+        replies = row.get("reply_inventory")
+        historical = R00_HISTORICAL_CLOSURES.get(root_id)
+        if (
+            not isinstance(root, dict)
+            or not isinstance(replies, list)
+            or row.get("pr_number") != reviewed["pr_number"]
+            or row.get("is_resolved") is not True
+            or row.get("thread_node_id") != reviewed["thread_node_id"]
+            or row.get("path") != reviewed["path"]
+            or row.get("review_id") != reviewed["review_id"]
+            or row.get("url") != reviewed["url"]
+            or root.get("author") != reviewed["author"]
+            or root.get("body_sha256")
+            != hashlib.sha256(str(reviewed["body"]).encode("utf-8")).hexdigest()
+            or root.get("node_id") != reviewed["root_node_id"]
+            or root.get("review_id") != reviewed["review_id"]
+            or root.get("url") != reviewed["url"]
+            or root.get("editor") is not None
+            or root.get("last_edited_at") is not None
+            or any(
+                not isinstance(reply, dict)
+                or reply.get("editor") is not None
+                or reply.get("last_edited_at") is not None
+                for reply in replies
+            )
+        ):
+            raise ReceiptValidationError(
+                f"R00 GraphQL preflight root/edit identity mismatch: {root_id}"
+            )
+        if reviewed["pr_number"] == R00_RECEIPT_PR:
+            # PR #8 is still pre-merge here. Its source-controlled finding and
+            # resolved current inventory must be stable, but its canonical
+            # post-merge receipt closure cannot exist yet.
+            continue
+        if historical is None:
+            raise ReceiptValidationError(
+                f"R00 GraphQL preflight historical closure is not source-pinned: {root_id}"
+            )
+        selected = [
+            reply for reply in replies
+            if str(reply.get("id")) == str(historical["reply_id"])
+        ]
+        if (
+            len(selected) != 1
+            or selected[0].get("body_sha256") != historical["body_sha256"]
+            or not row.get("reply_order")
+            or row["reply_order"][-1] != str(historical["reply_id"])
+            or (
+                historical.get("thread_node_id") is not None
+                and row.get("thread_node_id") != historical["thread_node_id"]
+            )
+        ):
+            raise ReceiptValidationError(
+                f"R00 GraphQL preflight historical closure mismatch: {root_id}"
+            )
+        if root_id in R00_KNOWN_PR7_THREADS and (
+            selected[0] != _expected_pr7_closure_inventory(root_id)
+        ):
+            raise ReceiptValidationError(
+                f"R00 GraphQL preflight PR #7 closure history mismatch: {root_id}"
+            )
 
 
 def _validate_live_r00_review_threads(
@@ -2657,7 +3117,10 @@ def _validate_live_r00_review_threads(
         problems.append("R00 persisted thread roots do not equal the live GitHub inventory")
         return
     controlled_roots = (
-        set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS | R00_KNOWN_PR7_THREADS
+        set(R00_INHERITED_THREADS)
+        | R00_KNOWN_PR4_THREADS
+        | R00_KNOWN_PR7_THREADS
+        | R00_KNOWN_PR8_THREADS
     )
     if set(R00_REVIEWED_ROOTS) != controlled_roots:
         problems.append("R00 reviewed root manifest does not equal the controlled root set")
@@ -2665,7 +3128,9 @@ def _validate_live_r00_review_threads(
     if set(live) != controlled_roots:
         problems.append("R00 live GitHub roots do not equal the reviewed controlled set")
         return
-    historical_actionable = set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS
+    historical_actionable = (
+        set(R00_INHERITED_THREADS) | R00_KNOWN_PR4_THREADS | R00_KNOWN_PR7_THREADS
+    )
     for thread_id, live_row in live.items():
         persisted = exported_rows[thread_id]
         persisted_identity = exported.get(thread_id)
@@ -2715,6 +3180,21 @@ def _validate_live_r00_review_threads(
                     "R00 actionable thread resolution/reply is not authenticated by live GitHub GraphQL"
                 )
                 return
+        if thread_id in R00_KNOWN_PR7_THREADS:
+            selected_id = R00_PR7_CLOSURES[thread_id]["reply_id"]
+            selected_inventory = [
+                row for row in live_row["reply_inventory"]
+                if row.get("id") == selected_id
+            ]
+            if (
+                selected_inventory != [_expected_pr7_closure_inventory(thread_id)]
+                or not live_row["reply_order"]
+                or live_row["reply_order"][-1] != selected_id
+            ):
+                problems.append(
+                    "R00 historical PR #7 selected closure inventory is not exact"
+                )
+                return
 
 
 def _parse_github_time(value: Any) -> datetime | None:
@@ -2740,7 +3220,7 @@ def _validate_live_r00_ci(
     github_get_json: GitHubJsonGetter | None,
     problems: list[str],
 ) -> None:
-    """Authenticate the selected PR #7 exact-head run and job through GitHub Actions."""
+    """Authenticate the selected PR #8 exact-head run and job through GitHub Actions."""
     if github_get_json is None:
         problems.append("R00 sealing requires live GitHub Actions revalidation")
         return
@@ -2764,7 +3244,9 @@ def _validate_live_r00_ci(
         job = github_get_json(
             f"/repos/TriadAgentic/TriadOrigin/actions/jobs/{job_id}"
         )
-        pull = github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+        pull = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/pulls/{R00_RECEIPT_PR}"
+        )
     except Exception as exc:
         problems.append(f"R00 live GitHub Actions revalidation failed: {type(exc).__name__}")
         return
@@ -2799,7 +3281,7 @@ def _validate_live_r00_ci(
         or run.get("event") != "pull_request"
         or run.get("name") != "CI"
         or run.get("path") != ".github/workflows/ci.yml"
-        or run.get("head_branch") != "agent/r00-receipt-closure"
+        or run.get("head_branch") != R00_RECEIPT_BRANCH
         or run.get("head_sha") != receipt["head_sha"]
         or run.get("status") != "completed"
         or run.get("conclusion") != "success"
@@ -2817,10 +3299,13 @@ def _validate_live_r00_ci(
         or job.get("html_url") != expected_job_url
         or not steps_ok
     ):
-        problems.append("R00 live CI is not the successful exact-head PR #7 run/job")
+        problems.append("R00 live CI is not the successful exact-head PR #8 run/job")
 
 
-def _normalize_live_pr7_review(item: Any) -> dict[str, str]:
+def _normalize_live_pr7_review(
+    item: Any,
+    pr_number: int = R00_RECEIPT_PR,
+) -> dict[str, str]:
     if not isinstance(item, dict):
         raise ValueError("review is not an object")
     review_id = _decimal_graphql_id(item.get("id"))
@@ -2841,7 +3326,7 @@ def _normalize_live_pr7_review(item: Any) -> dict[str, str]:
     body = item.get("body")
     state = item.get("state")
     expected_url = (
-        "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+        f"https://github.com/TriadAgentic/TriadOrigin/pull/{pr_number}"
         f"#pullrequestreview-{review_id or ''}"
     )
     if (
@@ -2872,12 +3357,16 @@ def _normalize_live_pr7_review(item: Any) -> dict[str, str]:
     }
 
 
-def _fetch_live_pr7_reviews(github_get_json: GitHubJsonGetter) -> list[dict[str, str]]:
+def _fetch_live_pr7_reviews(
+    github_get_json: GitHubJsonGetter,
+    pr_number: int = R00_RECEIPT_PR,
+) -> list[dict[str, str]]:
     reviews: list[dict[str, str]] = []
     seen: set[str] = set()
     for page in range(1, 12):
         payload = github_get_json(
-            f"/repos/TriadAgentic/TriadOrigin/pulls/7/reviews?per_page=100&page={page}"
+            f"/repos/TriadAgentic/TriadOrigin/pulls/{pr_number}"
+            f"/reviews?per_page=100&page={page}"
         )
         if not isinstance(payload, list):
             raise ValueError("review page is not a list")
@@ -2886,7 +3375,7 @@ def _fetch_live_pr7_reviews(github_get_json: GitHubJsonGetter) -> list[dict[str,
         if len(payload) > 100:
             raise ValueError("review page exceeds the controlled size")
         for item in payload:
-            normalized = _normalize_live_pr7_review(item)
+            normalized = _normalize_live_pr7_review(item, pr_number)
             if normalized["review_id"] in seen:
                 raise ValueError("duplicate review identity")
             seen.add(normalized["review_id"])
@@ -2902,12 +3391,105 @@ def _fetch_live_pr7_reviews(github_get_json: GitHubJsonGetter) -> list[dict[str,
     return reviews
 
 
+def _validate_live_r00_pr7_history(
+    *,
+    persisted_merge: Any,
+    persisted_reviews: Any,
+    github_get_json: GitHubJsonGetter | None,
+    problems: list[str],
+) -> None:
+    """Authenticate merged PR #7 as a rejected historical predecessor of PR #8."""
+    if github_get_json is None:
+        problems.append("R00 sealing requires live historical PR #7 revalidation")
+        return
+    try:
+        pull_snapshots = [
+            github_get_json(
+                f"/repos/TriadAgentic/TriadOrigin/pulls/{R00_HISTORICAL_CORRECTIVE_PR}"
+            ),
+            github_get_json(
+                f"/repos/TriadAgentic/TriadOrigin/pulls/{R00_HISTORICAL_CORRECTIVE_PR}"
+            ),
+        ]
+        commit = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/git/commits/{R00_CORRECTIVE_MERGE_SHA}"
+        )
+        review_snapshots = [
+            _fetch_live_pr7_reviews(
+                github_get_json, R00_HISTORICAL_CORRECTIVE_PR
+            ),
+            _fetch_live_pr7_reviews(
+                github_get_json, R00_HISTORICAL_CORRECTIVE_PR
+            ),
+        ]
+    except Exception as exc:
+        problems.append(
+            f"R00 live historical PR #7 revalidation failed: {type(exc).__name__}"
+        )
+        return
+    if not all(isinstance(item, dict) for item in pull_snapshots):
+        problems.append("R00 live historical PR #7 response has the wrong shape")
+        return
+    normalized_pulls: list[dict[str, Any]] = []
+    for pull in pull_snapshots:
+        user = pull.get("user")
+        base = pull.get("base")
+        head = pull.get("head")
+        normalized_pulls.append({
+            "author": _normalized_github_login(
+                user.get("login") if isinstance(user, dict) else None
+            ),
+            "author_id": (
+                _decimal_graphql_id(user.get("id"))
+                if isinstance(user, dict) else None
+            ),
+            "base_sha": base.get("sha") if isinstance(base, dict) else None,
+            "head_sha": head.get("sha") if isinstance(head, dict) else None,
+            "merge_sha": pull.get("merge_commit_sha"),
+            "merged": pull.get("merged"),
+            "merged_at": pull.get("merged_at"),
+            "number": pull.get("number"),
+            "tree_sha": (
+                commit.get("tree", {}).get("sha")
+                if isinstance(commit, dict)
+                and isinstance(commit.get("tree"), dict)
+                else None
+            ),
+            "url": pull.get("html_url"),
+        })
+    commit_parents = (
+        commit.get("parents") if isinstance(commit, dict) else None
+    )
+    parent_shas = (
+        [row.get("sha") for row in commit_parents if isinstance(row, dict)]
+        if isinstance(commit_parents, list) else []
+    )
+    if (
+        normalized_pulls != [R00_CORRECTIVE_HISTORY, R00_CORRECTIVE_HISTORY]
+        or any(
+            not isinstance(pull.get("user"), dict)
+            or pull["user"].get("login") != R00_PR_AUTHOR
+            for pull in pull_snapshots
+        )
+        or persisted_merge != R00_CORRECTIVE_HISTORY
+        or not isinstance(commit, dict)
+        or commit.get("sha") != R00_CORRECTIVE_MERGE_SHA
+        or parent_shas != [R00_CORRECTIVE_BASE_SHA]
+        or review_snapshots[0] != review_snapshots[1]
+        or review_snapshots[0] != _r00_pr7_historical_review_baseline()
+        or persisted_reviews != review_snapshots[0]
+    ):
+        problems.append(
+            "R00 historical PR #7 merge/review record does not exactly match live history"
+        )
+
+
 def _review_history_matches_baseline(
     reviews: list[dict[str, str]],
     *,
     selected_review_id: str | None = None,
 ) -> bool:
-    baseline = _r00_pr7_preacceptance_review_baseline()
+    baseline = _r00_receipt_preacceptance_review_baseline()
     if reviews[:len(baseline)] != baseline:
         return False
     remainder = reviews[len(baseline):]
@@ -2935,7 +3517,7 @@ def _normalize_live_pr7_issue_comment(item: Any) -> dict[str, str]:
     created_at = item.get("created_at")
     updated_at = item.get("updated_at")
     expected_url = (
-        "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+        f"https://github.com/TriadAgentic/TriadOrigin/pull/{R00_RECEIPT_PR}"
         f"#issuecomment-{comment_id or ''}"
     )
     if (
@@ -2973,7 +3555,8 @@ def _fetch_live_pr7_issue_comments(
     seen: set[str] = set()
     for page in range(1, 12):
         payload = github_get_json(
-            f"/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page={page}"
+            f"/repos/TriadAgentic/TriadOrigin/issues/{R00_RECEIPT_PR}"
+            f"/comments?per_page=100&page={page}"
         )
         if not isinstance(payload, list):
             raise ValueError("issue-comment page is not a list")
@@ -3042,7 +3625,8 @@ def _fetch_live_pr7_reactions(
     seen: set[str] = set()
     for page in range(1, 12):
         payload = github_get_json(
-            f"/repos/TriadAgentic/TriadOrigin/issues/7/reactions?per_page=100&page={page}"
+            f"/repos/TriadAgentic/TriadOrigin/issues/{R00_RECEIPT_PR}"
+            f"/reactions?per_page=100&page={page}"
         )
         if not isinstance(payload, list):
             raise ValueError("PR-reaction page is not a list")
@@ -3076,7 +3660,9 @@ def _normalize_live_pr7_pull(item: Any) -> dict[str, Any]:
     base = item.get("base")
     merged_at = item.get("merged_at")
     updated_at = item.get("updated_at")
-    expected_url = "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+    expected_url = (
+        f"https://github.com/TriadAgentic/TriadOrigin/pull/{R00_RECEIPT_PR}"
+    )
     if (
         item.get("number") != R00_RECEIPT_PR
         or item.get("html_url") != expected_url
@@ -3155,7 +3741,8 @@ def _fetch_live_pr7_timeline(
     identities: set[str] = set()
     for page in range(1, 12):
         payload = github_get_json(
-            f"/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page={page}"
+            f"/repos/TriadAgentic/TriadOrigin/issues/{R00_RECEIPT_PR}"
+            f"/timeline?per_page=100&page={page}"
         )
         if not isinstance(payload, list):
             raise ValueError("timeline page is not a list")
@@ -3224,7 +3811,7 @@ def _validate_live_r00_review(
     github_get_json: GitHubJsonGetter | None,
     problems: list[str],
 ) -> None:
-    """Re-read corrective PR #7 and its independent review at receipt-sealing time."""
+    """Re-read receipt PR #8 and its independent review at receipt-sealing time."""
     if github_get_json is None:
         problems.append("R00 sealing requires live GitHub REST revalidation")
         return
@@ -3233,16 +3820,20 @@ def _validate_live_r00_review(
         problems.append("R00 live review revalidation lacks a numeric review ID")
         return
     try:
-        pull_raw = github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+        pull_raw = github_get_json(
+            f"/repos/TriadAgentic/TriadOrigin/pulls/{R00_RECEIPT_PR}"
+        )
         pull_snapshots = [_normalize_live_pr7_pull(pull_raw)]
         review = github_get_json(
-            f"/repos/TriadAgentic/TriadOrigin/pulls/7/reviews/{review_id}"
+            f"/repos/TriadAgentic/TriadOrigin/pulls/{R00_RECEIPT_PR}"
+            f"/reviews/{review_id}"
         )
         head_commit = github_get_json(
             f"/repos/TriadAgentic/TriadOrigin/git/commits/{head_sha}"
         )
         final_comments = github_get_json(
-            f"/repos/TriadAgentic/TriadOrigin/pulls/7/reviews/{review_id}/comments?per_page=100"
+            f"/repos/TriadAgentic/TriadOrigin/pulls/{R00_RECEIPT_PR}"
+            f"/reviews/{review_id}/comments?per_page=100"
         )
         live_review_snapshots = [
             _fetch_live_pr7_reviews(github_get_json),
@@ -3262,7 +3853,9 @@ def _validate_live_r00_review(
         ]
         pull_snapshots.append(
             _normalize_live_pr7_pull(
-                github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+                github_get_json(
+                    f"/repos/TriadAgentic/TriadOrigin/pulls/{R00_RECEIPT_PR}"
+                )
             )
         )
     except Exception as exc:  # Fail closed on network, API, and provider errors.
@@ -3293,7 +3886,9 @@ def _validate_live_r00_review(
     )
     merged_at = _parse_github_time(pull.get("merged_at"))
     submitted_at = _parse_github_time(review.get("submitted_at"))
-    expected_pr_url = "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+    expected_pr_url = (
+        f"https://github.com/TriadAgentic/TriadOrigin/pull/{R00_RECEIPT_PR}"
+    )
     expected_review_url = f"{expected_pr_url}#pullrequestreview-{review_id}"
     body = review.get("body")
     expected_body = _expected_codex_review_body(head_sha)
@@ -3354,7 +3949,7 @@ def _validate_live_r00_review(
             ):
                 review_order_ok = False
                 break
-    comment_baseline = _r00_pr7_preacceptance_comment_baseline()
+    comment_baseline = _r00_receipt_preacceptance_comment_baseline()
     comments_ok = (
         len(live_comments) == len(comment_baseline)
         and [
@@ -3445,7 +4040,7 @@ def _validate_live_r00_review(
         or pull.get("author_id") != R00_PR_AUTHOR_ID
         or pull.get("head_sha") != head_sha
         or pull.get("base_sha") != base_sha
-        or base_sha != R00_IMPLEMENTATION_MERGE_SHA
+        or base_sha != R00_CORRECTIVE_MERGE_SHA
         or pull.get("merged") is not True
         or pull.get("merge_commit_sha") != merge_sha
         or head_commit.get("sha") != head_sha
@@ -3521,6 +4116,8 @@ def _r00_thread_activity_precedes_acceptance(
                 or root_updated is None
                 or root_created >= cutoff_at
                 or root_updated >= cutoff_at
+                or root.get("editor") is not None
+                or root.get("last_edited_at") is not None
             ):
                 return False
             selected_count = 0
@@ -3530,18 +4127,19 @@ def _r00_thread_activity_precedes_acceptance(
                 reply_created = _parse_github_time(reply.get("created_at"))
                 reply_updated = _parse_github_time(reply.get("updated_at"))
                 reply_id = str(reply.get("id"))
-                if reply_created is None or reply_updated is None:
+                if (
+                    reply_created is None
+                    or reply_updated is None
+                    or reply.get("editor") is not None
+                    or reply.get("last_edited_at") is not None
+                ):
                     return False
                 if reply_id == selected:
                     selected_count += 1
                     if pr_number == R00_RECEIPT_PR:
-                        if reply_created <= merged_at or reply_updated != reply_created:
+                        if reply_created <= merged_at or reply_updated < reply_created:
                             return False
-                    elif (
-                        reply_updated != reply_created
-                        or reply_created >= cutoff_at
-                        or reply_updated >= cutoff_at
-                    ):
+                    elif reply_created >= cutoff_at or reply_updated >= cutoff_at:
                         return False
                 elif reply_created >= cutoff_at or reply_updated >= cutoff_at:
                     return False
@@ -3591,7 +4189,9 @@ def _validate_live_r00_reaction(
     try:
         pull_snapshots = [
             _normalize_live_pr7_pull(
-                github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+                github_get_json(
+                    f"/repos/TriadAgentic/TriadOrigin/pulls/{R00_RECEIPT_PR}"
+                )
             )
         ]
         head_commit = github_get_json(
@@ -3631,7 +4231,9 @@ def _validate_live_r00_reaction(
         }
         pull_snapshots.append(
             _normalize_live_pr7_pull(
-                github_get_json("/repos/TriadAgentic/TriadOrigin/pulls/7")
+                github_get_json(
+                    f"/repos/TriadAgentic/TriadOrigin/pulls/{R00_RECEIPT_PR}"
+                )
             )
         )
     except Exception as exc:  # Fail closed on network, API, and provider errors.
@@ -3649,7 +4251,9 @@ def _validate_live_r00_reaction(
         problems.append("R00 live GitHub clean-reaction response has the wrong shape")
         return
 
-    expected_pr_url = "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+    expected_pr_url = (
+        f"https://github.com/TriadAgentic/TriadOrigin/pull/{R00_RECEIPT_PR}"
+    )
     pull = pull_snapshots[0]
     merged_at = _parse_github_time(pull.get("merged_at"))
     run_completed_at = _parse_github_time(run.get("updated_at"))
@@ -3721,7 +4325,7 @@ def _validate_live_r00_reaction(
             ):
                 review_order_ok = False
                 break
-    comment_baseline = _r00_pr7_preacceptance_comment_baseline()
+    comment_baseline = _r00_receipt_preacceptance_comment_baseline()
     comments_final = (
         len(comments) == len(comment_baseline) + 2
         and [
@@ -3812,7 +4416,7 @@ def _validate_live_r00_reaction(
         or pull.get("author_id") != R00_PR_AUTHOR_ID
         or pull.get("head_sha") != head_sha
         or pull.get("base_sha") != base_sha
-        or base_sha != R00_IMPLEMENTATION_MERGE_SHA
+        or base_sha != R00_CORRECTIVE_MERGE_SHA
         or pull.get("merged") is not True
         or pull.get("merge_commit_sha") != merge_sha
         or head_commit.get("sha") != head_sha
@@ -4248,8 +4852,23 @@ def _resolve_pointer(document: Any, pointer: str) -> Any:
 
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    if args == ["--preflight-r00-review-history"]:
+        try:
+            token = os.environ.get("GITHUB_TOKEN", "")
+            validate_r00_graphql_preflight(
+                _github_get_review_threads_from_token(token)
+            )
+        except ReceiptValidationError as exc:
+            print(f"FAIL: R00 GraphQL history preflight: {exc}", file=sys.stderr)
+            return 1
+        print("OK: R00 GraphQL history matches reviewed source")
+        return 0
     if len(args) not in (1, 2):
-        print("usage: validate_milestone_receipt.py RECEIPT [SCHEMA]", file=sys.stderr)
+        print(
+            "usage: validate_milestone_receipt.py "
+            "RECEIPT [SCHEMA] | --preflight-r00-review-history",
+            file=sys.stderr,
+        )
         return 2
     receipt_path = pathlib.Path(args[0])
     schema_path = pathlib.Path(args[1]) if len(args) == 2 else DEFAULT_SCHEMA

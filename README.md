@@ -68,6 +68,13 @@ and a complete timeline proving no later head/base mutation or review dismissal.
 routes also reject thread activity at or after acceptance except the one canonical unedited
 post-merge closure reply.
 
+R00 final-receipt authority is assigned to PR #8. Merged PR #7 is retained and live-authenticated
+as a rejected predecessor (squash `0012e89214c7e0321592684b3b866323f891ace9`), including its exact
+lineage, ten reviews, three post-merge closure carriers, and GraphQL thread state. Additive v4 review
+evidence uses GraphQL `editor`/`lastEditedAt` as edit witnesses, preserves PR #1–#4 historical
+closure prose by exact reply ID/body hash, and binds PR #7 V1 closures to `PRRT_…` thread IDs.
+Same-repository PR #8 CI double-fetches this raw GraphQL history before merge.
+
 R00 source artifacts use package version `7.0.0rc1.post1`; this distinguishes the repaired RC1
 foundation from pre-R00 `7.0.0rc1` bytes and does not claim RC2 specification acceptance. The R00
 ledger implementation is Linux/POSIX-only (`fcntl` inode locking); cross-platform transport is not

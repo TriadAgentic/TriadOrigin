@@ -40,7 +40,10 @@ def test_ci_actions_are_sha_pinned_and_solver_uses_committed_constraints():
     assert "github.head_ref == 'evidence/r00-receipt'" in workflow
     assert workflow.count(
         "github.event.pull_request.head.repo.full_name == github.repository"
-    ) == 2
+    ) == 3
+    assert "name: Preflight R00 GraphQL history" in workflow
+    assert "github.event.pull_request.number == 8" in workflow
+    assert "--preflight-r00-review-history" in workflow
     assert "github.event_name == 'pull_request'" in workflow
     assert "GITHUB_TOKEN: ${{ github.token }}" in workflow
     assert (

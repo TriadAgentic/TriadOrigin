@@ -34,7 +34,7 @@ against its declared schema.
 | RC1 M1 | `MERGED_IMPLEMENTATION / FAILED_AUDIT` | PR #1; 5 unresolved findings; no CI |
 | RC1 M2 | `MERGED_IMPLEMENTATION / FAILED_AUDIT` | PR #2; 6 unresolved findings; no CI |
 | Prior plan | `SUPERSEDED` | PR #3; 3 unresolved findings; incompatible with RC2 |
-| R00 | `PR #4 MERGED_UNVERIFIED / PR #7 CORRECTION` | The truthful post-merge receipt rejected the PR #4 sdist because it omitted the reviewed dependency snapshot; PR #7 owns closure |
+| R00 | `PR #4 + PR #7 MERGED_UNVERIFIED / PR #8 CORRECTION` | PR #4 failed on its sdist snapshot; PR #7 failed on edit-witness, retroactive closure-body, and thread-ID semantics; PR #8 owns final receipt closure |
 | B00 | `BLOCKED` | Incomplete/conflicting RC2 package and missing authority decisions |
 | B01–B09 | `BLOCKED_BY_PREDECESSOR` | No implementation starts early |
 
@@ -45,7 +45,7 @@ against its declared schema.
 | Required main CI + review ruleset | `UNVERIFIED` | R00 exact-head guarded merge only; issue [#5](https://github.com/TriadAgentic/TriadOrigin/issues/5) must close in B00 |
 | CI action identity | `PINNED` | Immutable action SHAs in `.github/workflows/ci.yml` |
 | CI dependency identity | `PINNED_R00_SNAPSHOT` | `constraints/ci.txt`; receipt records the resolved environment |
-| Post-merge receipt storage | `FAILED_CLOSED / CORRECTION_PENDING` | No receipt was published; PR #7 must merge and reproduce before `evidence/receipts/R00.json` can be sealed |
+| Post-merge receipt storage | `FAILED_CLOSED / PR8_CORRECTION_PENDING` | No receipt was published; PR #7 is authenticated rejected history and PR #8 must merge/reproduce before `evidence/receipts/R00.json` can be sealed |
 
 ## RC2 control catalogue
 
@@ -58,9 +58,11 @@ against its declared schema.
 
 ## Next permissible action
 
-Complete corrective PR #7 on exact-head green CI and independent review, merge it only with the
-expected-head guard, reproduce fresh corrected `main`, and seal the R00 receipt against that
-corrective squash. PR #4's squash `241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` remains an explicit
-failed-closed predecessor in the evidence chain; it is not relabelled verified. After closure, B00
+Complete final-receipt PR #8 on exact-head green CI, the raw-GraphQL history preflight, and
+independent review; merge it only with the expected-head guard, reproduce fresh corrected `main`,
+and seal the R00 receipt against that squash. PR #4's squash
+`241b301d1144e3e2a0a15f4bfe9ffef5b51068ed` and PR #7's squash
+`0012e89214c7e0321592684b3b866323f891ace9` remain explicit failed-closed predecessors in the
+evidence chain; neither is relabelled verified. After closure, B00
 still remains in `SAFE_HOLD` until the complete RC2 source bundle and named decisions exist. Do not
 resume detector fan-out.

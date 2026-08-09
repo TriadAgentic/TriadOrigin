@@ -131,9 +131,10 @@ No skip/xfail is accepted silently; each has an owner and receipt disposition.
   the clean response.
 - Complete review, top-level issue-comment, PR-root-reaction, and issue-timeline inventories are
   fetched twice, persisted exactly, and fail closed on pagination gaps, races, or disagreement.
-- The reviewed source pins PR #7's exact pre-final review/comment baseline, including immutable
-  numeric actors and complete bodies. Every top-level comment must remain unedited; a changed
-  historical review or any post-trigger `review_dismissed` event fails closed.
+- The reviewed source pins PR #7's exact merge lineage, ten reviews, GraphQL roots, and closure
+  carriers, including immutable numeric actors and complete review bodies. PR #8 owns the current
+  top-level comment inventory; every such comment must remain unedited. A changed historical PR #7
+  review or any post-trigger PR #8 `review_dismissed` event fails closed.
 - No commit, force-push, head-ref deletion/restoration, base-ref deletion, or head/base ref mutation may occur between
   the accepted trigger and guarded merge. `automatic_base_change_succeeded` is a base mutation, and
   head-ref deletion before receipt sealing is forbidden even after merge.
@@ -156,8 +157,11 @@ those files and rejects missing, tampered, duplicate, escaping, unbound, or opaq
 Inapplicable formula/parameter/corpus/replay evidence is an explicit owned deferral, never omission.
 A workbook/manual status cannot substitute for a receipt.
 
-For corrective R00, the typed review evidence is versioned as `origin.review-evidence.v3` with a
-matching `origin.github-review-export.v3` and uses a discriminated final-acceptance record. The
+For corrective R00, the typed review evidence is additively versioned as
+`origin.review-evidence.v4` with a matching `origin.github-review-export.v4` and uses a
+discriminated final-acceptance record. PR #7 is an authenticated rejected predecessor; PR #8 alone
+owns the final receipt. The v4 export binds PR #7's exact squash lineage and ten-review history while
+starting new PR #8 current-review, comment, reaction, pull, and timeline inventories. The
 review-object arm requires an exact-head clean review object with no findings and the same complete
 historical comment/review, reaction, pull-boundary, and timeline checks. The clean-comment arm
 requires an unchanged maintainer trigger containing the full final head and successful CI run/job,
@@ -166,3 +170,11 @@ isolated reason phrase, exact reviewed prefix, and exact common tail. The raw
 connector login and immutable numeric actor ID must agree across the clean comment and the persisted
 PR-root `+1`. That reaction must be created after this trigger and at or before the clean response;
 an older persistent reaction cannot excuse a missing, stale, or wrong-head clean comment.
+
+Two complete GraphQL snapshots bind every persisted PR #1–#4/#7/#8 root, resolution, and selected
+reply. Historical PR #1–#4 closures retain their exact observed prose, reply ID, and body hash;
+PR #7 closures use the canonical V1 body with the GraphQL `PRRT_…` thread ID. GraphQL `editor` and
+`lastEditedAt`, not `updatedAt` equality, are the edit witnesses. `updatedAt` remains bound:
+historical rows must predate the acceptance cutoff, while a selected PR #8 post-merge closure must
+satisfy `updatedAt >= createdAt`. Missing edit-witness keys, a non-null witness, incomplete
+pagination, or any source/live mismatch fails closed.
