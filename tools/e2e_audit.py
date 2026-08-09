@@ -1128,12 +1128,15 @@ def b07_control_plane_walk() -> None:
     # 3 · Comparator: identical candidates diverge nowhere; a geometry mismatch classifies
     #     GEOMETRY on the ENGINE_COHORT axis, never conflated with the INTELLIGENCE_ARM axis.
     control_candidate = {
-        "engine_cohort": "LEGACY_COMPARATOR", "candidate_id": "cand-1", "direction": "LONG",
+        "engine_cohort": "LEGACY_COMPARATOR", "intelligence_arm": "DETERMINISTIC_CONTROL",
+        "candidate_id": "cand-1", "direction": "LONG",
         "entry_reference_ticks": "100", "natural_invalidation_ticks": "90", "targets": ["110"],
         "rr_numerator": "2", "rr_denominator": "1", "source_structure_id": "s1",
         "source_reaction_id": "r1", "state": "PROPOSED", "quality": {}, "arm": "SHADOW",
         "provenance_hash": "a" * 64,
     }
+    # engine_cohort is the axis under test here — intelligence_arm is held CONSTANT across both
+    # sides (the comparator refuses a pair whose non-compared axis disagrees).
     treatment_candidate = dict(control_candidate, engine_cohort="ORIGIN_CANDIDATE",
                                entry_reference_ticks="999")
     divergence = comparator.compare_engine_cohort(

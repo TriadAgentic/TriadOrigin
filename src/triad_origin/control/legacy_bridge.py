@@ -31,7 +31,9 @@ record and every stamped label/offset/timestamp explicitly.
 
 from __future__ import annotations
 
-from ..canonical import canonical_json, sha256_hex
+import copy
+
+from ..canonical import canonical_json, loads_canonical, sha256_hex
 
 LEGACY_ENGINE_COHORT = "LEGACY_COMPARATOR"
 _VALID_INTELLIGENCE_ARMS = ("DETERMINISTIC_CONTROL", "INTELLIGENCE_TREATMENT")
@@ -56,6 +58,12 @@ def bridge_legacy_record(
     silently mutated (:func:`verify_byte_preservation`). Always stamps
     ``engine_cohort=LEGACY_COMPARATOR`` — this bridge writes exactly one cohort, per the freeze
     law; a caller wanting a different cohort wants a different module.
+
+    ``legacy_payload`` is a DETACHED copy of ``raw_record`` — built via a canonical
+    round-trip (``loads_canonical(canonical_json(raw_record))``), never the caller's own mutable
+    object. A caller that mutates ``raw_record`` after calling this function must never be able
+    to retroactively change what was bridged (mirrors :mod:`journal`'s ``_canonical_object``
+    "prevents a no-op machine from retaining a mutable alias" discipline).
     """
     if not isinstance(raw_record, dict):
         raise LegacyBridgeError("raw_record must be an object")
@@ -70,6 +78,9 @@ def bridge_legacy_record(
         raise LegacyBridgeError("bridged_at_us must be an int")
 
     frozen_bytes = canonical_json(raw_record)
+    frozen_record = loads_canonical(frozen_bytes)
+    if not isinstance(frozen_record, dict):  # pragma: no cover - canonical_json always emits an
+        raise LegacyBridgeError("raw_record failed to round-trip as an object")  # object here
     return {
         "engine_cohort": LEGACY_ENGINE_COHORT,
         "intelligence_arm": intelligence_arm,
@@ -77,7 +88,7 @@ def bridge_legacy_record(
         "input_offset": input_offset,
         "bridged_at_us": bridged_at_us,
         "legacy_payload_digest": sha256_hex(frozen_bytes),
-        "legacy_payload": raw_record,
+        "legacy_payload": frozen_record,
     }
 
 
@@ -122,6 +133,10 @@ class LegacyBridgeState:
         envelope (idempotent). A DIFFERENT record at an already-bridged offset refuses
         (:class:`LegacyBridgeError`) — an offset's bridged identity is pinned once set, never
         silently overwritten.
+
+        Every returned envelope is a DEEP copy of the internally cached one: the ``legacy_payload``
+        sub-dict is nested, so a shallow copy would still let a caller mutating its RETURNED
+        envelope corrupt the state this instance caches for every subsequent read.
         """
         envelope = bridge_legacy_record(
             raw_record, intelligence_arm=intelligence_arm, source_topic=source_topic,
@@ -130,17 +145,18 @@ class LegacyBridgeState:
         existing = topic_offsets.get(input_offset)
         if existing is not None:
             if existing["legacy_payload_digest"] == envelope["legacy_payload_digest"]:
-                return dict(existing)
+                return copy.deepcopy(existing)
             raise LegacyBridgeError(
                 f"offset {input_offset} for topic {source_topic!r} is already bridged with "
                 f"disagreeing content — an offset's bridged identity is pinned once set")
         topic_offsets[input_offset] = envelope
-        return dict(envelope)
+        return copy.deepcopy(envelope)
 
     def bridged_at(self, source_topic: str, input_offset: int) -> dict | None:
-        """The verbatim previously-bridged envelope, if any — a read of record."""
+        """The verbatim previously-bridged envelope, if any — a read of record (a deep copy;
+        see :meth:`bridge`'s docstring)."""
         offsets = self._by_topic.get(source_topic)
         if offsets is None:
             return None
         entry = offsets.get(input_offset)
-        return dict(entry) if entry is not None else None
+        return copy.deepcopy(entry) if entry is not None else None

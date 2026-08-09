@@ -147,12 +147,15 @@ separate gate receipt._
   `ParameterUnknownError`/`ParameterScopeMismatchError`); `tests/config/test_parameters.py` (37 tests)
 - [x] Comparator keeps `engine_cohort` and `intelligence_arm` independent —
   `control/comparator.py` (`compare_engine_cohort`/`compare_intelligence_arm`, each refusing a
-  candidate mislabeled for its own axis); `tests/control/test_comparator.py` (24 tests, incl. the
-  vendored-enum drift-lock)
+  candidate mislabeled for its own axis, AND (PR #24 review, row E27 finding 3) refusing when the
+  non-compared axis disagrees between control/treatment — never a possibly-confounded
+  divergence); `tests/control/test_comparator.py` (26 tests, incl. the vendored-enum drift-lock)
 - [x] Authority component verifies external facts/technical-writer lease only —
   `control/authority_fact_verifier.py` (`AuthorityLedger`, verify-only over
-  `candidate_authority.v1` + `producer_lease.v1`; row A7); `tests/control/test_authority_fact_verifier.py`
-  (45 tests, incl. the ordering/stale/duplicate/split-brain law + the no-write-verb structural check)
+  `candidate_authority.v1` + `producer_lease.v1`; row A7; PR #24 review, row E27 findings 1/4/5:
+  an optional injected `signature_verifier`, a currency check in `admit_fact` before any stateful
+  ordering logic, and exact-scope-match conjuncts in `readiness()`); `tests/control/test_authority_fact_verifier.py`
+  (58 tests, incl. the ordering/stale/duplicate/split-brain law + the no-write-verb structural check)
 - [x] No ORIGIN candidate admission/arbitration or money-selection lease path — `AuthorityLedger`
   exposes `admit_fact`/`current_for_scope`/`clear_split_brain` only (a fencing-token bookkeeping
   law, never a candidate/order verb); `assert_strictly_higher_token` proves a rollback token
@@ -160,7 +163,10 @@ separate gate receipt._
 - [x] Frozen legacy bridge preserves bytes and omissions; exact source/path bound —
   `control/legacy_bridge.py` (`bridge_legacy_record`/`LegacyBridgeState`,
   `verify_byte_preservation`; row F2's exact path stays an OPEN operator decision, the mechanism
-  is generic over any caller-supplied source); `tests/control/test_legacy_bridge.py` (19 tests)
+  is generic over any caller-supplied source; PR #24 review, row E27 finding 2: `legacy_payload`
+  is a canonical-round-trip-detached copy, and every `LegacyBridgeState` read path returns a deep
+  copy, so neither the caller's own `raw_record` nor a previously-returned envelope can corrupt
+  cached state); `tests/control/test_legacy_bridge.py` (23 tests)
 - [x] Same-code replay runner + digest-complete replay receipt — `control/replay_runner.py`
   (wraps `journal.replay`, the SAME live/replay code path; emits a schema-valid
   `triad.replay_receipt.v1` payload); `tests/control/test_replay_runner.py` (21 tests, incl. two

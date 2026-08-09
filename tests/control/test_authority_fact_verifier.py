@@ -90,6 +90,48 @@ def test_exact_scope_is_accepted():
     assert verified["scope"] == {"instrument": "BTCUSDT"}
 
 
+def test_signature_verifier_absent_never_authenticates_anything():
+    # Without an injected verifier, a fact with a nonsense signature string still verifies
+    # (structural-only check, per schema) — the module never silently claims cryptographic
+    # authentication it did not perform.
+    verified = afv.verify_candidate_authority(
+        _fact(signature="not-a-real-signature"), now_us=1100)
+    assert verified["signature"] == "not-a-real-signature"
+
+
+def test_signature_verifier_accepting_admits():
+    accepted = afv.verify_candidate_authority(
+        _fact(), now_us=1100, signature_verifier=lambda fact: True)
+    assert accepted["authority_id"] == "auth-1"
+
+
+def test_signature_verifier_rejecting_refuses():
+    with pytest.raises(afv.AuthorityFactError):
+        afv.verify_candidate_authority(
+            _fact(), now_us=1100, signature_verifier=lambda fact: False)
+
+
+def test_signature_verifier_receives_the_schema_validated_fact():
+    seen = {}
+
+    def _capture(fact):
+        seen["fact"] = fact
+        return True
+
+    afv.verify_candidate_authority(_fact(), now_us=1100, signature_verifier=_capture)
+    assert seen["fact"]["authority_id"] == "auth-1"
+    assert seen["fact"]["signature"] == "sig-1"
+
+
+def test_lease_signature_verifier_accepting_and_rejecting():
+    accepted = afv.verify_producer_lease(
+        _lease(), now_us=1700, signature_verifier=lambda fact: True)
+    assert accepted["lease_id"] == "lease-1"
+    with pytest.raises(afv.AuthorityFactError):
+        afv.verify_producer_lease(
+            _lease(), now_us=1700, signature_verifier=lambda fact: False)
+
+
 # ---------------------------------------------------------------------------------------------
 # Currency: state is authoritative, not revoked_at_us presence
 # ---------------------------------------------------------------------------------------------
@@ -130,6 +172,59 @@ def test_first_admission_for_a_scope_is_accepted():
     result = ledger.admit_fact(_fact(), now_us=1100)
     assert result.accepted
     assert result.reason == afv.ACCEPTED
+
+
+def test_an_inactive_fact_is_refused_even_as_the_first_admission_for_a_scope():
+    ledger = afv.AuthorityLedger()
+    result = ledger.admit_fact(_fact(state="EXPIRED"), now_us=1100)
+    assert not result.accepted
+    assert result.reason == afv.REFUSED_NOT_CURRENTLY_VALID
+    assert result.fact is None
+    assert ledger.current_for_scope(_fact()["scope"]) is None
+
+
+def test_a_not_yet_effective_fact_is_refused_as_not_currently_valid():
+    ledger = afv.AuthorityLedger()
+    result = ledger.admit_fact(_fact(not_before_us=9999), now_us=1100)
+    assert not result.accepted
+    assert result.reason == afv.REFUSED_NOT_CURRENTLY_VALID
+
+
+def test_an_inactive_high_token_can_never_wrongly_out_stale_a_later_active_lower_token():
+    # The exact bug this fix closes: an inactive fact naming a HIGH token must never be able to
+    # silently become "the highest accepted token" for its scope and then wrongly refuse a
+    # legitimate, currently-active fact naming a lower (but real) token as STALE.
+    ledger = afv.AuthorityLedger()
+    inactive_high = ledger.admit_fact(_fact(fencing_token="99", state="EXPIRED"), now_us=1100)
+    assert not inactive_high.accepted
+    assert inactive_high.reason == afv.REFUSED_NOT_CURRENTLY_VALID
+    legitimate = ledger.admit_fact(_fact(fencing_token="10"), now_us=1200)
+    assert legitimate.accepted
+    assert legitimate.reason == afv.ACCEPTED
+    assert ledger.current_for_scope(_fact()["scope"])["fencing_token"] == "10"
+
+
+def test_currency_is_checked_before_the_split_brain_latch():
+    # An inactive fact refuses REFUSED_NOT_CURRENTLY_VALID even while its scope is
+    # split-brain-latched — the fact's own validity is checked independently of ledger state,
+    # never masked behind (or by) the split-brain refusal.
+    ledger = afv.AuthorityLedger()
+    ledger.admit_fact(_fact(fencing_token="5", issuer="issuer-a"), now_us=1100)
+    ledger.admit_fact(_fact(fencing_token="5", issuer="issuer-b"), now_us=1200)  # latches
+    assert ledger.is_split_brain(_fact()["scope"])
+    result = ledger.admit_fact(_fact(fencing_token="99", state="EXPIRED"), now_us=1300)
+    assert not result.accepted
+    assert result.reason == afv.REFUSED_NOT_CURRENTLY_VALID
+
+
+def test_admit_fact_threads_the_ledger_signature_verifier():
+    accepted_ledger = afv.AuthorityLedger(signature_verifier=lambda fact: True)
+    accepted = accepted_ledger.admit_fact(_fact(), now_us=1100)
+    assert accepted.accepted
+
+    refusing_ledger = afv.AuthorityLedger(signature_verifier=lambda fact: False)
+    with pytest.raises(afv.AuthorityFactError):
+        refusing_ledger.admit_fact(_fact(), now_us=1100)
 
 
 def test_a_lower_token_is_stale_and_refuses():
@@ -295,6 +390,45 @@ def test_readiness_never_returns_a_bare_boolean_for_producer_attestation():
         now_us=1700)
     assert isinstance(result["producer_attestation"], str)
     assert result["producer_attestation"] == "NOT_OWNED_HERE"
+
+
+def test_readiness_false_when_authority_fact_scope_does_not_match_the_requested_scope():
+    # _fact()'s DEFAULT scope ({"instrument": "BTCUSDT", "account": "primary"}) does not equal
+    # the requested scope below — a fact issued for a DIFFERENT scope must never be silently
+    # treated as covering this one, even though the fact is otherwise perfectly valid.
+    result = afv.readiness({"instrument": "BTCUSDT"}, _fact(), _lease(), now_us=1700)
+    assert result["ready"] is False
+    assert result["authority_scope_matches"] is False
+    assert result["authority_fact_valid"] is True  # the fact itself IS otherwise valid
+
+
+def test_readiness_false_when_lease_scope_does_not_match_the_requested_scope():
+    result = afv.readiness(
+        {"instrument": "BTCUSDT"}, _fact(scope={"instrument": "BTCUSDT"}),
+        _lease(scope={"instrument": "ETHUSDT"}), now_us=1700)
+    assert result["ready"] is False
+    assert result["lease_scope_matches"] is False
+    assert result["lease_active"] is True  # the lease itself IS otherwise active
+
+
+def test_readiness_threads_the_two_independent_signature_verifiers():
+    accepting = afv.readiness(
+        {"instrument": "BTCUSDT"}, _fact(scope={"instrument": "BTCUSDT"}), _lease(),
+        now_us=1700, authority_signature_verifier=lambda fact: True,
+        lease_signature_verifier=lambda fact: True)
+    assert accepting["ready"] is True
+
+    refusing_authority = afv.readiness(
+        {"instrument": "BTCUSDT"}, _fact(scope={"instrument": "BTCUSDT"}), _lease(),
+        now_us=1700, authority_signature_verifier=lambda fact: False)
+    assert refusing_authority["ready"] is False
+    assert refusing_authority["authority_fact_valid"] is False
+
+    refusing_lease = afv.readiness(
+        {"instrument": "BTCUSDT"}, _fact(scope={"instrument": "BTCUSDT"}), _lease(),
+        now_us=1700, lease_signature_verifier=lambda fact: False)
+    assert refusing_lease["ready"] is False
+    assert refusing_lease["lease_active"] is False
 
 
 # ---------------------------------------------------------------------------------------------

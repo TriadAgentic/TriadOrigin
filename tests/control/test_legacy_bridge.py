@@ -37,6 +37,20 @@ def test_legacy_payload_is_carried_verbatim():
     assert env["legacy_payload"] == LEGACY_RECORD
 
 
+def test_mutating_the_callers_raw_record_after_bridging_never_affects_the_envelope():
+    # The record this function returns must be DETACHED from the caller's own dict — a caller
+    # mutating raw_record after the call must never be able to retroactively change what was
+    # bridged (the exact P2 finding: the bridge previously stored raw_record by reference).
+    raw = {"id": "legacy-1", "symbol": "BTCUSDT"}
+    env = lb.bridge_legacy_record(
+        raw, intelligence_arm="DETERMINISTIC_CONTROL", source_topic="t", input_offset=0,
+        bridged_at_us=1000)
+    raw["symbol"] = "MUTATED"
+    raw["injected"] = "new-field"
+    assert env["legacy_payload"] == {"id": "legacy-1", "symbol": "BTCUSDT"}
+    assert lb.verify_byte_preservation(env)
+
+
 def test_a_field_the_legacy_record_never_carried_stays_absent():
     env = lb.bridge_legacy_record(
         LEGACY_RECORD, intelligence_arm="DETERMINISTIC_CONTROL",
@@ -191,3 +205,40 @@ def test_bridged_at_returns_a_detached_copy():
     stored = state.bridged_at("t", 0)
     stored["input_offset"] = 999
     assert state.bridged_at("t", 0)["input_offset"] == 0
+
+
+def test_mutating_the_callers_raw_record_after_state_bridge_never_affects_stored_or_returned_envelopes():
+    raw = {"id": "legacy-1", "symbol": "BTCUSDT"}
+    state = lb.LegacyBridgeState()
+    env = state.bridge(
+        raw, intelligence_arm="DETERMINISTIC_CONTROL", source_topic="t", input_offset=0,
+        bridged_at_us=1000)
+    raw["symbol"] = "MUTATED"
+    assert env["legacy_payload"] == {"id": "legacy-1", "symbol": "BTCUSDT"}
+    assert state.bridged_at("t", 0)["legacy_payload"] == {"id": "legacy-1", "symbol": "BTCUSDT"}
+
+
+def test_mutating_a_returned_envelopes_nested_legacy_payload_never_corrupts_cached_state():
+    # The deeper gap the shallow dict(...) copy left open: even a raw_record-detached envelope
+    # still shared ONE nested legacy_payload dict across every shallow-copied read — mutating
+    # the payload of one returned envelope must never corrupt what a later read reports.
+    state = lb.LegacyBridgeState()
+    env = state.bridge(LEGACY_RECORD, intelligence_arm="DETERMINISTIC_CONTROL",
+                        source_topic="t", input_offset=0, bridged_at_us=1000)
+    env["legacy_payload"]["price"] = "TAMPERED"
+    reread = state.bridged_at("t", 0)
+    assert reread["legacy_payload"] == LEGACY_RECORD
+    assert lb.verify_byte_preservation(reread)
+
+
+def test_bridge_returns_a_deep_copy_not_sharing_legacy_payload_across_calls():
+    state = lb.LegacyBridgeState()
+    env_a = state.bridge(LEGACY_RECORD, intelligence_arm="DETERMINISTIC_CONTROL",
+                          source_topic="t", input_offset=0, bridged_at_us=1000)
+    # Idempotent redelivery returns a SEPARATE deep copy, not the same nested object.
+    env_b = state.bridge(LEGACY_RECORD, intelligence_arm="DETERMINISTIC_CONTROL",
+                          source_topic="t", input_offset=0, bridged_at_us=1000)
+    assert env_a == env_b
+    assert env_a["legacy_payload"] is not env_b["legacy_payload"]
+    env_b["legacy_payload"]["price"] = "TAMPERED"
+    assert state.bridged_at("t", 0)["legacy_payload"] == LEGACY_RECORD

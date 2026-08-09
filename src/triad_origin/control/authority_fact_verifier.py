@@ -24,6 +24,11 @@ itself literally be "*"; see ``docs/plan/09_OPEN_QUESTIONS.md`` row E26):
 
   * **STALE** — a fact naming a token that does not exceed the currently-accepted highest token
     for its exact scope refuses (it cannot advance authority).
+  * **NOT CURRENTLY VALID** — a fact that is well-formed and would otherwise advance the highest
+    token, but is not ``state=ACTIVE`` or falls outside its ``[not_before_us, expires_at_us)``
+    window at the moment of admission, refuses (``REFUSED_NOT_CURRENTLY_VALID``) BEFORE any
+    stale/duplicate/split-brain logic runs — an inactive fact must never become the new
+    highest-accepted token for its scope, regardless of how high its token number is.
   * **WILDCARD** — a fact whose ``scope`` is empty, or whose scope carries a literal ``"*"``
     value in any field, claims an unbounded range rather than one exact scope and refuses
     outright — the ordering law only makes sense over an EXACT scope.
@@ -55,6 +60,8 @@ explicit ``now_us`` from the caller — nothing here reads a system clock.
 """
 
 from __future__ import annotations
+
+from typing import Callable
 
 from .. import contracts
 from ..canonical import canonical_json, sha256_hex
@@ -92,12 +99,22 @@ def _scope_key(scope: dict) -> str:
     return sha256_hex(canonical_json(scope))
 
 
-def verify_candidate_authority(fact: dict, *, now_us: int) -> dict:
+def verify_candidate_authority(
+    fact: dict, *, now_us: int, signature_verifier: Callable[[dict], bool] | None = None,
+) -> dict:
     """Verify ``fact`` is a well-formed, structurally sound ``candidate_authority.v1`` payload.
 
-    Fails closed (:class:`AuthorityFactError`) on schema violation or a wildcard scope. Does NOT
-    check staleness/duplication/split-brain — that is :class:`AuthorityLedger`'s stateful law,
-    since a single fact in isolation cannot know about siblings for its scope.
+    Fails closed (:class:`AuthorityFactError`) on schema violation, a wildcard scope, or (when
+    ``signature_verifier`` is supplied) a rejected signature. Does NOT check
+    staleness/duplication/split-brain — that is :class:`AuthorityLedger`'s stateful law, since a
+    single fact in isolation cannot know about siblings for its scope.
+
+    ``signature_verifier`` is an OPTIONAL caller-injected predicate over the schema-validated
+    fact — this module holds no key material (the DARK/no-credential law: row A7,
+    ``BUILD_DARK_LIBRARY``) and can never itself cryptographically authenticate a signature.
+    Without it, ``signature`` is only checked structurally (a non-empty string, per schema) — a
+    caller that needs cryptographic authentication MUST supply the predicate; its absence is
+    never silently read as "authenticated".
     """
     if not isinstance(now_us, int) or isinstance(now_us, bool):
         raise AuthorityFactError("now_us must be an int")
@@ -109,7 +126,10 @@ def verify_candidate_authority(fact: dict, *, now_us: int) -> dict:
     if _is_wildcard_scope(fact["scope"]):
         raise AuthorityFactError("candidate_authority fact carries a wildcard scope")
     _require_decimal_token(fact["fencing_token"], "fencing_token")
-    return dict(fact)
+    verified = dict(fact)
+    if signature_verifier is not None and not signature_verifier(verified):
+        raise AuthorityFactError("candidate_authority fact failed signature verification")
+    return verified
 
 
 def is_currently_valid_authority(fact: dict, *, now_us: int) -> bool:
@@ -133,16 +153,26 @@ def is_currently_valid_authority(fact: dict, *, now_us: int) -> bool:
     return not_before <= now_us < expires_at
 
 
-def verify_producer_lease(fact: dict, *, now_us: int) -> dict:
+def verify_producer_lease(
+    fact: dict, *, now_us: int, signature_verifier: Callable[[dict], bool] | None = None,
+) -> dict:
     """Verify ``fact`` is a well-formed ``producer_lease.v1`` payload. Fails closed on schema
-    violation. Does not itself judge currency — see :func:`is_currently_active_lease`."""
+    violation or (when ``signature_verifier`` is supplied) a rejected signature. Does not itself
+    judge currency — see :func:`is_currently_active_lease`.
+
+    See :func:`verify_candidate_authority` for the ``signature_verifier`` contract — this module
+    holds no key material and never authenticates a signature on its own.
+    """
     if not isinstance(now_us, int) or isinstance(now_us, bool):
         raise AuthorityFactError("now_us must be an int")
     try:
         contracts.validate_payload(PRODUCER_LEASE_SCHEMA, fact)
     except contracts.ContractError as exc:
         raise AuthorityFactError(f"producer_lease fact failed schema validation: {exc}") from exc
-    return dict(fact)
+    verified = dict(fact)
+    if signature_verifier is not None and not signature_verifier(verified):
+        raise AuthorityFactError("producer_lease fact failed signature verification")
+    return verified
 
 
 def is_currently_active_lease(fact: dict, *, now_us: int) -> bool:
@@ -206,6 +236,7 @@ class AdmissionResult:
 ACCEPTED = "ACCEPTED"
 ACCEPTED_DUPLICATE_REDELIVERY = "ACCEPTED_DUPLICATE_REDELIVERY"
 REFUSED_STALE = "REFUSED_STALE"
+REFUSED_NOT_CURRENTLY_VALID = "REFUSED_NOT_CURRENTLY_VALID"
 REFUSED_DUPLICATE_TOKEN_CONFLICT = "REFUSED_DUPLICATE_TOKEN_CONFLICT"
 REFUSED_SPLIT_BRAIN_ACTIVE = "REFUSED_SPLIT_BRAIN_ACTIVE"
 
@@ -218,17 +249,32 @@ class AuthorityLedger:
     :mod:`triad_origin.bindings`'s read-only-over-a-frozen-file posture; this class exists so the
     stateful STALE/DUPLICATE/SPLIT-BRAIN law has ONE tested implementation rather than being
     re-derived ad hoc by every caller.
+
+    ``signature_verifier`` (optional, constructor-injected) is threaded to every
+    :func:`verify_candidate_authority` call this ledger makes — see that function's docstring for
+    the contract. Left ``None``, admission checks the fact structurally only, exactly as before
+    this parameter existed.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, *, signature_verifier: Callable[[dict], bool] | None = None) -> None:
         self._by_scope: dict[str, dict] = {}
         self._split_brain: set[str] = set()
+        self._signature_verifier = signature_verifier
 
     def admit_fact(self, fact: dict, *, now_us: int) -> AdmissionResult:
-        verified = verify_candidate_authority(fact, now_us=now_us)
+        verified = verify_candidate_authority(
+            fact, now_us=now_us, signature_verifier=self._signature_verifier)
         scope = verified["scope"]
         key = _scope_key(scope)
         token = _require_decimal_token(verified["fencing_token"], "fencing_token")
+
+        # The fact's OWN currency is checked BEFORE any stateful ledger logic (split-brain,
+        # stale, duplicate) — an inactive fact (not ACTIVE, or outside its validity window) must
+        # never advance, or even be latched as, the highest-accepted token for its scope. This
+        # is a property of the fact alone, independent of what the ledger currently holds.
+        if not is_currently_valid_authority(verified, now_us=now_us):
+            return AdmissionResult(
+                accepted=False, reason=REFUSED_NOT_CURRENTLY_VALID, fact=None, split_brain=False)
 
         if key in self._split_brain:
             return AdmissionResult(
@@ -285,6 +331,8 @@ class AuthorityLedger:
 
 def readiness(
     scope: dict, authority_fact: dict | None, lease_fact: dict | None, *, now_us: int,
+    authority_signature_verifier: Callable[[dict], bool] | None = None,
+    lease_signature_verifier: Callable[[dict], bool] | None = None,
 ) -> dict:
     """The NARROWED RC3 readiness check this module legitimately owns.
 
@@ -294,38 +342,55 @@ def readiness(
     attestation" (``triad.engine_attestation.v2``) is out of this repository's ownership
     (E08/E09/venue truth) and is reported as :data:`NOT_OWNED_HERE`, never silently assumed true.
 
+    Both facts, when present, must carry a ``scope`` EXACTLY equal to the requested ``scope`` — a
+    fact issued for a DIFFERENT scope (even one that looks "broader", e.g. an empty/wildcard-
+    shaped lease scope) is never assumed to cover the requested one; a mismatch is reported and
+    folds into ``ready=False`` rather than silently reusing a foreign fact. Mirrors the ordering
+    law's own "EXACT scope" discipline (see the module docstring).
+
+    ``authority_signature_verifier``/``lease_signature_verifier`` are threaded verbatim to
+    :func:`verify_candidate_authority`/:func:`verify_producer_lease` — see their docstrings.
+
     Returns a dict naming every conjunct explicitly — never a bare boolean.
     """
     result = {
         "authority_fact_present": authority_fact is not None,
         "authority_fact_valid": False,
+        "authority_scope_matches": False,
         "activation_manifest_named": False,
         "lease_present": lease_fact is not None,
         "lease_active": False,
+        "lease_scope_matches": False,
         "producer_attestation": "NOT_OWNED_HERE",
         "ready": False,
     }
     if authority_fact is not None:
         try:
-            verified_authority = verify_candidate_authority(authority_fact, now_us=now_us)
+            verified_authority = verify_candidate_authority(
+                authority_fact, now_us=now_us, signature_verifier=authority_signature_verifier)
         except AuthorityFactError:
             verified_authority = None
         if verified_authority is not None:
             result["authority_fact_valid"] = is_currently_valid_authority(
                 verified_authority, now_us=now_us)
+            result["authority_scope_matches"] = verified_authority.get("scope") == scope
             manifest_id = verified_authority.get("activation_manifest_id")
             result["activation_manifest_named"] = bool(
                 isinstance(manifest_id, str) and manifest_id)
     if lease_fact is not None:
         try:
-            verified_lease = verify_producer_lease(lease_fact, now_us=now_us)
+            verified_lease = verify_producer_lease(
+                lease_fact, now_us=now_us, signature_verifier=lease_signature_verifier)
         except AuthorityFactError:
             verified_lease = None
         if verified_lease is not None:
             result["lease_active"] = is_currently_active_lease(verified_lease, now_us=now_us)
+            result["lease_scope_matches"] = verified_lease.get("scope") == scope
     result["ready"] = (
         result["authority_fact_valid"]
+        and result["authority_scope_matches"]
         and result["activation_manifest_named"]
         and result["lease_active"]
+        and result["lease_scope_matches"]
     )
     return result

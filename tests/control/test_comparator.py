@@ -40,7 +40,14 @@ def _control(**overrides):
 
 
 def _treatment(**overrides):
-    base = _control(engine_cohort="ORIGIN_CANDIDATE", intelligence_arm="INTELLIGENCE_TREATMENT",
+    # NOTE: flips ONLY engine_cohort by default — intelligence_arm stays whatever _control()'s
+    # default is (the axis NOT under test for compare_engine_cohort, which every helper/test in
+    # this file that builds a matched pair via _control()/_treatment() ultimately exercises; the
+    # comparator now REFUSES a pair whose non-compared axis disagrees, so holding it constant by
+    # default here is load-bearing, not cosmetic). A test that wants to exercise the
+    # intelligence_arm axis instead builds its pair directly from _control() overrides, holding
+    # engine_cohort constant explicitly (see test_the_two_axes_produce_independently_labeled_records).
+    base = _control(engine_cohort="ORIGIN_CANDIDATE",
                      candidate_id="cand-treatment-1", provenance_hash="b" * 64)
     base.update(overrides)
     return base
@@ -209,6 +216,30 @@ def test_compare_intelligence_arm_refuses_a_treatment_with_the_wrong_arm():
                                     divergence_id="d1")
 
 
+def test_compare_engine_cohort_refuses_when_the_non_compared_arm_axis_disagrees():
+    # Both sides carry the CORRECT engine_cohort label for their position, but the
+    # non-compared intelligence_arm axis disagrees between them — a divergence attributed to
+    # engine_cohort alone here could actually be confounded by a simultaneous arm change, so
+    # this must refuse rather than silently emit a possibly-misattributed record.
+    control = _control(intelligence_arm="DETERMINISTIC_CONTROL")
+    treatment = _treatment(intelligence_arm="INTELLIGENCE_TREATMENT")
+    with pytest.raises(c.ComparatorError):
+        c.compare_engine_cohort(control, treatment, input_offset=1, evaluated_at_us=1,
+                                 divergence_id="d1")
+
+
+def test_compare_intelligence_arm_refuses_when_the_non_compared_cohort_axis_disagrees():
+    # Symmetric: both sides carry the correct intelligence_arm label, but engine_cohort
+    # disagrees between them.
+    control = _control(engine_cohort="LEGACY_COMPARATOR", intelligence_arm="DETERMINISTIC_CONTROL")
+    treatment = _control(
+        engine_cohort="ORIGIN_CANDIDATE", intelligence_arm="INTELLIGENCE_TREATMENT",
+        candidate_id="cand-treatment-1", provenance_hash="b" * 64)
+    with pytest.raises(c.ComparatorError):
+        c.compare_intelligence_arm(control, treatment, input_offset=1, evaluated_at_us=1,
+                                    divergence_id="d1")
+
+
 def test_the_two_axes_produce_independently_labeled_records():
     control_cohort = _control()
     treatment_cohort = _treatment(
@@ -220,9 +251,13 @@ def test_the_two_axes_produce_independently_labeled_records():
         divergence_id="d-cohort")
     assert cohort_record["comparison_axis"] == "ENGINE_COHORT"
 
+    # Exercising the intelligence_arm axis: engine_cohort must be held CONSTANT across both
+    # sides (the comparator now refuses otherwise) while intelligence_arm differs.
     control_arm = _control(engine_cohort="LEGACY_COMPARATOR", intelligence_arm="DETERMINISTIC_CONTROL")
-    treatment_arm = _treatment(
-        intelligence_arm="INTELLIGENCE_TREATMENT", entry_reference_ticks="999")
+    treatment_arm = _control(
+        engine_cohort="LEGACY_COMPARATOR", intelligence_arm="INTELLIGENCE_TREATMENT",
+        candidate_id="cand-treatment-1", provenance_hash="b" * 64,
+        entry_reference_ticks="999")
     arm_record = c.compare_intelligence_arm(
         control_arm, treatment_arm, input_offset=1, evaluated_at_us=1, divergence_id="d-arm")
     assert arm_record["comparison_axis"] == "INTELLIGENCE_ARM"

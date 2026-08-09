@@ -223,7 +223,10 @@ def compare_engine_cohort(
 
     Refuses (:class:`ComparatorError`) if either present candidate does not carry its expected
     ``engine_cohort`` label — a caller cannot silently feed intelligence_arm-differentiated
-    candidates through the engine_cohort axis.
+    candidates through the engine_cohort axis. When BOTH candidates are present, ALSO refuses
+    unless they share the SAME ``intelligence_arm`` — the non-compared axis must be held
+    constant, or a divergence stamped ``comparison_axis=ENGINE_COHORT`` could actually be
+    confounded by a simultaneous intelligence_arm difference and misattributed.
     """
     if control is not None:
         cohort = require_engine_cohort(control.get("engine_cohort"))
@@ -237,6 +240,14 @@ def compare_engine_cohort(
             raise ComparatorError(
                 f"treatment candidate for compare_engine_cohort must carry engine_cohort="
                 f"ORIGIN_CANDIDATE, got {cohort!r}")
+    if control is not None and treatment is not None:
+        control_arm = require_intelligence_arm(control.get("intelligence_arm"))
+        treatment_arm = require_intelligence_arm(treatment.get("intelligence_arm"))
+        if control_arm != treatment_arm:
+            raise ComparatorError(
+                f"compare_engine_cohort requires both candidates share the SAME "
+                f"intelligence_arm (the non-compared axis held constant): "
+                f"control={control_arm!r}, treatment={treatment_arm!r}")
     return _compare(
         control, treatment, input_offset=input_offset, evaluated_at_us=evaluated_at_us,
         divergence_id=divergence_id, comparison_axis="ENGINE_COHORT")
@@ -250,7 +261,9 @@ def compare_intelligence_arm(
 
     Refuses (:class:`ComparatorError`) if either present candidate does not carry its expected
     ``intelligence_arm`` label — a caller cannot silently feed engine_cohort-differentiated
-    candidates through the intelligence_arm axis.
+    candidates through the intelligence_arm axis. When BOTH candidates are present, ALSO refuses
+    unless they share the SAME ``engine_cohort`` — the non-compared axis must be held constant
+    (mirrors :func:`compare_engine_cohort`'s symmetric law).
     """
     if control is not None:
         arm = require_intelligence_arm(control.get("intelligence_arm"))
@@ -264,6 +277,14 @@ def compare_intelligence_arm(
             raise ComparatorError(
                 f"treatment candidate for compare_intelligence_arm must carry intelligence_arm="
                 f"INTELLIGENCE_TREATMENT, got {arm!r}")
+    if control is not None and treatment is not None:
+        control_cohort = require_engine_cohort(control.get("engine_cohort"))
+        treatment_cohort = require_engine_cohort(treatment.get("engine_cohort"))
+        if control_cohort != treatment_cohort:
+            raise ComparatorError(
+                f"compare_intelligence_arm requires both candidates share the SAME "
+                f"engine_cohort (the non-compared axis held constant): "
+                f"control={control_cohort!r}, treatment={treatment_cohort!r}")
     return _compare(
         control, treatment, input_offset=input_offset, evaluated_at_us=evaluated_at_us,
         divergence_id=divergence_id, comparison_axis="INTELLIGENCE_ARM")
