@@ -63,12 +63,15 @@ top-level review, issue-comment, PR-root-reaction, and issue-timeline inventorie
 current `CHANGES_REQUESTED`, every review at or after the selected final-head trigger, every
 unbound post-merge review, every inventory race or omission, and every commit, force-push,
 head-ref deletion/restoration, `automatic_base_change_succeeded`, or other head/base ref mutation
-between trigger and guarded merge. The reviewed law also pins the exact four-review/five-comment
+between trigger and guarded merge. The reviewed law also pins the exact five-review/seven-comment
 pre-final history, including raw and numeric actors, complete bodies, commit/state, IDs, times, and
 URLs. Every top-level comment must remain unedited; any changed historical review or post-trigger
 review dismissal fails closed. The selected trigger must be
 unchanged and name the full final head plus its successful CI run/job. A fresh unchanged Codex
-clean-response comment must follow and name that head's reviewed prefix. The connector's persistent
+clean-response comment must follow, name that head's reviewed prefix, and equal one of the finite
+complete bodies ratified from live clean artifacts. Only the exact observed “What shall we delve
+into next?” and “Bravo.” variants with the common body tail are accepted; unknown wording or any
+additional suffix fails closed. The connector's persistent
 PR-root `+1` is authenticated supporting corroboration; it is not required to acquire a new
 timestamp for each trigger and never accepts a head without its own fresh clean comment. The sealed
 export preserves historical states and does not relabel PR #4 or the `73771e…` observation as the

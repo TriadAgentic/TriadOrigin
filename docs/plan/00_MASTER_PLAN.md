@@ -156,14 +156,17 @@ current `CHANGES_REQUESTED`, review at or after the selected final-head trigger,
 review, changed inventory, or pagination gap fails closed. The clean-review-object arm remains valid
 only for an exact-head review object with no findings and is subject to the same historical
 comment/review, reaction, pull-boundary, and timeline law. The observed clean-comment arm requires an
-unchanged maintainer trigger naming the full PR head and successful CI run/job, followed by the
-exact unchanged Codex clean-response comment naming that head's reviewed prefix. The persistent
+unchanged maintainer trigger naming the full PR head and successful CI run/job, followed by a
+complete byte-for-byte match to one of the finite Codex clean-response bodies ratified from live
+artifacts, naming that head's reviewed prefix. The reviewed allowlist currently contains only the
+observed “What shall we delve into next?” and “Bravo.” bodies with their exact common tail; unknown
+wording, suffixes, or prefix-only matches fail closed. The persistent
 PR-level `+1` from `chatgpt-codex-connector[bot]` is authenticated by raw login and immutable actor
 ID and is supporting corroboration only: it need not be recreated for every trigger and can never
 independently establish which head was reviewed.
 
 Because submitted GitHub reviews have no review-body update timestamp, the reviewed source pins the
-exact four-review and five-comment PR #7 history that existed before this law: IDs, raw and numeric
+exact five-review and seven-comment PR #7 history that existed before this law: IDs, raw and numeric
 actors, commit/state, complete bodies, submission/creation times, and URLs. The live export must
 start with that exact review/comment baseline; it cannot redefine history after merge. Every
 top-level comment, including the fresh selected pair, must remain unedited (`created_at ==

@@ -87,8 +87,9 @@ single canonical unedited closure reply may follow, strictly after merge.
 
 The clean-review-object arm requires an exact-head review object with no findings and the same
 complete historical comment/review, reaction, pull-boundary, and timeline checks. The observed
-clean-comment arm requires a fresh unchanged full-head/CI trigger followed by the exact unchanged
-Codex clean-response comment for that head. The connector's persistent PR-level `+1` is authenticated
+clean-comment arm requires a fresh unchanged full-head/CI trigger followed by a complete
+byte-for-byte match to one of the finite reviewed Codex clean-response bodies for that head. Unknown
+wording, suffixes, and prefix-only matches fail closed. The connector's persistent PR-level `+1` is authenticated
 corroboration only; it need not be recreated after every trigger and never substitutes for a fresh
 head-specific clean comment. Any later commit invalidates the clean result and requires new
 exact-head CI and acceptance. The 14 inherited PR #1–#3 threads closed post-PR #4 merge

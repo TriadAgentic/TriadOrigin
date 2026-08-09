@@ -120,8 +120,9 @@ No skip/xfail is accepted silently; each has an owner and receipt disposition.
   acceptance for that same immutable head.
 - A clean acceptance is head-scoped. Any later commit invalidates it and requires new exact-head CI,
   a fresh full-head trigger, and a fresh clean artifact.
-- In the clean-comment arm, the exact Codex clean-response comment is the head-specific acceptance
-  artifact. The persistent connector PR-root `+1` is corroboration only and never substitutes for
+- In the clean-comment arm, a complete byte-for-byte match to one of the finite reviewed Codex
+  clean-response bodies is the head-specific acceptance artifact; unknown wording and suffixes fail
+  closed. The persistent connector PR-root `+1` is corroboration only and never substitutes for
   that comment or binds a later head by itself.
 - Complete review, top-level issue-comment, PR-root-reaction, and issue-timeline inventories are
   fetched twice, persisted exactly, and fail closed on pagination gaps, races, or disagreement.
@@ -154,7 +155,8 @@ matching `origin.github-review-export.v2` and uses a discriminated final-accepta
 review-object arm requires an exact-head clean review object with no findings and the same complete
 historical comment/review, reaction, pull-boundary, and timeline checks. The clean-comment arm
 requires an unchanged maintainer trigger containing the full final head and successful CI run/job,
-then an unchanged connector clean-response comment naming that head's reviewed prefix. The raw
+then an unchanged connector clean-response comment naming that head's reviewed prefix and matching
+one complete body in the finite source-reviewed allowlist. The raw
 connector login and immutable numeric actor ID must agree across the clean comment and the persisted
 PR-root `+1`. Because GitHub retains one reaction of a given type per actor and PR, that reaction is
 persistent protocol corroboration rather than a per-trigger event; its existence cannot excuse a

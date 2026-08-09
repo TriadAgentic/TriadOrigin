@@ -442,9 +442,21 @@ def _expected_codex_review_request_body(
     )
 
 
-def _expected_codex_clean_comment_body(head_sha: str) -> str:
+R00_CODEX_CLEAN_COMMENT_OPENINGS = (
+    "Codex Review: Didn't find any major issues. What shall we delve into next?",
+    "Codex Review: Didn't find any major issues. Bravo.",
+)
+
+
+def _expected_codex_clean_comment_body(
+    head_sha: str,
+    *,
+    opening: str = R00_CODEX_CLEAN_COMMENT_OPENINGS[0],
+) -> str:
+    if opening not in R00_CODEX_CLEAN_COMMENT_OPENINGS:
+        raise ValueError("unreviewed Codex clean-comment opening")
     return (
-        "Codex Review: Didn't find any major issues. What shall we delve into next?\n\n"
+        f"{opening}\n\n"
         f"**Reviewed commit:** `{head_sha[:10]}`\n\n"
         "<details> <summary>ℹ️ About Codex in GitHub</summary>\n<br/>\n\n"
         "[Your team has set up Codex to review pull requests in this repo]"
@@ -455,6 +467,14 @@ def _expected_codex_clean_comment_body(head_sha: str) -> str:
         "If Codex has suggestions, it will comment; otherwise it will react with 👍.\n\n\n\n\n"
         "Codex can also answer questions or update the PR. Try commenting "
         "\"@codex address that feedback\".\n            \n</details>"
+    )
+
+
+def _expected_codex_clean_comment_bodies(head_sha: str) -> tuple[str, ...]:
+    """Return only the complete clean-response bodies ratified from live artifacts."""
+    return tuple(
+        _expected_codex_clean_comment_body(head_sha, opening=opening)
+        for opening in R00_CODEX_CLEAN_COMMENT_OPENINGS
     )
 
 
@@ -469,6 +489,7 @@ def _r00_pr7_preacceptance_review_baseline() -> list[dict[str, str]]:
     first_head = "61f5c417a4a66f769e9ce534fd97ef074f654784"
     pin_head = "71d0400d0610ece52efcaacc958ef4f748418ddd"
     timeline_head = "8380348c43d8d7626bf3c89976d19f43275ca9ce"
+    disposition_head = "52656010d28d010a71a2fefa92c32e728fc28b87"
     return [
         {
             "body": _expected_codex_review_body(first_head),
@@ -551,6 +572,20 @@ def _r00_pr7_preacceptance_review_baseline() -> list[dict[str, str]]:
                 "#pullrequestreview-4890177398"
             ),
         },
+        {
+            "body": "",
+            "commit_id": disposition_head,
+            "raw_reviewer": R00_PR_AUTHOR,
+            "review_id": "4890205850",
+            "reviewer": R00_PR_AUTHOR,
+            "reviewer_id": R00_PR_AUTHOR_ID,
+            "state": "COMMENTED",
+            "submitted_at": "2026-08-09T00:47:20Z",
+            "url": (
+                "https://github.com/TriadAgentic/TriadOrigin/pull/7"
+                "#pullrequestreview-4890205850"
+            ),
+        },
     ]
 
 
@@ -559,6 +594,7 @@ def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
     pin_head = "71d0400d0610ece52efcaacc958ef4f748418ddd"
     observed_head = "73771e53105a915756ae14fac93dc616190c4d1a"
     timeline_head = "8380348c43d8d7626bf3c89976d19f43275ca9ce"
+    disposition_head = "52656010d28d010a71a2fefa92c32e728fc28b87"
     rows = [
         (
             "5228488965",
@@ -622,6 +658,27 @@ def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
                 timeline_head, "31286109671", "93175141486"
             ),
             "2026-08-09T00:28:58Z",
+        ),
+        (
+            "5229049421",
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR_ID,
+            _expected_codex_review_request_body(
+                disposition_head, "31286791228", "93176974248"
+            ),
+            "2026-08-09T00:47:43Z",
+        ),
+        (
+            "5229058332",
+            R00_REQUIRED_REVIEWER,
+            "chatgpt-codex-connector[bot]",
+            R00_REQUIRED_REVIEWER_ID,
+            _expected_codex_clean_comment_body(
+                disposition_head,
+                opening=R00_CODEX_CLEAN_COMMENT_OPENINGS[1],
+            ),
+            "2026-08-09T00:50:24Z",
         ),
     ]
     return [
@@ -3454,7 +3511,8 @@ def _validate_live_r00_reaction(
     expected_request = _expected_codex_review_request_body(
         head_sha, ci_run_id, ci_job_id
     )
-    expected_clean = _expected_codex_clean_comment_body(head_sha)
+    expected_cleans = _expected_codex_clean_comment_bodies(head_sha)
+    actual_clean_body = clean.get("body") if clean else None
     actual_selected_comment_reactions = {
         name: snapshots[0]
         for name, snapshots in selected_comment_reaction_snapshots.items()
@@ -3628,7 +3686,7 @@ def _validate_live_r00_reaction(
         or clean.get("author") != R00_REQUIRED_REVIEWER
         or clean.get("raw_author") != "chatgpt-codex-connector[bot]"
         or clean.get("author_id") != R00_REQUIRED_REVIEWER_ID
-        or clean.get("body") != expected_clean
+        or actual_clean_body not in expected_cleans
         or clean.get("created_at") != clean.get("updated_at")
         or reaction.get("actor") != R00_REQUIRED_REVIEWER
         or reaction.get("raw_actor") != "chatgpt-codex-connector[bot]"
@@ -3659,7 +3717,7 @@ def _validate_live_r00_reaction(
         or final.get("clean_comment_id") != clean_id
         or final.get("clean_comment_url") != clean.get("url")
         or final.get("clean_comment_body_sha256")
-        != hashlib.sha256(expected_clean.encode("utf-8")).hexdigest()
+        != hashlib.sha256(actual_clean_body.encode("utf-8")).hexdigest()
         or final.get("reaction_id") != reaction_id
         or final.get("reaction_node_id") != reaction.get("node_id")
     ):

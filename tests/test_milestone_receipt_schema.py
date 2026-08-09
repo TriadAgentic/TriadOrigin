@@ -18,6 +18,7 @@ import pytest
 
 from triad_origin.canonical import canonical_json
 from tools.validate_milestone_receipt import (
+    R00_CODEX_CLEAN_COMMENT_OPENINGS,
     R00_FAILED_ATTEMPT,
     R00_INHERITED_THREADS,
     R00_IMPLEMENTATION_HEAD_SHA,
@@ -2746,6 +2747,127 @@ def test_r00_clean_comment_and_persistent_pr_reaction_arm_validates(tmp_path):
     )
 
 
+def test_r00_observed_bravo_clean_comment_variant_validates(tmp_path):
+    receipt = _reaction_receipt(tmp_path)
+    bravo = _expected_codex_clean_comment_body(
+        HEAD40,
+        opening=R00_CODEX_CLEAN_COMMENT_OPENINGS[1],
+    )
+
+    review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
+    review["final_reaction"]["clean_comment_body_sha256"] = _sha(bravo.encode())
+    _rewrite_bound_record(tmp_path, receipt, "review", review)
+
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    corrective = next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    corrective["issue_comments"][-1]["body"] = bravo
+    raw_timeline = copy.deepcopy(_reaction_raw_timeline())
+    clean_event = next(
+        item for item in raw_timeline
+        if item.get("event") == "commented"
+        and str(item.get("id")) == REACTION_CLEAN_ID
+    )
+    clean_event["body"] = bravo
+    normalized_clean = _normalize_live_pr7_timeline_event(clean_event)
+    normalized_clean["position"] = next(
+        item["position"] for item in corrective["timeline"]
+        if item.get("event") == "commented"
+        and item.get("object_id") == REACTION_CLEAN_ID
+    )
+    corrective["timeline"] = [
+        normalized_clean
+        if item.get("event") == "commented"
+        and item.get("object_id") == REACTION_CLEAN_ID
+        else item
+        for item in corrective["timeline"]
+    ]
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def bravo_get(path: str):
+        value = copy.deepcopy(_fake_reaction_github_get_json(path))
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=1":
+            value[-1]["body"] = bravo
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=1":
+            next(
+                item for item in value
+                if item.get("event") == "commented"
+                and str(item.get("id")) == REACTION_CLEAN_ID
+            )["body"] = bravo
+        return value
+
+    _validate_receipt_impl(
+        receipt,
+        _schema(),
+        evidence_root=tmp_path,
+        github_get_json=bravo_get,
+        github_get_review_threads=_fake_github_get_review_threads,
+    )
+
+
+def test_r00_coordinated_unreviewed_clean_body_rewrite_rejects(tmp_path):
+    receipt = _reaction_receipt(tmp_path)
+    poisoned = (
+        _expected_codex_clean_comment_body(HEAD40)
+        + "\nP1 CRITICAL: DO NOT MERGE"
+    )
+
+    review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
+    review["final_reaction"]["clean_comment_body_sha256"] = _sha(poisoned.encode())
+    _rewrite_bound_record(tmp_path, receipt, "review", review)
+
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    corrective = next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    corrective["issue_comments"][-1]["body"] = poisoned
+    raw_timeline = copy.deepcopy(_reaction_raw_timeline())
+    clean_event = next(
+        item for item in raw_timeline
+        if item.get("event") == "commented"
+        and str(item.get("id")) == REACTION_CLEAN_ID
+    )
+    clean_event["body"] = poisoned
+    normalized_clean = _normalize_live_pr7_timeline_event(clean_event)
+    normalized_clean["position"] = next(
+        item["position"] for item in corrective["timeline"]
+        if item.get("event") == "commented"
+        and item.get("object_id") == REACTION_CLEAN_ID
+    )
+    corrective["timeline"] = [
+        normalized_clean
+        if item.get("event") == "commented"
+        and item.get("object_id") == REACTION_CLEAN_ID
+        else item
+        for item in corrective["timeline"]
+    ]
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def poisoned_get(path: str):
+        value = copy.deepcopy(_fake_reaction_github_get_json(path))
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=1":
+            value[-1]["body"] = poisoned
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=1":
+            next(
+                item for item in value
+                if item.get("event") == "commented"
+                and str(item.get("id")) == REACTION_CLEAN_ID
+            )["body"] = poisoned
+        return value
+
+    with pytest.raises(ReceiptValidationError, match="clean-comment/reaction"):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=poisoned_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
 def test_observed_clean_comment_protocol_bytes_are_pinned():
     observed_head = "73771e53105a915756ae14fac93dc616190c4d1a"
     request = _expected_codex_review_request_body(
@@ -2756,6 +2878,48 @@ def test_observed_clean_comment_protocol_bytes_are_pinned():
     assert _sha(request) == "9590d034d80de84df77b6496be65ab1a018861adb1f0ea2bbef191960e8cb935"
     assert len(clean) == 611
     assert _sha(clean) == "4da9d5102224c087c981ee2ccb4111e10e8ff7dee08a60a6d124b1e30163a661"
+
+
+def test_observed_bravo_clean_comment_protocol_bytes_are_pinned():
+    observed_head = "52656010d28d010a71a2fefa92c32e728fc28b87"
+    clean = _expected_codex_clean_comment_body(
+        observed_head,
+        opening=R00_CODEX_CLEAN_COMMENT_OPENINGS[1],
+    ).encode()
+    assert len(clean) == 587
+    assert _sha(clean) == "7e8f7cce513656ff7ce539085c7f116e0cafbeb6e718f548ba901cb32d4ddb56"
+
+
+def test_codex_clean_comment_opening_must_be_reviewed_exactly():
+    with pytest.raises(ValueError, match="unreviewed Codex clean-comment opening"):
+        _expected_codex_clean_comment_body(
+            HEAD40,
+            opening="Codex Review: Didn't find any major issues. Mostly.",
+        )
+
+
+def test_pr7_preacceptance_source_baselines_pin_live_history():
+    reviews = _r00_pr7_preacceptance_review_baseline()
+    comments = _r00_pr7_preacceptance_comment_baseline()
+    assert [row["review_id"] for row in reviews] == [
+        "4889698522",
+        "4889935294",
+        "4889942759",
+        "4890177398",
+        "4890205850",
+    ]
+    assert [row["id"] for row in comments] == [
+        "5228488965",
+        "5228554814",
+        "5228555326",
+        "5228567753",
+        "5228983837",
+        "5229049421",
+        "5229058332",
+    ]
+    assert _sha(comments[-1]["body"].encode()) == (
+        "7e8f7cce513656ff7ce539085c7f116e0cafbeb6e718f548ba901cb32d4ddb56"
+    )
 
 
 def test_r00_timeline_normalizes_reviewed_event_submitted_at():
@@ -2822,7 +2986,7 @@ def test_r00_clean_comment_reaction_arm_rejects_live_mutations(tmp_path, mutatio
                 value["updated_at"] = "2026-08-09T02:01:00Z"
         if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=1":
             comment_page_one_calls += 1
-            request, clean = value
+            request, clean = value[-2:]
             if mutation == "request-author":
                 request["user"]["login"] = "attacker"
             elif mutation == "request-author-id":
