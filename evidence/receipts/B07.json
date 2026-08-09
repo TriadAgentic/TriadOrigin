@@ -1,0 +1,52 @@
+{
+  "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "build_commit": "2cebc1391d65028a2a7de200d2e3fb9f82369872",
+  "config_bundle_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "contract_manifest_sha256": "7fdde8f51941d9f18b202052edbb315f52f9d2bf331be86d8a027dd610d82a0b",
+  "emitted_at_us": 1786278171000000,
+  "event_id": "evt_receipt_B07",
+  "event_kind": "EVIDENCE_RECEIPT",
+  "payload": {
+    "builder": "claude-fable-5-build-session",
+    "evidence_ids": [
+      "pr-24-ci-run-31312554529",
+      "gate-reproduced-on-merged-main-2cebc13",
+      "pytest-seed0-seed1-1491-tests-green",
+      "e2e-audit-22-stages-b07-control-plane-walk",
+      "contracts-44-manifest-133-artifacts-44-goldens",
+      "candidate-authority-v1-vendored-verify-only-row-a7",
+      "parameter-registry-192-rows-141-refused-51-materialized-partition-verified",
+      "signed-bundle-13-domains-self-verifying-content-addressed",
+      "comparator-two-axis-type-safety-non-compared-axis-held-constant",
+      "authority-fact-verifier-ordering-stale-duplicate-split-brain-currency-scope-match",
+      "legacy-bridge-byte-preservation-detached-copies-raw-record-and-cached-state",
+      "replay-runner-same-code-path-byte-identical-checkpoint-resume-identity",
+      "service-ready-no-authority-ceiling-never-exceeded",
+      "pr-24-review-5-findings-addressed-signature-verifier-seam-bridge-detachment-comparator-axis-hold-admit-fact-currency-readiness-scope-match",
+      "disposition-register-rows-e25-e26-e27",
+      "ultracode-marathon-build-session"
+    ],
+    "evidence_sha256s": [
+      "f62dcf9c9f4c33e93bf2ce353560ebf9cde0e6f6bf0d6db0723377dbb01e8a90"
+    ],
+    "expires_at_us": 1788870171000000,
+    "observed_at_us": 1786278171000000,
+    "producer_digests": {
+      "canonical_manifest_hash": "7fdde8f51941d9f18b202052edbb315f52f9d2bf331be86d8a027dd610d82a0b"
+    },
+    "receipt_id": "receipt-B07",
+    "result": "PASS",
+    "reviewer": "github-actions-ci-run-31312554529",
+    "scope": {
+      "merged_main_sha": "2cebc1391d65028a2a7de200d2e3fb9f82369872",
+      "milestone": "B07",
+      "pull_request": "24",
+      "repository": "TriadAgentic/TriadOrigin"
+    },
+    "signature": "690d0ff9286ee384f20339c91ae25cf37ffb446abcf95c371bf789cb56c7cdc6"
+  },
+  "producer_instance_id": "b-series-build",
+  "producer_service": "governance-evidence",
+  "schema": "triad.evidence_receipt.v2",
+  "schema_version": "2.0.0"
+}

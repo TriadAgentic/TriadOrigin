@@ -177,8 +177,14 @@ separate gate receipt._
   `tests/test_service.py` (13 tests) + `tools/verify_no_forbidden_capabilities.py` green
 - [x] End-to-end config/comparison/authority-fact/bridge/replay stage — `tools/e2e_audit.py`
   stage 22 `b07_control_plane_walk`
-- [ ] Source PR merged green
-- [ ] Post-merge B07 receipt passed
+- [x] Source PR merged green — PR #24 squash-merged as `2cebc1391d65028a2a7de200d2e3fb9f82369872`
+  (CI green on both the initial push and the five-finding review-fix push, all five review
+  threads resolved with reply)
+- [x] Post-merge B07 receipt passed — `evidence/receipts/B07.json`, full gate reproduced against
+  the exact merged SHA (both pytest seeds, 1491 tests; `collect_test_ids`/`verify_manifest`/
+  `validate_contract_manifest`/`verify_reproducible_build`/`test_wheel_install`/
+  `verify_no_forbidden_capabilities`/`e2e_audit` 22/22 stages/`build_ledger --verify`/
+  `validate_combined_dag`, all green)
 
 ## B08 · Read faces and evidence
 
