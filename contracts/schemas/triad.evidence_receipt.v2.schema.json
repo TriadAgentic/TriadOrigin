@@ -1,0 +1,136 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.evidence_receipt.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "EVIDENCE_RECEIPT"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "builder": {
+          "type": "string"
+        },
+        "evidence_ids": {
+          "type": "array"
+        },
+        "evidence_sha256s": {
+          "type": "array"
+        },
+        "expires_at_us": {
+          "type": "integer"
+        },
+        "observed_at_us": {
+          "type": "integer"
+        },
+        "producer_digests": {
+          "type": "object"
+        },
+        "receipt_id": {
+          "type": "string"
+        },
+        "result": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "BLOCKED"
+          ],
+          "type": "string"
+        },
+        "reviewer": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "signature": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "scope",
+        "result",
+        "evidence_ids",
+        "evidence_sha256s",
+        "observed_at_us",
+        "expires_at_us",
+        "producer_digests",
+        "builder",
+        "reviewer",
+        "signature"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.evidence_receipt.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.evidence_receipt.v2",
+  "type": "object"
+}

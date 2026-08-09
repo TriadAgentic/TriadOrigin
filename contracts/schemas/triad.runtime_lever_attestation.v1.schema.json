@@ -1,0 +1,168 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.runtime_lever_attestation.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "RUNTIME_LEVER_ATTESTATION"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "accepted_manifest_digest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "accepted_revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "account_proof": {
+          "type": "object"
+        },
+        "attestation_id": {
+          "type": "string"
+        },
+        "attested_at_us": {
+          "type": "integer"
+        },
+        "engine_id": {
+          "type": "string"
+        },
+        "freshness_age_ms": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "health": {
+          "type": "object"
+        },
+        "lease_epoch": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "paper_activation": {
+          "enum": [
+            "LIVE",
+            "OFF"
+          ],
+          "type": "string"
+        },
+        "process_identity": {
+          "type": "object"
+        },
+        "route_proof": {
+          "type": "object"
+        },
+        "shadow_activation": {
+          "enum": [
+            "LIVE"
+          ],
+          "type": "string"
+        },
+        "venue_activation": {
+          "enum": [
+            "LIVE",
+            "OFF"
+          ],
+          "type": "string"
+        },
+        "venue_environment": {
+          "enum": [
+            "LIVE",
+            "TESTNET",
+            "OFF"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "attestation_id",
+        "engine_id",
+        "accepted_manifest_digest_sha256",
+        "accepted_revision",
+        "venue_environment",
+        "venue_activation",
+        "paper_activation",
+        "shadow_activation",
+        "process_identity",
+        "route_proof",
+        "account_proof",
+        "lease_epoch",
+        "health",
+        "attested_at_us",
+        "freshness_age_ms"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.runtime_lever_attestation.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.runtime_lever_attestation.v1",
+  "type": "object"
+}

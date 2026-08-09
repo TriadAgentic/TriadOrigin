@@ -1,0 +1,462 @@
+{
+  "artifacts": [
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.activation_manifest.v1/invalid.json",
+      "sha256": "bd50a884150be03dcf4380f2cdfb13492f1e211dbd3d6aab739392f6d6571dbb"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.activation_manifest.v1/valid.json",
+      "sha256": "b7071e0b925258c9e43ab183718486c822d8d72c92530f5bbd735447e423dcda"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.compatibility_manifest.v1/invalid.json",
+      "sha256": "557c78ed25ed64182e5e40f0d9b08cfaef5bfb95a0c56aa8250e8adc1e201bb8"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.compatibility_manifest.v1/valid.json",
+      "sha256": "daf656953abbe3d2703c4358e49a1ae4e5357761745b99025c3139c2074a3c48"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.contract_bundle.manifest.v1/invalid.json",
+      "sha256": "8e8c9240619d4529ca252cb3644d44e208c016b10143888768db252e54c9624c"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.contract_bundle.manifest.v1/valid.json",
+      "sha256": "dd9778798871f587109ca5975c1d35bf3375d7348c63e860c194a1c2738249b2"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.decision.v2/invalid.json",
+      "sha256": "ea2e08001ae50a25cc4c0934442786c1c7d546a0e7b894fcdc4f81e5884ace86"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.decision.v2/valid.json",
+      "sha256": "43011b51e88a74a3cde26d7eedfa3c9118d9702d9e149fdb12057af2fabfbe71"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.divergence_record.v1/invalid.json",
+      "sha256": "baab0bfbcc26e4fdfc6beadece2ee0bff2474cbcae753d0c5190b704ae81e1bc"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.divergence_record.v1/valid.json",
+      "sha256": "a6adb4189934effb5ffa0b936f455f3f14e7683779e70f2400e5c61c3cd6931f"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.edge_candidate.v2/invalid.json",
+      "sha256": "6958137ec7676a3d650c78b42e39f2fb16f5db58c2b76a9050ece769c96c02ba"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.edge_candidate.v2/valid.json",
+      "sha256": "81b25396f1a6672891e5492b8c2992af98d59a2574e672a6d087cd2dc7145883"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.edge_candidate_transition.v1/invalid.json",
+      "sha256": "fbb6fed1ef2a4b1681460d65aec6fbf118b2b6291d575d6e4a50863b4c5474ab"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.edge_candidate_transition.v1/valid.json",
+      "sha256": "4f5556ae92bab645f9e43548c3c47bbbb2d98cc006c6bc30711cfd7f10e3b75e"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.emergency_exit_authorization.v1/invalid.json",
+      "sha256": "18e55d6e8b3299a67dd07284a9d577e0c80c69624a2c1b06a568599adfe6d342"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.emergency_exit_authorization.v1/valid.json",
+      "sha256": "70899ea7430254021edab1bc4a69fad54f383ea44225fc751ce3a47f2a65274d"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.engine_attestation.v1/invalid.json",
+      "sha256": "7a59e569a24676da7ba7561f46c4171723aa81fb69792a9241809a5461f6b000"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.engine_attestation.v1/valid.json",
+      "sha256": "51b09b601b9c81c721b480f0933cc85e737800d1a239f7bfb7ec671399d9f71f"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.execution_authorization.v2/invalid.json",
+      "sha256": "5efed1a47c2e68f14e0e7a786ee60b850dcc40fbee8931f4643adedee7915e30"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.execution_authorization.v2/valid.json",
+      "sha256": "fc749f3160e5719c8359f6b9ad6713d288e0dfac56dcbf5c304cf285cb18794f"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.execution_cmd.v2/invalid.json",
+      "sha256": "74fb58458d37127f904902010e3ba664b99a37e6d29cc6bd2dbdee13967fcef6"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.execution_cmd.v2/valid.json",
+      "sha256": "42cfdac4d83f0514c7b44fb8f0875cd54196b9557b8a68b4cfc0f36c942403a9"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.feature_snapshot.v2/invalid.json",
+      "sha256": "59b715c86a0c9898a52baf50b6f50ba4683c86e806986dd1513cca136fb9b67d"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.feature_snapshot.v2/valid.json",
+      "sha256": "de573dbe4ee65b2e34a1e06b0a5e4ced502f19b29d2b0029cb786604a0636389"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.fill.v3/invalid.json",
+      "sha256": "6f3c493e25fe9d068027ffae114389dc83ea61e1a89fd48301edc79f00b11e95"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.fill.v3/valid.json",
+      "sha256": "ec7ba350f43ceb3cb0acbb9b1c9858554c41d4cea671601f529cf4d4e2f29120"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.market_event.v2/invalid.json",
+      "sha256": "6f2aeca3b401e6693cecce1cdfbfd7f35b0dcbf1082c6dc747153c407d9490eb"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.market_event.v2/valid.json",
+      "sha256": "32b7c243a5cee4a2d8aafe42a3a93ff651bc45e38391e5dfc77e080291f44fb4"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.market_state.v2/invalid.json",
+      "sha256": "cb7dbaa48462a26d62c31d1862e991ee895db80e29e1bf4d03b0ef1c62750b58"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.market_state.v2/valid.json",
+      "sha256": "df17f6ae6ec599ab8675ab4f67dfd3a509a3a2c7ae1689d91f8f2004c2df2f1c"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.order_event.v2/invalid.json",
+      "sha256": "807c76949533d56e39b7e13e600a954d7cc50410e4257846c9d3fdd21895034f"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.order_event.v2/valid.json",
+      "sha256": "3212ff27df6f020a2e1679af98019f7cfff578bd5b6b3b428033585246d8abf7"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.outcome.v2/invalid.json",
+      "sha256": "a021ba48f77356c6c317a13ac819a1095d275975eb95f205e7ea8be6ba178b40"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.outcome.v2/valid.json",
+      "sha256": "c575eac16d1f49171b0e1e1d374ab0b5eab8129ff344e3cc91aafcadef0ba31b"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.position_event.v2/invalid.json",
+      "sha256": "51df7fe4628d725cc5b889867c2ab0d96b60cbf86b1a5aec20dea3dffc9397c7"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.position_event.v2/valid.json",
+      "sha256": "790220f812797e478e8a57f8d160d922b4beb794f1c27905670106da1fe723d8"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.producer_lease.v1/invalid.json",
+      "sha256": "83f62134187046a3c52dd7630885071b3227c3edb5c3fc3ee292ce43c38b84a7"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.producer_lease.v1/valid.json",
+      "sha256": "f86afa7960a8eaf426fdc30e9ff13f22d37b4e5005f7367b01533ad4279bbeaa"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.protection_event.v2/invalid.json",
+      "sha256": "43529272bd580bae24005198586965223531e58d518e6e90c84db750febed101"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.protection_event.v2/valid.json",
+      "sha256": "c1ac3f9ef91de4e29bd1b28a05f681ee1e364c70e3fbc871b207c4886d1fb104"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.quarantine_record.v1/invalid.json",
+      "sha256": "0bcc7cc6c1b916ef970e334862c841e56050714823ead4851b24d32b00e5f293"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.quarantine_record.v1/valid.json",
+      "sha256": "ba37d269286be875f40a6dc781091cc9fad8748078896f5f3dfb9047ddb375cf"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.reaction_event.v1/invalid.json",
+      "sha256": "7750bc88bf461cda6c72e5bed33181583eaebba31bc316e62175114969cbda55"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.reaction_event.v1/valid.json",
+      "sha256": "1173b8173b5478614d44c1c2fc5bbcf03d9297732f02a6fdb907862cfdab3eab"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.replay_receipt.v1/invalid.json",
+      "sha256": "a860fec9a4c7e66ba3e9777a0f3bd48c2e9eddbc13182ba32ac9587691f93f00"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.replay_receipt.v1/valid.json",
+      "sha256": "576158807b3493a1e478665e10b5f6bfe61ca0a06a2ae9e7b629552205316405"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.risk_decision.v2/invalid.json",
+      "sha256": "da60aeaa0dae21f5c883ec83e017636f494b914b6d01d66196c03b972aed1df6"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.risk_decision.v2/valid.json",
+      "sha256": "f2f204173d8a7954772b800d31199087fd26fe9501e43b72a92229ca9fa28e3a"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.risk_reservation.v1/invalid.json",
+      "sha256": "2c9d2bbb260509c8e341eeb3e8a26501f22b6e47cc4fec41766f6ee2f33718d7"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.risk_reservation.v1/valid.json",
+      "sha256": "c84e3ca514ebd50049e21d09d2325b9b762ea7689bc4da5f6b8c1cf47d433653"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.service_heartbeat.v1/invalid.json",
+      "sha256": "dd5bf15c871e57250216450f79210a3f9102529abcb16d5fc41f6ac472589535"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.service_heartbeat.v1/valid.json",
+      "sha256": "b10286df4e6615f184dbe1cf88c8e2085f991838b183674fa6386342edda73ec"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.structure_atom.v2/invalid.json",
+      "sha256": "ada76d85a96e3503bb33b002944cce269a3bc204cf7cc3a8c1302682cb6bbdd6"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.structure_atom.v2/valid.json",
+      "sha256": "27a273345615e4bff719390da491369208fb7f19dce1d8baea58cf97a48b6389"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.structure_transition.v2/invalid.json",
+      "sha256": "dc9c96a4f8e9566130d0623921d294fca3912925d7385a9694e547c0f8477f11"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.structure_transition.v2/valid.json",
+      "sha256": "790927551c895aeee495be1e7a53f98adb24a6124a4397ea17afa53c01a0dc10"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.trial_registration.v1/invalid.json",
+      "sha256": "15b1c7627c91b404d7367e60a97a9d74ef854ac3372c9690aa13c9b5c4eef95d"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.trial_registration.v1/valid.json",
+      "sha256": "e27fbd9fa2bd1f769c5f062ae2c52d2327093a87584a5869759dda1f0328b836"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.venue_account_event.v2/invalid.json",
+      "sha256": "81ca85279b7675539770294c4805993ef7d95f55288624d3160f2246788938de"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/golden/triad.venue_account_event.v2/valid.json",
+      "sha256": "22c6b99a53d0733d4148611f5088316afa7d8c4275fc40f20802014fb74e0b12"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/registry/index.json",
+      "sha256": "a5b0fff441ef9271b0f1e6d99f5a67a3ef301d41272954314a9cc965507bc0f7"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.activation_manifest.v1.schema.json",
+      "sha256": "e85cee60fdeef66ce14e091c77351220b74074a81ccb7dd0529f7bba5c6854ff"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.compatibility_manifest.v1.schema.json",
+      "sha256": "66f39451a52920869304caeae9be4afdfea24b354a313b4aa01af4b616b966fe"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.contract_bundle.manifest.v1.schema.json",
+      "sha256": "3c8b38692dabb89a57b7a1939d94072f565d7db692191020fdbd9200668b6a5d"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.decision.v2.schema.json",
+      "sha256": "fbd3a23a293040c88178eb7f3519aad744aceb74e8938e5a09c2e7adf14dd127"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.divergence_record.v1.schema.json",
+      "sha256": "e652b2b2635dab26b18061cc13a54d0a773eb04abaa665e255d193a8ed49d6c2"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.edge_candidate.v2.schema.json",
+      "sha256": "cf6cd6cd1ccdba1f3b39b4f11b0872b6893d73b1de10c8b40f188d3be740ea4e"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.edge_candidate_transition.v1.schema.json",
+      "sha256": "7a85c4d15e45465b434023c6295325fbc1d3123691295090e9e9a9e0b0f65c20"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.emergency_exit_authorization.v1.schema.json",
+      "sha256": "34af8c5ee546d2509fc740995ef0186a0e61cdf8d1b5fa618dd9e791bae56a5a"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.engine_attestation.v1.schema.json",
+      "sha256": "36b008d8a727796e6021f1be6b0a0f443e5e636f2a2a69dbad06cc0fe09d04cb"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.execution_authorization.v2.schema.json",
+      "sha256": "c0e196a5816da7d9969660e94cbf88bdd485742fcf3f7be922737cbfc36df145"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.execution_cmd.v2.schema.json",
+      "sha256": "2d41a97a752a1ff1aa427d71a9742dd028f63d9889f438647634bb45f0e9de28"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.feature_snapshot.v2.schema.json",
+      "sha256": "66dc378976891753f0aa1482b5c6bfb9efeaad6c96929631527bda5852ac8194"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.fill.v3.schema.json",
+      "sha256": "8f90a45c33c05527337bcf88718e36a00143323c4cded5d12a3b3b2d68838afb"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.market_event.v2.schema.json",
+      "sha256": "8b154e4b258ca918bbed2db651c82e66ff406d5ce5fce56c5ce8b3a4fe98825a"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.market_state.v2.schema.json",
+      "sha256": "9b7614a3232d64822dca497f39cebf6adb5a6c77e61953ea3f327699a88d0d99"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.order_event.v2.schema.json",
+      "sha256": "6b0845b67f500282e19ebb9054ce2441686d8dd18b5aa98fab9a3972e01eaef8"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.outcome.v2.schema.json",
+      "sha256": "ff047a1b69485071ea4634ae2dd2c4ff164fdf68b92470ca97f3bf03203d23e0"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.position_event.v2.schema.json",
+      "sha256": "39eee8b0e98ba34109d73cc09239c4ae282b4f0fceee598c803b01247690b883"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.producer_lease.v1.schema.json",
+      "sha256": "3be5ea5f8b4cd9f5347bad91a88ba332bb8103935c1f06ccd8898c072edc6785"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.protection_event.v2.schema.json",
+      "sha256": "c207024fd2cd61236c798d1868db6ddd8e1536c0e79c37adb05a2e28f1945c4e"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.quarantine_record.v1.schema.json",
+      "sha256": "1fca56a9717c2b5f5381d86558062b1f933d5f683d4840c5e79b9176b0070ea4"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.reaction_event.v1.schema.json",
+      "sha256": "5a49013d9bc0dcb775ff925301d2b34e035e49cedcdd46410a53a505e8710573"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.replay_receipt.v1.schema.json",
+      "sha256": "e59809dc1a839e02439fc655e9c19ed2a252099ebf9ee727b1ff592806039979"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.risk_decision.v2.schema.json",
+      "sha256": "1b308726a31f0719d243e40495a3febed6ced6ba2eeec62cac38519931e7e8e3"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.risk_reservation.v1.schema.json",
+      "sha256": "537f178c2a5a0ab50524b297557e39b6f199a5f705b36001a0d824cf124d8545"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.service_heartbeat.v1.schema.json",
+      "sha256": "5b620f8e4b59ba72351df0a23a935112f2eb2c9045c6a4281be1d38b91e14a05"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.structure_atom.v2.schema.json",
+      "sha256": "619caefc54c791b844e078f1a78214cbfa95915b9fc1868a8ba50cc0cac734b4"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.structure_transition.v2.schema.json",
+      "sha256": "0980cd14f52922012dfcb22b0a06874a9125082cea0d14efc6aa261d7761eb99"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.trial_registration.v1.schema.json",
+      "sha256": "059459f965a1a14d3b8983617d1383b46e8736764b7ce89019b3c0c84378a209"
+    },
+    {
+      "media_type": "application/schema+json",
+      "path": "contracts/schemas/triad.venue_account_event.v2.schema.json",
+      "sha256": "9d0b241932f0c9ef013a1a41c61327ef1ccf42a1c9929f4d26c3a7ae3a7f0634"
+    }
+  ],
+  "bundle_version": "origin.contracts.1.0.0-RC1",
+  "canonical_manifest_hash": "5189c78ae315850d0f2ab230dd4cb00ba6af693af2fec6e69f52e0c9c0dd3fe1",
+  "schema": "triad.contract_bundle.manifest.v1"
+}

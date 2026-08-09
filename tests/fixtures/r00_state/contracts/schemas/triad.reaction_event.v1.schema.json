@@ -1,0 +1,165 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.reaction_event.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "REACTION_EVALUATED"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "cancellation_causes": {
+          "type": "array"
+        },
+        "confirmation_result": {
+          "type": "object"
+        },
+        "departure_result": {
+          "type": "object"
+        },
+        "dependency_clocks": {
+          "type": "object"
+        },
+        "expiry_us": {
+          "type": "integer"
+        },
+        "first_touch_ordinal": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "fresh_flow_atom_ids": {
+          "type": "array"
+        },
+        "location_result": {
+          "type": "object"
+        },
+        "natural_entry_ticks": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "natural_invalidation_ticks": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "not_before_us": {
+          "type": "integer"
+        },
+        "reaction_id": {
+          "type": "string"
+        },
+        "rr_denominator": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "rr_numerator": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "source_structure_id": {
+          "type": "string"
+        },
+        "source_transition_id": {
+          "type": "string"
+        },
+        "target_ticks": {
+          "type": "array"
+        },
+        "trigger_result": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "reaction_id",
+        "source_structure_id",
+        "source_transition_id",
+        "location_result",
+        "departure_result",
+        "trigger_result",
+        "confirmation_result",
+        "fresh_flow_atom_ids",
+        "first_touch_ordinal",
+        "natural_entry_ticks",
+        "natural_invalidation_ticks",
+        "target_ticks",
+        "rr_numerator",
+        "rr_denominator",
+        "cancellation_causes",
+        "not_before_us",
+        "expiry_us",
+        "dependency_clocks"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.reaction_event.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.reaction_event.v1",
+  "type": "object"
+}

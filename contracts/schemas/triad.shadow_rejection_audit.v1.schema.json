@@ -1,0 +1,122 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.shadow_rejection_audit.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "SHADOW_REJECTION_AUDIT"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "attempt_identity": {
+          "type": "object"
+        },
+        "audit_id": {
+          "type": "string"
+        },
+        "entry_reference_ticks": false,
+        "entry_ticks": false,
+        "marker": {
+          "enum": [
+            "SHADOW_UNTRADEABLE"
+          ],
+          "type": "string"
+        },
+        "natural_invalidation_ticks": false,
+        "observed_at_us": {
+          "type": "integer"
+        },
+        "proposed_geometry": false,
+        "raw_source_evidence": {
+          "type": "object"
+        },
+        "stop_ticks": false,
+        "target_ticks": false,
+        "targets": false,
+        "validation_failure": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "audit_id",
+        "attempt_identity",
+        "raw_source_evidence",
+        "validation_failure",
+        "marker",
+        "observed_at_us"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.shadow_rejection_audit.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.shadow_rejection_audit.v1",
+  "type": "object"
+}

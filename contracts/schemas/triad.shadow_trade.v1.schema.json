@@ -1,0 +1,180 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.shadow_trade.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "SHADOW_TRADE"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_id": false,
+        "candidate_id": {
+          "type": "string"
+        },
+        "cost_model_version": {
+          "type": "string"
+        },
+        "evaluation_notional_quote": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "event_time_us": {
+          "type": "integer"
+        },
+        "fill_model_result": {
+          "type": "object"
+        },
+        "frozen_at_us": {
+          "type": "integer"
+        },
+        "hypothesis_id": {
+          "type": "string"
+        },
+        "market_watermark": {
+          "type": "object"
+        },
+        "origin_disposition": {
+          "enum": [
+            "REJECTED",
+            "ACCEPTED_NOT_EXECUTED",
+            "PROVEN_NO_VENUE_EFFECT"
+          ],
+          "type": "string"
+        },
+        "population": {
+          "enum": [
+            "SHADOW"
+          ],
+          "type": "string"
+        },
+        "proposed_geometry": {
+          "type": "object"
+        },
+        "raw_credentials": false,
+        "recorded_time_us": {
+          "type": "integer"
+        },
+        "rejection_reason": {
+          "type": "string"
+        },
+        "rejection_stage": {
+          "type": "string"
+        },
+        "resolver_version": {
+          "type": "string"
+        },
+        "shadow_activation": {
+          "enum": [
+            "LIVE"
+          ],
+          "type": "string"
+        },
+        "shadow_trade_id": {
+          "type": "string"
+        },
+        "simulator_version": {
+          "type": "string"
+        },
+        "terminal_outcome": {
+          "type": "object"
+        },
+        "venue_order_id": false,
+        "venue_trade_id": false
+      },
+      "required": [
+        "shadow_trade_id",
+        "candidate_id",
+        "hypothesis_id",
+        "frozen_at_us",
+        "origin_disposition",
+        "rejection_stage",
+        "rejection_reason",
+        "population",
+        "shadow_activation",
+        "market_watermark",
+        "proposed_geometry",
+        "evaluation_notional_quote",
+        "simulator_version",
+        "resolver_version",
+        "cost_model_version",
+        "event_time_us",
+        "recorded_time_us",
+        "fill_model_result",
+        "terminal_outcome"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.shadow_trade.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.shadow_trade.v1",
+  "type": "object"
+}

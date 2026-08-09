@@ -23,8 +23,9 @@ def _load(schema_id: str, kind: str) -> dict:
     return json.loads((GOLDEN / schema_id / f"{kind}.json").read_text(encoding="utf-8"))
 
 
-def test_registry_lists_thirty_contracts():
-    assert len(CONTRACT_IDS) == 30
+def test_registry_lists_all_contracts():
+    # 30 RC1 contracts + 12 B01 additions (RC4 lever/plane + receipt v2 + attestation v2 + auth v3)
+    assert len(CONTRACT_IDS) == 42
 
 
 @pytest.mark.parametrize("schema_id", CONTRACT_IDS)
@@ -78,7 +79,7 @@ def test_public_contract_views_cannot_mutate_cached_validation_truth():
     schema.clear()
     registry = contracts.registry()
     registry["contracts"].clear()
-    assert len(contracts.known_contracts()) == 30
+    assert len(contracts.known_contracts()) == 42
     with pytest.raises(contracts.ContractError):
         contracts.validate(invalid, schema_id=schema_id)
     assert contracts.load_schema(schema_id)

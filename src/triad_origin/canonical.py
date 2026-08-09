@@ -216,6 +216,43 @@ def digest_fields(*fields: Any) -> str:
     return h.hexdigest()
 
 
+# --- typed identity framing v2 (CTRL-B01-003 / BLK-RC2-017) ---------------------------------------
+# The v1 framing encodes only value bytes, so fields of different runtime types can collide
+# (int 1 and str "1" both frame as b"1"). v2 prepends a one-byte type tag to every field frame so
+# a value's runtime type is part of its identity. v1 stays valid under its own version; nothing
+# rewrites an existing v1 ID.
+_IDENTITY_V2_DOMAIN = b"origin.identity.v2"
+
+
+def _type_tag(field: Any) -> bytes:
+    if isinstance(field, bytes):
+        return b"y"
+    if isinstance(field, str):
+        return b"s"
+    if isinstance(field, bool):  # bool before int: bool subclasses int
+        return b"b"
+    if isinstance(field, int):
+        return b"i"
+    return b"j"  # structured field, canonical-JSON encoded
+
+
+def digest_fields_v2(*fields: Any) -> str:
+    """Typed, length-prefixed field digest (identity schema origin.identity.v2).
+
+    Frame layout: ``domain || uint64_be(arity) || (tag || uint64_be(len) || bytes)*``.
+    The tag makes runtime type part of identity, closing the v1 cross-type collision class.
+    """
+    h = hashlib.sha256()
+    h.update(_IDENTITY_V2_DOMAIN)
+    h.update(len(fields).to_bytes(8, "big"))
+    for f in fields:
+        b = _as_bytes(f)
+        h.update(_type_tag(f))
+        h.update(len(b).to_bytes(8, "big"))
+        h.update(b)
+    return h.hexdigest()
+
+
 def sha256_hex(data: bytes) -> str:
     """Lowercase hex SHA-256 of raw bytes."""
     return hashlib.sha256(data).hexdigest()

@@ -64,5 +64,5 @@
   "producer_instance_id": "inst_golden_01",
   "producer_service": "e09-fill-normalizer",
   "schema": "triad.fill.v3",
-  "schema_version": "3.0.0"
+  "schema_version": "3.1.0"
 }

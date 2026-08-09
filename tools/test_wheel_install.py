@@ -54,8 +54,11 @@ def main() -> int:
             source_legacy_manifest_json_sha = hashlib.sha256(
                 (ROOT / "contracts" / "manifest" / "contract_bundle.manifest.v1.json").read_bytes()
             ).hexdigest()
-            source_manifest_json_sha = hashlib.sha256(
+            source_r00_manifest_json_sha = hashlib.sha256(
                 (ROOT / "contracts" / "manifest" / "contract_bundle.manifest.r00.v1.json").read_bytes()
+            ).hexdigest()
+            source_manifest_json_sha = hashlib.sha256(
+                (ROOT / "contracts" / "manifest" / "contract_bundle.manifest.b01.v2.json").read_bytes()
             ).hexdigest()
             source_manifest_text_sha = hashlib.sha256(
                 (ROOT / "contracts" / "MANIFEST.sha256").read_bytes()
@@ -109,14 +112,16 @@ import json
 import pathlib
 import triad_origin
 from triad_origin import contracts
-assert len(contracts.known_contracts()) == 30
+assert len(contracts.known_contracts()) == 42
 assert contracts._CONTRACTS_DIR.name == '_contracts'
 root = contracts._CONTRACTS_DIR
 manifest_text = root / 'MANIFEST.sha256'
 legacy_manifest_json = root / 'manifest' / 'contract_bundle.manifest.v1.json'
-manifest_json = root / 'manifest' / 'contract_bundle.manifest.r00.v1.json'
+r00_manifest_json = root / 'manifest' / 'contract_bundle.manifest.r00.v1.json'
+manifest_json = root / 'manifest' / 'contract_bundle.manifest.b01.v2.json'
 assert hashlib.sha256(manifest_text.read_bytes()).hexdigest() == {source_manifest_text_sha!r}
 assert hashlib.sha256(legacy_manifest_json.read_bytes()).hexdigest() == {source_legacy_manifest_json_sha!r}
+assert hashlib.sha256(r00_manifest_json.read_bytes()).hexdigest() == {source_r00_manifest_json_sha!r}
 assert hashlib.sha256(manifest_json.read_bytes()).hexdigest() == {source_manifest_json_sha!r}
 
 runtime_root = pathlib.Path(triad_origin.__file__).resolve().parent
@@ -135,12 +140,13 @@ for line in manifest_text.read_text(encoding='utf-8').splitlines():
         assert target.is_file(), name
         assert hashlib.sha256(target.read_bytes()).hexdigest() == digest, name
         entries.append(relative)
-assert len(entries) == 91
+assert len(entries) == 127
 actual = {{str(path.relative_to(root)) for path in root.rglob('*') if path.is_file()}}
 expected = set(entries) | {{
     'MANIFEST.sha256',
     'manifest/contract_bundle.manifest.v1.json',
     'manifest/contract_bundle.manifest.r00.v1.json',
+    'manifest/contract_bundle.manifest.b01.v2.json',
 }}
 assert actual == expected, (sorted(actual - expected), sorted(expected - actual))
 
@@ -163,7 +169,7 @@ for schema_id in contracts.known_contracts():
         print(f"FAIL: isolated wheel smoke failed: {exc}", file=sys.stderr)
         return 1
     print(
-        "OK: sdist-built wheel byte-matches runtime, verifies 91 artifacts and all 30 goldens"
+        "OK: sdist-built wheel byte-matches runtime, verifies 127 artifacts and all 42 goldens"
     )
     return 0
 

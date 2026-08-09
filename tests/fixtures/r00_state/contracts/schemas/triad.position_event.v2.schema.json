@@ -1,0 +1,203 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.position_event.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "POSITION_EVENT"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_id": {
+          "type": "string"
+        },
+        "after_qty_steps": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "average_price_ticks": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "before_qty_steps": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "campaign_id": {
+          "type": "string"
+        },
+        "canonical_instrument_id": {
+          "type": "string"
+        },
+        "cause_account_event_id": {
+          "type": "string"
+        },
+        "cause_fill_id": {
+          "type": "string"
+        },
+        "cause_order_id": {
+          "type": "string"
+        },
+        "conservation_proof": {
+          "type": "object"
+        },
+        "delta_qty_steps": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "event_time_us": {
+          "type": "integer"
+        },
+        "leverage": {
+          "type": "string"
+        },
+        "margin": {
+          "type": "string"
+        },
+        "position_id": {
+          "type": "string"
+        },
+        "position_mode": {
+          "enum": [
+            "ONE_WAY",
+            "HEDGE"
+          ],
+          "type": "string"
+        },
+        "position_side": {
+          "enum": [
+            "LONG",
+            "SHORT",
+            "BOTH"
+          ],
+          "type": "string"
+        },
+        "protection_group_id": {
+          "type": "string"
+        },
+        "realized_value": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "receipt_time_us": {
+          "type": "integer"
+        },
+        "reconciliation_time_us": {
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "OPENING",
+            "OPEN",
+            "REDUCING",
+            "FLAT_PENDING_RECONCILIATION",
+            "FLAT",
+            "UNKNOWN"
+          ],
+          "type": "string"
+        },
+        "unrealized_value": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "position_id",
+        "campaign_id",
+        "account_id",
+        "canonical_instrument_id",
+        "position_mode",
+        "position_side",
+        "before_qty_steps",
+        "delta_qty_steps",
+        "after_qty_steps",
+        "average_price_ticks",
+        "realized_value",
+        "unrealized_value",
+        "cause_fill_id",
+        "cause_order_id",
+        "cause_account_event_id",
+        "protection_group_id",
+        "margin",
+        "leverage",
+        "event_time_us",
+        "receipt_time_us",
+        "reconciliation_time_us",
+        "status",
+        "conservation_proof"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.position_event.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.position_event.v2",
+  "type": "object"
+}

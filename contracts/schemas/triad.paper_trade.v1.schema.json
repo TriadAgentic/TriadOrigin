@@ -1,0 +1,150 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.paper_trade.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "PAPER_TRADE"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_id": false,
+        "activation_revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "candidate_id": {
+          "type": "string"
+        },
+        "event_time_us": {
+          "type": "integer"
+        },
+        "market_watermark": {
+          "type": "object"
+        },
+        "paper_trade_id": {
+          "type": "string"
+        },
+        "population": {
+          "enum": [
+            "PAPER"
+          ],
+          "type": "string"
+        },
+        "raw_credentials": false,
+        "recorded_time_us": {
+          "type": "integer"
+        },
+        "venue": false,
+        "venue_order_id": false,
+        "venue_trade_id": false,
+        "virtual_account_id": {
+          "type": "string"
+        },
+        "virtual_balance_quote": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "virtual_fill": {
+          "type": "object"
+        },
+        "virtual_order": {
+          "type": "object"
+        },
+        "virtual_outcome": {
+          "type": "object"
+        },
+        "virtual_position": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "paper_trade_id",
+        "candidate_id",
+        "population",
+        "activation_revision",
+        "virtual_account_id",
+        "virtual_balance_quote",
+        "virtual_order",
+        "virtual_fill",
+        "virtual_position",
+        "virtual_outcome",
+        "market_watermark",
+        "event_time_us",
+        "recorded_time_us"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.paper_trade.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.paper_trade.v1",
+  "type": "object"
+}

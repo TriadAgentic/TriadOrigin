@@ -1,0 +1,154 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.venue_account_event.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "VENUE_ACCOUNT_EVENT"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_id": {
+          "type": "string"
+        },
+        "canonical_mapping": {
+          "type": "object"
+        },
+        "connection_state": {
+          "type": "string"
+        },
+        "event_time_us": {
+          "type": "integer"
+        },
+        "normalized_payload": {
+          "type": "object"
+        },
+        "raw_payload": {
+          "type": "object"
+        },
+        "receipt_time_us": {
+          "type": "integer"
+        },
+        "reconciliation_state": {
+          "type": "string"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "venue": {
+          "type": "string"
+        },
+        "venue_event_kind": {
+          "enum": [
+            "ACCOUNT",
+            "BALANCE",
+            "MARGIN",
+            "POSITION",
+            "ORDER",
+            "ALGO_ORDER",
+            "FILL",
+            "REJECTION",
+            "DISCONNECT",
+            "RATE_LIMIT",
+            "LIQUIDATION",
+            "ADL"
+          ],
+          "type": "string"
+        },
+        "venue_ids": {
+          "type": "object"
+        },
+        "venue_sequences": {
+          "type": "array"
+        }
+      },
+      "required": [
+        "account_id",
+        "venue",
+        "session_id",
+        "venue_event_kind",
+        "venue_ids",
+        "venue_sequences",
+        "canonical_mapping",
+        "raw_payload",
+        "normalized_payload",
+        "event_time_us",
+        "receipt_time_us",
+        "connection_state",
+        "reconciliation_state"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.venue_account_event.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.venue_account_event.v2",
+  "type": "object"
+}

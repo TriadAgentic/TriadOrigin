@@ -1,0 +1,30 @@
+{
+  "artifact_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+  "build_commit": "0000000000000000000000000000000000000000",
+  "config_bundle_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "contract_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "emitted_at_us": 1786156800123456,
+  "event_id": "evt_triad_emergency_exit_authorization_v1",
+  "event_kind": "EMERGENCY_EXIT_AUTHORIZATION",
+  "payload": {
+    "audit_reason": "x",
+    "evidence": {},
+    "expiry_us": 1786156800123456,
+    "max_reducible_qty_steps": "0",
+    "position_mode": "ONE_WAY",
+    "position_side": "LONG",
+    "position_snapshot_id": "x",
+    "serial_key": "x",
+    "standing_policy_id": "x",
+    "standing_policy_signature": "x",
+    "tier2_market_permitted": true,
+    "trigger": {},
+    "urgency_tier": "TIER1",
+    "worst_acceptable_price_ticks": "0"
+  },
+  "producer_epoch": "42",
+  "producer_instance_id": "inst_golden_01",
+  "producer_service": "triad-e08",
+  "schema": "triad.emergency_exit_authorization.v1",
+  "schema_version": "1.0.0"
+}

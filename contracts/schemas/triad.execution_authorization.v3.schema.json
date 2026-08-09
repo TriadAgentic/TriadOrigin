@@ -1,0 +1,199 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.execution_authorization.v3.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "EXECUTION_AUTHORIZATION"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_id": {
+          "type": "string"
+        },
+        "allowed_liquidity": {
+          "type": "array"
+        },
+        "allowed_order_roles": {
+          "type": "array"
+        },
+        "allowed_tif": {
+          "type": "array"
+        },
+        "candidate_id": {
+          "type": "string"
+        },
+        "canonical_instrument_id": {
+          "type": "string"
+        },
+        "decision_id": {
+          "type": "string"
+        },
+        "direction": {
+          "enum": [
+            "LONG",
+            "SHORT"
+          ],
+          "type": "string"
+        },
+        "entry_geometry": {
+          "type": "object"
+        },
+        "invalidation_geometry": {
+          "type": "object"
+        },
+        "lease_epoch": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "max_notional_quote": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "max_qty_steps": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "position_effect": {
+          "enum": [
+            "OPEN",
+            "INCREASE",
+            "REDUCE",
+            "CLOSE",
+            "REVERSE"
+          ],
+          "type": "string"
+        },
+        "protection_budget": {
+          "type": "string"
+        },
+        "protection_deadline_us": {
+          "type": "integer"
+        },
+        "reservation_id": {
+          "type": "string"
+        },
+        "risk_decision_id": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "target_geometry": {
+          "type": "object"
+        },
+        "valid_until_us": {
+          "type": "integer"
+        },
+        "venue_activation_revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "venue_environment": {
+          "enum": [
+            "LIVE",
+            "TESTNET"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "candidate_id",
+        "decision_id",
+        "risk_decision_id",
+        "reservation_id",
+        "account_id",
+        "canonical_instrument_id",
+        "direction",
+        "position_effect",
+        "max_qty_steps",
+        "max_notional_quote",
+        "entry_geometry",
+        "invalidation_geometry",
+        "target_geometry",
+        "allowed_liquidity",
+        "allowed_tif",
+        "allowed_order_roles",
+        "protection_deadline_us",
+        "protection_budget",
+        "valid_until_us",
+        "venue_environment",
+        "venue_activation_revision",
+        "lease_epoch",
+        "scope"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.execution_authorization.v3"
+    },
+    "schema_version": {
+      "const": "3.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.execution_authorization.v3",
+  "type": "object"
+}

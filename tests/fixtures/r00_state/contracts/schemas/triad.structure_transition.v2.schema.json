@@ -1,0 +1,163 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.structure_transition.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "STRUCTURE_TRANSITION"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "current_geometry": {
+          "type": "object"
+        },
+        "event_time_us": {
+          "type": "integer"
+        },
+        "from_state": {
+          "type": "string"
+        },
+        "geometry_revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "knowledge_at_us": {
+          "type": "integer"
+        },
+        "previous_transition_id": {
+          "type": "string"
+        },
+        "provenance_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "publication_time_us": {
+          "type": "integer"
+        },
+        "quality_snapshot": {
+          "type": "object"
+        },
+        "receipt_time_us": {
+          "type": "integer"
+        },
+        "reference_ids": {
+          "type": "array"
+        },
+        "source_event_ids": {
+          "type": "array"
+        },
+        "state_seq": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "structure_id": {
+          "type": "string"
+        },
+        "to_state": {
+          "type": "string"
+        },
+        "transition_id": {
+          "type": "string"
+        },
+        "transition_reason": {
+          "type": "string"
+        },
+        "watermark_complete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "transition_id",
+        "structure_id",
+        "state_seq",
+        "previous_transition_id",
+        "from_state",
+        "to_state",
+        "transition_reason",
+        "geometry_revision",
+        "current_geometry",
+        "event_time_us",
+        "receipt_time_us",
+        "knowledge_at_us",
+        "publication_time_us",
+        "source_event_ids",
+        "reference_ids",
+        "watermark_complete",
+        "quality_snapshot",
+        "provenance_hash"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.structure_transition.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.structure_transition.v2",
+  "type": "object"
+}

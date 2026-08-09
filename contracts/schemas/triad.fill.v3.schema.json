@@ -83,7 +83,8 @@
         },
         "environment": {
           "enum": [
-            "LIVE"
+            "LIVE",
+            "TESTNET"
           ],
           "type": "string"
         },
@@ -320,7 +321,7 @@
       "const": "triad.fill.v3"
     },
     "schema_version": {
-      "const": "3.0.0"
+      "const": "3.1.0"
     },
     "traceparent": {
       "type": "string"

@@ -1,0 +1,195 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.trial_registration.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "TRIAL_REGISTRATION"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "cost_model": {
+          "type": "string"
+        },
+        "data_revisions": {
+          "type": "array"
+        },
+        "demotion_threshold": {
+          "type": "string"
+        },
+        "embargo": {
+          "type": "string"
+        },
+        "entry_model": {
+          "type": "string"
+        },
+        "exit_model": {
+          "type": "string"
+        },
+        "family_id": {
+          "type": "string"
+        },
+        "fill_model": {
+          "type": "string"
+        },
+        "formula": {
+          "type": "string"
+        },
+        "frozen_at_us": {
+          "type": "integer"
+        },
+        "hypothesis": {
+          "type": "string"
+        },
+        "multiplicity_family": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "parameters": {
+          "type": "string"
+        },
+        "power_sample_rule": {
+          "type": "string"
+        },
+        "primary_metric": {
+          "type": "string"
+        },
+        "promotion_threshold": {
+          "type": "string"
+        },
+        "purge": {
+          "type": "string"
+        },
+        "regimes": {
+          "type": "array"
+        },
+        "result_access_audit": {
+          "type": "string"
+        },
+        "sample_unit": {
+          "type": "string"
+        },
+        "sides": {
+          "type": "array"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "split": {
+          "type": "string"
+        },
+        "symbols": {
+          "type": "array"
+        },
+        "timeframes": {
+          "type": "array"
+        },
+        "trial_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "trial_id",
+        "family_id",
+        "hypothesis",
+        "formula",
+        "parameters",
+        "data_revisions",
+        "symbols",
+        "sides",
+        "timeframes",
+        "regimes",
+        "entry_model",
+        "exit_model",
+        "cost_model",
+        "fill_model",
+        "sample_unit",
+        "split",
+        "purge",
+        "embargo",
+        "primary_metric",
+        "multiplicity_family",
+        "power_sample_rule",
+        "promotion_threshold",
+        "demotion_threshold",
+        "frozen_at_us",
+        "owner",
+        "signature",
+        "result_access_audit"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.trial_registration.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.trial_registration.v1",
+  "type": "object"
+}
