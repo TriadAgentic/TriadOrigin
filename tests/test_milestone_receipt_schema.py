@@ -86,9 +86,9 @@ REACTION_CLEAN_ID = "6100000002"
 REACTION_ID = "7100000001"
 REACTION_REQUEST_AT = "2026-08-09T01:40:00Z"
 REACTION_CLEAN_AT = "2026-08-09T01:45:00Z"
-# The PR-level +1 can persist from an earlier exact-head review.  It corroborates
-# connector state but does not bind the selected head.
-REACTION_CREATED_AT = "2026-08-08T23:00:00Z"
+# The selected connector +1 must be fresh: after the exact-head trigger and no
+# later than the clean response.
+REACTION_CREATED_AT = "2026-08-09T01:44:59Z"
 COLLECTOR_BYTES = (REPO_ROOT / "tools" / "collect_test_ids.py").read_bytes()
 CONTRACT_SOURCE_FILES = {
     str(path.relative_to(REPO_ROOT)): path.read_bytes()
@@ -767,7 +767,7 @@ def _materials() -> list[dict]:
         "pr_author": R00_PR_AUTHOR,
         "reviewed_prs": sorted(R00_REVIEW_PRS),
         "reviewer": R00_REQUIRED_REVIEWER,
-        "schema": "origin.review-evidence.v2",
+        "schema": "origin.review-evidence.v3",
         "threads": threads,
         "unresolved_actionable_threads": 0,
         "verdict": "PASS",
@@ -843,7 +843,7 @@ def _materials() -> list[dict]:
             for pr_number in sorted(R00_REVIEW_PRS)
         ],
         "repository": "TriadAgentic/TriadOrigin",
-        "schema": "origin.github-review-export.v2",
+        "schema": "origin.github-review-export.v3",
     }
     for pull in review_api_record["pull_requests"]:
         for row in pull["inline_threads"]:
@@ -2736,7 +2736,7 @@ def test_r00_final_review_arm_rejects_thread_activity_at_or_after_acceptance(
         )
 
 
-def test_r00_clean_comment_and_persistent_pr_reaction_arm_validates(tmp_path):
+def test_r00_clean_comment_and_fresh_pr_reaction_arm_validates(tmp_path):
     receipt = _reaction_receipt(tmp_path)
     _validate_receipt_impl(
         receipt,
@@ -2747,15 +2747,30 @@ def test_r00_clean_comment_and_persistent_pr_reaction_arm_validates(tmp_path):
     )
 
 
-def test_r00_observed_bravo_clean_comment_variant_validates(tmp_path):
+@pytest.mark.parametrize(
+    "opening",
+    [
+        R00_CODEX_CLEAN_COMMENT_OPENINGS[1],
+        R00_CODEX_CLEAN_COMMENT_OPENINGS[2],
+        "Codex Review: Didn't find any major issues. Splendid!",
+        "Codex Review: Didn't find any major issues. Chef's kiss.",
+        "Codex Review: Didn't find any major issues. More of your lovely PRs please.",
+        # Deliberate decision canaries: this structurally isolated display field
+        # is not a verdict input. The fixed declaration, fresh +1, and complete
+        # zero-finding inventories carry acceptance.
+        "Codex Review: Didn't find any major issues. More work please.",
+        "Codex Review: Didn't find any major issues. Remote code execution.",
+    ],
+)
+def test_r00_structured_clean_comment_reason_phrase_validates(tmp_path, opening):
     receipt = _reaction_receipt(tmp_path)
-    bravo = _expected_codex_clean_comment_body(
+    variant = _expected_codex_clean_comment_body(
         HEAD40,
-        opening=R00_CODEX_CLEAN_COMMENT_OPENINGS[1],
+        opening=opening,
     )
 
     review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
-    review["final_reaction"]["clean_comment_body_sha256"] = _sha(bravo.encode())
+    review["final_reaction"]["clean_comment_body_sha256"] = _sha(variant.encode())
     _rewrite_bound_record(tmp_path, receipt, "review", review)
 
     export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
@@ -2763,14 +2778,14 @@ def test_r00_observed_bravo_clean_comment_variant_validates(tmp_path):
         pull for pull in export["pull_requests"]
         if pull["pr_number"] == R00_RECEIPT_PR
     )
-    corrective["issue_comments"][-1]["body"] = bravo
+    corrective["issue_comments"][-1]["body"] = variant
     raw_timeline = copy.deepcopy(_reaction_raw_timeline())
     clean_event = next(
         item for item in raw_timeline
         if item.get("event") == "commented"
         and str(item.get("id")) == REACTION_CLEAN_ID
     )
-    clean_event["body"] = bravo
+    clean_event["body"] = variant
     normalized_clean = _normalize_live_pr7_timeline_event(clean_event)
     normalized_clean["position"] = next(
         item["position"] for item in corrective["timeline"]
@@ -2786,33 +2801,44 @@ def test_r00_observed_bravo_clean_comment_variant_validates(tmp_path):
     ]
     _rewrite_bound_record(tmp_path, receipt, "review-api", export)
 
-    def bravo_get(path: str):
+    def variant_get(path: str):
         value = copy.deepcopy(_fake_reaction_github_get_json(path))
         if path == "/repos/TriadAgentic/TriadOrigin/issues/7/comments?per_page=100&page=1":
-            value[-1]["body"] = bravo
+            value[-1]["body"] = variant
         if path == "/repos/TriadAgentic/TriadOrigin/issues/7/timeline?per_page=100&page=1":
             next(
                 item for item in value
                 if item.get("event") == "commented"
                 and str(item.get("id")) == REACTION_CLEAN_ID
-            )["body"] = bravo
+            )["body"] = variant
         return value
 
     _validate_receipt_impl(
         receipt,
         _schema(),
         evidence_root=tmp_path,
-        github_get_json=bravo_get,
+        github_get_json=variant_get,
         github_get_review_threads=_fake_github_get_review_threads,
     )
 
 
-def test_r00_coordinated_unreviewed_clean_body_rewrite_rejects(tmp_path):
+@pytest.mark.parametrize(
+    "poison_kind",
+    ["suffix", "markdown"],
+)
+def test_r00_coordinated_unreviewed_clean_body_rewrite_rejects(
+    tmp_path, poison_kind
+):
     receipt = _reaction_receipt(tmp_path)
-    poisoned = (
-        _expected_codex_clean_comment_body(HEAD40)
-        + "\nP1 CRITICAL: DO NOT MERGE"
-    )
+    valid = _expected_codex_clean_comment_body(HEAD40)
+    if poison_kind == "suffix":
+        poisoned = valid + "\nP1 CRITICAL: DO NOT MERGE"
+    else:
+        poisoned = valid.replace(
+            R00_CODEX_CLEAN_COMMENT_OPENINGS[0],
+            "Codex Review: Didn't find any major issues. **Splendid!**",
+            1,
+        )
 
     review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
     review["final_reaction"]["clean_comment_body_sha256"] = _sha(poisoned.encode())
@@ -2890,11 +2916,42 @@ def test_observed_bravo_clean_comment_protocol_bytes_are_pinned():
     assert _sha(clean) == "7e8f7cce513656ff7ce539085c7f116e0cafbeb6e718f548ba901cb32d4ddb56"
 
 
-def test_codex_clean_comment_opening_must_be_reviewed_exactly():
-    with pytest.raises(ValueError, match="unreviewed Codex clean-comment opening"):
+def test_observed_breezy_clean_comment_protocol_bytes_are_pinned():
+    observed_head = "2c9fbf09e41dce1cc21a8737042c12eb0dc349f5"
+    request = _expected_codex_review_request_body(
+        observed_head, "31287757826", "93179576379"
+    ).encode()
+    clean = _expected_codex_clean_comment_body(
+        observed_head,
+        opening=R00_CODEX_CLEAN_COMMENT_OPENINGS[2],
+    ).encode()
+    assert len(request) == 181
+    assert _sha(request) == "82b464a0d7eae4747d96252739f7f41427757c7fc2021e49d74ea19e885cdc85"
+    assert len(clean) == 588
+    assert _sha(clean) == "88119e331f350d9a1f16a90a6a33419d75c310fdf51a0815696f6b0155a93005"
+
+
+@pytest.mark.parametrize(
+    "opening",
+    [
+        "Codex Review: Didn't find any major issues. P1 critical.",
+        "Codex Review: Didn't find any major issues. **Splendid!**",
+        "Codex Review: Didn't find any major issues. Splendid:\nActually not.",
+        "Codex Review: Didn't find any major issues. Splendid!\rInjected.",
+        "Codex Review: Didn't find any major issues. Splendid. Excellent.",
+        "Codex Review: Didn't find any major issues. Splendid",
+        "Codex Review: Didn't find any major issues. Splendid! ",
+        "Codex Review: Didn't find any major issues. Bréézy!",
+        "Codex Review: Didn't find any major issues. Breezy!\u202e",
+        "Codex Review: Didn't find any major issues. Breezy! **Reviewed commit:**",
+        "Codex Review: Didn't find any major issues. " + "A" * 81 + ".",
+    ],
+)
+def test_codex_clean_comment_reason_phrase_excludes_control_syntax(opening):
+    with pytest.raises(ValueError, match="Codex clean-comment"):
         _expected_codex_clean_comment_body(
             HEAD40,
-            opening="Codex Review: Didn't find any major issues. Mostly.",
+            opening=opening,
         )
 
 
@@ -2916,9 +2973,11 @@ def test_pr7_preacceptance_source_baselines_pin_live_history():
         "5228983837",
         "5229049421",
         "5229058332",
+        "5229144298",
+        "5229158255",
     ]
     assert _sha(comments[-1]["body"].encode()) == (
-        "7e8f7cce513656ff7ce539085c7f116e0cafbeb6e718f548ba901cb32d4ddb56"
+        "88119e331f350d9a1f16a90a6a33419d75c310fdf51a0815696f6b0155a93005"
     )
 
 
@@ -3116,6 +3175,67 @@ def test_r00_clean_comment_reaction_arm_rejects_live_mutations(tmp_path, mutatio
 
 
 @pytest.mark.parametrize(
+    "invalid_at",
+    [
+        "2026-08-09T01:39:59Z",
+        REACTION_REQUEST_AT,
+        "2026-08-09T01:45:01Z",
+    ],
+)
+def test_r00_clean_comment_reaction_must_be_inside_trigger_clean_window(
+    tmp_path, invalid_at
+):
+    receipt = _reaction_receipt(tmp_path)
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    corrective = next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    corrective["pr_reactions"][0]["created_at"] = invalid_at
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def stale_reaction_get(path: str):
+        value = copy.deepcopy(_fake_reaction_github_get_json(path))
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/reactions?per_page=100&page=1":
+            value[0]["created_at"] = invalid_at
+        return value
+
+    with pytest.raises(ReceiptValidationError, match="clean-comment/reaction"):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=stale_reaction_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+def test_r00_clean_comment_reaction_may_share_clean_response_timestamp(tmp_path):
+    receipt = _reaction_receipt(tmp_path)
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    corrective = next(
+        pull for pull in export["pull_requests"]
+        if pull["pr_number"] == R00_RECEIPT_PR
+    )
+    corrective["pr_reactions"][0]["created_at"] = REACTION_CLEAN_AT
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def same_timestamp_get(path: str):
+        value = copy.deepcopy(_fake_reaction_github_get_json(path))
+        if path == "/repos/TriadAgentic/TriadOrigin/issues/7/reactions?per_page=100&page=1":
+            value[0]["created_at"] = REACTION_CLEAN_AT
+        return value
+
+    _validate_receipt_impl(
+        receipt,
+        _schema(),
+        evidence_root=tmp_path,
+        github_get_json=same_timestamp_get,
+        github_get_review_threads=_fake_github_get_review_threads,
+    )
+
+
+@pytest.mark.parametrize(
     "event",
     [
         "automatic_base_change_succeeded",
@@ -3305,7 +3425,7 @@ def test_r00_reaction_arm_rejects_postmerge_head_deletion(tmp_path):
         )
 
 
-def test_r00_reaction_arm_rejects_intermediate_negative_thread_reply(tmp_path):
+def test_r00_reaction_arm_rejects_post_trigger_negative_thread_reply(tmp_path):
     receipt = _reaction_receipt(tmp_path)
     export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
     corrective = next(
@@ -3317,13 +3437,13 @@ def test_r00_reaction_arm_rejects_intermediate_negative_thread_reply(tmp_path):
     negative = {
         "author": "review-bot",
         "body_sha256": _sha(negative_body.encode()),
-        "created_at": "2026-08-09T01:46:00Z",
+        "created_at": "2026-08-09T01:42:00Z",
         "id": "9999999995",
         "node_id": "PRRC_negative_after_acceptance",
         "path": thread["path"],
         "reply_to_id": thread["id"],
         "review_id": thread["review_id"],
-        "updated_at": "2026-08-09T01:46:00Z",
+        "updated_at": "2026-08-09T01:42:00Z",
         "url": (
             "https://github.com/TriadAgentic/TriadOrigin/pull/7"
             "#discussion_r9999999995"
@@ -3362,6 +3482,168 @@ def test_r00_reaction_arm_rejects_intermediate_negative_thread_reply(tmp_path):
         )
 
 
+@pytest.mark.parametrize("arm", ["review", "reaction"])
+def test_r00_all_pr_roots_are_frozen_before_final_review_trigger(tmp_path, arm):
+    if arm == "reaction":
+        receipt = _reaction_receipt(tmp_path)
+        github_get = _fake_reaction_github_get_json
+    else:
+        _materialize_evidence(tmp_path)
+        receipt = _valid_receipt()
+        github_get = _fake_github_get_json
+    thread_id = sorted(R00_INHERITED_THREADS)[0]
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    pr1 = next(pull for pull in export["pull_requests"] if pull["pr_number"] == 1)
+    persisted = next(row for row in pr1["inline_threads"] if row["id"] == thread_id)
+    persisted["root"]["updated_at"] = "2026-08-09T01:42:00Z"
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def edited_root_threads(pr_number: int):
+        value = copy.deepcopy(_fake_github_get_review_threads(pr_number))
+        if pr_number == 1:
+            nodes = value["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
+            live = next(
+                row for row in nodes
+                if str(row["comments"]["nodes"][0]["fullDatabaseId"]) == thread_id
+            )
+            live["comments"]["nodes"][0]["updatedAt"] = "2026-08-09T01:42:00Z"
+        return value
+
+    with pytest.raises(
+        ReceiptValidationError,
+        match="independent exact-head pre-merge review|clean-comment/reaction",
+    ):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=github_get,
+            github_get_review_threads=edited_root_threads,
+        )
+
+
+@pytest.mark.parametrize("arm", ["review", "reaction"])
+def test_r00_all_pr_ordinary_replies_are_frozen_before_final_review_trigger(
+    tmp_path, arm
+):
+    if arm == "reaction":
+        receipt = _reaction_receipt(tmp_path)
+        github_get = _fake_reaction_github_get_json
+    else:
+        _materialize_evidence(tmp_path)
+        receipt = _valid_receipt()
+        github_get = _fake_github_get_json
+    thread_id = sorted(R00_INHERITED_THREADS)[0]
+    reply_id = "9999999994"
+    body = "P1 CRITICAL: historical remediation is invalid; DO NOT MERGE"
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    pr1 = next(pull for pull in export["pull_requests"] if pull["pr_number"] == 1)
+    persisted = next(row for row in pr1["inline_threads"] if row["id"] == thread_id)
+    ordinary = {
+        "author": "review-bot",
+        "body_sha256": _sha(body.encode()),
+        "created_at": "2026-08-09T00:05:00Z",
+        "id": reply_id,
+        "node_id": "PRRC_historical_negative_edit",
+        "path": persisted["path"],
+        "reply_to_id": thread_id,
+        "review_id": persisted["review_id"],
+        "updated_at": "2026-08-09T01:42:00Z",
+        "url": (
+            "https://github.com/TriadAgentic/TriadOrigin/pull/1"
+            f"#discussion_r{reply_id}"
+        ),
+    }
+    persisted["reply_inventory"].insert(-1, ordinary)
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def edited_reply_threads(pr_number: int):
+        value = copy.deepcopy(_fake_github_get_review_threads(pr_number))
+        if pr_number == 1:
+            nodes = value["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
+            live = next(
+                row for row in nodes
+                if str(row["comments"]["nodes"][0]["fullDatabaseId"]) == thread_id
+            )
+            root = live["comments"]["nodes"][0]
+            live["comments"]["nodes"].insert(-1, {
+                "author": {"login": ordinary["author"]},
+                "body": body,
+                "createdAt": ordinary["created_at"],
+                "fullDatabaseId": reply_id,
+                "id": ordinary["node_id"],
+                "path": ordinary["path"],
+                "pullRequestReview": {"fullDatabaseId": ordinary["review_id"]},
+                "replyTo": {"fullDatabaseId": root["fullDatabaseId"]},
+                "updatedAt": ordinary["updated_at"],
+                "url": ordinary["url"],
+            })
+            live["comments"]["totalCount"] += 1
+        return value
+
+    with pytest.raises(
+        ReceiptValidationError,
+        match="independent exact-head pre-merge review|clean-comment/reaction",
+    ):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=github_get,
+            github_get_review_threads=edited_reply_threads,
+        )
+
+
+@pytest.mark.parametrize("arm", ["review", "reaction"])
+def test_r00_historical_selected_closure_replies_must_remain_unedited(
+    tmp_path, arm
+):
+    if arm == "reaction":
+        receipt = _reaction_receipt(tmp_path)
+        github_get = _fake_reaction_github_get_json
+    else:
+        _materialize_evidence(tmp_path)
+        receipt = _valid_receipt()
+        github_get = _fake_github_get_json
+    thread_id = sorted(R00_INHERITED_THREADS)[0]
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    pr1 = next(pull for pull in export["pull_requests"] if pull["pr_number"] == 1)
+    persisted = next(row for row in pr1["inline_threads"] if row["id"] == thread_id)
+    selected_id = persisted["remediation_reply"]["id"]
+    selected = next(
+        reply for reply in persisted["reply_inventory"] if reply["id"] == selected_id
+    )
+    selected["updated_at"] = "2026-08-09T00:11:00Z"
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+
+    def edited_closure_threads(pr_number: int):
+        value = copy.deepcopy(_fake_github_get_review_threads(pr_number))
+        if pr_number == 1:
+            nodes = value["data"]["repository"]["pullRequest"]["reviewThreads"]["nodes"]
+            live = next(
+                row for row in nodes
+                if str(row["comments"]["nodes"][0]["fullDatabaseId"]) == thread_id
+            )
+            reply = next(
+                row for row in live["comments"]["nodes"][1:]
+                if str(row["fullDatabaseId"]) == selected_id
+            )
+            reply["updatedAt"] = "2026-08-09T00:11:00Z"
+        return value
+
+    with pytest.raises(
+        ReceiptValidationError,
+        match="independent exact-head pre-merge review|clean-comment/reaction",
+    ):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=github_get,
+            github_get_review_threads=edited_closure_threads,
+        )
+
+
 @pytest.mark.parametrize("missing_or_mixed", ["missing", "mixed"])
 def test_r00_review_evidence_requires_exactly_one_acceptance_arm(
     tmp_path, missing_or_mixed
@@ -3393,14 +3675,134 @@ def test_r00_review_evidence_requires_exactly_one_acceptance_arm(
         )
 
 
-def test_r00_review_evidence_requires_additive_v2_record_identity(tmp_path):
+@pytest.mark.parametrize("arm", ["final_review", "final_reaction"])
+def test_r00_acceptance_arms_reject_contradictory_unknown_fields(tmp_path, arm):
+    if arm == "final_reaction":
+        receipt = _reaction_receipt(tmp_path)
+        github_get = _fake_reaction_github_get_json
+    else:
+        _materialize_evidence(tmp_path)
+        receipt = _valid_receipt()
+        github_get = _fake_github_get_json
+    review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
+    review[arm]["contradictory_finding"] = "P1 CRITICAL: DO NOT MERGE"
+    _rewrite_bound_record(tmp_path, receipt, "review", review)
+    with pytest.raises(
+        ReceiptValidationError,
+        match="final-head (review|reaction) evidence is incomplete",
+    ):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=github_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+@pytest.mark.parametrize("arm", ["final_review", "final_reaction"])
+@pytest.mark.parametrize(
+    ("target", "error"),
+    [
+        ("export", "GitHub review export lacks complete repository/head provenance"),
+        ("thread", "review evidence has incomplete thread inventory"),
+        ("pr4-review", "GitHub review export has contradictory review fields"),
+    ],
+)
+def test_r00_v3_review_records_reject_nested_contradictory_fields(
+    tmp_path, arm, target, error
+):
+    if arm == "final_reaction":
+        receipt = _reaction_receipt(tmp_path)
+        github_get = _fake_reaction_github_get_json
+    else:
+        _materialize_evidence(tmp_path)
+        receipt = _valid_receipt()
+        github_get = _fake_github_get_json
+    if target == "thread":
+        review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
+        review["threads"][0]["contradictory_finding"] = "P1 CRITICAL: DO NOT MERGE"
+        _rewrite_bound_record(tmp_path, receipt, "review", review)
+    else:
+        export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+        if target == "export":
+            export["contradictory_finding"] = "P1 CRITICAL: DO NOT MERGE"
+        else:
+            pr4 = next(
+                pull for pull in export["pull_requests"] if pull["pr_number"] == 4
+            )
+            pr4["reviews"][0]["contradictory_finding"] = "P1 CRITICAL: DO NOT MERGE"
+        _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+    with pytest.raises(ReceiptValidationError, match=error):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=github_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+@pytest.mark.parametrize("arm", ["final_review", "final_reaction"])
+def test_r00_export_rejects_unauthenticated_pr1_review_rows(tmp_path, arm):
+    if arm == "final_reaction":
+        receipt = _reaction_receipt(tmp_path)
+        github_get = _fake_reaction_github_get_json
+    else:
+        _materialize_evidence(tmp_path)
+        receipt = _valid_receipt()
+        github_get = _fake_github_get_json
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    pr1 = next(pull for pull in export["pull_requests"] if pull["pr_number"] == 1)
+    pr1["reviews"] = [{
+        "body": "P1 CRITICAL: DO NOT MERGE",
+        "commit_id": "f" * 40,
+        "review_id": "5999999998",
+        "reviewer": "attacker",
+        "state": "CHANGES_REQUESTED",
+        "url": "https://github.com/TriadAgentic/TriadOrigin/pull/1#pullrequestreview-5999999998",
+    }]
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+    with pytest.raises(
+        ReceiptValidationError,
+        match="asserts unauthenticated historical reviews",
+    ):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=github_get,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
+
+
+def test_r00_review_evidence_requires_additive_v3_record_identity(tmp_path):
     _materialize_evidence(tmp_path)
     receipt = _valid_receipt()
     review = json.loads((tmp_path / "evidence/R00/review.json").read_bytes())
-    review["schema"] = "origin.review-evidence.v1"
+    review["schema"] = "origin.review-evidence.v2"
     _rewrite_bound_record(tmp_path, receipt, "review", review)
     with pytest.raises(ReceiptValidationError, match="typed evidence claim mismatch"):
         validate_receipt(receipt, _schema(), evidence_root=tmp_path)
+
+
+def test_r00_review_export_requires_additive_v3_record_identity(tmp_path):
+    _materialize_evidence(tmp_path)
+    receipt = _valid_receipt()
+    export = json.loads((tmp_path / "evidence/R00/review-api.json").read_bytes())
+    export["schema"] = "origin.github-review-export.v2"
+    _rewrite_bound_record(tmp_path, receipt, "review-api", export)
+    with pytest.raises(
+        ReceiptValidationError,
+        match="GitHub review export lacks complete repository/head provenance",
+    ):
+        _validate_receipt_impl(
+            receipt,
+            _schema(),
+            evidence_root=tmp_path,
+            github_get_json=_fake_github_get_json,
+            github_get_review_threads=_fake_github_get_review_threads,
+        )
 
 
 def test_r00_sdist_must_carry_the_reviewed_dependency_snapshot(tmp_path):

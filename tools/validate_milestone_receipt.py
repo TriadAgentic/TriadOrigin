@@ -442,10 +442,36 @@ def _expected_codex_review_request_body(
     )
 
 
+R00_CODEX_CLEAN_DECLARATION = "Codex Review: Didn't find any major issues."
 R00_CODEX_CLEAN_COMMENT_OPENINGS = (
-    "Codex Review: Didn't find any major issues. What shall we delve into next?",
-    "Codex Review: Didn't find any major issues. Bravo.",
+    f"{R00_CODEX_CLEAN_DECLARATION} What shall we delve into next?",
+    f"{R00_CODEX_CLEAN_DECLARATION} Bravo.",
+    f"{R00_CODEX_CLEAN_DECLARATION} Breezy!",
 )
+_CODEX_CLEAN_QUIP_RE = re.compile(
+    r"[A-Z][A-Za-z]*(?:'[A-Za-z]+)?"
+    r"(?: [A-Za-z]+(?:'[A-Za-z]+)?){0,11}[.!?]",
+    re.ASCII,
+)
+def _codex_clean_quip_from_opening(opening: str) -> str:
+    """Extract a structurally isolated, non-authoritative display quip.
+
+    The fixed declaration, head marker, connector reaction, and complete
+    zero-finding inventories carry the verdict.  The quip is retained and
+    hashed exactly, but is not interpreted as evidence or allowed to contain
+    protocol/control syntax.
+    """
+    prefix = f"{R00_CODEX_CLEAN_DECLARATION} "
+    if not isinstance(opening, str) or not opening.startswith(prefix):
+        raise ValueError("invalid Codex clean-comment declaration")
+    quip = opening[len(prefix):]
+    if (
+        len(quip.encode("ascii", errors="ignore")) != len(quip)
+        or not 1 <= len(quip.encode("ascii")) <= 80
+        or _CODEX_CLEAN_QUIP_RE.fullmatch(quip) is None
+    ):
+        raise ValueError("invalid Codex clean-comment display quip")
+    return quip
 
 
 def _expected_codex_clean_comment_body(
@@ -453,8 +479,7 @@ def _expected_codex_clean_comment_body(
     *,
     opening: str = R00_CODEX_CLEAN_COMMENT_OPENINGS[0],
 ) -> str:
-    if opening not in R00_CODEX_CLEAN_COMMENT_OPENINGS:
-        raise ValueError("unreviewed Codex clean-comment opening")
+    _codex_clean_quip_from_opening(opening)
     return (
         f"{opening}\n\n"
         f"**Reviewed commit:** `{head_sha[:10]}`\n\n"
@@ -470,12 +495,22 @@ def _expected_codex_clean_comment_body(
     )
 
 
-def _expected_codex_clean_comment_bodies(head_sha: str) -> tuple[str, ...]:
-    """Return only the complete clean-response bodies ratified from live artifacts."""
-    return tuple(
-        _expected_codex_clean_comment_body(head_sha, opening=opening)
-        for opening in R00_CODEX_CLEAN_COMMENT_OPENINGS
-    )
+def _is_valid_codex_clean_comment_body(body: object, head_sha: str) -> bool:
+    """Validate the complete clean-response frame without interpreting its quip."""
+    if (
+        not isinstance(body, str)
+        or re.fullmatch(r"[0-9a-f]{40}", head_sha, flags=re.ASCII) is None
+    ):
+        return False
+    marker = "\n\n**Reviewed commit:** `"
+    marker_at = body.find(marker)
+    if marker_at <= 0 or body.find(marker, marker_at + 1) != -1:
+        return False
+    opening = body[:marker_at]
+    try:
+        return body == _expected_codex_clean_comment_body(head_sha, opening=opening)
+    except (UnicodeError, ValueError):
+        return False
 
 
 def _r00_pr7_preacceptance_review_baseline() -> list[dict[str, str]]:
@@ -595,6 +630,7 @@ def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
     observed_head = "73771e53105a915756ae14fac93dc616190c4d1a"
     timeline_head = "8380348c43d8d7626bf3c89976d19f43275ca9ce"
     disposition_head = "52656010d28d010a71a2fefa92c32e728fc28b87"
+    reason_phrase_head = "2c9fbf09e41dce1cc21a8737042c12eb0dc349f5"
     rows = [
         (
             "5228488965",
@@ -679,6 +715,27 @@ def _r00_pr7_preacceptance_comment_baseline() -> list[dict[str, str]]:
                 opening=R00_CODEX_CLEAN_COMMENT_OPENINGS[1],
             ),
             "2026-08-09T00:50:24Z",
+        ),
+        (
+            "5229144298",
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR,
+            R00_PR_AUTHOR_ID,
+            _expected_codex_review_request_body(
+                reason_phrase_head, "31287757826", "93179576379"
+            ),
+            "2026-08-09T01:16:51Z",
+        ),
+        (
+            "5229158255",
+            R00_REQUIRED_REVIEWER,
+            "chatgpt-codex-connector[bot]",
+            R00_REQUIRED_REVIEWER_ID,
+            _expected_codex_clean_comment_body(
+                reason_phrase_head,
+                opening=R00_CODEX_CLEAN_COMMENT_OPENINGS[2],
+            ),
+            "2026-08-09T01:21:30Z",
         ),
     ]
     return [
@@ -1091,7 +1148,7 @@ def _validate_typed_evidence(
         _compare_record(
             record,
             {
-                "schema": "origin.review-evidence.v2",
+                "schema": "origin.review-evidence.v3",
                 "head_sha": receipt["head_sha"],
                 "reviewer": receipt["review"]["reviewer"],
                 "unresolved_actionable_threads": receipt["review"][
@@ -1155,6 +1212,9 @@ def _validate_typed_evidence(
                 final_reaction = record.get("final_reaction")
                 if final_review is not None and (
                     not isinstance(final_review, dict)
+                    or set(final_review) != {
+                        "body_sha256", "head_sha", "review_id", "reviewer", "url", "verdict",
+                    }
                     or not isinstance(final_review.get("review_id"), str)
                     or not final_review.get("review_id")
                     or final_review.get("head_sha") != receipt["head_sha"]
@@ -1202,7 +1262,7 @@ def _validate_typed_evidence(
             thread_urls: set[str] = set()
             computed_unresolved = 0
             for thread in threads:
-                if not isinstance(thread, dict) or not required_thread_fields.issubset(thread):
+                if not isinstance(thread, dict) or set(thread) != required_thread_fields:
                     problems.append(f"review evidence has incomplete thread inventory: {item['path']}")
                     break
                 thread_id = thread.get("thread_id")
@@ -1977,13 +2037,18 @@ def _validate_r00_review_export(
         export_raw = export_path.read_bytes()
         review = json.loads(review_raw)
         export = json.loads(export_raw)
+        if not isinstance(review, dict) or not isinstance(export, dict):
+            raise ValueError("review evidence root is not an object")
         if canonical_json(review) != review_raw or canonical_json(export) != export_raw:
             raise ValueError("noncanonical review evidence")
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError, TypeError):
         problems.append("R00 review/API evidence is not exact canonical JSON")
         return
     if (
-        export.get("schema") != "origin.github-review-export.v2"
+        set(export) != {
+            "head_sha", "page_info", "pagination_complete", "pull_requests", "repository", "schema",
+        }
+        or export.get("schema") != "origin.github-review-export.v3"
         or export.get("repository") != "TriadAgentic/TriadOrigin"
         or export.get("pagination_complete") is not True
         or export.get("page_info") != {"has_next_page": False}
@@ -2021,6 +2086,9 @@ def _validate_r00_review_export(
             expected_pull_fields.add("selected_comment_reactions")
         if set(pull) != expected_pull_fields:
             problems.append("R00 GitHub review export has contradictory pull-request fields")
+            return
+        if pr_number in {1, 2, 3} and pull.get("reviews") != []:
+            problems.append("R00 GitHub review export asserts unauthenticated historical reviews")
             return
         if pr_number == R00_RECEIPT_PR and pull.get("author") != R00_PR_AUTHOR:
             problems.append("R00 GitHub review export does not bind the corrective PR author")
@@ -2073,12 +2141,32 @@ def _validate_r00_review_export(
             if not isinstance(api_review, dict):
                 problems.append("R00 GitHub review export has a malformed review")
                 return
+            expected_review_fields = {
+                "body", "commit_id", "review_id", "reviewer", "state", "url",
+            }
+            if pr_number == R00_RECEIPT_PR:
+                expected_review_fields.update({"raw_reviewer", "reviewer_id", "submitted_at"})
+            if set(api_review) != expected_review_fields:
+                problems.append("R00 GitHub review export has contradictory review fields")
+                return
             review_id = api_review.get("review_id")
             if not isinstance(review_id, str) or not review_id.isdigit() or review_id in reviews:
                 problems.append("R00 GitHub review export has invalid/duplicate review identity")
                 return
             reviews[review_id] = api_review
             review_prs[review_id] = pr_number
+        if pr_number == 4 and pull.get("reviews") != [{
+            "body": R00_IMPLEMENTATION_REVIEW_BODY,
+            "commit_id": R00_IMPLEMENTATION_HEAD_SHA,
+            "review_id": R00_IMPLEMENTATION_REVIEW_ID,
+            "reviewer": R00_IMPLEMENTATION_REVIEWER,
+            "state": "COMMENTED",
+            "url": R00_IMPLEMENTATION_REVIEW_URL,
+        }]:
+            problems.append(
+                "R00 GitHub review export does not exactly bind the PR #4 implementation review"
+            )
+            return
     if covered_prs != R00_REVIEW_PRS:
         problems.append("R00 GitHub review export does not cover PR #1-#4 and PR #7")
     _validate_live_r00_review_threads(
@@ -2178,6 +2266,10 @@ def _validate_r00_review_export(
         if isinstance(reply, dict) and str(reply.get("review_id", "")).isdigit()
     }
     pr7_export = exported_pulls.get(R00_RECEIPT_PR, {})
+    persisted_threads_by_pr = {
+        pr_number: pull.get("inline_threads")
+        for pr_number, pull in exported_pulls.items()
+    }
     final_review = review.get("final_review")
     final_reaction = review.get("final_reaction")
     if isinstance(final_review, dict) and final_reaction is None:
@@ -2206,7 +2298,7 @@ def _validate_r00_review_export(
             persisted_reactions=pr7_export.get("pr_reactions"),
             persisted_reviews=pr7_export.get("reviews"),
             persisted_pull=pr7_export.get("pull_snapshot"),
-            persisted_threads=pr7_export.get("inline_threads"),
+            persisted_threads=persisted_threads_by_pr,
             persisted_timeline=pr7_export.get("timeline"),
             allowed_postmerge_review_ids=allowed_postmerge_review_ids,
             head_sha=head_sha,
@@ -2234,7 +2326,7 @@ def _validate_r00_review_export(
             persisted_selected_comment_reactions=pr7_export.get(
                 "selected_comment_reactions"
             ),
-            persisted_threads=pr7_export.get("inline_threads"),
+            persisted_threads=persisted_threads_by_pr,
             persisted_timeline=pr7_export.get("timeline"),
             allowed_postmerge_review_ids=allowed_postmerge_review_ids,
             head_sha=head_sha,
@@ -3291,7 +3383,7 @@ def _validate_live_r00_review(
         )
     thread_activity_ok = _r00_thread_activity_precedes_acceptance(
         persisted_threads,
-        accepted_at=submitted_at,
+        cutoff_at=submitted_at,
         merged_at=merged_at,
     )
     if (
@@ -3340,58 +3432,69 @@ def _validate_live_r00_review(
 def _r00_thread_activity_precedes_acceptance(
     persisted_threads: Any,
     *,
-    accepted_at: datetime | None,
+    cutoff_at: datetime | None,
     merged_at: datetime | None,
 ) -> bool:
-    """Reject thread activity at/after acceptance except the sealed merge reply."""
+    """Reject thread activity at/after the review cutoff except the merge reply."""
     if (
-        not isinstance(persisted_threads, list)
-        or accepted_at is None
+        not isinstance(persisted_threads, dict)
+        or set(persisted_threads) != R00_REVIEW_PRS
+        or cutoff_at is None
         or merged_at is None
-        or accepted_at >= merged_at
+        or cutoff_at >= merged_at
     ):
         return False
-    for thread in persisted_threads:
-        if not isinstance(thread, dict):
+    for pr_number, threads in persisted_threads.items():
+        if not isinstance(threads, list):
             return False
-        root = thread.get("root")
-        replies = thread.get("reply_inventory")
-        remediation = thread.get("remediation_reply")
-        if (
-            not isinstance(root, dict)
-            or not isinstance(replies, list)
-            or not isinstance(remediation, dict)
-        ):
-            return False
-        selected = str(remediation.get("id", ""))
-        if not selected.isdigit():
-            return False
-        root_created = _parse_github_time(root.get("created_at"))
-        root_updated = _parse_github_time(root.get("updated_at"))
-        if (
-            root_created is None
-            or root_updated is None
-            or root_created >= accepted_at
-            or root_updated >= accepted_at
-        ):
-            return False
-        selected_count = 0
-        for reply in replies:
-            if not isinstance(reply, dict):
+        for thread in threads:
+            if not isinstance(thread, dict):
                 return False
-            reply_created = _parse_github_time(reply.get("created_at"))
-            reply_updated = _parse_github_time(reply.get("updated_at"))
-            reply_id = str(reply.get("id"))
-            if reply_created is None or reply_updated is None:
+            root = thread.get("root")
+            replies = thread.get("reply_inventory")
+            remediation = thread.get("remediation_reply")
+            if (
+                not isinstance(root, dict)
+                or not isinstance(replies, list)
+                or not isinstance(remediation, dict)
+            ):
                 return False
-            if reply_id == selected:
-                selected_count += 1
-                if reply_created <= merged_at or reply_updated != reply_created:
+            selected = str(remediation.get("id", ""))
+            if not selected.isdigit():
+                return False
+            root_created = _parse_github_time(root.get("created_at"))
+            root_updated = _parse_github_time(root.get("updated_at"))
+            if (
+                root_created is None
+                or root_updated is None
+                or root_created >= cutoff_at
+                or root_updated >= cutoff_at
+            ):
+                return False
+            selected_count = 0
+            for reply in replies:
+                if not isinstance(reply, dict):
                     return False
-            elif reply_created >= accepted_at or reply_updated >= accepted_at:
+                reply_created = _parse_github_time(reply.get("created_at"))
+                reply_updated = _parse_github_time(reply.get("updated_at"))
+                reply_id = str(reply.get("id"))
+                if reply_created is None or reply_updated is None:
+                    return False
+                if reply_id == selected:
+                    selected_count += 1
+                    if pr_number == R00_RECEIPT_PR:
+                        if reply_created <= merged_at or reply_updated != reply_created:
+                            return False
+                    elif (
+                        reply_updated != reply_created
+                        or reply_created >= cutoff_at
+                        or reply_updated >= cutoff_at
+                    ):
+                        return False
+                elif reply_created >= cutoff_at or reply_updated >= cutoff_at:
+                    return False
+            if selected_count != 1:
                 return False
-        if selected_count != 1:
-            return False
     return True
 
 
@@ -3511,7 +3614,6 @@ def _validate_live_r00_reaction(
     expected_request = _expected_codex_review_request_body(
         head_sha, ci_run_id, ci_job_id
     )
-    expected_cleans = _expected_codex_clean_comment_bodies(head_sha)
     actual_clean_body = clean.get("body") if clean else None
     actual_selected_comment_reactions = {
         name: snapshots[0]
@@ -3643,7 +3745,7 @@ def _validate_live_r00_reaction(
 
     thread_activity_ok = _r00_thread_activity_precedes_acceptance(
         persisted_threads,
-        accepted_at=clean_at,
+        cutoff_at=request_at,
         merged_at=merged_at,
     )
     connector_reactions = [
@@ -3686,7 +3788,7 @@ def _validate_live_r00_reaction(
         or clean.get("author") != R00_REQUIRED_REVIEWER
         or clean.get("raw_author") != "chatgpt-codex-connector[bot]"
         or clean.get("author_id") != R00_REQUIRED_REVIEWER_ID
-        or actual_clean_body not in expected_cleans
+        or not _is_valid_codex_clean_comment_body(actual_clean_body, head_sha)
         or clean.get("created_at") != clean.get("updated_at")
         or reaction.get("actor") != R00_REQUIRED_REVIEWER
         or reaction.get("raw_actor") != "chatgpt-codex-connector[bot]"
@@ -3696,8 +3798,9 @@ def _validate_live_r00_reaction(
         or request_at is None
         or clean_at is None
         or reaction_at is None
-        or not (run_completed_at < request_at < clean_at < merged_at)
-        or reaction_at > clean_at
+        or not (
+            run_completed_at < request_at < reaction_at <= clean_at < merged_at
+        )
         or not comments_final
         or not inventory_ok
         or not review_order_ok

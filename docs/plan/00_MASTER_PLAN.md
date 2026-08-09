@@ -145,33 +145,46 @@ PR/review/comment/thread IDs, and URL; a post-merge export cannot redefine the f
 close. Each observed PR #7 root must be named in that set, fixed and resolved before merge, then
 receive a live-authenticated post-merge reply citing the corrective squash and receipt path.
 For either final-acceptance arm, every root and non-closure reply must be created and last updated
-strictly before the selected acceptance artifact. The one selected canonical closure reply must be
+strictly before the selected review object or, in the clean-comment arm, before the final review
+trigger. The one selected canonical closure reply must be
 created strictly after merge, remain unedited, and occur exactly once; tied, intermediate, later,
 edited, missing, or duplicate thread activity invalidates acceptance.
 
-The versioned `origin.review-evidence.v2` and `origin.github-review-export.v2` preimages fetch twice,
+The versioned `origin.review-evidence.v3` and `origin.github-review-export.v3` preimages fetch twice,
 with complete pagination, PR #7's top-level review, issue-comment, PR-root-reaction, and
 issue-timeline inventories and require both live snapshots to equal the persisted export. Any
 current `CHANGES_REQUESTED`, review at or after the selected final-head trigger, unbound post-merge
-review, changed inventory, or pagination gap fails closed. The clean-review-object arm remains valid
-only for an exact-head review object with no findings and is subject to the same historical
-comment/review, reaction, pull-boundary, and timeline law. The observed clean-comment arm requires an
-unchanged maintainer trigger naming the full PR head and successful CI run/job, followed by a
-complete byte-for-byte match to one of the finite Codex clean-response bodies ratified from live
-artifacts, naming that head's reviewed prefix. The reviewed allowlist currently contains only the
-observed “What shall we delve into next?” and “Bravo.” bodies with their exact common tail; unknown
-wording, suffixes, or prefix-only matches fail closed. The persistent
-PR-level `+1` from `chatgpt-codex-connector[bot]` is authenticated by raw login and immutable actor
-ID and is supporting corroboration only: it need not be recreated for every trigger and can never
-independently establish which head was reviewed.
+review, changed inventory, or pagination gap fails closed. The export asserts no unauthenticated
+PR #1–#3 review rows and exactly the one controlled, live-bound PR #4 implementation review. The
+clean-review-object arm remains valid only for an exact-head review object with no findings and is
+subject to the same historical
+comment/review, reaction, pull-boundary, and timeline law. The clean-comment arm requires an
+unchanged maintainer trigger naming the full PR head and successful CI run/job, then an unchanged
+connector response with the exact fixed declaration `Codex Review: Didn't find any major issues.`,
+a structurally isolated one-line ASCII reason phrase, the exact reviewed-head marker, and the exact
+common tail. The reason phrase is display-only protocol metadata: it is limited to 1–80 bytes by a
+closed ASCII structural grammar; renderer syntax, Unicode, an extra sentence, or a suffix is
+forbidden. Its lexical meaning is deliberately opaque and never supplies or contradicts the
+machine verdict. The complete actual body remains byte-for-byte persisted, live-compared, and
+SHA-256-bound. A unique
+connector PR-level `+1` must be fresh for this review window—strictly after the full-head trigger
+and no later than the clean response. Authority therefore comes from the fixed declaration, fresh
+authenticated reaction, exact CI/head/timeline bindings, and complete zero-finding inventories,
+not from the cosmetic reason phrase by itself.
 
 Because submitted GitHub reviews have no review-body update timestamp, the reviewed source pins the
-exact five-review and seven-comment PR #7 history that existed before this law: IDs, raw and numeric
+exact five-review and nine-comment PR #7 history that existed before this law: IDs, raw and numeric
 actors, commit/state, complete bodies, submission/creation times, and URLs. The live export must
 start with that exact review/comment baseline; it cannot redefine history after merge. Every
 top-level comment, including the fresh selected pair, must remain unedited (`created_at ==
 updated_at`). Any extra pre-merge review, changed historical review, or `review_dismissed` event
 after the final trigger fails closed.
+
+The nine-comment baseline preserves all three observed clean display phrases—“What shall we delve
+into next?”, “Bravo.”, and “Breezy!”—and their exact full bodies. Their variation is why v3 isolates
+the bounded reason phrase instead of interpreting or matching its words. Each observation is
+historical only; the final source head still requires its own successful CI, trigger, fresh
+reaction, and clean response.
 
 The complete issue timeline and boundary PR snapshots must show the same head and base from the
 selected trigger through the guarded squash merge; any intervening commit, force-push, head-ref

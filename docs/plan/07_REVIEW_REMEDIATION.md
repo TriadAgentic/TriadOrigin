@@ -46,34 +46,44 @@ post-merge closure reply citing the corrective squash and receipt path. The seal
 complete live GraphQL snapshots against every persisted PR #1–#4/#7 root, resolution, and selected
 reply; a reviewed immutable root manifest pins every original root's finding text, author, path,
 IDs, and URL. Incomplete pagination, edited roots, or any mismatch fails closed.
-Both final-acceptance arms also apply the same temporal cutoff: every root and non-closure reply
-must predate the selected acceptance artifact. The exact selected closure reply must appear once,
+Both final-acceptance arms also apply a strict temporal cutoff: every root and non-closure reply
+must predate the selected review object or, in the clean-comment arm, the final review trigger. The
+exact selected closure reply must appear once,
 strictly after merge, and remain unedited. Same-time, intermediate, later, edited, missing, or
 duplicate activity blocks the receipt even when the thread is eventually resolved.
 
-PR #7 established the clean-comment protocol shape on head
+PR #7 first established the clean-comment protocol shape on head
 `73771e53105a915756ae14fac93dc616190c4d1a`: exact full-head/CI trigger comment `5228555326` was
-followed by exact connector clean-response comment `5228567753`, while persistent PR-root reaction
+followed by exact connector clean-response comment `5228567753`, while PR-root reaction
 `444909869` recorded `+1` from `chatgpt-codex-connector[bot]` (`199175422`). That observation
 ratifies the artifact shape only. Because the commit that implements and documents this law creates
 a different head, the `73771e…` clean result cannot authorize the final merge head.
 
-For the final head, the versioned v2 evidence fetches twice and persists the complete PR #7
+Later clean results used “Bravo.” on head `52656010…` and “Breezy!” on head `2c9fbf09…`, while
+retaining the same fixed clean declaration, reviewed-head marker, common tail, connector identity,
+and fresh post-trigger `+1`. Those exact historical bodies remain source-pinned. Their stochastic
+display phrase is explicitly opaque and non-authoritative in v3; each complete actual body is still
+preserved and hashed exactly, but no lexical interpretation of the display phrase affects PASS.
+The `2c9fbf09…` observation is trigger `5229144298`, clean comment `5229158255`, and fresh reaction
+`444992088` at `2026-08-09T01:21:29Z`; it is historical evidence, not authorization for the next
+source head.
+
+For the final head, the versioned v3 evidence fetches twice and persists the complete PR #7
 top-level review, issue-comment, PR-root-reaction, and issue-timeline inventories. It rejects every
 current `CHANGES_REQUESTED`, every review at or after the selected final-head trigger, every
 unbound post-merge review, every inventory race or omission, and every commit, force-push,
 head-ref deletion/restoration, `automatic_base_change_succeeded`, or other head/base ref mutation
-between trigger and guarded merge. The reviewed law also pins the exact five-review/seven-comment
+between trigger and guarded merge. The reviewed law also pins the exact five-review/nine-comment
 pre-final history, including raw and numeric actors, complete bodies, commit/state, IDs, times, and
 URLs. Every top-level comment must remain unedited; any changed historical review or post-trigger
 review dismissal fails closed. The selected trigger must be
 unchanged and name the full final head plus its successful CI run/job. A fresh unchanged Codex
-clean-response comment must follow, name that head's reviewed prefix, and equal one of the finite
-complete bodies ratified from live clean artifacts. Only the exact observed “What shall we delve
-into next?” and “Bravo.” variants with the common body tail are accepted; unknown wording or any
-additional suffix fails closed. The connector's persistent
-PR-root `+1` is authenticated supporting corroboration; it is not required to acquire a new
-timestamp for each trigger and never accepts a head without its own fresh clean comment. The sealed
+clean-response comment must follow with the exact fixed declaration, a 1–80 byte one-line ASCII
+opaque display reason with no renderer/control syntax, the exact reviewed-head marker, and the exact
+common tail. The complete body remains
+byte-bound; an extra sentence, suffix, Unicode/control byte, or malformed envelope fails closed. A
+unique connector PR-root `+1` must be
+created strictly after this trigger and no later than the clean response. The sealed
 export preserves historical states and does not relabel PR #4 or the `73771e…` observation as the
 accepted corrective merge.
 

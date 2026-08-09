@@ -76,22 +76,24 @@ the latter is preserved as an official-contract rebuttal because GitHub document
 event's `commit_id` as the PR head that was merged, not the resulting squash. Two complete live
 GraphQL snapshots must equal the persisted root/resolution/reply inventory and the reviewed
 immutable root manifest. Two complete stable snapshots of PR #7's reviews, top-level issue comments,
-PR-root reactions, and issue timeline must likewise equal the persisted v2 export. A current
+PR-root reactions, and issue timeline must likewise equal the persisted v3 export. A current
 `CHANGES_REQUESTED`, review at or after the selected trigger, unbound post-merge review, pagination
 gap, inventory race, or head/base mutation through merge blocks closure. The reviewed source pins
 the exact pre-final review/comment baseline; every top-level comment must remain unedited, any
 changed historical review or post-trigger dismissal fails closed, and automatic base changes or
 head deletion before receipt sealing are forbidden.
-For either clean-acceptance arm, thread roots and ordinary replies must predate acceptance; only the
-single canonical unedited closure reply may follow, strictly after merge.
+For either clean-acceptance arm, thread roots and ordinary replies must predate the selected review
+object or final review trigger; only the single canonical unedited closure reply may follow,
+strictly after merge.
 
 The clean-review-object arm requires an exact-head review object with no findings and the same
 complete historical comment/review, reaction, pull-boundary, and timeline checks. The observed
 clean-comment arm requires a fresh unchanged full-head/CI trigger followed by a complete
-byte-for-byte match to one of the finite reviewed Codex clean-response bodies for that head. Unknown
-wording, suffixes, and prefix-only matches fail closed. The connector's persistent PR-level `+1` is authenticated
-corroboration only; it need not be recreated after every trigger and never substitutes for a fresh
-head-specific clean comment. Any later commit invalidates the clean result and requires new
+response frame: the fixed clean declaration, a bounded one-line ASCII opaque display reason with no
+renderer/control syntax, the exact reviewed-head marker, and the exact common tail. The entire body
+is still compared and hashed byte-for-byte; the display reason's lexical meaning is never a verdict
+input. A unique connector PR-level `+1` must occur strictly after this trigger and no later than the
+clean response. Any later commit invalidates the clean result and requires new
 exact-head CI and acceptance. The 14 inherited PR #1–#3 threads closed post-PR #4 merge
 after their replies could cite the actual squash SHA and receipt path. The final receipt inventories
 PRs #1–#4 and #7, as controlled by
