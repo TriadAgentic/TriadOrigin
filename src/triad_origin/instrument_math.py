@@ -154,6 +154,17 @@ def ticks_to_price(instrument: Instrument, ticks: int) -> str:
 
 
 def qty_to_steps(instrument: Instrument, qty: str, mode: Rounding = Rounding.EXACT) -> int:
+    """Venue-fact quantity ingress: ``EXACT`` only, and fails closed.
+
+    F00 is event parsing, not proposal snapping (errata F00): a venue quantity must divide the
+    metadata step with zero remainder or quarantine, with no floor, ceil or tolerance at ingress.
+    Order quantity floor-to-step is reserved to F20/F22, so this boundary refuses any non-EXACT
+    mode by name rather than silently flooring a venue fact.
+    """
+    if mode is not Rounding.EXACT:
+        raise InstrumentError(
+            "qty_to_steps is EXACT-only at ingress; quantity floor-to-step belongs to F20/F22"
+        )
     return _guard_int64(
         _quantize(_scaled_dec(qty, instrument.step, "quantity", mode), instrument.step, mode),
         "qty steps",

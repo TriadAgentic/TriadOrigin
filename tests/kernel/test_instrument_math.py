@@ -34,6 +34,34 @@ def test_qty_roundtrip():
     assert im.steps_to_qty(BTC, steps) == "0.012"
 
 
+def test_qty_one_unit_boundaries_are_exact():
+    # F00 golden_boundary_tests: equality + one-unit-short/over on the quantity axis.
+    assert im.qty_to_steps(BTC, "0.011") == 11
+    assert im.qty_to_steps(BTC, "0.013") == 13
+
+
+def test_qty_default_quarantines_off_grid_quantity():
+    # F00 venue-fact ingress (units_rounding: no floor/ceil/tolerance): an off-grid quantity
+    # quarantines under the EXACT default — it is never silently floored to a valid step.
+    with pytest.raises(im.InstrumentError, match="fractional decimal place"):
+        im.qty_to_steps(BTC, "0.9809")  # 4 places against the 0.001 (3-place) step
+
+
+def test_qty_exact_rejects_non_multiple():
+    # correctly-formatted (3 places) but not an exact multiple of the 0.005 step -> quarantine.
+    instrument = Instrument("I", "V", "0.10", "0.005", "0", "r")
+    with pytest.raises(im.InstrumentError, match="not an exact multiple"):
+        im.qty_to_steps(instrument, "0.012")
+
+
+@pytest.mark.parametrize("mode", [Rounding.DOWN, Rounding.UP, Rounding.HALF_EVEN])
+def test_qty_to_steps_is_exact_only(mode):
+    # errata F00: quantity floor-to-step belongs only to F20/F22; F00 ingress may not floor a
+    # venue fact. Any non-EXACT mode is refused by name, never silently floored.
+    with pytest.raises(im.InstrumentError, match="EXACT-only"):
+        im.qty_to_steps(BTC, "0.9809", mode)
+
+
 def test_boundary_formatting_is_independent_of_global_decimal_context():
     expected = ("62123.40", "123.456")
     for precision in (2, 5, 28):
