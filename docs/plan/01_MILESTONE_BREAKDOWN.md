@@ -1,171 +1,249 @@
-# 01 · Milestone Breakdown
+# 01 · Milestone Breakdown — B-Series
 
-Status vocabulary: `PLANNED`, `IN_PROGRESS`, `BLOCKED`, `PR_OPEN`, `MERGED_UNVERIFIED`,
-`VERIFIED`, `FAILED_AUDIT`, `SUPERSEDED`.
+Each milestone lists **scope**, **deliverables**, **acceptance evidence**, **control-bundle
+slice** (ledger lane), and **dependencies**. Legacy M1/M2 deliverables (merged PRs #1/#2, audited
+and remediated by R00 PR #4/#7) are the substrate; the B-series builds on them.
 
-## R00 · Repository integrity refreeze — IN_PROGRESS
+Every milestone PR must satisfy: full CI gate green (pytest ×2 hash seeds, collection identity,
+manifest + manifest schema, reproducible build, wheel smoke, capability boundary) **+
+`tools/e2e_audit.py` all stages + `tools/build_ledger.py --verify`**, and must extend the e2e
+walk with each new capability (E2E growth law).
 
-**Purpose.** Restore truthful governance and a defensible RC1 foundation without claiming RC2
-acceptance.
+---
 
-**Deliverables.**
+## B00 · Authority & control baseline
 
-- Correct all 14 unresolved PR #1–#3 findings or record an explicit non-actionable disposition.
-- Add regressions for epoch equality, fallback validation, manifest validity, wheel installation,
-  float rejection, checkpoint integrity, cross-source ordering, revocation, heartbeat, quarantine,
-  and LIVE-only production posture.
-- Add GitHub CI for tests, byte manifest, manifest-schema validation, wheel-install validation, and
-  negative-capability scanning; pin action commits and the resolved test/build dependency snapshot.
-- Replace false M1/M2 completion language with merged-implementation/acceptance-blocked status.
-- Replace the RC1 M1–M6 plan with R00/B00–B09 and add conflict/source/review registers.
-
-**Acceptance.**
-
-- Full local suite and manifest gate pass on the exact PR head.
-- CI is green; no actionable PR #4 thread remains before merge.
-- Old PR threads are replied to with the remediation PR/commit and resolved only after the fix exists.
-- Fresh merged `main` reproduces all checks.
-- R00 receipt validates against `milestone_receipt.schema.json` and the cross-field/sentinel checks
-  in `tools/validate_milestone_receipt.py`.
-- Until issue #5 proves a durable main ruleset, merge is bound procedurally to the reviewed exact
-  head SHA; the ruleset gap remains a B00 blocker and is disclosed in the receipt.
-- Post-merge receipt is anchored on `evidence/r00-receipt`; failure leaves R00
-  `MERGED_UNVERIFIED` and blocks B00.
-
-**Does not assert.** RC2 conformance, package completeness, detector readiness, or live authority.
-
-## B00 · RC2 authority and E02 scope freeze — BLOCKED
+**Scope.** Make the complete RC2/RC3/RC4 control package the repository's machine-readable law;
+re-plan the build under the operator's 2026-08-09 directive; install the e2e audit walk and the
+build ledger; open the questions register.
 
 **Deliverables.**
+- `docs/control/` — RC3 overlay schema + normative overlay + effective control bundle + bundle
+  manifest + validation report + RC3 executable builder; RC4 control bundle + addendum builder;
+  `SOURCE_HASHES.sha256`; `build_ledger.json` + overrides file.
+- `docs/spec_rc2/` (complete RC2 package incl. previously-missing checklist + workbook),
+  `docs/spec_rc3/`, `docs/spec_rc4/`, `docs/reports/` (sign-off + cross-engine reports).
+- `tools/build_ledger.py`, `tools/e2e_audit.py` (9 stages v0), CI wiring for both.
+- Plan rewrite: `00_MASTER_PLAN.md`, this file, `04_STATUS.md`, `06_RC2_SOURCE_INVENTORY.md`
+  update, `08_BUILD_CHECKLIST.md`, `09_OPEN_QUESTIONS.md`; `CLAUDE.md` authority update.
 
-- Complete RC2 source bundle, manifest, and exact byte digest.
-- Corrected RC2 workbook/control catalogue with no false green or broken references.
-- One canonical contract-version/compatibility map.
-- Authoritative decisions for every open `BLK-RC2-*` row plus all missing consequential variables;
-  implementation controls remain assigned to their downstream milestone and cannot be marked done
-  by the B00 decision alone.
-- Ownership matrix: `OWN`, `CONSUME`, `VERIFY_ONLY`, `REFERENCE_ONLY`, `OUT_OF_REPO`,
-  `DEFERRED`.
-- Explicit E02 input/output boundary and negative-capability policy.
-- Durable main-branch ruleset requiring exact-head CI and review; close issue #5 with evidence.
+**Acceptance.** CI green; e2e 9/9; ledger verifies (1,250 rows partitioned); hashes recorded.
+**Slice.** Ledger B00 rows (governance/cross-cutting baseline). **Deps.** none.
 
-**Acceptance.** Package validation, all B00 blockers closed by named authority, no `NOT_RATIFIED`
-value in B01/B02 scope, and immutable B00 receipt.
+---
 
-## B01 · Contract and identity refreeze — BLOCKED_BY_B00
+## B01 · Foundation corrections (G0)
 
-**Scope.** Re-audit RC1 M1 against the resolved RC2 bundle.
-
-**Deliverables.**
-
-- Additive contract versions only; published bytes never rewritten.
-- Canonical semantic type versus JSON encoding decision.
-- Clock field/unit decision and migration vectors.
-- Installed-resource contract catalogue.
-- Contract bundle validates against its own declared schema.
-- Stable identity domains, correction/revision semantics, compatibility vectors.
-
-**Acceptance.** Both supported validators agree on all golden vectors; installed wheel behaves
-identically to checkout; manifest/registry/schema identities reconcile; all B01 receipt fields sealed.
-
-## B02 · Kernel, transport, and replay refreeze — BLOCKED_BY_B01
-
-**Scope.** Re-audit RC1 M2 within E02 ownership.
+**Scope.** Close the inherited foundation findings that must precede all semantic work, and land
+the strict contract/identity v2 layer RC3/RC4 demand.
 
 **Deliverables.**
+- **CTRL-B01-003 / BLK-RC2-017:** typed identity v2 — field-type-tagged digest framing as a new
+  identity schema version with migration vectors; RC1 IDs remain valid under their version.
+- **CTRL-B01-002 / BLK-RC2-016:** `engine_attestation.v2` with envelope/payload equality
+  constraints + corrected golden vectors; v1 preserved immutable.
+- **CTRL-B01-001:** additive bundle descriptor v2 correcting media-type labels; RC1 bundle bytes
+  and hash unchanged.
+- **RC4 L2 slice:** `engine_control_manifest.v2` schema, strict receipt schemas v2 (exact enums,
+  semantic combination validation), `fill.v3`, `structure_atom.v2`, `edge_candidate.v2` (+
+  transition contract), `producer_lease` verify-only contract alignment — schema + golden
+  vectors + registry + manifest re-pin.
+- Epoch-law regression audit (current-epoch equality accepted; lower rejected) across contracts
+  and ingress — verifying the R00 corrections and extending vectors.
+- Dependency-pin refresh policy note (B01 owns reviewed refreshes per R00).
 
-- Pure transition kernel, integer math, ordering, quality, journal, checkpoint, ingress, telemetry,
-  health, and append-only ledger.
-- Production driver and replay driver invoke the same transition implementation.
-- Checkpoint seals replay-controlling metadata, an independently anchored output-ledger head, and
-  the complete per-scope consumer-fence restore state (CTRL-B02-001/002).
-- ORIGIN verifies external leases and durably restores only its consumer fence; lease issuance and
-  authority coordination remain out of repository.
+**Acceptance.** All new/changed schemas have valid+invalid goldens; manifest re-pinned; identity
+migration vectors prove v1 stability; e2e gains a v2-identity stage. **Slice.** B01 ledger rows
+(Contracts node, G0 gate-control in-repo parts). **Deps.** B00.
 
-**Acceptance.** Prefix/cold/warm/checkpoint/restart/duplicate/correction/future-mutation invariance;
-same-input live/replay byte equality; no credential/order/risk/money capability; B02 receipt sealed.
+---
 
-## B03 · Parameter substrate, features, and typed levels — BLOCKED_BY_B00_B02
+## B02 · Kernel hardening (G0/G1 in-repo)
 
-**Scope.** Resolved E02 F02–F07. F01 is an upstream E01 conformance boundary.
-
-**Deliverables.**
-
-- Immutable parameter-set schema, digest, verify-only signature/trust-root handling, and ratification
-  state; no private signing key.
-- Explicit DARK proposed parameter pack; no code default.
-- ATR, directional-change swing, closed fractal, rolling extremes, anchored equal levels, and
-  session-level consumption/validation as resolved by B00.
-- Named nulls for warm-up, gaps, stale metadata, and missing parameters.
-
-**Acceptance.** Every function binds exact F/PAR/GV/test IDs; equality/one-unit/mirror/scale/replay
-vectors pass; no unresolved B03 parameter is silently selected.
-
-## B04 · Structure truth — BLOCKED_BY_B03
-
-**Scope.** Resolved F08–F13.
-
-**Deliverables.** Direction/protected swing, accepted BOS/CHOCH, FVG, displacement, causal order
-block, excursion/reclaim, exact lifecycle/precedence/correction behavior.
-
-**Acceptance.** Same-event precedence, terminal-state, correction, identity, mirror, restart,
-future-mutation, and null-honesty proofs pass for each structure family.
-
-## B05 · Flow and reaction — BLOCKED_BY_B04
-
-**Scope.** Resolved F14–F17.
-
-**Deliverables.** Departure/first touch, TFI, OFI, and book tilt. Liquidation/exhaustion are excluded
-unless separately defined by exact formulas and parameters.
-
-**Acceptance.** Sequence-continuity, watermark, TTL, zero-denominator, stale/null, first-touch
-consumption, correction, mirror, and replay tests pass.
-
-## B06 · Geometry, clustering, and candidate publication — BLOCKED_BY_B05
-
-**Scope.** Resolved F18–F19 and W06 treatment publication.
+**Scope.** Close the two structural kernel findings and land the deterministic timing law.
 
 **Deliverables.**
+- **CTRL-B02-001:** external durable anchor binding for ledger output (chain head + segment +
+  offset + file identity + recovery receipt); falsification tests for tail deletion/replacement;
+  cold/warm exactly-once parity.
+- **CTRL-B02-002:** closed per-scope fence state (accepted-token high-water per scope) sealed
+  into checkpoints, restored before consumption; falsification: lower-token acceptance across
+  restart.
+- **RC4 timings registry:** the 17 declared timing bounds as a versioned data artifact + loader
+  (pure; consumers receive values, never read clocks).
+- F00 (exact tick/step conversion) golden vectors wired to `instrument_math`.
 
-- Directional entry/stop/target geometry with stop-side invariant and RR floor.
-- Stable, non-circular opportunity identity.
-- Immutable treatment candidate, named abstention, expiry, correction, and E02-owned withdrawal.
-- No account, quantity, leverage, authorization, order, fill, or invented expected-return field.
+**Acceptance.** New falsification tests; e2e gains anchor + fence-restore stages. **Slice.** B02
+rows (W22/W24 in-repo, G1 in-repo). **Deps.** B01.
 
-**Acceptance.** Complete geometry at publication, target causally pre-existing, one candidate per
-identity, no alias duplication, and contract/forbidden-field tests.
+---
 
-## B07 · Five capsules and trial integrity — BLOCKED_BY_B00_B06
+## B03 · Structure semantics I (F01–F09)
 
-**Scope.** Exactly one ratified capsule family.
+**Scope.** The first half of the pure causal detector core.
 
-**Deliverables.** Five isolated capsules, each with exact structural and flow predicates,
-entry/invalidation/target, named abstentions, formula/parameter/trial digests, preregistration, and
-ablations. No voting ensemble.
+**Deliverables** (each a pure state machine over `transition()` with its RC3 formula):
+- `feature_primitives.py` — F01 finalized time-bar aggregation, F02 true range/trailing ATR in
+  ticks, F05 trailing rolling extreme; warm-up honest-null.
+- `structures/typed_level_registry.py` — F03 directional-change swing, F04 closed fractal pivot,
+  F06 anchored equal-level cluster (span bound symbolic → RESEARCH), F07 UTC session level.
+- `structures/structure_state.py` — F08 directional structure + protected swing (reducer version
+  symbolic → RESEARCH), F09 accepted break / BOS / CHOCH with precedence law.
+- `structure_atom.v2` / `structure_transition.v2` emission shapes wired to the journal.
 
-**Acceptance.** Isolation, no hidden conjunct, first-touch consumption, withdrawal, ablation,
-preregistration, denominator, replay, and no-post-outcome-selection proofs.
+**Acceptance.** Per-detector: formation predicate, lifecycle-to-terminal, precedence, LONG/SHORT
+mirror, prefix/restart/duplicate invariance, fail-closed-on-missing-param, null honesty; RC2/RC3
+golden vectors for F01–F09; e2e gains a synthetic market-state → structures stage.
+**Execution.** Ultracode fan-out (one agent per module family, self-tested), full-suite re-verify.
+**Slice.** B03 rows (W03/W04, F01–F09, ORIGIN feature/structure nodes). **Deps.** B02.
 
-## B08 · DARK E02 service integration — BLOCKED_BY_B07
+---
 
-**Scope.** Consume W02; own W03–W06 and E02-specific W23–W25 facts.
+## B04 · Structure semantics II (F10–F13, F15–F17)
 
-**Deliverables.** Service startup/sync/warm/readiness/drain/recovery, logical append-only bindings,
-ACL/negative-capability enforcement, route/funnel telemetry, replay CLI, read-only evidence.
+**Scope.** The second half: gap/block/reclaim structures and flow atoms, plus the lifecycle
+reducer.
 
-**Acceptance.** `READY_NO_AUTHORITY`, zero venue/order/risk/money capability, no legacy runtime
-import, exact replay parity, clean shutdown/recovery, and prospective DARK receipt.
+**Deliverables.**
+- `structures/fvg_registry.py` — F10 three-bar fair-value gap + penetration lifecycle.
+- `structures/order_block_registry.py` — F11 qualified displacement + F12 causal order block
+  (origin + displacement + linked BOS).
+- `structures/excursion_reclaim_registry.py` — F13 frozen-level excursion → timed reclaim → hold.
+- `structures/flow_atoms.py` — F15 trade-flow imbalance, F16 best-level order-flow imbalance
+  (min-depth symbolic → RESEARCH), F17 book depth tilt; no-future-venue law; null honesty.
+- Lifecycle reducer (W05): structure lifecycle transitions with illegal-transition rejection.
 
-## B09 · Full verification and operator artifacts — BLOCKED_BY_B08
+**Acceptance.** Same proof-obligation battery per module; goldens for F10–F17; e2e stage extends
+the walk through gaps/blocks/reclaims/flow. **Execution.** Ultracode fan-out. **Slice.** B04 rows
+(W05, F10–F17, lifecycle reducer node). **Deps.** B03.
 
-**Deliverables.** Complete mapped offline registry, immutable receipts, paired same-tape comparison
-tool, read-only evidence projections, migration/rollback/incident/DR runbooks, and explicit external
-test register for every test not executable in this repository.
+---
 
-**Acceptance.** Every in-scope requirement maps to code, test, evidence, and owner; every exclusion
-has an ID/reason/later gate; no writable MCP or money path.
+## B05 · Reaction, capsules & candidates (F14, F18, F19)
 
-## External governance stages
+**Scope.** Confirmed structures → immutable trade hypotheses → published candidates.
 
-RC2 G6–G9 rehearsal, canary, prospective money sample, cutover, scaling, and retirement are outside
-this repository and are never implied by B09.
+**Deliverables.**
+- `reaction_engine.py` — F14 departure + first retest/touch; location → freshness → departure →
+  trigger → confirmation → geometry.
+- `capsule_host.py` — isolated per-capsule runtime (one formula/parameter/trial identity each).
+- `capsules/` — the five capsules (`dc_swing_bos_first_retest.v1`,
+  `protected_swing_choch_first_retest.v1`, `fvg_displacement_first_touch.v1`,
+  `ob_displacement_bos_first_touch.v1`, `level_excursion_reclaim_flow_confirmed.v1`).
+- `opportunity_clusterer.py` — F19 clustering + alias control with the non-circular prospective
+  cluster-root law (BLK-RC2-012 disposition per RC3).
+- `candidate_publisher.py` — F18 candidate geometry + geometric RR (directional stop-side
+  invariant per BLK-RC2-014 disposition), RR ≥ 2.0 floor, immutable `edge_candidate.v2`,
+  lifecycle with named abstention + withdrawal (BLK-RC2-013 disposition), forbidden-money-field
+  guard.
+
+**Acceptance.** End-to-end synthetic sequence market-state → structures → reaction → candidate,
+with RR-floor rejection, withdrawal on invalidation, capsule isolation (no cross-capsule vote),
+contract validity; e2e full-funnel stage. **Execution.** Host/engine authored directly; capsules
+fanned out. **Slice.** B05 rows (W06, F14/F18/F19, capsule/candidate nodes). **Deps.** B04.
+
+---
+
+## B06 · Lever & four-plane control (RC4 L0–L5)
+
+**Scope.** The RC4 lever/plane law as ORIGIN-side code and data. ORIGIN enforces the law for its
+own artifacts and candidate routing; venue-side enforcement is estate-owned and stays named.
+
+**Deliverables.**
+- Canonical lever model: `venue_environment {LIVE,TESTNET,OFF}` / `venue_activation {LIVE,OFF}` /
+  `paper_activation {LIVE,OFF}` / `shadow_activation` (constant LIVE), case-sensitive, no
+  coercion; the 34-alias invalid table as data + parser tests.
+- The 32-code refusal registry as data + a pure refusal engine mapping each refusal to its exact
+  containment action (from the RC4 bundle) + golden tests per code.
+- `engine_control_manifest.v2` validation (exact scopes, no wildcards, digest binding) + lever
+  resolver with `lever_cache_max_age_ms` staleness→OFF law (age injected, never wall-clock).
+- Runtime lever attestation record shapes + revision fencing (stale revision refusal).
+- Shadow-law: ORIGIN dispositions — every rejected shadow-tradeable candidate must produce a
+  durable SHADOW disposition record (persist-deadline law as data); tradeability contract;
+  no-fabricated-geometry rule; population separation guards (SHADOW/PAPER/TESTNET/LIVE never
+  blend in one aggregate).
+- ADR-005 supersession record + `10_DECISION_REGISTER` note (L0 slice, in-repo documentation of
+  the owner directive; the signed ADR itself is an OPERATOR row).
+
+**Acceptance.** Every refusal code has a triggering test; alias table fully rejected;
+lever-combination truth table (10 valid combinations) proven; staleness resolves OFF; e2e gains a
+lever/refusal stage. **Slice.** B06 rows (RC4 L0/L2–L5 in-repo). **Deps.** B05 (candidates exist
+to route/record).
+
+---
+
+## B07 · Config, wiring & services (G4)
+
+**Scope.** Signed configuration, the comparator/authority control plane, service main.
+
+**Deliverables.**
+- `config/` signed artifacts + JSON-Schemas + fail-closed loader with owner/change-control/
+  digest: capsules, geometry, lifecycle, regime eligibility, symbols, staleness bounds, latency
+  budgets, risk policy (catalog), exit policy (catalog), transport bindings,
+  `engine_control_manifest.v2` instance (all levers OFF/DARK), treatment/rollback manifests,
+  secret allowlist, compatibility manifest.
+- **Parameter registry materialization:** all 192 effective parameter records as a versioned data
+  artifact with per-row ratification status; `require()` integration so `PROPOSED_*` /
+  `NOT_RATIFIED` rows fail closed at runtime unless a ratified activation bundle supplies them.
+- `comparator.py` (side-effect-free divergence → `divergence_record.v1`), `authority_router.py`
+  (single-writer, lease-gated, split-brain/stale-epoch rejection), `legacy_bridge.py` (control
+  candidate, dark), `replay_runner.py` + CLI (same-code deterministic runner → replay receipt),
+  `service/main.py` reaching `READY_NO_AUTHORITY`.
+
+**Acceptance.** Configs validate + digest-pin; comparator has no authority-write import; router
+admits exactly one candidate per allocation; service main reaches `READY_NO_AUTHORITY` with zero
+side effects; e2e gains config-load + comparator + router + replay-runner stages. **Slice.** B07
+rows (W07–W09, parameter declarations, Configuration node). **Deps.** B06.
+
+---
+
+## B08 · Read faces & evidence projections (G5 in-repo, RC4 L6)
+
+**Scope.** Honest read-only evidence, closing CTRL-B08-001's narrowness the right way.
+
+**Deliverables.** Read-only faces for: attestation/activation/lease scope; input offsets/
+watermarks/coverage/quality; structure & lifecycle lineage with all clocks; candidate funnel with
+named zero reasons; divergence; lever/plane state incl. shadow-health; replay receipts. Honest
+`unavailable` for absent dependencies; no secrets; no control verbs; bounded cardinality.
+
+**Acceptance.** Face outputs contract-valid; secret/control-verb absence tests; readiness stays
+explicitly `READY_NO_AUTHORITY` with named missing-evidence inputs; e2e stage reads every face.
+**Slice.** B08 rows (W23/W25, Observability, MCP & evidence UI, RC4 L6). **Deps.** B07.
+
+---
+
+## B09 · Verification matrix & runbooks
+
+**Scope.** Consolidate verification into the Doc 08 / RC3 registry shape; write runbooks.
+
+**Deliverables.**
+- `tests/matrix/` — offline-feasible verification rows tagged with RC3 verification IDs; a
+  conformance report tool mapping implemented tests → registry rows (counts by gate).
+- Estate-formula catalog (F20–F23): contract shapes + golden vectors only, clearly marked
+  CATALOG (no execution semantics in this repo).
+- `docs/runbooks/` — migration/rollback/incident/DR runbooks distilled from Doc 09 + RC4 L7
+  (procedures only); `docs/VERIFICATION.md` obligations → tests map.
+
+**Acceptance.** Matrix report shows every in-repo verification row either implemented (test ID)
+or named-deferred with reason; runbooks cross-linked; e2e unchanged but re-verified. **Slice.**
+B09 rows (Tests & evidence, Validation, F21–F24). **Deps.** B08.
+
+---
+
+## B10 · Audit rounds, reports & checkpoint seal
+
+**Scope.** The operator-directed multi-round audit and closure.
+
+**Deliverables.**
+- ≥2 independent adversarial audit rounds (ultracode fan-out: spec-conformance auditors per
+  milestone slice + falsification hunters + boundary/capability auditors); every finding fixed
+  forward or honestly registered.
+- `docs/reports/IMPLEMENTATION_REPORT.md` — what was built, evidence, deviations, deferred lanes.
+- `docs/reports/CLARIFICATIONS.md` — final consolidated questionnaire (from
+  `09_OPEN_QUESTIONS.md`) for the operator to answer.
+- Checkpoint seal: `checkpoint/<date>-origin-v7-build` branch + `CHECKPOINTS.md` ledger row;
+  milestone receipts for B01–B09 sealed under `evidence/receipts/`.
+- Final `04_STATUS.md`.
+
+**Acceptance.** All audits dispositioned; full gate + e2e green on final `main`; checkpoint
+branch pushed; reports delivered to the operator. **Deps.** B09.

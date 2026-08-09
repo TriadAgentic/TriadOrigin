@@ -71,6 +71,10 @@ jobs:
         run: python tools/test_wheel_install.py
       - name: DARK capability boundary
         run: python tools/verify_no_forbidden_capabilities.py
+      - name: End-to-end audit walk
+        run: python tools/e2e_audit.py
+      - name: Build ledger currency
+        run: python tools/build_ledger.py --verify
       - name: Authenticate sealed milestone receipt
         if: >-
           ${{ github.event_name == 'pull_request' &&
