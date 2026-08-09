@@ -1,0 +1,25 @@
+# docs/control — The Machine-Readable Build Law
+
+This directory holds the authoritative, machine-readable control artifacts the B-series build is
+driven by. Everything here is **data**: nothing in this directory arms, activates, or ratifies
+anything.
+
+| File | What it is |
+|---|---|
+| `rc3_overlay_schema.json` | JSON-Schema for the RC3 normative overlay |
+| `rc3_normative_overlay.json` | RC3 corrections/overrides: parameter + formula overrides, DAG/binding/golden-vector operations, named rejections, external prerequisites, receipt v2 requirements |
+| `rc3_effective_control_bundle.json` | **The effective law.** RC2 canonical registries with the RC3 overlay applied: 1,115 tasks, 2,249 dependencies, 1,115 criteria, 1,523 verifications, 192 parameter records, 24 formulas, 27 wiring rows, 11 gates, 22 golden vectors, crosswalk + traceability |
+| `rc3_effective_bundle_manifest.json` | Composition manifest (base/overlay/effective SHA-256) |
+| `rc3_effective_validation_report.json` | The bundle's own validation report (`PASS` composition, `DENIED_SAFE_HOLD` activation — activation stays denied by design) |
+| `rc3_executable_builder.py` | The RC3 document's embedded builder (provenance; not executed by CI) |
+| `rc4_control_bundle.json` | RC4 lever addendum law: four-plane law, lever law, shadow law, 32 refusals, 17 timings, 135 LEV tasks, 125 verifications, supersessions, engine census |
+| `rc4_addendum_builder.py` | RC4 document builder (provenance) |
+| `SOURCE_HASHES.sha256` | SHA-256 pins for every vendored control/spec/report artifact |
+| `build_ledger.json` | Generated partition of all 1,250 tasks into build milestones / named lanes — regenerate with `python tools/build_ledger.py`; CI runs `--verify` |
+| `build_ledger_overrides.json` | Reviewed reclassifications (take precedence over the heuristic rules) |
+
+Extraction provenance: the RC3 artifacts were extracted from the `<script type="application/json">`
+blocks embedded in `docs/spec_rc3/…RC3.html` (ids `rc3-overlay-schema`, `rc3-normative-overlay`,
+`rc3-effective-control-bundle`, `rc3-effective-bundle-manifest`, `rc3-effective-validation-report`,
+`rc3-executable-builder` base64); the RC4 bundle from `rc4-control-bundle` in
+`docs/spec_rc4/…RC4.html`. Re-extraction reproduces these bytes.

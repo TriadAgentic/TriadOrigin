@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>V7 Structure Definition Atlas — Cross-Engine Comparison</title>
+  <style>
+    :root{
+      --bg:#050b10;--panel:#0a1720;--panel2:#0d202a;--ink:#e9f3f6;--muted:#95acb6;
+      --cyan:#39d8ff;--green:#46e09a;--amber:#ffc857;--red:#ff6c78;--violet:#b59aff;
+      --line:#204451;--soft:#112b36;--white:#fff;--blue:#7fc8ff;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:linear-gradient(180deg,#03070b 0,var(--bg) 18%,#071018 100%);color:var(--ink);font:15px/1.58 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+    .wrap{max-width:1360px;margin:auto;padding:34px 24px 80px}
+    .hero{border:1px solid #286779;background:radial-gradient(circle at 90% 8%,rgba(57,216,255,.14),transparent 35%),radial-gradient(circle at 10% 100%,rgba(181,154,255,.08),transparent 30%),linear-gradient(135deg,#091c26,#07121a);border-radius:22px;padding:34px;box-shadow:0 24px 80px rgba(0,0,0,.34)}
+    .eyebrow{color:var(--cyan);text-transform:uppercase;letter-spacing:.16em;font-weight:900;font-size:11px}
+    h1{font-size:clamp(34px,5vw,64px);line-height:1.01;margin:12px 0 16px;max-width:1100px}
+    h2{font-size:31px;line-height:1.14;margin:0 0 11px}h3{font-size:19px;line-height:1.28;margin:0 0 8px}h4{font-size:15px;margin:0 0 5px}
+    p{margin:7px 0 12px}.lede{font-size:20px;max-width:1040px;color:#cee5eb}.muted,.caption{color:var(--muted)}.caption{font-size:12px}
+    .verdict{margin-top:22px;border-left:5px solid var(--green);background:rgba(70,224,154,.075);padding:17px 20px;border-radius:8px;font-size:18px}
+    .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.badge,.tag{display:inline-block;border:1px solid var(--line);background:#0b2029;border-radius:999px;padding:5px 9px;color:#cbe4eb;font-size:11px;font-weight:850}.badge.good,.tag.live{border-color:#2a7e5b;color:#9cf1c7}.badge.warn,.tag.shadow{border-color:#826d2d;color:#ffe398}.badge.bad,.tag.dead{border-color:#773742;color:#ffadb5}.tag.shared{border-color:#4e5f94;color:#d4caff}.tag.none{color:#7e969f}.tag.proposed{border-color:#287b8e;color:#a4efff}
+    nav{position:sticky;top:0;z-index:20;margin:18px 0 32px;padding:10px 14px;border:1px solid var(--line);background:rgba(5,11,16,.93);backdrop-filter:blur(11px);border-radius:12px;display:flex;gap:14px;overflow:auto;white-space:nowrap;font-size:12px}
+    section{margin:48px 0;scroll-margin-top:72px}.section-head{display:grid;grid-template-columns:1.2fr .8fr;gap:24px;align-items:end;margin-bottom:18px}.section-head>p{color:var(--muted);margin:0}
+    .grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}.g5{grid-template-columns:repeat(5,minmax(0,1fr))}
+    .card{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel),#08131a);border-radius:14px;padding:18px;min-width:0}.card p:last-child{margin-bottom:0}.card.good{border-color:#287657;background:linear-gradient(180deg,rgba(70,224,154,.075),#08141a)}.card.warn{border-color:#78672e;background:linear-gradient(180deg,rgba(255,200,87,.06),#111209)}.card.bad{border-color:#753843;background:linear-gradient(180deg,rgba(255,108,120,.06),#140b0d)}
+    .metric{font-size:33px;font-weight:950;line-height:1;color:var(--white)}.metric.cyan{color:var(--cyan)}.metric.green{color:var(--green)}.metric.amber{color:var(--amber)}.metric.red{color:var(--red)}
+    .label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:900;margin-top:7px}
+    .callout{border:1px solid #2b6170;background:#0a2029;border-radius:14px;padding:17px}.callout.success{border-color:#297455;background:rgba(70,224,154,.065)}.callout.danger{border-color:#783943;background:rgba(255,108,120,.065)}.callout.warn{border-color:#7c682e;background:rgba(255,200,87,.06)}
+    table{border-collapse:separate;border-spacing:0;width:100%;background:#07131a;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:12.5px}
+    th,td{padding:10px 11px;border-right:1px solid #173743;border-bottom:1px solid #173743;text-align:left;vertical-align:top}th:last-child,td:last-child{border-right:0}tr:last-child td{border-bottom:0}th{position:sticky;top:0;background:#102631;color:#c0ebf4;text-transform:uppercase;letter-spacing:.055em;font-size:9.5px;z-index:2}tbody tr:hover{background:#0b2029}
+    .table-scroll{overflow:auto;border-radius:12px}.table-scroll.wide table{min-width:1320px}.table-scroll.medium table{min-width:980px}.matrix th,.matrix td{text-align:center;vertical-align:middle}.matrix th:first-child,.matrix td:first-child{text-align:left;position:sticky;left:0;z-index:3;background:#10232d}.matrix td:first-child{background:#091922;font-weight:850}
+    code,.mono{font-family:"SFMono-Regular",Consolas,monospace;color:#bfe9f2;font-size:.92em}pre{margin:11px 0 0;padding:15px;border:1px solid #234955;background:#040b10;border-radius:10px;overflow:auto;color:#c8e8ef;font:12px/1.56 "SFMono-Regular",Consolas,monospace;white-space:pre-wrap}
+    ul,ol{padding-left:21px}li{margin:5px 0}.tight li{margin:2px 0}
+    .flow{display:grid;grid-template-columns:1fr 32px 1fr 32px 1fr 32px 1fr;gap:8px;align-items:center;margin:18px 0}.node{border:1px solid #2c6070;background:#0a2029;border-radius:11px;padding:14px;text-align:center;font-weight:850}.node.v7{border-color:#2c8b65;background:rgba(70,224,154,.08)}.arrow{text-align:center;color:var(--cyan);font-size:24px}
+    .formula{border:1px solid var(--line);border-radius:12px;background:#07141b;padding:15px}.formula strong{color:#dff8ff}.formula .math{display:block;margin:8px 0;color:#aeeeff;font-family:"SFMono-Regular",Consolas,monospace;overflow-wrap:anywhere}
+    .split{display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:start}.rail{position:sticky;top:75px;border:1px solid var(--line);border-radius:12px;background:#091923;padding:12px}.rail a{display:block;padding:6px 8px;border-radius:7px;font-size:12px}.rail a:hover{background:#102b36;text-decoration:none}.content-stack{display:grid;gap:16px}
+    .engine-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.engine-head .engine-no{font:900 28px/1 "SFMono-Regular",Consolas,monospace;color:var(--cyan)}
+    .filters{display:grid;grid-template-columns:1.3fr .8fr .8fr auto;gap:10px;align-items:end;border:1px solid var(--line);border-radius:13px;background:#0a1922;padding:14px;margin-bottom:14px}.filters label{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:850}.filters input,.filters select{width:100%;margin-top:5px;min-height:42px;border:1px solid #2b5664;background:#061017;color:var(--ink);border-radius:9px;padding:9px 10px;font:13px inherit}.btn{min-height:42px;border:1px solid #347083;border-radius:9px;background:#0e2a35;color:#dff8ff;padding:9px 13px;font-weight:850;cursor:pointer}.btn:hover{filter:brightness(1.12)}
+    .result-count{color:var(--muted);font-size:12px;margin:7px 0 10px}.hide{display:none!important}
+    details{border:1px solid var(--line);border-radius:10px;padding:10px 13px;background:#081821;margin:8px 0}summary{cursor:pointer;font-weight:850;color:#d2ebf0}
+    .law-grid{counter-reset:law}.law{counter-increment:law;position:relative;padding-left:56px}.law:before{content:counter(law,decimal-leading-zero);position:absolute;left:15px;top:15px;display:grid;place-items:center;width:30px;height:30px;border:1px solid #3a7788;border-radius:50%;color:var(--cyan);font-weight:900}
+    .timeline{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;counter-reset:phase}.phase{counter-increment:phase;border:1px solid var(--line);border-radius:13px;padding:16px;background:#081821}.phase:before{content:"Phase " counter(phase);display:block;color:var(--cyan);font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:900;margin-bottom:7px}
+    .source-list li{margin:8px 0}.source-list small{display:block;color:var(--muted)}
+    .topology{border:1px solid #285e6e;border-radius:15px;background:#03080b;padding:10px}.topology img{display:block;width:100%;height:auto;border-radius:8px}
+    .foot{margin-top:54px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+    @media(max-width:960px){.g3,.g4,.g5,.section-head,.timeline{grid-template-columns:repeat(2,minmax(0,1fr))}.split{grid-template-columns:1fr}.rail{position:static;display:flex;gap:4px;overflow:auto}.rail a{white-space:nowrap}.filters{grid-template-columns:1fr 1fr}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}}
+    @media(max-width:620px){.wrap{padding:22px 13px 54px}.hero{padding:23px}.g2,.g3,.g4,.g5,.section-head,.timeline,.filters{grid-template-columns:1fr}nav{position:relative}.metric{font-size:29px}}
+    @page{size:A4 landscape;margin:10mm}
+    @media print{body{background:#fff;color:#111;font-size:9pt}.wrap{max-width:none;padding:0}.hero,.card,.callout,.formula,.phase,.node,table,details,.filters{background:#fff!important;color:#111!important;box-shadow:none}.hero{border-color:#444}.muted,.caption,.section-head>p,.foot{color:#555!important}nav,.filters,.print-hide,.rail{display:none!important}a{color:#004d70}.split{display:block}.content-stack{display:block}.content-stack>*{margin-bottom:10px}.table-scroll{overflow:visible}.table-scroll.wide table,.table-scroll.medium table{min-width:0!important;width:100%!important;table-layout:fixed;font-size:6.5pt}th,td{padding:4px;overflow-wrap:anywhere;word-break:break-word}thead{display:table-header-group}tr,.card,.formula,.phase,.flow,.topology{break-inside:avoid}section{break-before:auto}.badge,.tag,code,.mono,.metric,.metric.cyan,.metric.green,.metric.amber,.metric.red,.eyebrow,.label,summary{color:#111!important;background:#fff!important}.matrix th:first-child,.matrix td:first-child{position:static;background:#fff}.topology{background:#fff}.topology img{max-height:180mm;object-fit:contain}}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <header class="hero">
+    <div class="badges" style="margin-top:0"><span class="badge good">V7 Edge Core approved in principle</span><span class="badge good">Emergency taker: exit-only accepted</span><span class="badge warn">Structure constitution requires sign-off</span><span class="badge bad">Internal / confidential</span></div>
+    <div class="eyebrow" style="margin-top:20px">Forensic code comparison · evidence cutoff 08 August 2026</div>
+    <h1>Market structure is not one thing.</h1>
+    <p class="lede">A code-level atlas of how QuantTrade, YoloNaut, YoloBot V2, UPONLY Core, Newnaut, Pulse, and TRIAD actually define swings, BOS, CHOCH, order blocks, FVGs, sweeps, retests, and structural reaction.</p>
+    <div class="verdict"><strong>The decisive finding:</strong> the engines reuse the same vocabulary but frequently implement different events. TRIAD cannot be made reliable by threshold tuning alone. V7 must replace ambiguous labels with versioned causal definitions, stable identities, monotonic lifecycles, and independent evidence per structure capsule.</div>
+  </header>
+
+  <nav aria-label="Report sections">
+    <a href="#answer">Answer</a><a href="#similarities">Similarities</a><a href="#matrix">Coverage</a><a href="#atlas">Definition atlas</a><a href="#swings">Swings</a><a href="#breaks">BOS / CHOCH</a><a href="#fvg">FVG</a><a href="#ob">Order block</a><a href="#sweep">Sweep / retest</a><a href="#flow">Flow</a><a href="#engines">Engine profiles</a><a href="#v7">V7 constitution</a><a href="#inheritance">Inheritance</a><a href="#tests">Tests</a><a href="#build">Build order</a><a href="#evidence">Evidence</a>
+  </nav>
+
+  <section id="answer">
+    <div class="section-head"><div><div class="eyebrow">01 · Direct answer</div><h2>What is genuinely similar—and what only shares a name</h2></div><p>Similarity is separated into geometry, timing, lifecycle, and live authority. Copy lineage is not independent evidence that an idea works.</p></div>
+    <div class="grid g5">
+      <article class="card"><div class="metric cyan">7</div><div class="label">Engines inspected</div><p>Six historical engines plus current TRIAD, pinned to specific revisions.</p></article>
+      <article class="card"><div class="metric cyan">3</div><div class="label">Architecture families</div><p>Pivot-state, rolling-extreme reaction, and event-flow microstructure.</p></article>
+      <article class="card"><div class="metric amber">1</div><div class="label">Shared base geometry</div><p>The three-candle wick-gap primitive is the only broad cross-engine structural formula.</p></article>
+      <article class="card"><div class="metric red">0</div><div class="label">Common semantics</div><p>No structure label has one consistent confirmation, lifecycle, and reaction across all engines.</p></article>
+      <article class="card"><div class="metric red">0</div><div class="label">Proven net alpha</div><p>Code similarity and architecture quality do not establish profitable live EV.</p></article>
+    </div>
+    <div class="grid g3" style="margin-top:15px">
+      <article class="card good"><h3>Closest true lineage</h3><p><strong>QuantTrade ↔ YoloBot legacy SMC</strong> share essentially the same centered-pivot SMC family. <strong>YoloNaut ↔ Newnaut live V2</strong> share the prior-20 BOS/retest and sweep-reclaim feed logic.</p></article>
+      <article class="card warn"><h3>Closest geometric convergence</h3><p>YoloNaut, Newnaut, active YoloBot, and TRIAD all use rolling extrema in some form. Their window, confirmation, state, and reaction differ enough that they are not the same strategy.</p></article>
+      <article class="card bad"><h3>Most misleading shared word</h3><p><strong>“Sweep.”</strong> It can mean a wick through a pivot, a prior-20 excursion, a 90-second print breach, a one-second taker-flow burst, or merely historical penetration beyond an equal level.</p></article>
+    </div>
+    <p class="callout danger" style="margin-top:15px"><strong>Blunt conclusion:</strong> Newnaut has the richest vocabulary, TRIAD has the strongest chassis, UPONLY/Pulse have the clearest short-lived event states, and YoloNaut/Newnaut have the best first-retest reaction. None provides a complete, causally correct structure system that should be copied wholesale.</p>
+  </section>
+
+  <section id="similarities">
+    <div class="section-head"><div><div class="eyebrow">02 · Similarity map</div><h2>Three lineages explain most of the apparent agreement</h2></div><p>When two repositories share code ancestry, matching formulas are expected. The match tells us what was inherited, not what the market validated.</p></div>
+    <div class="flow" aria-label="structure architecture families">
+      <div class="node"><strong>Pivot-state bars</strong><br><span class="caption">Quant · YoloBot legacy · Newnaut formula</span></div><div class="arrow">→</div>
+      <div class="node"><strong>Rolling-extreme bars</strong><br><span class="caption">YoloNaut · Newnaut live · YoloBot active · TRIAD variant</span></div><div class="arrow">→</div>
+      <div class="node"><strong>Event-flow states</strong><br><span class="caption">UPONLY · Pulse</span></div><div class="arrow">→</div>
+      <div class="node v7"><strong>V7 typed atoms</strong><br><span class="caption">levels → events → reactions → candidates</span></div>
+    </div>
+    <div class="table-scroll medium">
+      <table>
+        <thead><tr><th>Similarity cluster</th><th>Engines</th><th>Actual shared kernel</th><th>Where equivalence ends</th><th>Meaning for V7</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Centered-fractal SMC</strong></td><td>QuantTrade; disabled YoloBot SMC; Newnaut/YoloNaut legacy variants</td><td>A pivot is a center point that must dominate bars on both sides; BOS/CHOCH then reference recent pivots.</td><td>Radius varies by implementation (3, 5, or 10), live authority differs, and event-time confirmation is often not enforced.</td><td>Keep only the concept that a pivot has a separate origin and confirmation time. Do not reuse retrospective labels.</td></tr>
+          <tr><td><strong>Prior-N range break</strong></td><td>YoloNaut live; Newnaut live; YoloBot active; TRIAD as full-buffer variant</td><td>A close/high/low is compared with a rolling previous extreme.</td><td>N, close versus wick, forming versus closed bar, age, retest, and persistent state differ.</td><td>Treat this as a breakout capsule, not automatically as BOS. BOS requires a confirmed structural level and state.</td></tr>
+          <tr><td><strong>Three-bar wick gap</strong></td><td>Quant; YoloNaut; YoloBot legacy; Newnaut; TRIAD</td><td>Bullish gap when the third bar's low is above the first bar's high; bearish is symmetric.</td><td>Minimum gap ranges from none to 0.1% or 0.35 ATR; fill and eligibility semantics materially differ.</td><td>Reuse the geometry, then version minimum size, availability, lifecycle, and first-touch reaction separately.</td></tr>
+          <tr><td><strong>First-retest reaction</strong></td><td>YoloNaut live; Newnaut live</td><td>Fresh close-confirmed break, age cap, ATR touch tolerance, correct-side close, and no prior valid retest.</td><td>The broken level is a prior-20 range extreme rather than a persistent protected swing.</td><td>Best reaction primitive found. Reattach it to V7 BOS/CHOCH/FVG/OB atoms with durable identity.</td></tr>
+          <tr><td><strong>Event-state scalping</strong></td><td>UPONLY Core; Pulse</td><td>Subsecond/seconds feature windows, short TTL, exhaustion/reversal logic, explicit validity windows.</td><td>UPONLY references a rolling price extreme; Pulse “sweep” is taker-flow notional and has no price level.</td><td>Borrow TTL, state-machine, OFI/TFI, and exhaustion confirmation. Keep them as confirmation, not structural origin.</td></tr>
+          <tr><td><strong>Current-price zone reaction</strong></td><td>Quant; YoloNaut/Newnaut predictive; TRIAD</td><td>Find recent zones, rank or cap them, and react when current price is near/on the appropriate side.</td><td>Identity and lifecycle are reconstructed; a persistent zone can be re-emitted or change state under rolling windows.</td><td>Replace snapshots with an append-only structure ledger and monotonic state transitions.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="matrix">
+    <div class="section-head"><div><div class="eyebrow">03 · Coverage matrix</div><h2>Code present is not the same as live authority</h2></div><p><span class="tag live">Live</span> actively influences the inspected production path. <span class="tag shadow">Shadow/dark</span> exists but is not money authority. <span class="tag dead">Dead/bypassed</span> is present yet unwired or disabled.</p></div>
+    <div class="table-scroll wide">
+      <table class="matrix">
+        <thead><tr><th>Construct</th><th>Quant 0</th><th>YoloNaut 1</th><th>YoloBot 2</th><th>UPONLY 3</th><th>Newnaut 4</th><th>Pulse 5</th><th>TRIAD</th></tr></thead>
+        <tbody>
+          <tr><td>Swing / reference level</td><td><span class="tag live">±5 pivot</span></td><td><span class="tag live">prior-20</span><br><span class="tag dead">r=3/5/10 files</span></td><td><span class="tag live">prior-20</span><br><span class="tag dead">±5 legacy</span></td><td><span class="tag live">90s extreme</span></td><td><span class="tag live">prior-20</span><br><span class="tag shadow">±10 legacy</span></td><td><span class="tag none">none</span></td><td><span class="tag live">buffer max/min</span></td></tr>
+          <tr><td>BOS</td><td><span class="tag live">pivot continuation</span></td><td><span class="tag live">range breakout</span></td><td><span class="tag live">TA vote</span><br><span class="tag dead">SMC</span></td><td><span class="tag none">none</span></td><td><span class="tag live">range breakout</span><br><span class="tag shadow">state formula</span></td><td><span class="tag none">none</span></td><td><span class="tag live">buffer breakout</span><br><span class="tag shadow">retest lane</span></td></tr>
+          <tr><td>CHOCH</td><td><span class="tag live">opposite protected break</span></td><td><span class="tag none">not live-separated</span></td><td><span class="tag dead">legacy only</span></td><td><span class="tag none">none</span></td><td><span class="tag dead">defined, direct-unreachable</span></td><td><span class="tag none">none</span></td><td><span class="tag live">prior opposite BOS</span><br><span class="tag shadow">retest lane</span></td></tr>
+          <tr><td>Order block</td><td><span class="tag live">displacement + volume</span></td><td><span class="tag shadow">large candle</span><br><span class="tag dead">legacy edge-break</span></td><td><span class="tag dead">legacy SMC</span></td><td><span class="tag none">none</span></td><td><span class="tag live">weak object can veto</span></td><td><span class="tag none">none</span></td><td><span class="tag live">next-candle edge break</span><br><span class="tag shadow">retest lane</span></td></tr>
+          <tr><td>FVG</td><td><span class="tag live">3-bar ≥0.1%</span></td><td><span class="tag shadow">3-bar ≥0.35 ATR</span></td><td><span class="tag dead">legacy 3-bar</span></td><td><span class="tag none">none</span></td><td><span class="tag live">stale object can veto</span></td><td><span class="tag none">none</span></td><td><span class="tag live">3-bar, no min</span><br><span class="tag live">pre-frame lane</span></td></tr>
+          <tr><td>Sweep / reclaim</td><td><span class="tag live">pivot wick + close</span></td><td><span class="tag live">prior-20 + ATR</span></td><td><span class="tag live">tiny breach allowed</span></td><td><span class="tag live">armed 90s level</span></td><td><span class="tag live">1-bar anchor</span><br><span class="tag shadow">2-bar classifier</span></td><td><span class="tag live">flow burst, no level</span></td><td><span class="tag shadow">historical excursion</span></td></tr>
+          <tr><td>True first retest</td><td><span class="tag none">no</span></td><td><span class="tag live">yes</span></td><td><span class="tag none">no</span></td><td><span class="tag shadow">stateful attempt</span></td><td><span class="tag live">yes</span></td><td><span class="tag none">no level</span></td><td><span class="tag none">any unspent zone</span></td></tr>
+          <tr><td>Equal highs/lows or session levels</td><td><span class="tag none">pivot levels</span></td><td><span class="tag shadow">EQH/EQL objects</span></td><td><span class="tag live">rolling S/R</span></td><td><span class="tag none">rolling extreme</span></td><td><span class="tag shadow">EQH/EQL + HTF</span></td><td><span class="tag none">none</span></td><td><span class="tag live">ATR clusters + session</span></td></tr>
+          <tr><td>Order-flow confirmation</td><td><span class="tag none">volume only</span></td><td><span class="tag none">inputs incomplete</span></td><td><span class="tag none">TA votes</span></td><td><span class="tag live">OFI/delta/volume z</span></td><td><span class="tag none">live inputs empty</span></td><td><span class="tag live">OFI/TFI/liq z</span></td><td><span class="tag shadow">diagnostic fields</span></td></tr>
+          <tr><td>Persistent lifecycle</td><td><span class="tag none">snapshot</span></td><td><span class="tag none">window reconstruction</span></td><td><span class="tag none">votes</span></td><td><span class="tag live">arm/expire</span></td><td><span class="tag none">mixed/stale</span></td><td><span class="tag live">TTL/hysteresis</span></td><td><span class="tag shadow">historical state, weak ID</span></td></tr>
+          <tr><td>Closed/causal production boundary</td><td><span class="tag dead">forming 1h risk</span></td><td><span class="tag live">closed 15m</span></td><td><span class="tag dead">forming 1h under 5m</span></td><td><span class="tag live">causal events</span></td><td><span class="tag live">closed 5m</span></td><td><span class="tag live">causal events</span></td><td><span class="tag live">completed bars</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="atlas">
+    <div class="section-head"><div><div class="eyebrow">04 · Searchable definition atlas</div><h2>Exact executable meaning by engine</h2></div><p>Rows describe the inspected code path, not marketing names. Use the filters to isolate an engine or construct.</p></div>
+    <div class="filters print-hide">
+      <label>Search<input id="atlasSearch" type="search" placeholder="e.g. first retest, 0.35 ATR, forming bar"></label>
+      <label>Engine<select id="engineFilter"><option value="">All engines</option><option>QuantTrade 0</option><option>YoloNaut 1</option><option>YoloBot V2 2</option><option>UPONLY Core 3</option><option>Newnaut 4</option><option>Pulse 5</option><option>TRIAD current</option></select></label>
+      <label>Construct<select id="structureFilter"><option value="">All constructs</option><option>Swing / level</option><option>BOS</option><option>CHOCH</option><option>Order block</option><option>FVG</option><option>Sweep / reclaim</option><option>Retest / reaction</option><option>Support / resistance</option><option>Flow / regime</option><option>Timing / authority</option></select></label>
+      <button class="btn" id="resetFilters" type="button">Reset</button>
+    </div>
+    <div class="result-count"><span id="visibleCount">0</span> definition rows visible</div>
+    <div class="table-scroll wide">
+      <table id="atlasTable">
+        <thead><tr><th>Engine</th><th>Construct</th><th>Executable definition</th><th>Availability / timeframe</th><th>Lifecycle & reaction</th><th>Authority</th><th>Principal defect</th><th>V7 disposition</th></tr></thead>
+        <tbody>
+          <tr data-engine="QuantTrade 0" data-structure="Swing / level"><td><strong>QuantTrade 0</strong></td><td>Swing / pivot</td><td>Centered radius 5: high at i equals max of highs i−5…i+5; low is symmetric.</td><td>Last 100 1h bars. Origin i is knowable only after bar i+5, but later detectors compare only pivot index.</td><td>Recomputed from the current slice; no durable swing ID or protected-point ledger.</td><td><span class="tag live">Live SMC</span></td><td>Historical BOS/sweep can use a pivot before its five right-hand confirmation bars existed.</td><td>Keep separate origin/confirmed timestamps; reject implementation.</td></tr>
+          <tr data-engine="QuantTrade 0" data-structure="BOS"><td><strong>QuantTrade 0</strong></td><td>BOS</td><td>Uptrend iff last two swing highs and lows are both higher; downtrend iff both lower. A close in the last 10 bars through the latest trend-side swing emits continuation BOS.</td><td>1h; can consume forming/duplicated candle data.</td><td>One BOS per direction per computation; stateless rolling recomputation.</td><td><span class="tag live">15% SMC weight</span></td><td>Two-pair trend state is not persisted; causal pivot confirmation is not enforced.</td><td>Reuse continuation-versus-reversal distinction only.</td></tr>
+          <tr data-engine="QuantTrade 0" data-structure="CHOCH"><td><strong>QuantTrade 0</strong></td><td>CHOCH</td><td>In uptrend, close below the latest swing low is bearish CHOCH; in downtrend, close above the latest swing high is bullish CHOCH.</td><td>1h; last-10 scan.</td><td>Recomputed rather than transitioned; protected point can change with the window.</td><td><span class="tag live">15% SMC weight</span></td><td>A good semantic idea is undermined by lookahead and stateless reconstruction.</td><td>Use as conceptual ancestor of V7 protected-swing transition.</td></tr>
+          <tr data-engine="QuantTrade 0" data-structure="Order block"><td><strong>QuantTrade 0</strong></td><td>Order block</td><td>Opposite candle followed immediately by displacement &gt;1.5× mean range and next-bar volume ≥1.3× mean volume. Zone is the origin candle; strength blends volume ratio and displacement.</td><td>Last 30 1h bars.</td><td>Tested/broken derived only from current price; proximity and strength feed a 25% score.</td><td><span class="tag live">Live SMC</span></td><td>Means use the whole current slice, including data after an older origin; no causal BOS requirement or monotonic lifecycle.</td><td>Best legacy qualifier set; retain displacement/volume as features, add confirmed BOS and event-time baselines.</td></tr>
+          <tr data-engine="QuantTrade 0" data-structure="FVG"><td><strong>QuantTrade 0</strong></td><td>FVG</td><td>Bullish when low[i] &gt; high[i−2], bearish symmetric; size must be ≥0.1% of middle-bar close.</td><td>1h, after third bar is available.</td><td>Any later touch of the near boundary marks filled; proximity feeds a 20% score.</td><td><span class="tag live">Live SMC</span></td><td>First touch is mislabeled complete fill; lifecycle has only boolean filled.</td><td>Reuse three-bar geometry; reject fill semantics.</td></tr>
+          <tr data-engine="QuantTrade 0" data-structure="Sweep / reclaim"><td><strong>QuantTrade 0</strong></td><td>Sweep / reclaim</td><td>Against a recent centered pivot: wick through level, close back across it, and close recovers at least 50% of candle range.</td><td>Last 15 1h bars; pivot up to 30 bars old.</td><td>Snapshot list; recovery contributes 25% score.</td><td><span class="tag live">Live SMC</span></td><td>Can retroactively sweep a pivot that was not confirmed when the sweep occurred.</td><td>Keep close-back and recovery-depth features after causal level confirmation.</td></tr>
+          <tr data-engine="QuantTrade 0" data-structure="Timing / authority"><td><strong>QuantTrade 0</strong></td><td>Market-data boundary</td><td>The live SMC consumes the 1h kline buffer without an explicit closed-bar filter.</td><td>Periodic; forming bar may be present; final update can append a duplicate timestamp.</td><td>Signals can repaint or distort three-bar and pivot patterns.</td><td><span class="tag live">Production path</span></td><td>Feed semantics can masquerade as strategy behavior.</td><td>Reject; V7 consumes canonical immutable closed bars/events only.</td></tr>
+
+          <tr data-engine="YoloNaut 1" data-structure="Swing / level"><td><strong>YoloNaut 1</strong></td><td>Live reference level</td><td>Most recent occurrence of min low and max high over the previous 20 closed bars, with age.</td><td>Closed 15m bars on the inspected service path, despite 5m-only configuration statements.</td><td>Rolling level is reconstructed each decision; no stable level ID.</td><td><span class="tag live">V2 direct</span></td><td>A rolling range extreme is called a swing without structural confirmation; configured and actual timeframe diverge.</td><td>Retain causal closed-bar discipline, not the naming.</td></tr>
+          <tr data-engine="YoloNaut 1" data-structure="BOS"><td><strong>YoloNaut 1</strong></td><td>Live BOS</td><td>A completed candidate bar closes above the max high or below the min low of its previous 20 bars; only events up to 8 bars old are searched.</td><td>Closed 15m; causal close confirmation.</td><td>Feeds a separate first-retest function.</td><td><span class="tag live">V2 direct</span></td><td>Range breakout is not tied to persisted HH/HL or protected structure state.</td><td>Keep as a separately named rolling-breakout baseline.</td></tr>
+          <tr data-engine="YoloNaut 1" data-structure="Retest / reaction"><td><strong>YoloNaut 1</strong></td><td>BOS first retest</td><td>Age 1–8; latest bar touches broken level within 0.25 ATR, closes on the correct side, and no earlier post-break bar satisfied that retest rule. Strength blends ATR distance and recency with floor 0.5.</td><td>Closed 15m; cannot retest on formation bar.</td><td>First-touch status reconstructed from the retained bar window.</td><td><span class="tag live">V2 direct</span></td><td>Excellent reaction semantics but loses identity when the source event rolls out.</td><td>Directly reuse after attaching to durable V7 structure IDs.</td></tr>
+          <tr data-engine="YoloNaut 1" data-structure="Sweep / reclaim"><td><strong>YoloNaut 1</strong></td><td>Sweep / reclaim</td><td>Latest bar breaches prior-20 level; wick breach ≥0.3 ATR, body ≤1 ATR, and close returns inside. Strength blends wick, body, and level age.</td><td>Closed 15m.</td><td>Single-bar event; no consumed-level memory.</td><td><span class="tag live">V2 direct</span></td><td>No distinction between equal levels, sessions, protected swings, or repeated consumption.</td><td>Reuse ATR-normalized single-bar trigger as one V7 confirmation mode.</td></tr>
+          <tr data-engine="YoloNaut 1" data-structure="Order block"><td><strong>YoloNaut 1</strong></td><td>Predictive order block</td><td>Any candle with body/range ≥0.55; bearish candle becomes long OB, bullish becomes short; body is zone; grade A at ≥0.70.</td><td>Snapshot/predictive context.</td><td>State inferred from current price; the OB-mitigation source is excluded from the predictive live-gate source set but can still inform snapshot context.</td><td><span class="tag shadow">Shadow/indirect</span></td><td>No displacement, BOS, volume, or causal origin relationship. Large candle is mislabeled OB.</td><td>Reject definition; trace every indirect consumer before calling it harmless shadow.</td></tr>
+          <tr data-engine="YoloNaut 1" data-structure="FVG"><td><strong>YoloNaut 1</strong></td><td>Predictive FVG</td><td>Standard three-bar wick gap with minimum size 0.35 ATR.</td><td>Snapshot/predictive object path.</td><td>Objects are created with filled=false; later fills are not advanced in this path.</td><td><span class="tag shadow">Shadow/indirect</span></td><td>Stale historical gaps remain fresh until they roll out; snapshot/regime consumers can still create indirect effects.</td><td>Reuse ATR threshold as a trial parameter only; replace lifecycle.</td></tr>
+          <tr data-engine="YoloNaut 1" data-structure="Timing / authority"><td><strong>YoloNaut 1</strong></td><td>Legacy structure engine</td><td>The private detector defaults to centered radius 3; predictive code calls the shared primitive with radius 5; that primitive’s own default is 10. The family also contains edge-break OB, ATR FVG, pivot sweep, and pruning.</td><td>Every centered form requires its own right-hand confirmation delay.</td><td>The richer private detector/gate is bypassed by the current direct V2 service.</td><td><span class="tag dead">Not current authority</span></td><td>Collapsing three files into “±10 legacy” hides real formula differences; file presence still does not prove live behavior.</td><td>Use only as a regression corpus for authority and parameter-version tests.</td></tr>
+
+          <tr data-engine="YoloBot V2 2" data-structure="BOS"><td><strong>YoloBot V2 2</strong></td><td>Active BOS vote</td><td>Latest close crossing from inside through previous-20 max/min scores ±50; staying beyond the level scores ±25.</td><td>Nominal scalp path is actually fed the 1h buffer and can include a forming hour.</td><td>Weighted TA vote; no persistent event or first retest.</td><td><span class="tag live">TA Engine V2</span></td><td>Wrong timeframe and open-bar repetition dominate any semantic merit.</td><td>Keep only as a rolling-breakout benchmark after fixing its input contract.</td></tr>
+          <tr data-engine="YoloBot V2 2" data-structure="Sweep / reclaim"><td><strong>YoloBot V2 2</strong></td><td>Active sweep vote</td><td>High above previous-20 max and close below it gives bearish −40; low below previous-20 min and close above gives bullish +40.</td><td>Actual 1h forming buffer evaluated every 300 seconds.</td><td>Stateless vote.</td><td><span class="tag live">TA Engine V2</span></td><td>No minimum excursion, ATR/body rule, freshness, or consumed state; vulnerable to tiny intrabar breaches.</td><td>Reject as production trigger; retain as lowest-complexity baseline.</td></tr>
+          <tr data-engine="YoloBot V2 2" data-structure="Support / resistance"><td><strong>YoloBot V2 2</strong></td><td>Weekly S/R</td><td>On 42×4h bars, price in lower 10% of rolling high-low range scores +50; upper 10% scores −50.</td><td>4h rolling window.</td><td>Continuously moving vote; no level object.</td><td><span class="tag live">TA vote</span></td><td>“Weekly” is merely 168 hours of rolling range and has no hold/break/retest lifecycle.</td><td>Keep as range-location feature, never a structure object.</td></tr>
+          <tr data-engine="YoloBot V2 2" data-structure="Support / resistance"><td><strong>YoloBot V2 2</strong></td><td>Fibonacci vote</td><td>Retracement from window extrema: near .618 → +40; near .382 → +30; below .236 → −20; above .786 → +20.</td><td>Rolling reference window.</td><td>Weighted vote, no causal anchor identity.</td><td><span class="tag live">TA vote</span></td><td>Direction and anchor choice are not structural events; levels drift with the window.</td><td>Do not include in the first V7 structure kernel.</td></tr>
+          <tr data-engine="YoloBot V2 2" data-structure="Timing / authority"><td><strong>YoloBot V2 2</strong></td><td>Legacy SMC family</td><td>Repository contains QuantTrade-style centered pivots, BOS/CHOCH, OB, FVG, and sweeps.</td><td>Not applicable to current authority.</td><td>SMC engine is explicitly constructed as None; optional SMC gate cannot receive results.</td><td><span class="tag dead">Disabled</span></td><td>File presence is not live behavior.</td><td>Do not count as an independent engine vote for SMC semantics.</td></tr>
+          <tr data-engine="YoloBot V2 2" data-structure="Timing / authority"><td><strong>YoloBot V2 2</strong></td><td>Direction admission</td><td>Composite is centered near 50 from weighted votes, but the pipeline first requires composite ≥ a generic threshold even for configured short candidates.</td><td>At pipeline admission.</td><td>Short candidates are effectively discarded.</td><td><span class="tag live">Production path</span></td><td>One inequality is incorrectly applied to both directional score domains.</td><td>Add long/short mirror property tests to V7.</td></tr>
+
+          <tr data-engine="UPONLY Core 3" data-structure="Swing / level"><td><strong>UPONLY Core 3</strong></td><td>Rolling reference extreme</td><td>Prior high/low over 90 seconds is read before the current trade print is pushed.</td><td>Tick/event time; causal.</td><td>Provides arming reference for the sweep state machine.</td><td><span class="tag live">Pattern engine</span></td><td>It is an event-window extreme, not candle market structure.</td><td>Reuse as a fast typed level class, distinct from bar swings.</td></tr>
+          <tr data-engine="UPONLY Core 3" data-structure="Sweep / reclaim"><td><strong>UPONLY Core 3</strong></td><td>Stateful sweep / reclaim</td><td>Arm after a ≥6 bps breach of the prior 90s extreme with volume z ≥2; track worse extreme; expire after 8s; later require delta-z sign reversal before maker entry.</td><td>Event time; causal arm→wait→expire.</td><td>Stop beyond extreme +2 bps; TP 12 bps; max hold 90s.</td><td><span class="tag live">Pattern engine</span></td><td>Reclaim compares against rolling extrema already containing the breach, not the stored pre-sweep level; price reclaim becomes nearly tautological.</td><td>Reuse state machine and thresholds as hypotheses; store and reclaim the original level.</td></tr>
+          <tr data-engine="UPONLY Core 3" data-structure="Flow / regime"><td><strong>UPONLY Core 3</strong></td><td>Imbalance burst</td><td>Long when OFI z ≥2.8 and trade-delta z ≥1.5; short symmetric.</td><td>Event windows.</td><td>Taker entry, 14 bps target, 45s max hold.</td><td><span class="tag live">Pattern engine</span></td><td>No price structure or level-based invalidation; entry style conflicts with normal maker law.</td><td>Use signed OFI/delta as optional confirmation, not origin; V7 entries stay maker-first.</td></tr>
+          <tr data-engine="UPONLY Core 3" data-structure="Flow / regime"><td><strong>UPONLY Core 3</strong></td><td>Liquidation fade</td><td>Forced-flow sum ≥$400k over 20s; wait until intensity falls to ≤35% of peak.</td><td>Event time; next non-liquidation event triggers evaluation.</td><td>TP 18 bps, max 240s, stop beyond extreme +3 bps.</td><td><span class="tag live">Pattern engine</span></td><td>Cadence controls reaction delay; no structural close/reclaim.</td><td>Use as separate event capsule or confirmation feature.</td></tr>
+          <tr data-engine="UPONLY Core 3" data-structure="Flow / regime"><td><strong>UPONLY Core 3</strong></td><td>Micro revert / tradability</td><td>Microprice deviates ≥4 bps from 10s EWMA, opposing L1 imbalance ≥0.25, volatility ≤1.2 bps; spread ≤1.5 bps and trades/sec ≥2 in regime gate.</td><td>Event time.</td><td>Maker entry, TP 5 bps, max 30s.</td><td><span class="tag live">Pattern engine</span></td><td>Reference mean can be unstable through regime shifts; fixed limits are instrument-dependent.</td><td>Retain as separate non-structure mean-reversion capsule.</td></tr>
+
+          <tr data-engine="Newnaut 4" data-structure="Swing / level"><td><strong>Newnaut 4</strong></td><td>Live reference level</td><td>Same prior-20 min/max and age feed family as YoloNaut.</td><td>Direct V2 acts on closed 5m bars.</td><td>Rolling reconstruction, no stable identity.</td><td><span class="tag live">V2 flag path</span></td><td>Richer legacy structures coexist but are not the same authority.</td><td>Keep closed-bar boundary and baseline lane.</td></tr>
+          <tr data-engine="Newnaut 4" data-structure="BOS"><td><strong>Newnaut 4</strong></td><td>Live BOS + first retest</td><td>Close beyond previous-20 extreme; age ≤8; first retest within 0.25 ATR and correct-side close.</td><td>Closed 5m.</td><td>First retest reconstructed from window.</td><td><span class="tag live">V2 flag path</span></td><td>Same range-break versus structural-BOS conflation as YoloNaut.</td><td>Reuse reaction, not source-level definition.</td></tr>
+          <tr data-engine="Newnaut 4" data-structure="BOS"><td><strong>Newnaut 4</strong></td><td>Formula-library BOS</td><td>Bullish state requires HH+HL and no LH/LL; bearish requires LH+LL and no HH/HL. Break of trend-side last HH/LL is BOS continuation.</td><td>Library logic; integration into direct live authority not established.</td><td>State flip clears prior state; freshness decays with age.</td><td><span class="tag shadow">Present, not proven live</span></td><td>Best semantic formulation is not necessarily the path trading.</td><td>Primary conceptual source for V7 structure state.</td></tr>
+          <tr data-engine="Newnaut 4" data-structure="CHOCH"><td><strong>Newnaut 4</strong></td><td>Formula-library CHOCH</td><td>In bullish state, break of last protected HL is CHOCH down; in bearish state, break of last protected LH is CHOCH up.</td><td>Library logic; requires confirmed pivots.</td><td>Explicit reversal and reset, but the direct service supplies no CHOCH event: its fallback emits only BOS_UP/BOS_DOWN, making the normal CHOCH-after-sweep anchor unreachable.</td><td><span class="tag dead">Defined, unreachable direct</span></td><td>Best semantic formulation exists outside live-reachable authority; the state tracker also lacks a consumption guard against repeated breaks.</td><td>Best legacy CHOCH concept; clean-room implementation required.</td></tr>
+          <tr data-engine="Newnaut 4" data-structure="Sweep / reclaim"><td><strong>Newnaut 4</strong></td><td>One-/two-bar reclaim</td><td>Single-bar form mirrors YoloNaut. Two-bar form allows penultimate breach and latest closed bar to return inside without extending the extreme, with ATR/body/wick guards.</td><td>Closed 5m family.</td><td>One-bar form is an admission anchor. Two-bar form is classifier-only under reversal relaxation and is explicitly excluded from the admission-anchor list.</td><td><span class="tag live">1-bar anchor</span> <span class="tag shadow">2-bar classifier</span></td><td>No typed pool identity or consumed status; treating the two-bar form as active entry authority overstates its role.</td><td>Evaluate both as separate V7 trigger versions behind a typed level atom.</td></tr>
+          <tr data-engine="Newnaut 4" data-structure="Order block"><td><strong>Newnaut 4</strong></td><td>Predictive OB</td><td>Large-candle rule: body/range ≥0.55; opposite direction mapping; current-price state.</td><td>Predictive snapshot.</td><td>No durable mitigation. Although excluded from one live-gate source set, the default-on structural-sanity gate consumes graded OB/FVG proximity and can veto an admitted trade.</td><td><span class="tag live">Indirect money veto</span></td><td>A semantically weak object is not safely shadow if a separate gate can deny money because of it.</td><td>Reject definition and close cross-mode authority leaks.</td></tr>
+          <tr data-engine="Newnaut 4" data-structure="Order block"><td><strong>Newnaut 4</strong></td><td>Legacy OB</td><td>ATR-scaled origin/displacement family, but detector calls bullish OB at each high pivot and bearish OB at each low pivot as if the pivot were BOS.</td><td>Legacy recomputation over up to 200 5m bars.</td><td>Object list retained; state progression incomplete.</td><td><span class="tag shadow">Legacy</span></td><td>Pivot orientation/reference is structurally wrong; a pivot is not a BOS.</td><td>Reject wiring; retain ATR normalization idea.</td></tr>
+          <tr data-engine="Newnaut 4" data-structure="FVG"><td><strong>Newnaut 4</strong></td><td>Predictive / legacy FVG</td><td>Three-bar wick gap ≥0.35 ATR.</td><td>5m snapshot/object paths.</td><td>Some object paths never advance filled state; the structural-sanity gate can consume the stale proximity and veto an admitted trade.</td><td><span class="tag live">Indirect money veto</span></td><td>Correct geometry with stale lifecycle can create false freshness and a real denial effect.</td><td>Reuse geometry and ATR scale; replace state and authority isolation.</td></tr>
+          <tr data-engine="Newnaut 4" data-structure="Flow / regime"><td><strong>Newnaut 4</strong></td><td>Six-regime context</td><td>Combines Hurst, efficiency ratio, anchors, breakout/retest/sweep context; trend requires persistence plus first retest, chop requires low ER and no structure.</td><td>V2 assembly; trades/liquidation arrays observed empty on current direct call.</td><td>Regime conditions can gate/shape decisions.</td><td><span class="tag live">V2 context</span></td><td>Many coupled thresholds and incomplete microstructure inputs make attribution difficult.</td><td>Keep regime as an orthogonal label, never embed it inside structure identity.</td></tr>
+          <tr data-engine="Newnaut 4" data-structure="Timing / authority"><td><strong>Newnaut 4</strong></td><td>Legacy gate fallback</td><td>Service calls StructureGate without profile, so effective proximity buffer is the base 0.05 ATR—not the configured scalp 0.30 ATR. It selects OB before FVG, then sweep, then HTF.</td><td>Detected on 5m but output timeframe is hardcoded 15m.</td><td>Does not reliably exclude filled FVGs or mitigated OBs; stop sits zone boundary ±0.5 ATR.</td><td><span class="tag shadow">Fallback when V2 flag off</span></td><td>Configuration, executed threshold, selection priority, and reported timeframe disagree.</td><td>V7 contracts must bind actual timeframe, formula version, parameter set, and authority flag.</td></tr>
+
+          <tr data-engine="Pulse 5" data-structure="Flow / regime"><td><strong>Pulse 5</strong></td><td>E1 imbalance burst</td><td>Side-signed short TFI z ≥2.0, OFI z ≥0.5, book tilt ≥0.25; score = 0.5 TFI + 0.3 OFI + 0.2 tilt.</td><td>Event time; TTL 4s.</td><td>Short-lived ensemble event.</td><td><span class="tag live">Pulse ensemble</span></td><td>No price-level context or structural invalidation.</td><td>Use as optional flow confirmation atom.</td></tr>
+          <tr data-engine="Pulse 5" data-structure="Flow / regime"><td><strong>Pulse 5</strong></td><td>E2 liquidation fade</td><td>Side-signed liquidation z ≥2.0, displacement from 5s EMA ≥2.2 sigma, and exhaustion.</td><td>Event time; TTL 6s.</td><td>Impulse plus decay event.</td><td><span class="tag live">Pulse ensemble</span></td><td>EMA/sigma depend on event cadence and window quality.</td><td>Use as independent event capsule/confirmation.</td></tr>
+          <tr data-engine="Pulse 5" data-structure="Sweep / reclaim"><td><strong>Pulse 5</strong></td><td>E3 “SweepRevert”</td><td>One-sided one-second taker-notional z ≥2.5, price displacement ≥1.8 sigma, and TFI exhaustion.</td><td>Event time; TTL 5s.</td><td>No pre-existing price level, excursion, or return-inside test.</td><td><span class="tag live">Pulse ensemble</span></td><td>The word sweep describes aggressive flow, not a structural level sweep.</td><td>Rename flow_burst_exhaustion; never merge its denominator with price-level reclaim.</td></tr>
+          <tr data-engine="Pulse 5" data-structure="Flow / regime"><td><strong>Pulse 5</strong></td><td>Exhaustion / ensemble</td><td>Exhaustion when |TFI micro| &lt;0.3×max(|TFI short|, epsilon). Enter threshold 0.58; stay threshold 0.45.</td><td>Subsecond features with explicit stale timeout.</td><td>TTL and hysteresis are explicit.</td><td><span class="tag live">Pulse ensemble</span></td><td>Can call exhaustion when both flows are negligible; event scores are not calibrated probabilities.</td><td>Reuse TTL/hysteresis and require an antecedent impulse ID.</td></tr>
+          <tr data-engine="Pulse 5" data-structure="Timing / authority"><td><strong>Pulse 5</strong></td><td>Volatility / cost gate</td><td>500ms-grid volatility with 60s half-life; estimated conditional move must cover 0.9× round-trip cost.</td><td>Event time.</td><td>Pre-trade feasibility gate.</td><td><span class="tag live">Pulse engine</span></td><td>Sparse-gap return is placed on first synthetic grid step then zeros, making volatility cadence-dependent; TP/SL geometry demands very high break-even win rate.</td><td>Reuse cost-aware admission after repairing cadence-invariant volatility.</td></tr>
+
+          <tr data-engine="TRIAD current" data-structure="Swing / level"><td><strong>TRIAD current</strong></td><td>Swing / trend</td><td>Swing high/low are max/min of the full retained timeframe buffer. Trend is last close versus first close.</td><td>Completed bars per FeatureInput contract.</td><td>Snapshot features, capped nearest-first downstream.</td><td><span class="tag live">Context packet</span></td><td>Not a swing sequence; value changes as the retention window moves. Trend ignores internal structure.</td><td>Replace with typed swing atoms; keep output contract discipline.</td></tr>
+          <tr data-engine="TRIAD current" data-structure="BOS"><td><strong>TRIAD current</strong></td><td>BOS feature</td><td>For each bar i, close above max prior high or below min prior low emits a break. last_bos is the latest occurrence.</td><td>Completed bars; packet snapshot.</td><td>Stores breakout close as event price, not the broken structural level.</td><td><span class="tag live">Context packet</span></td><td>Rolling/full-buffer breakout has no protected swing state; retest detector later treats stored close as broken level.</td><td>Replace origin semantics; store both broken level and breach price.</td></tr>
+          <tr data-engine="TRIAD current" data-structure="CHOCH"><td><strong>TRIAD current</strong></td><td>CHOCH feature</td><td>Find latest BOS, then search backward for the most recent BOS in the opposite direction and label that older event last_choch.</td><td>Completed bars; packet snapshot.</td><td>Older opposite event is passed to a dark retest detector.</td><td><span class="tag live">Feature</span><br><span class="tag shadow">Reaction</span></td><td>CHOCH points to the previous opposite break, not the bar that changed character; time and direction semantics are inverted.</td><td>Delete and rebuild as the current protected-level break.</td></tr>
+          <tr data-engine="TRIAD current" data-structure="FVG"><td><strong>TRIAD current</strong></td><td>FVG feature</td><td>Three-bar wick gap with no minimum size; bullish if first high &lt; third low, bearish symmetric.</td><td>Completed bars; timestamp uses third bar open time.</td><td>Historical maximum penetration gives fill_pct 0–100; FVG retest accepts every gap below 100% fill and on correct side of mark.</td><td><span class="tag live">M1 FVG retest</span></td><td>Dust gaps qualify; 99.99%-filled gaps remain actionable; no first-touch or stable occurrence identity.</td><td>Keep historical penetration math; add minimum size and explicit fresh/touched/partial/filled states.</td></tr>
+          <tr data-engine="TRIAD current" data-structure="Order block"><td><strong>TRIAD current</strong></td><td>Order-block feature</td><td>Down candle immediately followed by up candle closing above origin high = bullish; bullish origin followed by close below its low = bearish. Zone is full origin candle.</td><td>Completed bars.</td><td>Historical revisit after the displacement candle sets mitigated=true; retest detector acts only on unmitigated blocks.</td><td><span class="tag live">Feature</span><br><span class="tag shadow">M3 reaction</span></td><td>No independently confirmed swing/BOS, minimum displacement, or volume requirement.</td><td>Keep historical mitigation idea; replace origin rule with displacement-causes-BOS.</td></tr>
+          <tr data-engine="TRIAD current" data-structure="Support / resistance"><td><strong>TRIAD current</strong></td><td>Liquidity levels</td><td>Max/min of the supplied timeframe buffer labeled session high/low, plus runs of adjacent highs/lows within 0.05×ATR; level is run extreme. Optional total-span cap exists but is default off.</td><td>Per timeframe completed bars; no actual session calendar is applied by this function.</td><td>Historical worst wick after level time becomes sweep_wick_bps; nearest levels are capped.</td><td><span class="tag live">Context packet</span></td><td>“Session” is misnamed, transitive chaining can merge a drifting series, and packet recreation lacks persistent consumption identity.</td><td>Use completed calendared sessions; cluster by total-span containment; add stable identity and consumed state.</td></tr>
+          <tr data-engine="TRIAD current" data-structure="Sweep / reclaim"><td><strong>TRIAD current</strong></td><td>Sweep-reclaim reaction</td><td>Require historical wick depth above configured minimum. Long when mark is above an EQL/session-low by a band; short symmetric.</td><td>Packet time; detector version 1.2.0.</td><td>Frames band around level with stop, invalidation, targets, and TTL.</td><td><span class="tag shadow">Dark at inspected head</span></td><td>No identified sweep occurrence, return-inside deadline, or hold event. A historical excursion plus current location is not necessarily a reclaim.</td><td>Reuse typed levels and geometry; rebuild occurrence state machine.</td></tr>
+          <tr data-engine="TRIAD current" data-structure="Retest / reaction"><td><strong>TRIAD current</strong></td><td>Zone reactions</td><td>FVG/OB/BOS/CHOCH detectors pre-frame a zone-side limit whenever current mark is outside qualifying geometry; unified geometry sets stop, invalidation, and measured target. The FVG lane does not observe a discrete retest event.</td><td>Packet time; only FVG retest is live among these inspected structural lanes.</td><td>Candidate has TTL and lane identity; object first-touch identity is absent.</td><td><span class="tag live">FVG</span> <span class="tag shadow">others</span></td><td>A reaction detector can repeatedly frame the same persistent geometry under changing packet hashes. BOS/CHOCH also retest the stored breakout close rather than the broken level.</td><td>Preserve contract validation; require a stable source event and explicit reaction occurrence.</td></tr>
+          <tr data-engine="TRIAD current" data-structure="Timing / authority"><td><strong>TRIAD current</strong></td><td>Structure/risk boundary leak</td><td>Detector band geometry floors b using <span class="mono">limit_config.per_trade.min_stop_width_bps = 67</span>; for line-like BOS/sweep zones that floor also determines the reaction zone width.</td><td>At candidate construction, before E08 risk authority.</td><td>Changing a risk stop floor can silently change what detector geometry is framed.</td><td><span class="tag live">Cross-boundary coupling</span></td><td>Risk feasibility is contaminating structure/reaction semantics, so an E08 policy edit can alter E02’s apparent strategy.</td><td>Structure and trigger atoms stay policy-pure. V7 emits natural geometry; E08 may allow/deny/size, but never redefine the source structure.</td></tr>
+          <tr data-engine="TRIAD current" data-structure="Timing / authority"><td><strong>TRIAD current</strong></td><td>Occurrence identity</td><td>Candidate seed includes detector, packet context_hash, direction, and zone; ULID generation also receives current now_us. Direct candidates omit source_event_id.</td><td>Every packet/restart/TTL cycle can create another identity for persistent geometry.</td><td>Lane identity exists, but source structure occurrence lineage does not.</td><td><span class="tag live">Candidate path</span></td><td>Deduplication, first-touch accounting, and atom→candidate→fill attribution cannot rely on a stable occurrence ID.</td><td>Separate structure_id, hypothesis_id, attempt_id, order_id, fill_id, position_id, and outcome_id.</td></tr>
+          <tr data-engine="TRIAD current" data-structure="Timing / authority"><td><strong>TRIAD current</strong></td><td>Structure atoms / evidence</td><td>Runtime family declares query_structure_atoms and atom→candidate tracing.</td><td>MCP book dated 2026-08-07 lists runtime family dark.</td><td>Money fill.v1 lacks symbol and side/entry-exit role.</td><td><span class="tag shadow">Evidence plane blocked</span></td><td>Code definitions can be audited, but current atom emissions and money EV cannot yet settle which structure works.</td><td>Ship structure_atom.v2 and fill.v2 before promotion claims.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="swings">
+    <div class="section-head"><div><div class="eyebrow">05 · Deep dive</div><h2>Swings and levels: the root dependency</h2></div><p>If the reference level is wrong, BOS, CHOCH, order blocks, sweeps, stops, and targets all inherit the error.</p></div>
+    <div class="grid g3">
+      <article class="formula"><strong>Centered pivot family</strong><span class="math">SH(i) ⇔ Hᵢ = max(Hᵢ₋ᵣ … Hᵢ₊ᵣ)</span><p>Quant uses r=5; Newnaut legacy uses r=10; YoloNaut’s dead/predictive files use r=3, explicit r=5, and a primitive default r=10. The pivot occurs at i but is only available at i+r.</p></article>
+      <article class="formula"><strong>Rolling-extreme family</strong><span class="math">L_high(t) = max(Hₜ₋ₙ … Hₜ₋₁)</span><p>YoloNaut/Newnaut use n=20; active YoloBot uses previous 20; TRIAD uses the full retained buffer. It is causal but not inherently a structural swing.</p></article>
+      <article class="formula"><strong>Event-extreme family</strong><span class="math">L_high(t) = max(print price in t−90s … t⁻)</span><p>UPONLY reads the lagged 90-second extreme before inserting the current print. This is suitable as a fast level class, not a replacement for higher-timeframe swing structure.</p></article>
+    </div>
+    <div class="grid g2" style="margin-top:15px">
+      <article class="card bad"><h3>Why a single “swing” field is unacceptable</h3><ul class="tight"><li>A centered pivot is delayed but locally stable.</li><li>A prior-N extreme is immediate but changes as the window rolls.</li><li>A directional-change extreme is stateful and event-threshold based.</li><li>A session/equal-high level has different provenance and expected reaction.</li></ul><p>Mixing them destroys attribution and makes parameter tuning uninterpretable.</p></article>
+      <article class="card good"><h3>V7 canonical decision</h3><p>Emit typed level atoms: <span class="mono">swing.dc.v1</span>, <span class="mono">swing.fractal.v1</span> (experimental), <span class="mono">rolling_extreme.v1</span> (baseline), <span class="mono">equal_level.v1</span>, and <span class="mono">session_level.v1</span>. Never collapse them into one swing field.</p><p>Primary state structure should use directional-change swings: update an extreme in the active direction, confirm it only after an opposite move of δ, and store both origin and confirmation time.</p></article>
+    </div>
+    <pre>All identity geometry is integer ticks: p̂ = round(price / tick_size_snapshot)
+
+At each new provisional extreme, freeze:
+δ_origin = max(min_ticks,
+               ceil(min_bps × reference_price_ticks / 10,000),
+               ceil(atr_multiplier × ATR_ending_before_origin / tick_size))
+
+up-leg:   extreme = max(extreme, price)
+confirm swing-high when a strictly later finalized close ≤ extreme − δ_origin
+down-leg: extreme = min(extreme, price)
+confirm swing-low  when a strictly later finalized close ≥ extreme + δ_origin</pre>
+    <p class="callout warn"><strong>This is a definition, not a profitability claim.</strong> δ families must be preregistered and evaluated independently. Directional-change research supports event-based segmentation, but it does not prove that this particular crypto scalping reaction is profitable.</p>
+  </section>
+
+  <section id="breaks">
+    <div class="section-head"><div><div class="eyebrow">06 · Deep dive</div><h2>BOS and CHOCH: one break operator, two states</h2></div><p>The engines fail when they detect the same geometry twice under different names or label an old event as the new transition.</p></div>
+    <div class="table-scroll medium">
+      <table>
+        <thead><tr><th>Engine family</th><th>BOS meaning</th><th>CHOCH meaning</th><th>Structural weakness</th></tr></thead>
+        <tbody>
+          <tr><td>Quant pivot-state</td><td>Break trend-side latest pivot after HH/HL or LH/LL inference.</td><td>Break opposite protected pivot.</td><td>Good distinction; bad event-time enforcement and no persistent state.</td></tr>
+          <tr><td>YoloNaut/Newnaut live</td><td>Close outside prior-20 range.</td><td>Not separately represented on direct path.</td><td>Continuation versus reversal cannot be distinguished.</td></tr>
+          <tr><td>YoloBot active</td><td>TA vote for crossing/staying beyond prior-20 range.</td><td>None live.</td><td>Vote is evaluated on wrong/forming timeframe.</td></tr>
+          <tr><td>Newnaut formula</td><td>Break trend-side structural point under explicit HH/HL state.</td><td>Break protected opposite point and flip state.</td><td>Best semantics, but not established as live authority.</td></tr>
+          <tr><td>TRIAD current</td><td>Latest close outside all prior retained highs/lows; break price stored as close.</td><td>Earlier opposite BOS before the latest BOS.</td><td>CHOCH event identity is wrong and retest level is not the broken level.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid g2" style="margin-top:15px">
+      <article class="formula"><strong>V7 break operator</strong><span class="math">break(level L, side s) ⇔ accepted_price crosses L by buffer b after L.confirmed_at</span><p>Acceptance mode is explicit and versioned: closed-bar, elapsed hold, or n qualifying events. Store L, breach price, first-observed time, confirmation time, and source IDs.</p></article>
+      <article class="formula"><strong>Classification</strong><span class="math">BOS = break in state direction<br>CHOCH = break of the state’s protected opposite swing</span><p>CHOCH is a state transition derived from the same break operator. It is not “the last opposite BOS,” proximity to a level, or a second detector.</p></article>
+    </div>
+    <pre>bullish state:
+  protected_low = last confirmed structural low
+  close/hold above continuation_high + b  → BOS_UP; state remains bullish
+  close/hold below protected_low − b      → CHOCH_DOWN; transition pending/bearish
+
+bearish state is the exact mirror.
+One break occurrence emits once. A transition cannot predate its source break.</pre>
+  </section>
+
+  <section id="fvg">
+    <div class="section-head"><div><div class="eyebrow">07 · Deep dive</div><h2>FVG: shared geometry, incompatible lifecycle</h2></div><p>This is the closest cross-engine agreement and therefore the cleanest first capsule—but the gap geometry alone is not the edge.</p></div>
+    <div class="grid g4">
+      <article class="card"><h3>Quant</h3><p>Three-bar wick gap ≥0.1%.</p><p class="caption">Any near-edge touch becomes “filled.”</p></article>
+      <article class="card"><h3>YoloNaut / Newnaut</h3><p>Three-bar wick gap ≥0.35 ATR.</p><p class="caption">Some predictive objects never update filled state.</p></article>
+      <article class="card"><h3>YoloBot legacy</h3><p>Quant-family geometry exists.</p><p class="caption">SMC is disabled, so it is not live evidence.</p></article>
+      <article class="card"><h3>TRIAD</h3><p>Three-bar gap, no minimum size.</p><p class="caption">Historical fill percentage is better, but anything &lt;100% remains actionable.</p></article>
+    </div>
+    <pre>bullish FVG at closed bar t:
+  low[t] > high[t−2] + g_min
+  zone = [high[t−2], low[t]]
+
+bearish FVG:
+  high[t] < low[t−2] − g_min
+  zone = [high[t], low[t−2]]
+
+known_at = close_time[t]
+same formation bar cannot be a retest</pre>
+    <div class="grid g2" style="margin-top:14px">
+      <article class="card good"><h3>V7 lifecycle</h3><p><span class="mono">PROVISIONAL → CONFIRMED → FRESH → TOUCHED → PARTIAL → MIDPOINT_FILLED → FILLED</span>, with alternative terminal <span class="mono">INVALIDATED</span> or <span class="mono">EXPIRED</span>. State never reverses.</p></article>
+      <article class="card warn"><h3>Separate hypotheses</h3><p>Gap minimum, displacement filter, volume/flow confirmation, first touch versus midpoint, direction, timeframe, and age each define a separate preregistered capsule. Do not blend them into “FVG works.”</p></article>
+    </div>
+  </section>
+
+  <section id="ob">
+    <div class="section-head"><div><div class="eyebrow">08 · Deep dive</div><h2>Order block: the greatest semantic dilution</h2></div><p>A large candle is not an order block. An opposite candle followed by a small edge-cross is also insufficient.</p></div>
+    <div class="table-scroll medium">
+      <table>
+        <thead><tr><th>Engine</th><th>Origin selection</th><th>Displacement</th><th>Confirmed structural break</th><th>Lifecycle</th><th>Assessment</th></tr></thead>
+        <tbody>
+          <tr><td>Quant</td><td>Opposite candle</td><td>&gt;1.5× mean range and volume ≥1.3× mean</td><td>No independent BOS requirement</td><td>Current-price tested/broken</td><td>Best qualifiers; causal baselines contaminated.</td></tr>
+          <tr><td>YoloNaut/Newnaut predictive</td><td>Any body/range ≥0.55 candle</td><td>None beyond candle body</td><td>No</td><td>Snapshot/current price</td><td>Not a defensible OB definition.</td></tr>
+          <tr><td>Newnaut legacy</td><td>Opposite origin near supplied reference</td><td>ATR-scaled</td><td>A pivot is incorrectly supplied as BOS</td><td>Incomplete</td><td>More structure, wrong causal anchor.</td></tr>
+          <tr><td>TRIAD</td><td>Opposite candle</td><td>Next close crosses origin edge</td><td>No swing/protected-level break</td><td>Historical mitigation after displacement</td><td>Good spent-state improvement; weak origin semantics.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <article class="callout success" style="margin-top:15px"><h3>V7 canonical OB</h3><p>The last explicitly selected opposing bar or compact origin range before displacement ≥D within horizon H that <strong>subsequently causes a confirmed BOS</strong>. The OB is provisional until that BOS confirms. Zone convention, tie-break, displacement metric, BOS reference, maximum horizon, TTL, and invalidation are all part of the version.</p></article>
+    <pre>origin candidate O at time t₀
+displacement(O → t₁) ≥ D(version, information known by t₁)
+confirmed BOS B at t₂ ≤ t₀ + H, and causal path attributes O → B
+
+only at t₂:
+  emit order_block.confirmed with origin_time=t₀, confirmed_at=t₂,
+  reference_structure_id=B.id, zone_rule=BODY|FULL_WICK (versioned)
+
+No BOS → no order block. Large candle alone → displacement candle, not OB.</pre>
+  </section>
+
+  <section id="sweep">
+    <div class="section-head"><div><div class="eyebrow">09 · Deep dive</div><h2>Sweep, reclaim, and retest must be separate events</h2></div><p>Most historical implementations compress level creation, excursion, reclaim, and reaction into one current-price test.</p></div>
+    <div class="grid g3">
+      <article class="card"><h3>Price-level sweep</h3><p>Quant, YoloNaut/Newnaut, YoloBot, UPONLY, and TRIAD all reference a price extreme—but use different level classes and confirmation rules.</p></article>
+      <article class="card"><h3>Flow “sweep”</h3><p>Pulse E3 is a one-second one-sided taker-notional burst plus displacement and exhaustion. It does not test a prior level.</p></article>
+      <article class="card"><h3>First retest</h3><p>YoloNaut/Newnaut uniquely enforce no earlier valid retest. TRIAD’s resting zone logic is not first-retouch semantics.</p></article>
+    </div>
+    <div class="flow">
+      <div class="node"><strong>1 · Level exists</strong><br><span class="caption">typed, confirmed, fresh</span></div><div class="arrow">→</div>
+      <div class="node"><strong>2 · Excursion</strong><br><span class="caption">cross by e; occurrence ID</span></div><div class="arrow">→</div>
+      <div class="node"><strong>3 · Reclaim</strong><br><span class="caption">return inside within τ; hold</span></div><div class="arrow">→</div>
+      <div class="node v7"><strong>4 · Reaction</strong><br><span class="caption">first retest / maker hypothesis</span></div>
+    </div>
+    <pre>level L must satisfy L.confirmed_at &lt; excursion.observed_at
+excursion: price crosses L by e_min
+reclaim: price returns inside L within τ and holds for n events or one closed bar
+retest: first later contact after minimum separation; no same-event retest
+
+Without book/trade evidence, name it level_excursion_reclaim.
+Do not claim hidden stop liquidity was consumed.</pre>
+    <div class="grid g2" style="margin-top:14px">
+      <article class="card good"><h3>What V7 inherits</h3><ul class="tight"><li>Newnaut one-/two-bar confirmation.</li><li>UPONLY arm→wait→expire state machine.</li><li>TRIAD typed equal/session levels and historic wick depth.</li><li>YoloNaut/Newnaut first-retest exclusion.</li><li>Pulse/UPONLY OFI, delta, and exhaustion as optional confirmation.</li></ul></article>
+      <article class="card bad"><h3>What V7 rejects</h3><ul class="tight"><li>Rolling extreme updated with the sweep itself as reclaim reference.</li><li>Any tiny breach as a sweep.</li><li>Historical penetration plus current mark as a timeless reclaim.</li><li>Flow burst and price-level sweep sharing one label or denominator.</li><li>Repeated candidates from one consumed level.</li></ul></article>
+    </div>
+  </section>
+
+  <section id="flow">
+    <div class="section-head"><div><div class="eyebrow">10 · Microstructure</div><h2>UPONLY and Pulse contribute confirmation—not candle structure</h2></div><p>Forcing their event-flow signals into BOS/OB/FVG vocabulary would destroy their actual strength: fast causal timing.</p></div>
+    <div class="table-scroll medium">
+      <table>
+        <thead><tr><th>Reusable component</th><th>Source</th><th>Use in V7</th><th>Non-negotiable correction</th></tr></thead>
+        <tbody>
+          <tr><td>Order-flow imbalance</td><td>UPONLY and Pulse</td><td>Independent <span class="mono">flow_confirmation.v1</span> atom linked to a structure event.</td><td>Calculate from canonical sequence-correct book/trade events; calibrate per symbol/venue.</td></tr>
+          <tr><td>Taker-flow impulse and exhaustion</td><td>Pulse</td><td>Confirm or veto an already-defined excursion/reclaim; retain 4–6s TTL.</td><td>Require antecedent impulse ID; zero flow alone is not exhaustion.</td></tr>
+          <tr><td>Arm/expiry lifecycle</td><td>UPONLY</td><td>Explicit state transitions for fast price-level patterns.</td><td>Freeze the original pre-sweep level and never replace it with a rolling extreme containing the breach.</td></tr>
+          <tr><td>Hysteresis</td><td>Pulse</td><td>Separate thresholds for entering and maintaining a short-lived confirmation.</td><td>Scores remain features, not calibrated probabilities, until proven.</td></tr>
+          <tr><td>Cost-aware admission</td><td>Pulse / UPONLY</td><td>Reject hypotheses whose conditional excursion cannot cover spread, fees, fill loss, and adverse selection.</td><td>Estimate by capsule, regime, symbol, side, and venue—not one universal sigma multiplier.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="callout"><strong>Research grounding:</strong> order-flow imbalance has empirical price-impact support, but that does not validate these repositories’ thresholds or prove forecastability after costs. V7 should use OFI as separately measured evidence, not a rhetorical “institutional flow” label.</p>
+  </section>
+
+  <section id="engines">
+    <div class="section-head"><div><div class="eyebrow">11 · Engine profiles</div><h2>Best contribution and fatal inheritance risk</h2></div><p>The objective is not to crown a winner. It is to take one defensible component from each lineage without importing its failure mode.</p></div>
+    <div class="grid g2">
+      <article class="card"><div class="engine-head"><div><h3>QuantTrade</h3><span class="tag shared">Pivot-state SMC</span></div><span class="engine-no">0</span></div><p><strong>Best:</strong> explicit BOS-versus-CHOCH distinction and the strongest legacy OB displacement/volume qualifiers.</p><p><strong>Fatal risk:</strong> centered-pivot lookahead, future-contaminated baselines, forming/duplicate candle behavior, snapshot lifecycles.</p></article>
+      <article class="card"><div class="engine-head"><div><h3>YoloNaut</h3><span class="tag shared">Rolling-extreme reaction</span></div><span class="engine-no">1</span></div><p><strong>Best:</strong> causal closed-bar BOS first-retest and ATR-normalized sweep rule.</p><p><strong>Fatal risk:</strong> 5m/15m authority mismatch; richer detector bypassed; predictive OB/FVG state is semantically weak.</p></article>
+      <article class="card"><div class="engine-head"><div><h3>YoloBot V2</h3><span class="tag shared">TA vote engine</span></div><span class="engine-no">2</span></div><p><strong>Best:</strong> simple break/sweep baselines useful as controls.</p><p><strong>Fatal risk:</strong> disabled SMC, wrong 1h feed under 5m schedule, forming-bar repaint, and effective short rejection.</p></article>
+      <article class="card"><div class="engine-head"><div><h3>UPONLY Core</h3><span class="tag shared">Event-state scalper</span></div><span class="engine-no">3</span></div><p><strong>Best:</strong> explicit arm/expiry/entry state machine, causal lagged extreme, OFI/delta confirmation.</p><p><strong>Fatal risk:</strong> reclaim references the wrong rolling extreme; two capsules require taker entry; fixed thresholds do not transfer.</p></article>
+      <article class="card"><div class="engine-head"><div><h3>Newnaut</h3><span class="tag shared">Rich structure laboratory</span></div><span class="engine-no">4</span></div><p><strong>Best:</strong> protected-swing BOS/CHOCH semantics, one-/two-bar reclaim, first retest, six-regime context.</p><p><strong>Fatal risk:</strong> competing live/legacy/predictive meanings; rich code inventory is mistaken for one coherent authority.</p></article>
+      <article class="card"><div class="engine-head"><div><h3>Pulse</h3><span class="tag shared">Flow ensemble</span></div><span class="engine-no">5</span></div><p><strong>Best:</strong> TTL, hysteresis, staleness, exhaustion, multi-source flow confirmation, cost-aware gate.</p><p><strong>Fatal risk:</strong> “sweep” has no level; volatility is cadence-sensitive; price geometry is economically harsh.</p></article>
+      <article class="card good"><div class="engine-head"><div><h3>TRIAD</h3><span class="tag live">Retained chassis</span></div><span class="engine-no">6</span></div><p><strong>Best:</strong> contracts, deterministic packet features, historical zone penetration/mitigation, typed liquidity levels, candidate geometry, lane identity, risk/execution separation.</p><p><strong>Fatal risk:</strong> weak structure origins, wrong CHOCH identity, no stable occurrence IDs, and architecture maturity being mistaken for demonstrated alpha.</p></article>
+      <article class="card good"><div class="engine-head"><div><h3>V7 Edge Core</h3><span class="tag proposed">Proposed clean kernel</span></div><span class="engine-no">7</span></div><p><strong>Purpose:</strong> combine causal structure state, first-reaction semantics, event-flow confirmation, and TRIAD contracts without merging codebases.</p><p><strong>Constraint:</strong> it earns authority capsule by capsule. It does not inherit profitability by genealogy.</p></article>
+    </div>
+  </section>
+
+  <section id="v7">
+    <div class="section-head"><div><div class="eyebrow">12 · V7 constitution</div><h2>Canonical definitions to ratify before implementation</h2></div><p>These are proposed version-1 hypotheses. Parameters are versioned and preregistered; definitions cannot drift under the same detector ID.</p></div>
+    <div class="grid g2 law-grid">
+      <article class="card law"><h3>Typed level</h3><p>Every reference has a kind, geometry, origin, confirmation, availability, provenance, timeframe, version, quality, and stable ID. Rolling extreme, swing, equal high/low, and session level remain distinct.</p></article>
+      <article class="card law"><h3>Integer-tick geometry</h3><p>Prices are normalized with the instrument tick-size snapshot before comparison or hashing. Floating-point prices cannot determine boundaries or persistent identity.</p></article>
+      <article class="card law"><h3>Directional-change swing</h3><p>Primary structural swing confirms only after reversal by versioned δ. It stores extreme time and confirmation time separately. Fractal and rolling-extreme alternatives remain independent benchmark types.</p></article>
+      <article class="card law"><h3>BOS</h3><p>First accepted break of a confirmed continuation level in the current structure direction. Stores broken level and breach price separately. One occurrence emits once.</p></article>
+      <article class="card law"><h3>CHOCH</h3><p>The same break operator applied against the current protected swing, causing a state transition. Never derived by searching for an older opposite BOS.</p></article>
+      <article class="card law"><h3>FVG</h3><p>Three closed bars, explicit minimum gap, unavailable until bar three closes, and monotonic fill lifecycle. Formation bar cannot be its own retest.</p></article>
+      <article class="card law"><h3>Order block</h3><p>Last selected opposing origin before qualifying displacement that causally produces confirmed BOS within horizon H. Provisional until the BOS confirms.</p></article>
+      <article class="card law"><h3>Level excursion / reclaim</h3><p>Confirmed level is crossed by e, price returns inside within τ, then holds for n events or a closed bar. Without order-book/trade evidence, never call this proof of consumed liquidity.</p></article>
+      <article class="card law"><h3>First retest</h3><p>First qualifying contact after confirmation and minimum departure. Pre-positioning a maker order is <span class="mono">first_touch_eligibility</span>; it is not evidence that a retest already happened. Any later touch is touch number 2+, not another first retest.</p></article>
+      <article class="card law"><h3>Microstructure confirmation</h3><p>OFI, TFI, delta, book tilt, liquidation, and exhaustion are linked atoms with their own TTL and data-quality state. They do not redefine the underlying price structure.</p></article>
+      <article class="card law"><h3>Reaction and candidate separation</h3><p>A structure may exist without a trade. Reaction evaluates location, freshness, trigger, confirmation, and risk feasibility before emitting one complete hypothesis.</p></article>
+      <article class="card law"><h3>Monotonic lifecycle</h3><p>No filled FVG becomes fresh, mitigated OB becomes unmitigated, consumed level becomes unconsumed, or expired occurrence becomes live because a rolling window moved.</p></article>
+      <article class="card law"><h3>Exact mirror symmetry</h3><p>Long and short definitions are algebraic mirrors unless a preregistered asymmetry is explicitly tested. Generic score inequalities are forbidden.</p></article>
+      <article class="card law"><h3>Risk-policy independence</h3><p>Structure and trigger geometry cannot read portfolio or stop-width policy. V7 records the setup’s natural invalidation; E08 can deny or size it, but a risk-floor change cannot alter which structure existed.</p></article>
+    </div>
+
+    <h3 style="margin-top:24px">Minimum <span class="mono">structure_atom.v2</span></h3>
+    <pre>{
+  "schema": "structure_atom.v2",
+  "structure_id": "stable_hash(symbol, venue_model, kind, version, origin_ids, geometry)",
+  "kind": "swing|level|bos|choch|fvg|order_block|excursion|reclaim|retest|flow_confirmation",
+  "symbol": "BTCUSDT", "venue_model": "binance_usdtm",
+  "timeframe": "5m", "direction": "up|down|neutral",
+  "origin_event_time": 0, "confirmation_event_time": 0,
+  "origin_received_at": 0, "confirmation_received_at": 0,
+  "dependency_received_at_max": 0, "watermark_completed_at": 0,
+  "knowledge_at": 0, "published_at": 0,
+  "input_watermark": "...",
+  "source_event_ids": [], "reference_structure_ids": [],
+  "price_low_ticks": 0, "price_high_ticks": 0, "reference_price_ticks": 0,
+  "formula_version": "...", "parameter_set_id": "...", "parameter_digest": "...", "data_revision": "...",
+  "state": "PROVISIONAL|CONFIRMED|FRESH|TOUCHED|PARTIAL|FILLED|MITIGATED|BROKEN|CONSUMED|EXPIRED|INVALIDATED",
+  "state_changed_at": 0, "touch_count": 0,
+  "quality": {"causal": true, "provisional": false, "data_gap": false}
+}</pre>
+    <p class="callout success"><strong>Prefix invariance:</strong> replaying a data prefix alone, or replaying the same prefix followed by arbitrary future data, must emit identical confirmed structures through the prefix watermark. Event-time order is <span class="mono">origin_event_time ≤ confirmation_event_time</span>. Arrival can be out of order, so availability is never backdated: <span class="mono">knowledge_at ≥ max(all dependency received_at values, watermark completion)</span> and <span class="mono">published_at ≥ knowledge_at</span>.</p>
+  </section>
+
+  <section id="inheritance">
+    <div class="section-head"><div><div class="eyebrow">13 · Inheritance map</div><h2>Take ideas, not repositories</h2></div><p>V7 is a clean-room implementation. Legacy code is specification evidence and a regression corpus, not a module bundle.</p></div>
+    <div class="table-scroll medium">
+      <table>
+        <thead><tr><th>V7 component</th><th>Primary ancestor</th><th>Secondary ancestor</th><th>Keep</th><th>Correct / reject</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">swing.dc.v1</span></td><td>Directional-change research</td><td>Quant/Newnaut pivot timing lesson</td><td>Event-based confirmation; origin versus confirmation.</td><td>No pivot usable before confirmation; rolling breakout is separate baseline.</td></tr>
+          <tr><td><span class="mono">bos_first_retest.v1</span></td><td>Newnaut state formula</td><td>YoloNaut/Newnaut live first retest</td><td>Protected state + age + no-earlier-test + correct-side close.</td><td>Break confirmed swing, not generic prior-20 range.</td></tr>
+          <tr><td><span class="mono">choch_first_retest.v1</span></td><td>Newnaut protected-point semantics</td><td>Quant continuation/reversal distinction</td><td>Opposite protected break and explicit state transition.</td><td>Never use TRIAD’s prior-opposite-BOS label.</td></tr>
+          <tr><td><span class="mono">fvg_displacement_first_touch.v1</span></td><td>Shared three-bar geometry</td><td>Newnaut ATR min + TRIAD historical fill</td><td>Gap geometry, normalized size, monotonic penetration.</td><td>No dust gap, same-bar retest, or 99.99%-filled eligibility.</td></tr>
+          <tr><td><span class="mono">ob_displacement_bos_first_touch.v1</span></td><td>Quant qualifiers</td><td>TRIAD historical mitigation</td><td>Displacement, volume feature, spent-state persistence.</td><td>Use event-time baselines and mandatory causal BOS.</td></tr>
+          <tr><td><span class="mono">level_excursion_reclaim.v1</span></td><td>Newnaut one-/two-bar pattern</td><td>UPONLY state + TRIAD levels</td><td>Typed level, breach, deadline, reclaim, expiry.</td><td>Store original level; do not use timeless historical excursion.</td></tr>
+          <tr><td><span class="mono">flow_confirmed_reclaim.v1</span></td><td>UPONLY OFI/delta</td><td>Pulse exhaustion/hysteresis</td><td>Signed flow evidence and short TTL.</td><td>Separate from price structure; repair cadence and missingness.</td></tr>
+          <tr><td><span class="mono">edge_candidate.v2</span></td><td>TRIAD detector harness</td><td>YoloNaut first-retest semantics</td><td>Complete geometry, TTL, lane identity, stop-side validation.</td><td>Source from stable structure/reaction IDs; no packet-hash duplicate identity.</td></tr>
+          <tr><td>Governance / execution</td><td>TRIAD chassis</td><td>Pulse cost-awareness</td><td>E07/E08/E09 authority split, maker-first execution, audit/freeze.</td><td>Emergency taker is permitted only for governed position-reducing exit, never entry.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="tests">
+    <div class="section-head"><div><div class="eyebrow">14 · Acceptance tests</div><h2>Structure truth before performance</h2></div><p>A profitable backtest cannot rescue a detector that repaints, duplicates, changes meaning, or consumes the wrong timeframe.</p></div>
+    <div class="grid g3">
+      <article class="card"><h3>Causality</h3><ul class="tight"><li>Prefix replay invariance.</li><li>No event before confirmed_at.</li><li>No future bars in historical baselines.</li><li>No forming bar in confirmed structure lane.</li><li>Gap/data discontinuity fail-closed.</li></ul></article>
+      <article class="card"><h3>Identity & lifecycle</h3><ul class="tight"><li>Same source geometry → same ID.</li><li>One occurrence emits once.</li><li>States move only forward.</li><li>First retest count exactly one.</li><li>Consumed/expired objects never re-arm.</li></ul></article>
+      <article class="card"><h3>Directional correctness</h3><ul class="tight"><li>Long/short algebraic mirror.</li><li>Protected level correct by state.</li><li>Broken level ≠ breach close.</li><li>Stop/invalidation on correct side.</li><li>Separate denominators by side.</li></ul></article>
+      <article class="card"><h3>Timeframe & data</h3><ul class="tight"><li>Actual timeframe carried in contract.</li><li>Scheduler cannot relabel data.</li><li>Duplicate timestamp rejection.</li><li>Sequence/watermark continuity.</li><li>Stale/missing flow is not zero flow.</li></ul></article>
+      <article class="card"><h3>Authority</h3><ul class="tight"><li>One registry names the live implementation.</li><li>Dead code cannot appear in live claims.</li><li>One producer lease/epoch for money.</li><li>Detector version binds formula + parameters.</li><li>Config and deployed digest agree.</li></ul></article>
+      <article class="card"><h3>Economic measurement</h3><ul class="tight"><li>Structure → reaction → candidate → fill lineage.</li><li>Entry/exit role and symbol on fill.v2.</li><li>Net costs and maker/taker truth.</li><li>MFE/MAE from point-in-time events.</li><li>Sealed holdout and multiplicity control.</li></ul></article>
+    </div>
+    <p class="callout danger" style="margin-top:14px"><strong>Promotion law:</strong> semantic correctness is necessary but not sufficient. Every capsule must then survive same-stream replay, prospective dark run, cost/fill modeling, sealed holdout, and isolated canary. No structure gets authority because it “looks institutional.”</p>
+  </section>
+
+  <section id="build">
+    <div class="section-head"><div><div class="eyebrow">15 · Build order</div><h2>Freeze meanings before writing detectors</h2></div><p>The fastest credible implementation sequence prevents teams from rebuilding incompatible semantics under familiar class names.</p></div>
+    <div class="timeline">
+      <article class="phase"><h3>Constitution & schema</h3><p>Ratify this definition atlas, names, timestamps, identities, lifecycles, and <span class="mono">structure_atom.v2</span>. Freeze old TRIAD detector changes except safety fixes.</p></article>
+      <article class="phase"><h3>Reference levels & replay</h3><p>Build immutable shared replay, typed levels, directional-change swings, rolling-extreme baseline, data-quality and prefix-invariance harness.</p></article>
+      <article class="phase"><h3>Five clean capsules</h3><p>BOS first retest, CHOCH first retest, FVG first touch, displacement+BOS OB, and level excursion/reclaim with optional flow confirmation.</p></article>
+      <article class="phase"><h3>Same-stream promotion</h3><p>Legacy and V7 consume identical events; dark outcomes receive exact lineage; one capsule/symbol/side/venue canary at a time.</p></article>
+    </div>
+    <div class="grid g2" style="margin-top:14px">
+      <article class="card good"><h3>Decision already settled</h3><p>Build V7 as a new deterministic E02 Edge Core and replace the current engine boundary after evidence-gated certification. Retain the TRIAD chassis. Permit a tightly governed emergency taker escape for exits only.</p></article>
+      <article class="card warn"><h3>Decision still required</h3><p>Ratify the semantic constitution: typed level taxonomy, directional-change swing as primary state primitive, Newnaut-style protected BOS/CHOCH, strict OB causal chain, and separate price-level versus flow-sweep names.</p></article>
+    </div>
+  </section>
+
+  <section id="evidence">
+    <div class="section-head"><div><div class="eyebrow">16 · Evidence and limits</div><h2>What was verified—and what remains unmeasurable</h2></div><p>All economic claims are deliberately excluded. This report answers implementation meaning and design choice, not live profitability.</p></div>
+    <div class="grid g3">
+      <article class="card"><h3>Repository evidence</h3><p>Executable code and authority call paths were inspected at pinned heads. Documentation is not treated as live unless construction and calls corroborate it.</p></article>
+      <article class="card"><h3>MCP evidence</h3><p>The 2026-08-07 books expose structure-atom and trace tools but list the runtime family dark. <span class="mono">fill.v1</span> lacks symbol and side/entry-exit role, so money EV by structure remains unmeasurable.</p></article>
+      <article class="card"><h3>Research boundary</h3><p>No exchange specification or peer-reviewed consensus definition for BOS, CHOCH, OB, FVG, or “liquidity sweep” was located. This is a search result, not proof of absence. Treat every definition as a versioned hypothesis.</p></article>
+    </div>
+
+    <h3 style="margin-top:24px">Pinned repository anchors</h3>
+    <ol class="source-list">
+      <li><a href="https://github.com/engine-repo/quant-trade-0/blob/6d8f517bc096afeb9f19043ba52de3ce893a6b99/backend/core/smc_engine.py">QuantTrade SMC engine</a><small>Commit 6d8f517… · centered pivots, OB, FVG, sweep, BOS, CHOCH.</small></li>
+      <li><a href="https://github.com/engine-repo/yolonaut-1/blob/4ba790a0776b2ab737d99fa8d4388677e4f5f4e7/packages/reasoning/src/yolonaut_reasoning/feeds/structure.py">YoloNaut active structure feed</a> · <a href="https://github.com/engine-repo/yolonaut-1/blob/4ba790a0776b2ab737d99fa8d4388677e4f5f4e7/packages/reasoning/src/yolonaut_reasoning/predictive_v21.py">predictive objects</a> · <a href="https://github.com/engine-repo/yolonaut-1/blob/4ba790a0776b2ab737d99fa8d4388677e4f5f4e7/packages/reasoning/src/yolonaut_reasoning/structure/detector.py">bypassed legacy detector</a><small>Commit 4ba790a… · current prior-20 BOS/retest and one-bar sweep; predictive and legacy definitions are separate authorities.</small></li>
+      <li><a href="https://github.com/engine-repo/yolobotv2-2/blob/ad1dbfdb18cab8d8a3d116a902b81db207b869b2/backend/core/ta_engine_v2.py">YoloBot active TA engine</a> · <a href="https://github.com/engine-repo/yolobotv2-2/blob/ad1dbfdb18cab8d8a3d116a902b81db207b869b2/backend/api/main.py">SMC disablement</a><small>Commit ad1dbfd… · active vote semantics versus disabled SMC inventory.</small></li>
+      <li><a href="https://github.com/engine-repo/uponly-core-3/blob/a19b751485fda1d7d056dbea6a30787549782d32/scalpcore/patterns.py">UPONLY pattern engine</a> · <a href="https://github.com/engine-repo/uponly-core-3/blob/a19b751485fda1d7d056dbea6a30787549782d32/scalpcore/features.py">features</a><small>Commit a19b751… · event-state patterns and OFI.</small></li>
+      <li><a href="https://github.com/engine-repo/newnaut-4/blob/631222f70a47ff3655275522f7e4df42956132b9/formulas/bos_choch.py">Newnaut BOS/CHOCH formula</a> · <a href="https://github.com/engine-repo/newnaut-4/blob/631222f70a47ff3655275522f7e4df42956132b9/feeds/structure.py">active feed</a> · <a href="https://github.com/engine-repo/newnaut-4/blob/631222f70a47ff3655275522f7e4df42956132b9/predictive_v21.py">predictive objects</a> · <a href="https://github.com/engine-repo/newnaut-4/blob/631222f70a47ff3655275522f7e4df42956132b9/packages/reasoning/src/newnaut_reasoning/structural_sanity/sanity_gate.py">indirect sanity veto</a> · <a href="https://github.com/engine-repo/newnaut-4/blob/631222f70a47ff3655275522f7e4df42956132b9/packages/reasoning/src/newnaut_reasoning/structure/gate.py">legacy gate</a><small>Commit 631222f… · competing semantic families and cross-mode authority.</small></li>
+      <li><a href="https://github.com/engine-repo/pulse-5/blob/95c65be56e2e10e51d959c07f2a22b8ab4557f1a/pulse/signals.py">Pulse signals</a> · <a href="https://github.com/engine-repo/pulse-5/blob/95c65be56e2e10e51d959c07f2a22b8ab4557f1a/pulse/features.py">features</a><small>Commit 95c65be… · flow events, exhaustion, TTL, cadence.</small></li>
+      <li><a href="https://github.com/TriadAgentic/TriadEngine/blob/70eae19e0cc4c8e7004e4ce0965679c1291aa290/crates/triad-engine/src/features.rs">TRIAD structure/features</a> · <a href="https://github.com/TriadAgentic/TriadEngine/blob/70eae19e0cc4c8e7004e4ce0965679c1291aa290/crates/triad-engine/src/detectors.rs">detectors</a> · <a href="https://github.com/TriadAgentic/TriadEngine/blob/70eae19e0cc4c8e7004e4ce0965679c1291aa290/contracts/config/limit_config.v1.json#L11-L12">67-bps risk floor</a> · <a href="https://github.com/TriadAgentic/TriadEngine/blob/70eae19e0cc4c8e7004e4ce0965679c1291aa290/crates/triad-engine/src/geometry_config.rs#L202-L203">risk-to-geometry coupling</a><small>Commit 70eae19… · current definitions, candidate framing, live/dark authority, and the structure/risk boundary leak.</small></li>
+    </ol>
+
+    <h3 style="margin-top:24px">Primary research and method anchors</h3>
+    <ul class="source-list">
+      <li><a href="https://ideas.repec.org/a/zbw/ifweej/201236.html">Aloud et al. — directional-change event approach</a><small>Supports event-based price segmentation; does not prove V7 edge.</small></li>
+      <li><a href="https://arxiv.org/abs/1011.6402">Cont, Kukanov &amp; Stoikov — price impact of order-book events</a><small>Supports measuring OFI; does not validate repository thresholds.</small></li>
+      <li><a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2326253">Bailey et al. — Probability of Backtest Overfitting</a> · <a href="https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2460551">Deflated Sharpe Ratio</a><small>Supports preregistration, holdout discipline, and multiple-testing controls.</small></li>
+    </ul>
+
+    <details>
+      <summary>Local source documents used</summary>
+      <ul><li><span class="mono">INVESTIGATION-MCP-FOR-LIKO.md</span> — audited shadow/money split and fill contract gaps, 2026-08-07.</li><li><span class="mono">MCP-COMPLETE-BOOK.md</span> — tool-family status, structure atom query, signals surface, lineage limits, 2026-08-07.</li><li><span class="mono">TRIAD MASTER TOPOLOGY V3</span> — target E00–E10 boundary model, not proof of as-built state.</li></ul>
+    </details>
+
+    <details>
+      <summary>Target topology reference</summary>
+      <figure class="topology"><img src="project_sources/01-06_TRIAD_MASTER_TOPOLOGY_ILLUSTRATIVE_OVERVIEW_V3-1-.png" alt="TRIAD target-state topology showing E00 through E10"></figure>
+      <p class="caption">The target topology places structure/feature construction inside E02. V7 should replace that deterministic edge boundary while retaining downstream authority separation.</p>
+    </details>
+  </section>
+
+  <footer class="foot">
+    <strong>Ratification recommendation:</strong> approve the V7 structure constitution in Section 12, then authorize Phase 1 schema/reference-level implementation. Do not begin threshold optimization before semantic invariants pass.<br>
+    Generated 08 August 2026 · Evidence is code-level and source-pinned; profitability remains unproved.
+  </footer>
+</main>
+
+<script>
+(function(){
+  const search=document.getElementById('atlasSearch');
+  const engine=document.getElementById('engineFilter');
+  const structure=document.getElementById('structureFilter');
+  const rows=[...document.querySelectorAll('#atlasTable tbody tr')];
+  const count=document.getElementById('visibleCount');
+  function apply(){
+    const q=(search.value||'').trim().toLowerCase();
+    const e=engine.value;
+    const s=structure.value;
+    let n=0;
+    rows.forEach(row=>{
+      const okQ=!q||row.textContent.toLowerCase().includes(q);
+      const okE=!e||row.dataset.engine===e;
+      const okS=!s||row.dataset.structure===s;
+      const show=okQ&&okE&&okS;
+      row.classList.toggle('hide',!show);
+      if(show)n++;
+    });
+    count.textContent=String(n);
+  }
+  [search,engine,structure].forEach(x=>x.addEventListener(x===search?'input':'change',apply));
+  document.getElementById('resetFilters').addEventListener('click',()=>{search.value='';engine.value='';structure.value='';apply();});
+  apply();
+})();
+</script>
+</body>
+</html>
