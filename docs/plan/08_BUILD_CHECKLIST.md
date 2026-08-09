@@ -69,18 +69,18 @@ separate gate receipt._
 
 ## B03 · F02–F09 causal feature/structure layer
 
-- [ ] F02 true range/trailing ATR over prior finalized bars
-- [ ] F03 directional-change swing + required parameter/binding closure
-- [ ] F04 closed fractal pivot with strict tie rejection
-- [ ] F05 rolling extreme + missing golden closure
-- [ ] F06 equal-level interface; named abstention while max span is unratified
-- [ ] F08 protected-structure interface; no semantic output until reducer ratified
-- [ ] F09 generic accepted break; BOS/CHOCH only with valid F08 state
-- [ ] Append-only structure atom/transition publication
-- [ ] Prefix/restart/duplicate/mirror/boundary/no-lookahead/null-honesty battery
-- [ ] End-to-end market state → structure stage
-- [ ] Source PR merged green
-- [ ] Post-merge B03 receipt passed
+- [x] F02 true range/trailing ATR over prior finalized bars — GV-004 exact, PR #16
+- [x] F03 directional-change swing + required parameter/binding closure — GV-005 exact, declared-rule-only law
+- [x] F04 closed fractal pivot with strict tie rejection — GV-006 exact
+- [x] F05 rolling extreme — implemented + repo-pinned boundary tests; linked RC3 golden vector remains owed (register E11)
+- [x] F06 equal-level interface; named abstention while max span is unratified — GV-007 exact, F06_UNAVAILABLE_MAX_SPAN_NOT_RATIFIED
+- [x] F08 protected-structure interface; no semantic output until reducer ratified — pure refusal interface, zero implementation
+- [x] F09 generic accepted break; BOS/CHOCH only with valid F08 state — GV-008 exact, UNCLASSIFIED_STRUCTURE_STATE_UNAVAILABLE
+- [x] Append-only structure atom/transition publication — journal round-trip proven
+- [x] Prefix/restart/duplicate/mirror/boundary/no-lookahead/null-honesty battery — 86 tests across the three module families
+- [x] End-to-end market state → structure stage — e2e stage 18 structures_walk
+- [x] Source PR merged green — PR #16, CI `31298074478`
+- [x] Post-merge B03 receipt passed — `evidence/receipts/B03.json` binds `1bb00a7b…`
 
 ## B04 · F10–F13 and F15–F17 structure/flow layer
 
