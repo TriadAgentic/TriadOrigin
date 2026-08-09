@@ -84,14 +84,23 @@ def _dec(s: str) -> Decimal:
     return d
 
 
-def _scaled_dec(text: str, unit: Decimal, what: str) -> Decimal:
+def _scaled_dec(text: str, unit: Decimal, what: str, mode: "Rounding") -> Decimal:
+    """Validate a decimal string against the instrument grid discipline (F00).
+
+    EXACT is the venue-fact path: the text must use exactly the unit's fractional places, so an
+    off-grid venue fact quarantines before any arithmetic. The side-rounding modes (DOWN/UP,
+    HALF_EVEN) are the computed-price path — GV-001: tick=0.1, raw=100.24 -> BUY(DOWN)=100.2,
+    SELL(UP)=100.3 — where finer canonical precision is lawful input and the declared side
+    rounding resolves it onto the grid.
+    """
     value = _dec(text)
-    places = max(0, -unit.as_tuple().exponent)
-    expected = format(value, f".{places}f")
-    if text != expected:
-        raise InstrumentError(
-            f"{what} must use exactly {places} fractional decimal place(s): {text!r}"
-        )
+    if mode is Rounding.EXACT:
+        places = max(0, -unit.as_tuple().exponent)
+        expected = format(value, f".{places}f")
+        if text != expected:
+            raise InstrumentError(
+                f"{what} must use exactly {places} fractional decimal place(s): {text!r}"
+            )
     return value
 
 
@@ -130,7 +139,7 @@ def _quantize(raw: Decimal, unit: Decimal, mode: Rounding) -> int:
 def price_to_ticks(instrument: Instrument, price: str, mode: Rounding = Rounding.EXACT) -> int:
     """Convert a venue decimal price to integer ticks. ``EXACT`` is the default and fails closed."""
     return _guard_int64(
-        _quantize(_scaled_dec(price, instrument.tick, "price"), instrument.tick, mode),
+        _quantize(_scaled_dec(price, instrument.tick, "price", mode), instrument.tick, mode),
         "price ticks",
     )
 
@@ -146,7 +155,7 @@ def ticks_to_price(instrument: Instrument, ticks: int) -> str:
 
 def qty_to_steps(instrument: Instrument, qty: str, mode: Rounding = Rounding.EXACT) -> int:
     return _guard_int64(
-        _quantize(_scaled_dec(qty, instrument.step, "quantity"), instrument.step, mode),
+        _quantize(_scaled_dec(qty, instrument.step, "quantity", mode), instrument.step, mode),
         "qty steps",
     )
 

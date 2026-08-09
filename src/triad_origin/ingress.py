@@ -113,6 +113,25 @@ class ContractIngress:
         # Return a canonical deep copy, never an alias to caller-owned mutable input.
         return Accepted(_event_canonical=canonical_json(normalized), epoch=epoch)
 
+    def export_epochs(self) -> dict:
+        """Closed per-scope producer-epoch high-water state for checkpoint sealing."""
+        with self._lock:
+            return dict(sorted(self._epoch.items()))
+
+    def restore_epochs(self, epochs: dict) -> None:
+        """Restore sealed epoch high-waters before any consumption (fresh ingress only)."""
+        if not isinstance(epochs, dict):
+            raise ValueError("epoch state must be a dict")
+        for scope, epoch in epochs.items():
+            if not isinstance(scope, str) or not scope:
+                raise ValueError(f"epoch scope must be a non-empty string: {scope!r}")
+            if isinstance(epoch, bool) or not isinstance(epoch, int) or epoch < 0:
+                raise ValueError(f"epoch out of domain for scope {scope!r}")
+        with self._lock:
+            if self._epoch:
+                raise ValueError("epoch state restore requires a fresh ingress")
+            self._epoch.update(epochs)
+
     def _quarantine(self, event: Any, reason: str, observed_at_us: int) -> Quarantined:
         try:
             raw = canonical_json(event)

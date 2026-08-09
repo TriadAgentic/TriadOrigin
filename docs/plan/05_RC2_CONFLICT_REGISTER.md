@@ -11,7 +11,8 @@ milestone whose merged PR carries the evidence; everything else remains open._
 | CTRL-B01-001 | **CLOSED B01** — additive descriptor v2 with corrected media types; RC1/R00 descriptors byte-frozen |
 | BLK-RC2-005/006 | **DISPOSITIONED B01** — UTC-µs law + int64-ticks-as-base10-string wire law (Q-E2/Q-E3) |
 | BLK-RC2-010 | **DISPOSITIONED B00** — proposals carried as DARK data; fail-closed runtime (Q-D) |
-| CTRL-B02-001/002 | open — owned by B02 |
+| CTRL-B02-001 | **CLOSED B02** — external anchor journal (`anchor.py`) + tail-deletion/replacement falsification + cold/warm parity |
+| CTRL-B02-002 | **CLOSED B02** — closed fence state sealed in checkpoint v3, restored before consumption, lower-token acceptance falsified across restart |
 | BLK-RC2-007/008/009/011/012/013/014 | open — owned by B03–B05 with RC3 formula/vector law |
 | CTRL-B08-001 | open — owned by B08 |
 | CTRL-R00-001 | open — operator ruleset act (Q-A4) |

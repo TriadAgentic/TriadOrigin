@@ -220,6 +220,91 @@ def epoch_fence() -> None:
         raise AssertionError("stale epoch accepted")
 
 
+# ---------------------------------------------------------------- B02 stages
+@stage("anchor_walk", "External durable anchor: tail deletion/replacement detected beyond self-verification")
+def anchor_walk() -> None:
+    from triad_origin import anchor, ledger
+
+    with tempfile.TemporaryDirectory() as tmp:
+        lpath = pathlib.Path(tmp) / "walk.ledger"
+        apath = pathlib.Path(tmp) / "external" / "walk.anchor"
+        with ledger.LedgerWriter(lpath) as writer:
+            for i in range(4):
+                writer.append(json.dumps({"n": i}).encode())
+        anchor.anchor_ledger(lpath, apath)
+        if anchor.verify_anchored(lpath, apath)["result"] != "PASS":
+            raise AssertionError("anchored ledger failed verification")
+
+        # Forge an internally-consistent shorter ledger; self-verify passes, anchor must not.
+        records = list(ledger.read_records(lpath))
+        rebuilt = pathlib.Path(tmp) / "rebuilt.ledger"
+        with ledger.LedgerWriter(rebuilt) as writer:
+            for rec in records[:2]:
+                writer.append(rec.payload)
+        rebuilt.replace(lpath)
+        if ledger.verify(lpath) != 2:
+            raise AssertionError("forged ledger should self-verify")
+        try:
+            anchor.verify_anchored(lpath, apath)
+        except anchor.AnchorError:
+            pass
+        else:
+            raise AssertionError("anchor failed to detect tail deletion")
+
+
+@stage("fence_restore_walk", "Per-scope fence state seals into checkpoint v3 and refences after restart")
+def fence_restore_walk() -> None:
+    from triad_origin import checkpoint, journal, lease
+    from triad_origin.canonical import canonical_json, sha256_hex
+
+    fence = lease.ConsumerFence()
+    ok = fence.accept(lease.Lease(
+        lease_id="l-9", scope="edge.candidates", producer_service="origin",
+        producer_instance_id="inst", fencing_token=9, activation_manifest_id="am",
+        state=lease.LeaseState.ACTIVE))
+    if not ok:
+        raise AssertionError("active lease refused")
+
+    j = journal.StateJournal(partition="walk")
+    j.append(-1, {}, {"k": 1}, "env-0", ({"event": 0},))
+    state = j.project()
+    cp = checkpoint.Checkpoint(
+        partition="walk", state=state, input_segment="seg", input_offset=1,
+        input_prefix_digest="a" * 64, last_domain_event_id="env-0",
+        highest_producer_epoch=0, projection_checksum=sha256_hex(canonical_json(state)),
+        output_segment="out", output_offset=0, state_seq=j.seq,
+        last_transition_id=j.records()[-1].transition_id,
+        digests={k: "c" * 64 for k in ("build", "config", "contract", "parameter", "instrument")},
+        fence_state={"lease": fence.export_state(), "epoch": {"edge.candidates": 3}},
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = pathlib.Path(tmp) / "cp.json"
+        checkpoint.save(path, cp)
+        loaded = checkpoint.load(path)
+    restored = lease.ConsumerFence()
+    restored.restore_state(loaded.fence_state["lease"])
+    lower = lease.Lease(
+        lease_id="l-8", scope="edge.candidates", producer_service="origin",
+        producer_instance_id="inst2", fencing_token=8, activation_manifest_id="am",
+        state=lease.LeaseState.ACTIVE)
+    if restored.accept(lower):
+        raise AssertionError("restarted fence accepted a lower token")
+    if not restored.accepts_write("edge.candidates", 9):
+        raise AssertionError("restarted fence lost the accepted token")
+
+
+@stage("timing_law", "RC4 timing bounds drift-locked to the vendored bundle; staleness pure")
+def timing_law() -> None:
+    from triad_origin import timings
+
+    bundle = json.loads((ROOT / "docs/control/rc4_control_bundle.json").read_text())
+    if dict(timings.TIMINGS_MS) != bundle["timings"]:
+        raise AssertionError("timing registry drifted from the RC4 bundle")
+    if not timings.is_stale(timings.timing_ms("lever_cache_max_age_ms") + 1,
+                            "lever_cache_max_age_ms"):
+        raise AssertionError("staleness predicate failed")
+
+
 # ---------------------------------------------------------------- B01 stages
 @stage("identity_v2_walk", "Typed identity v2: v1 collision class closed, v1 IDs byte-stable")
 def identity_v2_walk() -> None:

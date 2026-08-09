@@ -90,6 +90,41 @@ class ConsumerFence:
         with self._lock:
             self._revoked.add(normalized)
 
+    def export_state(self) -> dict:
+        """Closed, canonical per-scope fence state for checkpoint sealing (CTRL-B02-002)."""
+        with self._lock:
+            return {
+                "highest": dict(sorted(self._highest.items())),
+                "revoked": sorted(self._revoked),
+            }
+
+    def restore_state(self, state: dict) -> None:
+        """Restore a sealed fence state before any consumption. Fail closed on any malformation.
+
+        Restore is only lawful onto a fresh fence — merging into a live fence could silently
+        lower a high-water mark.
+        """
+        if not isinstance(state, dict) or set(state) != {"highest", "revoked"}:
+            raise ValueError("fence state must be exactly {'highest', 'revoked'}")
+        highest = state["highest"]
+        revoked = state["revoked"]
+        if not isinstance(highest, dict) or not isinstance(revoked, list):
+            raise ValueError("fence state field types are wrong")
+        for scope, token in highest.items():
+            if _canonical_nonempty_text(scope) is None:
+                raise ValueError(f"fence scope is not canonical text: {scope!r}")
+            if isinstance(token, bool) or not isinstance(token, int) or not (
+                    0 < token <= INT64_MAX):
+                raise ValueError(f"fence token out of domain for scope {scope!r}")
+        for scope in revoked:
+            if _canonical_nonempty_text(scope) is None:
+                raise ValueError(f"revoked scope is not canonical text: {scope!r}")
+        with self._lock:
+            if self._highest or self._revoked:
+                raise ValueError("fence state restore requires a fresh fence")
+            self._highest.update({scope: token for scope, token in highest.items()})
+            self._revoked.update(revoked)
+
     def accepts_write(self, scope: str, fencing_token: int) -> bool:
         """Accept only the exact token of an active lease previously accepted for ``scope``."""
         normalized = _canonical_nonempty_text(scope)
