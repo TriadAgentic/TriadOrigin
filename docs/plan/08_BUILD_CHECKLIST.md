@@ -84,15 +84,15 @@ separate gate receipt._
 
 ## B04 · F10–F13 and F15–F17 structure/flow layer
 
-- [ ] F10 FVG + TTL/invalidation/same-bar/future-touch boundaries
-- [ ] F11 displacement + parameter/golden closure
-- [ ] F12 causal OB + linked BOS + zone/TTL/golden closure
-- [ ] F13 excursion/reclaim + parameter closure
-- [ ] F15 trade-flow imbalance
-- [ ] F16 best-level OFI + golden closure
-- [ ] F17 depth-tilt interface; named abstention while minimum depth is unratified
-- [ ] Append-only lifecycle reducer + illegal transition/withdrawal/expiry tests
-- [ ] End-to-end gaps/blocks/reclaim/flow stage
+- [x] F10 FVG + TTL/invalidation/same-bar/future-touch boundaries — GV-009 exact, monotonic shrink
+- [x] F11 displacement + parameter/golden closure — GV-010 exact, exact-rational never float
+- [x] F12 causal OB + linked BOS — PENDING/CONFIRMED/EXPIRED/BROKEN lifecycle; no TTL per formula row (register E15)
+- [x] F13 excursion/reclaim + parameter closure — GV-011 exact, horizon boundary inclusive
+- [x] F15 trade-flow imbalance — GV-013 exact rational (40/100), buy/sell-swap mirror
+- [x] F16 best-level OFI — hand-worked vector (no linked RC3 golden, register E13); sequence-gap + watermark law
+- [x] F17 depth-tilt interface; named abstention while minimum depth is unratified — GV-014 exact under TEST ratification, F17_UNAVAILABLE_MIN_DEPTH_NOT_RATIFIED
+- [x] Append-only lifecycle reducer + illegal transition/withdrawal/expiry tests — closed 7-state graph, zero-mutation-on-illegal proven
+- [x] End-to-end gaps/blocks/reclaim/flow stage — e2e stage 19 structure_flow_walk
 - [ ] Source PR merged green
 - [ ] Post-merge B04 receipt passed
 

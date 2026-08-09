@@ -493,6 +493,113 @@ def structures_walk() -> None:
         raise AssertionError("structure atom journal round-trip mismatch")
 
 
+@stage("structure_flow_walk", "B04: FVG GV-009 -> displacement GV-010 -> order block "
+                              "PENDING/CONFIRMED -> excursion/reclaim GV-011 -> TFI GV-013 -> "
+                              "tilt refuses by name -> lifecycle reducer illegal-transition wall")
+def structure_flow_walk() -> None:
+    from triad_origin import transition
+    from triad_origin.structures import common
+    from triad_origin.structures.displacement import QualifiedDisplacement
+    from triad_origin.structures.excursion_reclaim_registry import (
+        CONFIRMED as RECLAIM_CONFIRMED, ExcursionReclaimTracker)
+    from triad_origin.structures.flow_atoms import BookDepthTilt, TradeFlowImbalance
+    from triad_origin.structures.fvg_registry import FvgZoneRegistry, ZONE_FORMED
+    from triad_origin.structures.lifecycle_reducer import LifecycleReducer
+
+    # 1 · F10 FVG — GV-009: ATR 20, min gap 1; bar i-2 high=100, bar i low=101 -> forms.
+    fvg_bars = [
+        {"event_id": "f0", "kind": "BAR", "payload": {
+            "high_ticks": 90, "low_ticks": 80, "atr14_ticks": 20, "bar_seq": 0}},
+        {"event_id": "f1", "kind": "BAR", "payload": {
+            "high_ticks": 100, "low_ticks": 95, "atr14_ticks": 20, "bar_seq": 1}},
+        {"event_id": "f2", "kind": "BAR", "payload": {
+            "high_ticks": 105, "low_ticks": 101, "atr14_ticks": 20, "bar_seq": 2}},
+    ]
+    fvg_run = transition.run(
+        FvgZoneRegistry(), fvg_bars,
+        {"fvg_min_gap_rule": common.DECLARED_BOS_CLOSE_BUFFER, "zone_ttl_bars": 120})
+    if not [e for e in fvg_run.events if e.get("event_kind") == ZONE_FORMED]:
+        raise AssertionError("F10 GV-009 gap did not form")
+
+    # 2 · F11 displacement — GV-010: ATR_before=10 => D_ticks=15; move 15 qualifies.
+    disp_inputs = [
+        {"event_id": "d_origin", "kind": "ORIGIN", "payload": {
+            "origin_bar_index": 0, "origin_open_ticks": 1000, "atr14_before_origin_ticks": 10}},
+        {"event_id": "d1", "kind": "BAR", "payload": {
+            "bar_index": 1, "open_ticks": 1000, "high_ticks": 1015, "low_ticks": 992,
+            "close_ticks": 1015}},
+    ]
+    disp_run = transition.run(
+        QualifiedDisplacement(), disp_inputs,
+        {"displacement_horizon": 3, "displacement_min_move_rule": common.DECLARED_DISPLACEMENT_MIN_MOVE,
+         "body_fraction_rule": common.DECLARED_DISPLACEMENT_BODY_FRACTION,
+         "close_location_rule": common.DECLARED_DISPLACEMENT_CLOSE_LOCATION})
+    qualified = [e for e in disp_run.events if e.get("event_kind") == "DISPLACEMENT_QUALIFIED"]
+    if not qualified:
+        raise AssertionError("F11 GV-010 displacement did not qualify")
+
+    # 3 · F13 excursion/reclaim — GV-011: two consecutive qualifying closes confirm.
+    reclaim_run = transition.run(
+        ExcursionReclaimTracker(),
+        [{"event_id": "r_exc", "kind": "EXCURSION_CANDIDATE", "payload": {
+              "level_id": "e2e_L1", "direction": common.LONG, "level_ticks": 1000,
+              "high_ticks": 1001, "low_ticks": 999, "atr14_ticks": 20}},
+         {"event_id": "r_o1", "kind": "RECLAIM_OBSERVATION", "payload": {
+              "level_id": "e2e_L1", "ordinal": 1, "close_ticks": 998, "atr14_ticks": 20}},
+         {"event_id": "r_o2", "kind": "RECLAIM_OBSERVATION", "payload": {
+              "level_id": "e2e_L1", "ordinal": 2, "close_ticks": 997, "atr14_ticks": 20}}],
+        {"excursion_min_rule": common.DECLARED_BOS_CLOSE_BUFFER,
+         "reclaim_close_buffer_rule": common.DECLARED_BOS_CLOSE_BUFFER,
+         "reclaim_horizon": 3, "reclaim_hold_bars": 2})
+    if reclaim_run.final_state["levels"]["e2e_L1"]["reclaim_state"] != RECLAIM_CONFIRMED:
+        raise AssertionError("F13 GV-011 reclaim did not confirm")
+
+    # 4 · F15 TFI — GV-013: buy=70, sell=30 -> 40/100 exact.
+    tfi_run = transition.run(
+        TradeFlowImbalance(),
+        [{"event_id": f"t{i}", "kind": "TRADE", "evaluation_time_us": i,
+          "payload": {"quote_notional_ticks": 1, "aggressor_side": "BUY" if i < 70 else "SELL",
+                     "event_time_us": i}} for i in range(100)],
+        {"tfi_window_trades": 100, "tfi_window_max_age_ms": 2000, "tfi_min_trades": 20})
+    tfi_events = [e for e in tfi_run.events if e.get("event_kind") == "FEATURE"]
+    if not tfi_events or (tfi_events[-1]["numerator"], tfi_events[-1]["denominator"]) != (40, 100):
+        raise AssertionError(f"F15 GV-013 TFI mismatch: {tfi_events[-1] if tfi_events else None}")
+
+    # 5 · F17 tilt refuses by name while RC3-PAR-STRUCT-002 stays NOT_RATIFIED.
+    tilt_run = transition.run(
+        BookDepthTilt(),
+        [{"event_id": "tilt0", "kind": "BOOK_DEPTH", "payload": {
+              "bid_quote_depth_ticks_steps": 600, "ask_quote_depth_ticks_steps": 400}}],
+        {"book_tilt_min_quote_depth": common.NOT_RATIFIED})
+    if tilt_run.events[0]["reason_code"] != "F17_UNAVAILABLE_MIN_DEPTH_NOT_RATIFIED":
+        raise AssertionError("F17 must refuse with its named abstention while unratified")
+
+    # 6 · Lifecycle reducer (W05): a legal FORMED->CONFIRMED then an illegal repeat-from-terminal.
+    reducer = LifecycleReducer()
+    legal = transition.run(
+        reducer,
+        [{"event_id": "lc1", "kind": "TRANSITION_REQUEST", "payload": {
+              "structure_id": "e2e_struct", "requested_transition": "FORMED",
+              "trigger_event_id": "lc1"}},
+         {"event_id": "lc2", "kind": "TRANSITION_REQUEST", "payload": {
+              "structure_id": "e2e_struct", "requested_transition": "CONFIRMED",
+              "trigger_event_id": "lc2"}},
+         {"event_id": "lc3", "kind": "TRANSITION_REQUEST", "payload": {
+              "structure_id": "e2e_struct", "requested_transition": "FULLY_FILLED",
+              "trigger_event_id": "lc3"}}], {})
+    illegal = transition.run(
+        reducer,
+        [{"event_id": "lc4", "kind": "TRANSITION_REQUEST", "payload": {
+              "structure_id": "e2e_struct", "requested_transition": "CONFIRMED",
+              "trigger_event_id": "lc4"}}], {},
+        initial=legal.final_state)
+    if illegal.final_state["structures"] != legal.final_state["structures"]:
+        raise AssertionError("lifecycle reducer must reject an illegal transition without mutation")
+    rejections = [e for e in illegal.events if "ILLEGAL" in str(e.get("reason_code", ""))]
+    if not rejections:
+        raise AssertionError("lifecycle reducer must name the illegal-transition refusal")
+
+
 @stage("binding_walk", "binding.v2 registry: 105 rows migrated statuses-preserved; ACTIVE "
                        "resolves, BLOCKED refuses by name (B01R)")
 def binding_walk() -> None:
