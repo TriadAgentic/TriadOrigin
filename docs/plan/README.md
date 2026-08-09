@@ -50,21 +50,56 @@ implementation PR. A milestone may merge only when:
 
 1. required CI checks pass on the exact PR head;
 2. every actionable thread required by that milestone's pre-merge gate is resolved;
-3. the approved head SHA is unchanged;
-4. the PR is squash-merged;
-5. a fresh reconstruction of merged `main` reproduces the checks; and
-6. an immutable milestone receipt is sealed.
+3. an authenticated clean acceptance exists for that exact head;
+4. complete live acceptance inventories and the issue timeline prove the accepted head is unchanged;
+5. the PR is squash-merged using that same head as the expected value;
+6. a fresh reconstruction of merged `main` reproduces the checks; and
+7. an immutable milestone receipt is sealed.
 
-No force-push workflow, self-reported test count, or workbook colour is acceptance evidence.
+No force-push workflow, persistent reaction by itself, self-reported test count, or workbook colour
+is acceptance evidence.
 
 ### R00 bootstrap exception
 
 R00 is the one-time bootstrap exception to the prior-plan-PR rule: the obsolete plan and the
 foundation defects were discovered in the same audit, and no corrected execution law existed under
 which to split them safely. R00 may therefore combine governance refreeze with bounded M1/M2
-integrity remediation. The exception expires when R00 merges. B00 onward requires any semantic
-spec/scope change to merge in a prior, separate PR.
+integrity remediation. The PR #4 post-merge sealer then failed closed because its source artifact
+omitted the reviewed dependency snapshot. Corrective PR #7 is the bounded closure of that same R00
+exception: it may change only the failed receipt/package path and the evidence law needed to bind
+the corrective chain honestly. The exception expires only when the corrective receipt is sealed.
+B00 onward requires any semantic spec/scope change to merge in a prior, separate PR.
 
-For R00 specifically, PR #4 threads close before merge; the 14 inherited PR #1–#3 threads close
-post-merge after their replies can cite the actual squash SHA and receipt, as controlled by
+For R00 specifically, PR #4 threads closed before its merge. Corrective PR #7's observed actionable
+roots—including `3741593887`, `3742096931`, and `3742370663`—must be named, dispositioned, replied
+to, and resolved; root `3742096931` is preserved as an official-contract rebuttal because GitHub
+documents a merged timeline
+event's `commit_id` as the PR head that was merged, not the resulting squash. Two complete live
+GraphQL snapshots must equal the persisted root/resolution/reply inventory and the reviewed
+immutable root manifest. Two complete stable snapshots of PR #7's reviews, top-level issue comments,
+PR-root reactions, and issue timeline must likewise equal the persisted v3 export. A current
+`CHANGES_REQUESTED`, review at or after the selected trigger, unbound post-merge review, pagination
+gap, inventory race, or head/base mutation through merge blocks closure. The reviewed source pins
+the exact pre-final review/comment baseline; every top-level comment must remain unedited, any
+changed historical review or post-trigger dismissal fails closed, and automatic base changes or
+head deletion before receipt sealing are forbidden.
+For either clean-acceptance arm, thread roots and ordinary replies must predate the selected review
+object or final review trigger; only the single canonical unedited closure reply may follow,
+strictly after merge.
+
+Pull-request CI checks out the immutable event head SHA. The named local receipt branch and its
+receipt-auth step run only when the head repository is this repository and the short head branch is
+exactly `evidence/r00-receipt`; a fork cannot acquire the canonical evidence identity.
+
+The clean-review-object arm requires an exact-head review object with no findings and the same
+complete historical comment/review, reaction, pull-boundary, and timeline checks. The observed
+clean-comment arm requires a fresh unchanged full-head/CI trigger followed by a complete
+response frame: the fixed clean declaration, a bounded one-line ASCII opaque display reason with no
+renderer/control syntax, the exact reviewed-head marker, and the exact common tail. The entire body
+is still compared and hashed byte-for-byte; the display reason's lexical meaning is never a verdict
+input. A unique connector PR-level `+1` must occur strictly after this trigger and no later than the
+clean response. Any later commit invalidates the clean result and requires new
+exact-head CI and acceptance. The 14 inherited PR #1–#3 threads closed post-PR #4 merge
+after their replies could cite the actual squash SHA and receipt path. The final receipt inventories
+PRs #1–#4 and #7, as controlled by
 [`00_MASTER_PLAN.md`](00_MASTER_PLAN.md) and [`07_REVIEW_REMEDIATION.md`](07_REVIEW_REMEDIATION.md).

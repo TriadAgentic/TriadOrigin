@@ -7,6 +7,8 @@ import re
 import subprocess
 import sys
 
+from tools.validate_milestone_receipt import _exact_dependency_pin_name
+
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -22,6 +24,29 @@ def test_ci_actions_are_sha_pinned_and_solver_uses_committed_constraints():
     assert 'PYTHONHASHSEED: "0"' in workflow
     assert 'PYTHONHASHSEED: "1"' in workflow
     assert workflow.count("run: python -m pytest") == 2
+    assert "pull-requests: read" in workflow
+    assert "actions: read" in workflow
+    assert "contents: read" in workflow
+    assert "issues: read" in workflow
+    assert "fetch-depth: 2" in workflow
+    assert "ref: ${{ github.event.pull_request.head.sha || github.sha }}" in workflow
+    assert "ref: ${{ github.head_ref || github.sha }}" not in workflow
+    assert "name: Checkout exact head" in workflow
+    assert "name: Establish receipt evidence branch" in workflow
+    assert "git switch --force-create evidence/r00-receipt" in workflow
+    assert '"${{ github.event.pull_request.head.sha }}"' in workflow
+    assert "name: Set up Python 3.11" in workflow
+    assert "hashFiles('evidence/receipts/R00.json')" in workflow
+    assert "github.head_ref == 'evidence/r00-receipt'" in workflow
+    assert workflow.count(
+        "github.event.pull_request.head.repo.full_name == github.repository"
+    ) == 2
+    assert "github.event_name == 'pull_request'" in workflow
+    assert "GITHUB_TOKEN: ${{ github.token }}" in workflow
+    assert (
+        "run: python tools/validate_milestone_receipt.py "
+        "evidence/receipts/R00.json"
+    ) in workflow
 
 
 def test_ci_constraint_snapshot_is_exact_and_unique():
@@ -31,8 +56,8 @@ def test_ci_constraint_snapshot_is_exact_and_unique():
         if line.strip() and not line.startswith("#")
     ]
     assert lines
-    assert all(re.fullmatch(r"[A-Za-z0-9_.-]+==[^=\s]+", line) for line in lines)
-    names = [line.split("==", 1)[0].lower().replace("_", "-") for line in lines]
+    names = [_exact_dependency_pin_name(line) for line in lines]
+    assert all(name is not None for name in names)
     assert len(names) == len(set(names))
     assert {"pytest", "jsonschema", "setuptools", "wheel"} <= set(names)
 

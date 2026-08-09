@@ -49,6 +49,8 @@ def main() -> int:
                 raise RuntimeError("source distribution omits the contract registry")
             if not any(name.endswith("/contracts/MANIFEST.sha256") for name in names):
                 raise RuntimeError("source distribution omits the contract byte manifest")
+            if not any(name.endswith("/constraints/ci.txt") for name in names):
+                raise RuntimeError("source distribution omits the exact dependency snapshot")
             source_legacy_manifest_json_sha = hashlib.sha256(
                 (ROOT / "contracts" / "manifest" / "contract_bundle.manifest.v1.json").read_bytes()
             ).hexdigest()
