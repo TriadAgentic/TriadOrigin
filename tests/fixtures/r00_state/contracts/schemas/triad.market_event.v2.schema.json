@@ -1,0 +1,172 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.market_event.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "DEPTH_DIFF",
+        "BOOK_TICKER",
+        "AGG_TRADE",
+        "MARK_PRICE",
+        "KLINE",
+        "TICKER",
+        "LIQUIDATION",
+        "ORDER_UPDATE",
+        "ACCOUNT_UPDATE",
+        "ALGO_UPDATE",
+        "LISTEN_KEY_EXPIRED"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "canonical_instrument_id": {
+          "type": "string"
+        },
+        "connection_epoch": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "instrument_metadata_revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "local_receipt_mono_ns": {
+          "pattern": "^-?(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "local_receipt_wall_us": {
+          "type": "integer"
+        },
+        "normalization_time_us": {
+          "type": "integer"
+        },
+        "parser_version": {
+          "type": "string"
+        },
+        "quality": {
+          "type": "object"
+        },
+        "raw_event_id": {
+          "type": "string"
+        },
+        "raw_payload_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "receive_sequence": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "route_family": {
+          "enum": [
+            "PUBLIC",
+            "MARKET",
+            "PRIVATE"
+          ],
+          "type": "string"
+        },
+        "source_event_time_us": {
+          "type": "integer"
+        },
+        "source_stream": {
+          "type": "string"
+        },
+        "venue": {
+          "type": "string"
+        },
+        "venue_instrument_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "raw_event_id",
+        "venue",
+        "route_family",
+        "source_stream",
+        "connection_epoch",
+        "receive_sequence",
+        "canonical_instrument_id",
+        "venue_instrument_id",
+        "source_event_time_us",
+        "local_receipt_wall_us",
+        "local_receipt_mono_ns",
+        "normalization_time_us",
+        "instrument_metadata_revision",
+        "raw_payload_hash",
+        "quality",
+        "parser_version"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.market_event.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.market_event.v2",
+  "type": "object"
+}

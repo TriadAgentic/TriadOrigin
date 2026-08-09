@@ -220,6 +220,72 @@ def epoch_fence() -> None:
         raise AssertionError("stale epoch accepted")
 
 
+# ---------------------------------------------------------------- B01 stages
+@stage("identity_v2_walk", "Typed identity v2: v1 collision class closed, v1 IDs byte-stable")
+def identity_v2_walk() -> None:
+    from triad_origin import canonical, ids
+
+    if canonical.digest_fields(1) != canonical.digest_fields("1"):
+        raise AssertionError("v1 collision demonstration changed — identity law drifted")
+    if canonical.digest_fields_v2(1) == canonical.digest_fields_v2("1"):
+        raise AssertionError("v2 failed to separate int/str")
+    si_v1 = ids.semantic_instance_id("f.v1", "d" * 64, "vm", "1m")
+    if si_v1 != "sinst_e7be341c2ffb4c208ff65bfb2142554eb05a3fb5":
+        raise AssertionError("pinned v1 identity vector moved — release blocker")
+    si_v2 = ids.semantic_instance_id(
+        "f.v1", "d" * 64, "vm", "1m",
+        identity_schema_version=ids.IDENTITY_SCHEMA_VERSION_V2)
+    if si_v1 == si_v2:
+        raise AssertionError("v2 identity must differ from v1")
+
+
+@stage("lever_law_walk", "RC4 lever law: valid combination accepted, refusal combinations rejected")
+def lever_law_walk() -> None:
+    from triad_origin import contracts
+
+    event = json.loads(
+        (ROOT / "contracts/golden/triad.engine_control_manifest.v2/valid.json").read_text())
+    contracts.validate(event)
+
+    refusals = [
+        ({"venue_environment": "OFF", "venue_activation": "LIVE"},
+         "OFF_WITH_LIVE_VENUE_ACTIVATION"),
+        ({"shadow_activation": "OFF"}, "shadow OFF"),
+        ({"venue_environment": "LIVE", "venue_activation": "LIVE",
+          "testnet_promotion_receipt": {}}, "LIVE_PROMOTION_RECEIPT_MISSING"),
+        ({"venue_activation": "on"}, "legacy alias"),
+        ({"scope": {"instruments": ["*"]}}, "wildcard scope"),
+    ]
+    for patch, label in refusals:
+        bad = json.loads(json.dumps(event))
+        bad["payload"].update(patch)
+        try:
+            contracts.validate(bad)
+        except contracts.ContractError:
+            continue
+        raise AssertionError(f"lever refusal not enforced: {label}")
+
+    att = json.loads(
+        (ROOT / "contracts/golden/triad.engine_attestation.v2/valid.json").read_text())
+    contracts.validate(att)
+    att["payload"]["artifact_sha256"] = "e" * 64
+    try:
+        contracts.validate(att)
+    except contracts.ContractError:
+        pass
+    else:
+        raise AssertionError("attestation equality law not enforced")
+
+
+@stage("receipt_walk", "B-series milestone receipts validate; forged receipt rejects")
+def receipt_walk() -> None:
+    receipts = sorted((ROOT / "evidence" / "receipts").glob("B*.json"))
+    if not receipts:
+        raise AssertionError("no B-series receipts found")
+    for receipt in receipts:
+        _run_tool("validate_b_receipt.py", str(receipt))
+
+
 # ---------------------------------------------------------------- stage 7
 @stage("capability_boundary", "DARK posture: no network/credential/order capability imports")
 def capability_boundary() -> None:

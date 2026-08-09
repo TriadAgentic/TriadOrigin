@@ -14,18 +14,18 @@ green._
 - [x] `tools/e2e_audit.py` v0 (9 stages green) + CI wiring
 - [x] Plan rewrite (00/01/04/06) + this checklist + `09_OPEN_QUESTIONS.md`
 - [x] `CLAUDE.md` authority update (operator directive 2026-08-09)
-- [ ] PR merged green; branch reset on fresh main
+- [x] PR merged green (#8, squash `1217297`); branch reset on fresh main
 
 ## B01 · Foundation corrections (G0)
-- [ ] Typed identity v2 (field-type tags) + migration vectors; v1 IDs stable
-- [ ] `engine_attestation.v2` equality law + corrected goldens
-- [ ] Bundle descriptor v2 (media types) — RC1 bytes immutable
-- [ ] Strict receipt schemas v2 (RC4 exact enums + combination validation)
-- [ ] `engine_control_manifest.v2`, `fill.v3`, `structure_atom.v2`, `edge_candidate.v2` (+
-      transition) schemas + goldens + registry + manifest re-pin
-- [ ] Epoch-law regression audit (current accepted / lower rejected)
-- [ ] B-series milestone receipt schema + B00 receipt sealed
-- [ ] e2e: v2-identity stage · PR merged green
+- [x] Typed identity v2 (field-type tags) + migration vectors; v1 IDs stable
+- [x] `engine_attestation.v2` equality law + corrected goldens
+- [x] Bundle descriptor v2 (media types) — RC1/R00 descriptor bytes frozen; additive supersession law in `verify_manifest`
+- [x] Strict receipt schemas v2 (`evidence_receipt.v2` · `task_status_event.v2` · `gate_receipt.v2` + semantic PASS conditionals)
+- [x] RC4 L2 contracts: `engine_control_manifest.v2` (lever-combination law) · `runtime_lever_registry.v1` · `runtime_lever_attestation.v1` · `shadow_trade.v1` · `shadow_rejection_audit.v1` · `paper_trade.v1` · `shadow_health.v1` · `execution_authorization.v3`; `fill.v3`→3.1.0 (+TESTNET) · `execution_cmd.v2`→2.1.0 (+environment/activation-revision); registry + manifest re-pin (127 artifacts, 42 contracts)
+- [x] Epoch-law regression audit (current accepted / lower rejected; new authority contracts epoch-fenced)
+- [x] B-series milestone receipt law (`tools/validate_b_receipt.py`) + B00 receipt sealed
+- [x] R00 ceremony tests repointed to the frozen R00-era fixture (`tests/fixtures/r00_state`)
+- [ ] e2e: identity-v2 + lever-law + receipt stages · PR merged green
 
 ## B02 · Kernel hardening
 - [ ] Ledger external durable anchor + tail-deletion/replacement falsification

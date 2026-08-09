@@ -15,10 +15,13 @@ import pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CONTRACTS = ROOT / "contracts"
 LEGACY_MANIFEST_JSON = CONTRACTS / "manifest" / "contract_bundle.manifest.v1.json"
-MANIFEST_JSON = CONTRACTS / "manifest" / "contract_bundle.manifest.r00.v1.json"
+# R00's descriptor is frozen at its merged bytes (historical evidence); B01 owns the living
+# descriptor, which corrects the CTRL-B01-001 media-type defect additively.
+R00_MANIFEST_JSON = CONTRACTS / "manifest" / "contract_bundle.manifest.r00.v1.json"
+MANIFEST_JSON = CONTRACTS / "manifest" / "contract_bundle.manifest.b01.v2.json"
 MANIFEST_SHA = CONTRACTS / "MANIFEST.sha256"
-BUNDLE_VERSION = "origin.contracts.1.0.0-RC1"
-DESCRIPTOR_VERSION = "origin.contract-bundle-descriptor.r00.v1"
+BUNDLE_VERSION = "origin.contracts.1.1.0-B01"
+DESCRIPTOR_VERSION = "origin.contract-bundle-descriptor.b01.v2"
 DARK_CONFIG_BUNDLE_SHA256 = hashlib.sha256(
     b"TRIAD_ORIGIN_NO_CONFIG_BUNDLE_DARK"
 ).hexdigest()
@@ -39,7 +42,17 @@ def bundle_files() -> list[pathlib.Path]:
 
 
 def _media_type(path: pathlib.Path) -> str:
-    return "application/schema+json" if path.suffix == ".json" else "application/octet-stream"
+    """CTRL-B01-001: only JSON-Schema documents are ``application/schema+json``.
+
+    Golden vectors and the registry index are plain JSON data — RC1/R00 labelled every JSON
+    artifact as a schema, which the B01 descriptor corrects (legacy descriptor bytes stay frozen).
+    """
+    rel = str(path)
+    if path.suffix != ".json":
+        return "application/octet-stream"
+    if path.name.endswith(".schema.json"):
+        return "application/schema+json"
+    return "application/json"
 
 
 def build_manifest() -> dict:

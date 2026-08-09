@@ -50,7 +50,8 @@ HEX64 = r"^[0-9a-f]{64}$"
 # Contract profile: (schema_id, semantic_version, producer, consumers, event_kinds, authority,
 #                    required_payload_fields, payload_enums, forbidden_fields)
 def _c(schema_id, version, producer, consumers, event_kinds, authority, required, enums=None,
-       forbidden=None):
+       forbidden=None, payload_overrides=None, invalid_payload_overrides=None,
+       superseded_by=None):
     return {
         "id": schema_id,
         "version": version,
@@ -61,6 +62,11 @@ def _c(schema_id, version, producer, consumers, event_kinds, authority, required
         "required": required,
         "enums": enums or {},
         "forbidden": forbidden or [],
+        # Semantic-law contracts need goldens that satisfy (valid) / violate (invalid) the
+        # cross-field law, not just the JSON Schema — overrides patch the generated payloads.
+        "payload_overrides": payload_overrides or {},
+        "invalid_payload_overrides": invalid_payload_overrides or {},
+        "superseded_by": superseded_by,
     }
 
 
@@ -176,16 +182,20 @@ CONTRACTS = [
        {"position_side": ["LONG", "SHORT", "BOTH"], "position_mode": ["ONE_WAY", "HEDGE"],
         "urgency_tier": ["TIER1", "TIER2"]}),
 
-    _c("triad.execution_cmd.v2", "2.0.0", "e09-orchestrator", ["e09-venue-adapter"],
+    # 2.1.0 (B01/RC4): every venue command names its exact environment + the accepted
+    # venue-activation revision it executes under.
+    _c("triad.execution_cmd.v2", "2.1.0", "e09-orchestrator", ["e09-venue-adapter"],
        ["EXECUTION_CMD"], True,
        ["command_id", "attempt_id", "idempotency_id", "authorization_id", "reservation_id",
-        "account_id", "canonical_instrument_id", "venue", "order_side", "position_side",
+        "account_id", "canonical_instrument_id", "venue", "venue_environment",
+        "venue_activation_revision", "order_side", "position_side",
         "position_effect", "quantity_steps", "price_ticks", "order_type", "time_in_force",
         "post_only", "reduce_only", "close_position", "working_type", "price_protect", "stp",
         "role", "deadline_us", "urgency", "retry_budget", "adapter_route",
         "expected_prior_order_state"],
        {"order_side": ["BUY", "SELL"], "position_side": ["LONG", "SHORT", "BOTH"],
-        "position_effect": ["OPEN", "INCREASE", "REDUCE", "CLOSE", "REVERSE"]}),
+        "position_effect": ["OPEN", "INCREASE", "REDUCE", "CLOSE", "REVERSE"],
+        "venue_environment": ["LIVE", "TESTNET"]}),
 
     _c("triad.order_event.v2", "2.0.0", "e09-oms-vgp", ["reconciler", "e10", "audit"],
        ["ORDER_EVENT"], True,
@@ -197,7 +207,9 @@ CONTRACTS = [
         "reconciliation_status", "source_payload_hash"],
        {"order_side": ["BUY", "SELL"], "order_family": ["REGULAR", "ALGO"]}),
 
-    _c("triad.fill.v3", "3.0.0", "e09-fill-normalizer", ["reconciler", "e10", "learning"],
+    # 3.1.0 (B01/RC4): environment widened to LIVE|TESTNET — the four-plane law certifies the
+    # two venue environments separately and forbids mixing them in one bundle.
+    _c("triad.fill.v3", "3.1.0", "e09-fill-normalizer", ["reconciler", "e10", "learning"],
        ["FILL"], True,
        ["fill_id", "venue_trade_id", "oms_order_id", "venue_order_id", "execution_command_id",
         "authorization_id", "economic_idempotency_id", "venue", "environment", "account_id",
@@ -211,7 +223,7 @@ CONTRACTS = [
         "local_receipt_wall_us", "local_receipt_mono_ns", "normalized_time_us", "recorded_time_us",
         "connection_session_id", "raw_payload_digest", "reconciliation_status",
         "position_effect_derivation_evidence", "role_derivation_evidence"],
-       {"environment": ["LIVE"], "order_side": ["BUY", "SELL"],
+       {"environment": ["LIVE", "TESTNET"], "order_side": ["BUY", "SELL"],
         "position_side": ["LONG", "SHORT", "BOTH"], "position_mode": ["ONE_WAY", "HEDGE"],
         "position_effect": ["OPEN", "INCREASE", "REDUCE", "CLOSE", "REVERSE"],
         "order_role": ["ENTRY", "EXIT", "PROTECTION", "EMERGENCY"],
@@ -293,13 +305,16 @@ CONTRACTS = [
        ["CONTRACT_BUNDLE_MANIFEST"], False,
        ["bundle_version", "artifacts", "canonical_manifest_hash"]),
 
+    # RC4 supersession: C-027 activation_manifest.v1 is replaced by engine_control_manifest.v2
+    # with exact lever enums; v1 bytes stay frozen for compatibility evidence.
     _c("triad.activation_manifest.v1", "1.0.0", "release-governance", ["every-service"],
        ["ACTIVATION_MANIFEST"], False,
        ["activation_manifest_id", "build_commit", "artifact_sha256", "contract_manifest_sha256",
         "config_bundle_sha256", "services", "topic_bindings", "capsules", "symbols", "sides",
         "timeframes", "experiment_arm", "allocation", "account_id", "risk_cell",
         "permitted_authority", "lease_scope", "limits_ref", "policy_ref", "start_us", "expiry_us",
-        "approvals", "rollback_manifest_id", "allow_money_publish"]),
+        "approvals", "rollback_manifest_id", "allow_money_publish"],
+       superseded_by="triad.engine_control_manifest.v2"),
 
     _c("triad.compatibility_manifest.v1", "1.0.0", "contract-governance",
        ["bridges", "consumers"], ["COMPATIBILITY_MANIFEST"], False,
@@ -317,6 +332,165 @@ CONTRACTS = [
         "config_bundle_sha256", "contract_manifest_sha256", "parameter_digest", "instrument_digest",
         "checkpoint_identity", "run_seed", "platform", "output_segment_hashes", "state_checksums",
         "test_suite_result", "divergence_links", "signer"]),
+
+    # ---------------------------------------------------------------- B01 additions (G0 / RC4 L2)
+    # RC4 lever law: exact enums, no aliases, no coercion. Valid golden uses the TESTNET/LIVE
+    # combination (lawful without a promotion receipt); invalid golden is the OFF+LIVE semantic
+    # refusal OFF_WITH_LIVE_VENUE_ACTIVATION — schema-valid, semantically rejected.
+    _c("triad.engine_control_manifest.v2", "2.0.0", "governance-configuration",
+       ["every-service", "lever-resolver"], ["ENGINE_CONTROL_MANIFEST"], False,
+       ["control_manifest_id", "engine_id", "revision", "scope", "venue_environment",
+        "venue_activation", "paper_activation", "shadow_activation", "activations",
+        "registry_digest", "strategy_digest", "adapter_digest", "parameter_digest",
+        "venue_binding", "account_binding", "route_binding", "credential_fingerprint_sha256",
+        "issued_at_us", "expires_at_us", "testnet_promotion_receipt", "signatures"],
+       {"venue_environment": ["LIVE", "TESTNET", "OFF"],
+        "venue_activation": ["LIVE", "OFF"],
+        "paper_activation": ["LIVE", "OFF"],
+        "shadow_activation": ["LIVE"]},
+       payload_overrides={"venue_environment": "TESTNET", "venue_activation": "LIVE",
+                          "paper_activation": "OFF",
+                          "activations": {"origin.candidate_publisher": "OFF"},
+                          "scope": {"engine_id": "triad-origin-e02",
+                                    "instruments": ["BTCUSDT.binance-usdm"]}},
+       invalid_payload_overrides={"venue_environment": "OFF", "venue_activation": "LIVE"}),
+
+    _c("triad.runtime_lever_registry.v1", "1.0.0", "governance-configuration",
+       ["every-service", "lever-resolver"], ["RUNTIME_LEVER_REGISTRY"], False,
+       ["registry_id", "revision", "levers", "registry_digest"]),
+
+    _c("triad.runtime_lever_attestation.v1", "1.0.0", "every-runtime-instance",
+       ["operations", "audit"], ["RUNTIME_LEVER_ATTESTATION"], True,
+       ["attestation_id", "engine_id", "accepted_manifest_digest_sha256", "accepted_revision",
+        "venue_environment", "venue_activation", "paper_activation", "shadow_activation",
+        "process_identity", "route_proof", "account_proof", "lease_epoch", "health",
+        "attested_at_us", "freshness_age_ms"],
+       {"venue_environment": ["LIVE", "TESTNET", "OFF"],
+        "venue_activation": ["LIVE", "OFF"],
+        "paper_activation": ["LIVE", "OFF"],
+        "shadow_activation": ["LIVE"]},
+       payload_overrides={"venue_environment": "OFF", "venue_activation": "OFF",
+                          "paper_activation": "OFF"}),
+
+    # RC4 shadow law: every rejected shadow-tradeable candidate produces a durable disposition.
+    _c("triad.shadow_trade.v1", "1.0.0", "origin-shadow-recorder",
+       ["shadow-resolver", "learning", "audit"], ["SHADOW_TRADE"], True,
+       ["shadow_trade_id", "candidate_id", "hypothesis_id", "frozen_at_us", "origin_disposition",
+        "rejection_stage", "rejection_reason", "population", "shadow_activation",
+        "market_watermark", "proposed_geometry", "evaluation_notional_quote",
+        "simulator_version", "resolver_version", "cost_model_version", "event_time_us",
+        "recorded_time_us", "fill_model_result", "terminal_outcome"],
+       {"origin_disposition": ["REJECTED", "ACCEPTED_NOT_EXECUTED", "PROVEN_NO_VENUE_EFFECT"],
+        "population": ["SHADOW"], "shadow_activation": ["LIVE"]},
+       forbidden=["venue_order_id", "venue_trade_id", "account_id", "raw_credentials"]),
+
+    # Never fabricates geometry: an untradeable input is recorded WITHOUT entry/stop/target.
+    _c("triad.shadow_rejection_audit.v1", "1.0.0", "origin-candidate-guards",
+       ["owner", "operations"], ["SHADOW_REJECTION_AUDIT"], True,
+       ["audit_id", "attempt_identity", "raw_source_evidence", "validation_failure", "marker",
+        "observed_at_us"],
+       {"marker": ["SHADOW_UNTRADEABLE"]},
+       forbidden=["entry_ticks", "stop_ticks", "target_ticks", "proposed_geometry",
+                  "entry_reference_ticks", "natural_invalidation_ticks", "targets"]),
+
+    # PAPER is a virtual demo plane: full virtual lineage, no venue identity, ever.
+    _c("triad.paper_trade.v1", "1.0.0", "paper-demo-executor",
+       ["learning", "audit"], ["PAPER_TRADE"], True,
+       ["paper_trade_id", "candidate_id", "population", "activation_revision",
+        "virtual_account_id", "virtual_balance_quote", "virtual_order", "virtual_fill",
+        "virtual_position", "virtual_outcome", "market_watermark", "event_time_us",
+        "recorded_time_us"],
+       {"population": ["PAPER"]},
+       forbidden=["venue", "venue_order_id", "venue_trade_id", "account_id", "raw_credentials"]),
+
+    _c("triad.shadow_health.v1", "1.0.0", "origin-shadow-recorder",
+       ["operations", "health-controller"], ["SHADOW_HEALTH"], True,
+       ["writer_heartbeat_us", "rejection_persist_latency_ms", "backlog_watermark_us",
+        "resolver_lag_ms", "dedupe_count", "collision_count", "coverage",
+        "contamination_count"]),
+
+    # RC4: E08 authorization v3 names exact environment, activation revision, lease epoch, scope.
+    _c("triad.execution_authorization.v3", "3.0.0", "triad-e08", ["e09-orchestrator"],
+       ["EXECUTION_AUTHORIZATION"], True,
+       ["candidate_id", "decision_id", "risk_decision_id", "reservation_id", "account_id",
+        "canonical_instrument_id", "direction", "position_effect", "max_qty_steps",
+        "max_notional_quote", "entry_geometry", "invalidation_geometry", "target_geometry",
+        "allowed_liquidity", "allowed_tif", "allowed_order_roles", "protection_deadline_us",
+        "protection_budget", "valid_until_us", "venue_environment", "venue_activation_revision",
+        "lease_epoch", "scope"],
+       {"direction": DIRECTION,
+        "position_effect": ["OPEN", "INCREASE", "REDUCE", "CLOSE", "REVERSE"],
+        "venue_environment": ["LIVE", "TESTNET"]}),
+
+    # RC3 receipt_v2_requirements: strict evidence/task/gate receipts (PASS is conditional).
+    _c("triad.evidence_receipt.v2", "2.0.0", "governance-evidence", ["governance", "audit"],
+       ["EVIDENCE_RECEIPT"], False,
+       ["receipt_id", "scope", "result", "evidence_ids", "evidence_sha256s", "observed_at_us",
+        "expires_at_us", "producer_digests", "builder", "reviewer", "signature"],
+       {"result": ["PASS", "FAIL", "BLOCKED"]},
+       payload_overrides={"result": "PASS",
+                          "scope": {"milestone": "B00"},
+                          "evidence_ids": ["ev-1"],
+                          "evidence_sha256s": ["0" * 64],
+                          "observed_at_us": 1786156800123456,
+                          "expires_at_us": 1786243200123456,
+                          "builder": "builder-a", "reviewer": "reviewer-b",
+                          "signature": "sig-1"},
+       invalid_payload_overrides={"result": "PASS", "builder": "same-actor",
+                                  "reviewer": "same-actor"}),
+
+    _c("triad.task_status_event.v2", "2.0.0", "governance-evidence", ["governance", "audit"],
+       ["TASK_STATUS_EVENT"], False,
+       ["task_id", "gate", "from_status", "to_status", "predecessor_receipt_ids",
+        "acceptance_receipt_ids", "verification_receipt_ids", "scope", "transitioned_at_us",
+        "actor", "signature"],
+       {"from_status": ["NOT_STARTED", "IN_PROGRESS", "BLOCKED", "PASS", "FAIL"],
+        "to_status": ["NOT_STARTED", "IN_PROGRESS", "BLOCKED", "PASS", "FAIL"]},
+       payload_overrides={"from_status": "IN_PROGRESS", "to_status": "PASS",
+                          "acceptance_receipt_ids": ["acc-1"],
+                          "verification_receipt_ids": ["ver-1"],
+                          "signature": "sig-1"},
+       invalid_payload_overrides={"from_status": "IN_PROGRESS", "to_status": "PASS",
+                                  "acceptance_receipt_ids": [],
+                                  "verification_receipt_ids": []}),
+
+    _c("triad.gate_receipt.v2", "2.0.0", "governance-evidence", ["governance", "audit"],
+       ["GATE_RECEIPT"], False,
+       ["gate", "scope", "result", "predecessor_gate_receipt_id", "task_receipt_ids",
+        "verification_receipt_ids", "open_blockers", "rollback_proof_ids", "producer_digests",
+        "observed_at_us", "expires_at_us", "approver", "signature"],
+       {"result": ["READY", "PASS", "FAIL", "BLOCKED"]},
+       payload_overrides={"result": "PASS", "task_receipt_ids": ["t-1"],
+                          "verification_receipt_ids": ["v-1"],
+                          "rollback_proof_ids": ["r-1"], "open_blockers": [],
+                          "approver": "approver-a", "signature": "sig-1"},
+       invalid_payload_overrides={"result": "PASS", "open_blockers": ["BLK-1"],
+                                  "task_receipt_ids": ["t-1"],
+                                  "verification_receipt_ids": ["v-1"]}),
+
+    # CTRL-B01-002 / BLK-RC2-016: attestation v2 — payload identity fields MUST equal their
+    # envelope twins (the semantic equality law); valid golden satisfies it by construction,
+    # invalid golden carries one mismatched digest.
+    _c("triad.engine_attestation.v2", "2.0.0", "every-producer", ["consumers", "operations"],
+       ["ATTESTATION"], True,
+       ["contract_bundle_version", "contract_manifest_sha256", "config_bundle_sha256",
+        "risk_policy_sha", "build_commit", "artifact_sha256", "parameter_set_id",
+        "parameter_digest", "instrument_map_digest", "fee_model_id", "universe_digest",
+        "activation_manifest_id", "producer_epoch", "environment", "host_identity",
+        "startup_receipt_id", "identity_equality_version"],
+       {"environment": ["LIVE", "TESTNET", "OFF"],
+        "identity_equality_version": ["attestation-equality/1"]},
+       payload_overrides={"contract_manifest_sha256": "1" * 64,
+                          "config_bundle_sha256": "2" * 64,
+                          "build_commit": "0000000000000000000000000000000000000000",
+                          "artifact_sha256": "3" * 64,
+                          "producer_epoch": "42",
+                          "environment": "OFF"},
+       invalid_payload_overrides={"contract_manifest_sha256": "f" * 64,
+                                  "config_bundle_sha256": "2" * 64,
+                                  "build_commit": "0000000000000000000000000000000000000000",
+                                  "artifact_sha256": "3" * 64,
+                                  "producer_epoch": "42"}),
 ]
 
 
@@ -327,7 +501,10 @@ _NS = ("_ns",)
 _HEX = ("_sha256", "_hash", "_digest")
 _BOOL = {"watermark_complete", "post_only", "reduce_only", "close_position", "price_protect",
          "tier2_market_permitted", "allow_money_publish"}
-_ARRAY = {"source_offset_range", "dependency_event_ids", "origin_source_ids",
+_ARRAY = {"levers", "signatures", "evidence_ids", "evidence_sha256s",
+          "predecessor_receipt_ids", "acceptance_receipt_ids", "verification_receipt_ids",
+          "task_receipt_ids", "rollback_proof_ids", "open_blockers",
+          "source_offset_range", "dependency_event_ids", "origin_source_ids",
           "confirmation_source_ids", "reference_level_ids", "predecessor_structure_ids",
           "source_event_ids", "reference_ids", "fresh_flow_atom_ids", "targets", "target_ticks",
           "linked_execution_ids", "allowed_liquidity", "allowed_tif", "allowed_order_roles",
@@ -337,7 +514,13 @@ _ARRAY = {"source_offset_range", "dependency_event_ids", "origin_source_ids",
           "approvals", "allowed_readers", "allowed_writers", "transformations",
           "non_material_fields", "fills", "markouts", "input_segment_hashes", "input_offsets",
           "output_segment_hashes", "divergence_links", "venue_sequences"}
-_OBJECT = {"partition_key", "original_geometry", "current_geometry", "entry_geometry",
+_OBJECT = {"activations", "venue_binding", "account_binding", "route_binding",
+           "testnet_promotion_receipt", "process_identity", "route_proof", "account_proof",
+           "health", "market_watermark", "proposed_geometry", "fill_model_result",
+           "terminal_outcome", "attempt_identity", "raw_source_evidence", "virtual_order",
+           "virtual_fill", "virtual_position", "virtual_outcome", "producer_digests",
+           "coverage",
+           "partition_key", "original_geometry", "current_geometry", "entry_geometry",
            "invalidation_geometry", "target_geometry", "quality", "quality_snapshot",
            "dependency_quality", "dependency_ranges", "dependency_clocks", "feature_values",
            "location_result", "departure_result", "trigger_result", "confirmation_result",
@@ -351,7 +534,11 @@ _OBJECT = {"partition_key", "original_geometry", "current_geometry", "entry_geom
 _DECIMAL_UINT_FIELDS = {"producer_epoch", "fencing_token", "state_seq", "geometry_revision",
                         "connection_epoch", "receive_sequence", "instrument_metadata_revision",
                         "instrument_revision", "first_touch_ordinal", "rr_numerator",
-                        "rr_denominator", "retry_budget", "horizon"}
+                        "rr_denominator", "retry_budget", "horizon",
+                        "revision", "accepted_revision", "activation_revision",
+                        "venue_activation_revision", "lease_epoch",
+                        "rejection_persist_latency_ms", "resolver_lag_ms", "freshness_age_ms",
+                        "dedupe_count", "collision_count", "contamination_count"}
 
 
 def _field_schema(name: str, enums: dict) -> dict:
@@ -466,13 +653,22 @@ def build_valid(c: dict, schema: dict) -> dict:
     payload = {}
     for f in c["required"]:
         payload[f] = _sample_for(_field_schema(f, c["enums"]))
+    payload.update(c.get("payload_overrides", {}))
     env["payload"] = payload
     return env
 
 
 def build_invalid(c: dict) -> dict:
-    """A golden invalid vector: drop the first required payload field."""
+    """A golden invalid vector.
+
+    Default: drop the first required payload field. Contracts with a semantic (cross-field) law
+    instead supply ``invalid_payload_overrides`` — a schema-valid payload that violates the
+    semantic law, so the invalid golden proves the semantic validator, not just JSON Schema.
+    """
     v = build_valid(c, {})
+    if c.get("invalid_payload_overrides"):
+        v["payload"].update(c["invalid_payload_overrides"])
+        return v
     dropped = c["required"][0]
     v["payload"].pop(dropped, None)
     v["_invalid_reason"] = f"missing required payload field: {dropped}"
@@ -490,20 +686,27 @@ def _write_json(path: pathlib.Path, obj) -> None:
 
 
 def main() -> None:
-    index = {"identity_schema_version": "origin.identity.v1", "contracts": []}
+    index = {
+        "identity_schema_version": "origin.identity.v1",
+        "identity_schema_versions": ["origin.identity.v1", "origin.identity.v2"],
+        "contracts": [],
+    }
     for c in CONTRACTS:
         schema = build_schema(c)
         _write_json(SCHEMA_DIR / f"{c['id']}.schema.json", schema)
         _write_json(GOLDEN_DIR / c["id"] / "valid.json", build_valid(c, schema))
         _write_json(GOLDEN_DIR / c["id"] / "invalid.json", build_invalid(c))
-        index["contracts"].append({
+        entry = {
             "contract_id": c["id"],
             "schema_version": c["version"],
             "producer": c["producer"],
             "consumers": c["consumers"],
             "authority_fenced": c["authority"],
             "schema_path": f"contracts/schemas/{c['id']}.schema.json",
-        })
+        }
+        if c.get("superseded_by"):
+            entry["superseded_by"] = c["superseded_by"]
+        index["contracts"].append(entry)
     _write_json(REGISTRY_DIR / "index.json", index)
     print(f"generated {len(CONTRACTS)} contracts + golden vectors + registry index")
 

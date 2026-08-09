@@ -138,6 +138,17 @@
         "venue": {
           "type": "string"
         },
+        "venue_activation_revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "venue_environment": {
+          "enum": [
+            "LIVE",
+            "TESTNET"
+          ],
+          "type": "string"
+        },
         "working_type": {
           "type": "string"
         }
@@ -151,6 +162,8 @@
         "account_id",
         "canonical_instrument_id",
         "venue",
+        "venue_environment",
+        "venue_activation_revision",
         "order_side",
         "position_side",
         "position_effect",
@@ -189,7 +202,7 @@
       "const": "triad.execution_cmd.v2"
     },
     "schema_version": {
-      "const": "2.0.0"
+      "const": "2.1.0"
     },
     "traceparent": {
       "type": "string"

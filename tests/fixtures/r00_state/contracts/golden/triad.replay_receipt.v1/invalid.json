@@ -1,0 +1,31 @@
+{
+  "artifact_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+  "build_commit": "0000000000000000000000000000000000000000",
+  "config_bundle_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "contract_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "emitted_at_us": 1786156800123456,
+  "event_id": "evt_triad_replay_receipt_v1",
+  "event_kind": "REPLAY_RECEIPT",
+  "payload": {
+    "build_commit": "x",
+    "checkpoint_identity": "x",
+    "config_bundle_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "contract_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "divergence_links": [],
+    "fidelity_class": "x",
+    "input_offsets": [],
+    "input_segment_hashes": [],
+    "instrument_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "output_segment_hashes": [],
+    "parameter_digest": "0000000000000000000000000000000000000000000000000000000000000000",
+    "platform": "x",
+    "run_seed": "x",
+    "signer": "x",
+    "state_checksums": {},
+    "test_suite_result": {}
+  },
+  "producer_instance_id": "inst_golden_01",
+  "producer_service": "replay-runner",
+  "schema": "triad.replay_receipt.v1",
+  "schema_version": "1.0.0"
+}

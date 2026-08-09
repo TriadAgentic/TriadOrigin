@@ -154,7 +154,7 @@
       "contract_id": "triad.execution_cmd.v2",
       "producer": "e09-orchestrator",
       "schema_path": "contracts/schemas/triad.execution_cmd.v2.schema.json",
-      "schema_version": "2.0.0"
+      "schema_version": "2.1.0"
     },
     {
       "authority_fenced": true,
@@ -178,7 +178,7 @@
       "contract_id": "triad.fill.v3",
       "producer": "e09-fill-normalizer",
       "schema_path": "contracts/schemas/triad.fill.v3.schema.json",
-      "schema_version": "3.0.0"
+      "schema_version": "3.1.0"
     },
     {
       "authority_fenced": true,
@@ -299,7 +299,8 @@
       "contract_id": "triad.activation_manifest.v1",
       "producer": "release-governance",
       "schema_path": "contracts/schemas/triad.activation_manifest.v1.schema.json",
-      "schema_version": "1.0.0"
+      "schema_version": "1.0.0",
+      "superseded_by": "triad.engine_control_manifest.v2"
     },
     {
       "authority_fenced": false,
@@ -333,7 +334,143 @@
       "producer": "replay-runner",
       "schema_path": "contracts/schemas/triad.replay_receipt.v1.schema.json",
       "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "every-service",
+        "lever-resolver"
+      ],
+      "contract_id": "triad.engine_control_manifest.v2",
+      "producer": "governance-configuration",
+      "schema_path": "contracts/schemas/triad.engine_control_manifest.v2.schema.json",
+      "schema_version": "2.0.0"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "every-service",
+        "lever-resolver"
+      ],
+      "contract_id": "triad.runtime_lever_registry.v1",
+      "producer": "governance-configuration",
+      "schema_path": "contracts/schemas/triad.runtime_lever_registry.v1.schema.json",
+      "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": true,
+      "consumers": [
+        "operations",
+        "audit"
+      ],
+      "contract_id": "triad.runtime_lever_attestation.v1",
+      "producer": "every-runtime-instance",
+      "schema_path": "contracts/schemas/triad.runtime_lever_attestation.v1.schema.json",
+      "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": true,
+      "consumers": [
+        "shadow-resolver",
+        "learning",
+        "audit"
+      ],
+      "contract_id": "triad.shadow_trade.v1",
+      "producer": "origin-shadow-recorder",
+      "schema_path": "contracts/schemas/triad.shadow_trade.v1.schema.json",
+      "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": true,
+      "consumers": [
+        "owner",
+        "operations"
+      ],
+      "contract_id": "triad.shadow_rejection_audit.v1",
+      "producer": "origin-candidate-guards",
+      "schema_path": "contracts/schemas/triad.shadow_rejection_audit.v1.schema.json",
+      "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": true,
+      "consumers": [
+        "learning",
+        "audit"
+      ],
+      "contract_id": "triad.paper_trade.v1",
+      "producer": "paper-demo-executor",
+      "schema_path": "contracts/schemas/triad.paper_trade.v1.schema.json",
+      "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": true,
+      "consumers": [
+        "operations",
+        "health-controller"
+      ],
+      "contract_id": "triad.shadow_health.v1",
+      "producer": "origin-shadow-recorder",
+      "schema_path": "contracts/schemas/triad.shadow_health.v1.schema.json",
+      "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": true,
+      "consumers": [
+        "e09-orchestrator"
+      ],
+      "contract_id": "triad.execution_authorization.v3",
+      "producer": "triad-e08",
+      "schema_path": "contracts/schemas/triad.execution_authorization.v3.schema.json",
+      "schema_version": "3.0.0"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "governance",
+        "audit"
+      ],
+      "contract_id": "triad.evidence_receipt.v2",
+      "producer": "governance-evidence",
+      "schema_path": "contracts/schemas/triad.evidence_receipt.v2.schema.json",
+      "schema_version": "2.0.0"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "governance",
+        "audit"
+      ],
+      "contract_id": "triad.task_status_event.v2",
+      "producer": "governance-evidence",
+      "schema_path": "contracts/schemas/triad.task_status_event.v2.schema.json",
+      "schema_version": "2.0.0"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "governance",
+        "audit"
+      ],
+      "contract_id": "triad.gate_receipt.v2",
+      "producer": "governance-evidence",
+      "schema_path": "contracts/schemas/triad.gate_receipt.v2.schema.json",
+      "schema_version": "2.0.0"
+    },
+    {
+      "authority_fenced": true,
+      "consumers": [
+        "consumers",
+        "operations"
+      ],
+      "contract_id": "triad.engine_attestation.v2",
+      "producer": "every-producer",
+      "schema_path": "contracts/schemas/triad.engine_attestation.v2.schema.json",
+      "schema_version": "2.0.0"
     }
   ],
-  "identity_schema_version": "origin.identity.v1"
+  "identity_schema_version": "origin.identity.v1",
+  "identity_schema_versions": [
+    "origin.identity.v1",
+    "origin.identity.v2"
+  ]
 }

@@ -1,0 +1,18 @@
+{
+  "artifact_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+  "build_commit": "0000000000000000000000000000000000000000",
+  "config_bundle_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "contract_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "emitted_at_us": 1786156800123456,
+  "event_id": "evt_triad_contract_bundle_manifest_v1",
+  "event_kind": "CONTRACT_BUNDLE_MANIFEST",
+  "payload": {
+    "artifacts": [],
+    "bundle_version": "x",
+    "canonical_manifest_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "producer_instance_id": "inst_golden_01",
+  "producer_service": "contract-governance",
+  "schema": "triad.contract_bundle.manifest.v1",
+  "schema_version": "1.0.0"
+}

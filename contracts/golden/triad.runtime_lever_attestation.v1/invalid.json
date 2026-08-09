@@ -1,0 +1,30 @@
+{
+  "artifact_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+  "build_commit": "0000000000000000000000000000000000000000",
+  "config_bundle_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+  "contract_manifest_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "emitted_at_us": 1786156800123456,
+  "event_id": "evt_triad_runtime_lever_attestation_v1",
+  "event_kind": "RUNTIME_LEVER_ATTESTATION",
+  "payload": {
+    "accepted_manifest_digest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "accepted_revision": "1",
+    "account_proof": {},
+    "attested_at_us": 1786156800123456,
+    "engine_id": "x",
+    "freshness_age_ms": "1",
+    "health": {},
+    "lease_epoch": "1",
+    "paper_activation": "OFF",
+    "process_identity": {},
+    "route_proof": {},
+    "shadow_activation": "LIVE",
+    "venue_activation": "OFF",
+    "venue_environment": "OFF"
+  },
+  "producer_epoch": "42",
+  "producer_instance_id": "inst_golden_01",
+  "producer_service": "every-runtime-instance",
+  "schema": "triad.runtime_lever_attestation.v1",
+  "schema_version": "1.0.0"
+}

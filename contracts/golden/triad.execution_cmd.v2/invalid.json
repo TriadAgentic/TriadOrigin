@@ -32,11 +32,13 @@
     "time_in_force": "x",
     "urgency": "x",
     "venue": "x",
+    "venue_activation_revision": "1",
+    "venue_environment": "LIVE",
     "working_type": "x"
   },
   "producer_epoch": "42",
   "producer_instance_id": "inst_golden_01",
   "producer_service": "e09-orchestrator",
   "schema": "triad.execution_cmd.v2",
-  "schema_version": "2.0.0"
+  "schema_version": "2.1.0"
 }

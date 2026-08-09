@@ -31,11 +31,17 @@ def test_closed_enum_rejects_unknown_value():
         contracts.validate(ev)
 
 
-def test_environment_enum_forbids_testnet():
+def test_environment_enum_is_closed_at_live_and_testnet():
+    # RC4 four-plane law (B01): fill.v3 3.1.0 admits exactly LIVE and TESTNET — the two venue
+    # environments are certified separately and never mixed in one bundle. Every other token
+    # (paper/demo/dry-run aliases) rejects.
     ev = _valid("triad.fill.v3")
     ev["payload"]["environment"] = "TESTNET"
-    with pytest.raises(contracts.ContractError):
-        contracts.validate(ev)
+    contracts.validate(ev)
+    for alias in ("PAPER", "DEMO", "DRYRUN", "testnet", "live", ""):
+        ev["payload"]["environment"] = alias
+        with pytest.raises(contracts.ContractError):
+            contracts.validate(ev)
 
 
 def test_epoch_fencing_accepts_current_and_rejects_lower():

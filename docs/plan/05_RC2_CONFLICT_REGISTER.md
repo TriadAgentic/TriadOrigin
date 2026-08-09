@@ -1,5 +1,21 @@
 # 05 · RC2 Conflict and Blocker Register
 
+_B-series dispositions (2026-08-09): the rows below record closure state. A closed row names the
+milestone whose merged PR carries the evidence; everything else remains open._
+
+| Row | Disposition |
+|---|---|
+| BLK-RC2-015 | **CLOSED B00** — complete bundle vendored + hashed (`docs/control/`, `06_RC2_SOURCE_INVENTORY.md`) |
+| BLK-RC2-016 / CTRL-B01-002 | **CLOSED B01** — `engine_attestation.v2` equality law + corrected goldens; v1 frozen |
+| BLK-RC2-017 / CTRL-B01-003 | **CLOSED B01** — typed identity v2 (`origin.identity.v2`), v1 IDs byte-stable |
+| CTRL-B01-001 | **CLOSED B01** — additive descriptor v2 with corrected media types; RC1/R00 descriptors byte-frozen |
+| BLK-RC2-005/006 | **DISPOSITIONED B01** — UTC-µs law + int64-ticks-as-base10-string wire law (Q-E2/Q-E3) |
+| BLK-RC2-010 | **DISPOSITIONED B00** — proposals carried as DARK data; fail-closed runtime (Q-D) |
+| CTRL-B02-001/002 | open — owned by B02 |
+| BLK-RC2-007/008/009/011/012/013/014 | open — owned by B03–B05 with RC3 formula/vector law |
+| CTRL-B08-001 | open — owned by B08 |
+| CTRL-R00-001 | open — operator ruleset act (Q-A4) |
+
 All `BLK-RC2-*` rows block the B00 authority freeze until a named authority ratifies the semantic
 decision, version/migration disposition, owner/reviewer, and evidence obligation. That decision does
 not mark downstream implementation complete: corresponding `CTRL-B01+` rows remain blocking at the

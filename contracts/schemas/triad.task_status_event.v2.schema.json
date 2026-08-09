@@ -1,0 +1,145 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.task_status_event.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "TASK_STATUS_EVENT"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "acceptance_receipt_ids": {
+          "type": "array"
+        },
+        "actor": {
+          "type": "string"
+        },
+        "from_status": {
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "BLOCKED",
+            "PASS",
+            "FAIL"
+          ],
+          "type": "string"
+        },
+        "gate": {
+          "type": "string"
+        },
+        "predecessor_receipt_ids": {
+          "type": "array"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "task_id": {
+          "type": "string"
+        },
+        "to_status": {
+          "enum": [
+            "NOT_STARTED",
+            "IN_PROGRESS",
+            "BLOCKED",
+            "PASS",
+            "FAIL"
+          ],
+          "type": "string"
+        },
+        "transitioned_at_us": {
+          "type": "integer"
+        },
+        "verification_receipt_ids": {
+          "type": "array"
+        }
+      },
+      "required": [
+        "task_id",
+        "gate",
+        "from_status",
+        "to_status",
+        "predecessor_receipt_ids",
+        "acceptance_receipt_ids",
+        "verification_receipt_ids",
+        "scope",
+        "transitioned_at_us",
+        "actor",
+        "signature"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.task_status_event.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.task_status_event.v2",
+  "type": "object"
+}

@@ -1,0 +1,147 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.feature_snapshot.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "FEATURE_SNAPSHOT"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "as_of_state_revision_id": {
+          "type": "string"
+        },
+        "dependency_ranges": {
+          "type": "object"
+        },
+        "evaluation_time_us": {
+          "type": "integer"
+        },
+        "feature_set": {
+          "type": "string"
+        },
+        "feature_values": {
+          "type": "object"
+        },
+        "feature_version": {
+          "type": "string"
+        },
+        "formula_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "knowledge_time_us": {
+          "type": "integer"
+        },
+        "output_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "parameter_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "partition_key": {
+          "type": "object"
+        },
+        "publication_time_us": {
+          "type": "integer"
+        },
+        "source_time_us": {
+          "type": "integer"
+        },
+        "warmup_status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "feature_set",
+        "feature_version",
+        "partition_key",
+        "as_of_state_revision_id",
+        "feature_values",
+        "dependency_ranges",
+        "formula_digest",
+        "parameter_digest",
+        "warmup_status",
+        "source_time_us",
+        "knowledge_time_us",
+        "evaluation_time_us",
+        "publication_time_us",
+        "output_hash"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.feature_snapshot.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.feature_snapshot.v2",
+  "type": "object"
+}

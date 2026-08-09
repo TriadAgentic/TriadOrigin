@@ -90,9 +90,14 @@ REACTION_CLEAN_AT = "2026-08-09T03:45:00Z"
 # later than the clean response.
 REACTION_CREATED_AT = "2026-08-09T03:44:59Z"
 COLLECTOR_BYTES = (REPO_ROOT / "tools" / "collect_test_ids.py").read_bytes()
+# The R00 ceremony seals the R00-era reviewed tree. B01 lawfully changed the live contracts
+# bundle (additive descriptor v2 + version-bumped artifacts), so the R00-era bytes are frozen
+# here as a fixture extracted from the R00 corrective merge (git 0012e89) — the exact state the
+# R00 pins (91 artifacts / 60 golden rows / RC1 identity) authenticate.
+R00_STATE = pathlib.Path(__file__).resolve().parent / "fixtures" / "r00_state"
 CONTRACT_SOURCE_FILES = {
-    str(path.relative_to(REPO_ROOT)): path.read_bytes()
-    for path in sorted((REPO_ROOT / "contracts").rglob("*"))
+    str(path.relative_to(R00_STATE)): path.read_bytes()
+    for path in sorted((R00_STATE / "contracts").rglob("*"))
     if path.is_file()
 }
 REGISTRY_BYTES = CONTRACT_SOURCE_FILES["contracts/registry/index.json"]
@@ -102,7 +107,7 @@ GOLDEN_MANIFEST_BYTES = b"".join(
     if b"  contracts/golden/" in line
 )
 AUTHORITY_INVENTORY_PATH = "docs/plan/06_RC2_SOURCE_INVENTORY.md"
-AUTHORITY_INVENTORY_BYTES = (REPO_ROOT / AUTHORITY_INVENTORY_PATH).read_bytes()
+AUTHORITY_INVENTORY_BYTES = (R00_STATE / "06_RC2_SOURCE_INVENTORY.md").read_bytes()
 AUTHORITY_SOURCES = [
     {"bytes": 8_000, "name": "index.html", "sha256": "042f6bea59f897add75dd108632cdd22d90382350a290f8f5a0873fa2e636568"},
     {"bytes": 669_712, "name": "TRIAD_ORIGIN_V7_IMPLEMENTATION_CONTROL_WORKBOOK_1.0.0_RC2.xlsx", "sha256": "2b60d1d4a40456948eff8da5a982956d35f144a7e76445839aa937a1282481e4"},

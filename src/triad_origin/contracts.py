@@ -189,6 +189,133 @@ def validate(event: dict, *, schema_id: str | None = None) -> None:
     _validate_against_schema(schema, event)
     if sid in {"triad.edge_candidate.v1", "triad.edge_candidate.v2"}:
         assert_no_forbidden_candidate_fields(event)
+    semantic = SEMANTIC_VALIDATORS.get(sid)
+    if semantic is not None:
+        semantic(event)
+
+
+# --- semantic (cross-field) laws — RC3 semantic_transition_validator posture ----------------------
+# JSON Schema cannot express cross-field equality or conditional-combination laws; these run after
+# schema validation inside validate(), so a schema-valid but semantically illegal event still
+# rejects (fail closed). Each validator raises ContractError with the RC4/RC3 refusal name.
+
+
+def _payload_of(event: dict) -> dict:
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        raise ContractError("event payload must be a JSON object")
+    return payload
+
+
+def _semantic_engine_attestation_v2(event: dict) -> None:
+    """CTRL-B01-002 / BLK-RC2-016: payload identity fields must equal their envelope twins."""
+    payload = _payload_of(event)
+    for field in ("contract_manifest_sha256", "config_bundle_sha256", "build_commit",
+                  "artifact_sha256", "producer_epoch"):
+        env_value = event.get(field)
+        pay_value = payload.get(field)
+        if env_value != pay_value:
+            raise ContractError(
+                f"ATTESTATION_IDENTITY_MISMATCH: payload.{field}={pay_value!r} "
+                f"!= envelope.{field}={env_value!r}")
+
+
+def _semantic_engine_control_manifest_v2(event: dict) -> None:
+    """RC4 lever-combination law (the four-plane law's manifest-side conjuncts)."""
+    payload = _payload_of(event)
+    venue_environment = payload.get("venue_environment")
+    venue_activation = payload.get("venue_activation")
+    if payload.get("shadow_activation") != "LIVE":
+        raise ContractError("SHADOW_CAPTURE_OFF_FORBIDDEN: shadow_activation must be LIVE")
+    if venue_environment == "OFF" and venue_activation == "LIVE":
+        raise ContractError(
+            "OFF_WITH_LIVE_VENUE_ACTIVATION: venue_environment OFF cannot pair with "
+            "venue_activation LIVE")
+    if venue_environment == "LIVE" and venue_activation == "LIVE":
+        receipt = payload.get("testnet_promotion_receipt")
+        if not isinstance(receipt, dict) or not receipt:
+            raise ContractError(
+                "LIVE_PROMOTION_RECEIPT_MISSING: LIVE activation requires a current successful "
+                "TESTNET promotion receipt")
+    activations = payload.get("activations")
+    if isinstance(activations, dict):
+        for lever, value in activations.items():
+            if value not in ("LIVE", "OFF"):
+                raise ContractError(
+                    f"ACTIVATION_VALUE_INVALID: activations[{lever!r}]={value!r} is not exactly "
+                    f"LIVE or OFF")
+    scope = payload.get("scope")
+    if isinstance(scope, dict):
+        _reject_wildcard_scope(scope, "scope")
+
+
+def _reject_wildcard_scope(node: Any, path: str) -> None:
+    if isinstance(node, str):
+        if node == "" or "*" in node:
+            raise ContractError(
+                f"SCOPE_VALUE_INVALID: {path} is empty, malformed, or contains a wildcard")
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            _reject_wildcard_scope(value, f"{path}.{key}")
+    elif isinstance(node, list):
+        for i, value in enumerate(node):
+            _reject_wildcard_scope(value, f"{path}[{i}]")
+
+
+def _semantic_evidence_receipt_v2(event: dict) -> None:
+    """RC3 receipt law: PASS requires nonempty scope/evidence, valid clocks, builder != reviewer."""
+    payload = _payload_of(event)
+    if payload.get("result") != "PASS":
+        return
+    if not payload.get("scope"):
+        raise ContractError("RECEIPT_PASS_EMPTY_SCOPE")
+    if not payload.get("evidence_ids") or not payload.get("evidence_sha256s"):
+        raise ContractError("RECEIPT_PASS_EMPTY_EVIDENCE")
+    observed = payload.get("observed_at_us")
+    expires = payload.get("expires_at_us")
+    if not isinstance(observed, int) or not isinstance(expires, int) or expires <= observed:
+        raise ContractError("RECEIPT_PASS_INVALID_VALIDITY_WINDOW")
+    if not payload.get("signature"):
+        raise ContractError("RECEIPT_PASS_MISSING_SIGNATURE")
+    if payload.get("builder") == payload.get("reviewer"):
+        raise ContractError("RECEIPT_PASS_BUILDER_IS_REVIEWER")
+
+
+def _semantic_task_status_event_v2(event: dict) -> None:
+    """RC3 receipt law: a PASS transition needs acceptance + verification receipts; no self-loop."""
+    payload = _payload_of(event)
+    if payload.get("from_status") == payload.get("to_status"):
+        raise ContractError("TASK_STATUS_ILLEGAL_TRANSITION: from == to")
+    if payload.get("to_status") == "PASS":
+        if not payload.get("acceptance_receipt_ids") or not payload.get(
+                "verification_receipt_ids"):
+            raise ContractError("TASK_STATUS_PASS_WITHOUT_RECEIPTS")
+        if not payload.get("signature"):
+            raise ContractError("TASK_STATUS_PASS_MISSING_SIGNATURE")
+
+
+def _semantic_gate_receipt_v2(event: dict) -> None:
+    """RC3 receipt law: gate PASS requires zero blockers, task+verification+rollback evidence."""
+    payload = _payload_of(event)
+    if payload.get("result") != "PASS":
+        return
+    if payload.get("open_blockers"):
+        raise ContractError("GATE_PASS_WITH_OPEN_BLOCKERS")
+    if not payload.get("task_receipt_ids") or not payload.get("verification_receipt_ids"):
+        raise ContractError("GATE_PASS_WITHOUT_RECEIPTS")
+    if not payload.get("rollback_proof_ids"):
+        raise ContractError("GATE_PASS_WITHOUT_ROLLBACK_PROOF")
+    if not payload.get("approver") or not payload.get("signature"):
+        raise ContractError("GATE_PASS_MISSING_APPROVAL")
+
+
+SEMANTIC_VALIDATORS = {
+    "triad.engine_attestation.v2": _semantic_engine_attestation_v2,
+    "triad.engine_control_manifest.v2": _semantic_engine_control_manifest_v2,
+    "triad.evidence_receipt.v2": _semantic_evidence_receipt_v2,
+    "triad.task_status_event.v2": _semantic_task_status_event_v2,
+    "triad.gate_receipt.v2": _semantic_gate_receipt_v2,
+}
 
 
 def validate_payload(schema_id: str, payload: dict) -> None:

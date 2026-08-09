@@ -1,0 +1,193 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.engine_control_manifest.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "ENGINE_CONTROL_MANIFEST"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_binding": {
+          "type": "object"
+        },
+        "activations": {
+          "type": "object"
+        },
+        "adapter_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "control_manifest_id": {
+          "type": "string"
+        },
+        "credential_fingerprint_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "engine_id": {
+          "type": "string"
+        },
+        "expires_at_us": {
+          "type": "integer"
+        },
+        "issued_at_us": {
+          "type": "integer"
+        },
+        "paper_activation": {
+          "enum": [
+            "LIVE",
+            "OFF"
+          ],
+          "type": "string"
+        },
+        "parameter_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "registry_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "route_binding": {
+          "type": "object"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "shadow_activation": {
+          "enum": [
+            "LIVE"
+          ],
+          "type": "string"
+        },
+        "signatures": {
+          "type": "array"
+        },
+        "strategy_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "testnet_promotion_receipt": {
+          "type": "object"
+        },
+        "venue_activation": {
+          "enum": [
+            "LIVE",
+            "OFF"
+          ],
+          "type": "string"
+        },
+        "venue_binding": {
+          "type": "object"
+        },
+        "venue_environment": {
+          "enum": [
+            "LIVE",
+            "TESTNET",
+            "OFF"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "control_manifest_id",
+        "engine_id",
+        "revision",
+        "scope",
+        "venue_environment",
+        "venue_activation",
+        "paper_activation",
+        "shadow_activation",
+        "activations",
+        "registry_digest",
+        "strategy_digest",
+        "adapter_digest",
+        "parameter_digest",
+        "venue_binding",
+        "account_binding",
+        "route_binding",
+        "credential_fingerprint_sha256",
+        "issued_at_us",
+        "expires_at_us",
+        "testnet_promotion_receipt",
+        "signatures"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.engine_control_manifest.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.engine_control_manifest.v2",
+  "type": "object"
+}
