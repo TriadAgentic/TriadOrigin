@@ -1,125 +1,85 @@
-# 09 · Open Questions & Clarifications Register
+# 09 · Decision Disposition Register
 
-_Per the operator's directive, ambiguities are **not** asked in chat. They are collected here —
-wiring, specification, governance, everything — and answered by the operator in one batch at the
-end of the build. Each question carries a **default** the build proceeds on; an answer that
-differs from the default becomes a fix-forward work item. Status: OPEN unless marked._
+_Reconciled at B00C (2026-08-09). This is a **disposition register**, not a questionnaire
+deferred to B10: every row names the milestone/gate it must close before, its decision owner,
+its current status, its evidence, and its failure behavior while open. Per the operator's
+standing directive, rows are **not** asked in chat; they are batched here for the operator. An
+explicit decision to keep a value `NOT_RATIFIED` is a closed planning answer and an open
+activation blocker — it never authorizes a substitute._
+
+Legend — **Status:** `OPEN` (undecided), `DEFAULT_IN_FORCE` (build proceeds on the recorded
+default; operator may veto), `CLOSED` (operator decided / evidence sealed), `BLOCKED_EXTERNAL`
+(needs an act outside this session). **Failure behavior** = what the build/runtime does while
+the row is open (always fail-closed, never a silent substitute).
 
 ## A · Governance & repository
 
-**Q-A1 · Repository home.** The operator said "the home for this engine will be in the triad
-agent," while the specification (Doc 00 §00.2, RC3) and all existing work name
-`TriadAgentic/TriadOrigin` as the clean-room home.
-**Default:** build in `TriadAgentic/TriadOrigin` (the org is "TriadAgentic" — reading the spoken
-"triad agent" as the org name, not the `TriadAgent` fleet repo).
+| Row | Question / decision | Required before | Owner | Status | Disposition & evidence | Failure behavior while open |
+|---|---|---|---|---|---|---|
+| A1 | Repository home ("triad agent" spoken vs `TriadAgentic/TriadOrigin` written) | B00C receipt | Operator | DEFAULT_IN_FORCE | Build proceeds in `TriadAgentic/TriadOrigin` (org read as "TriadAgentic"); all merged work lives there | Relocation would be a fresh operator directive + migration plan |
+| A2 | ADR-005 supersession signature (RC4 lever law ratification) | B05 four-plane merge (artifact); any non-OFF activation (signature) | Operator | DEFAULT_IN_FORCE | RC4 + the 2026-08-09 build directive treated as ratification **for DARK implementation only**; B05 prepares the ADR supersession artifact for signature | No non-OFF activation is representable; baseline stays `OFF/OFF/OFF/LIVE` |
+| A3 | R00 receipt + B-series receipt law | B00C receipt | Operator countersign; build session seals | DEFAULT_IN_FORCE | `docs/governance/R00_SUPERSESSION.md` maps every R00 field/invariant into `evidence_receipt.v2`; `evidence/receipts/R00.json` seals the disposition; B00/B01 receipts retained (content valid, one-behind cadence superseded); from B00C forward: one source PR + one post-merge evidence-only receipt PR per milestone | Receipts remain self-integrity-sealed, uncountersigned; no gate receipt is claimed |
+| A4 | Branch ruleset (issue #5) or signed time-bounded waiver | Was due before B01 (breached historically — recorded); due before next merge wave | Operator (repo admin) | BLOCKED_EXTERNAL | This session has no repository-settings surface. Guarded-merge evidence recorded: every `main` merge via PR on green exact-head CI (runs `31293420164`, `31294503427`, `31295070373`, …). Required ruleset: exact-head CI + review + resolved conversations + no force/direct push + no admin bypass | Marathon continues under the operator's rank-1 directive with this blocker flagged in every status face; never reported as configured |
+| A5 | Checkpoint ceremony scope | B10 | Operator | DEFAULT_IN_FORCE | TriadOrigin-local checkpoint only (`checkpoint/<date>-origin-v7-build` + `CHECKPOINTS.md` here); estate-wide checkpoint is G9's | No sibling-repo checkpoint branches are created |
+| A6 | Estate/operator lanes (361 ESTATE + 57 OPERATOR ledger rows built elsewhere) | G-1 onward (Track B) | Operator | DEFAULT_IN_FORCE | Partition matches "wire with the other surfaces later"; this repo carries contract shapes + ingress expectations only | Track B gates stay `NOT_PASSED`; completion claims stay repository-scoped |
+| A7 | Control-plane homing (comparator / authority-fact verifier / legacy bridge / replay runner) | B01 merge (was); disposition re-affirmed for B07 | Operator | DEFAULT_IN_FORCE | Built here as pure, dark, import-isolated libraries. Per the alignment audit: **no admission/arbitration** — `authority_fact_verifier` verifies externally issued `candidate_authority.v1` + technical-writer lease only; never admits candidates, issues leases, or selects money authority | Any admission-shaped API is a build defect; process deployment stays an estate decision |
 
-**Q-A2 · ADR-005 supersession signature.** RC4 requires a *signed* ADR superseding ADR-005
-(LEV-0001) ratifying the lever enums. The RC4 document itself is stamped
-`OWNER_DIRECTIVE_RATIFIED_IMPLEMENTATION_NOT_APPLIED`.
-**Default:** treat RC4 + this build directive as the operator's ratification for DARK
-implementation; record the supersession in the decision register; the formally signed ADR remains
-an operator artifact to countersign at answer time.
+## B · Activation values (BLOCKING_OWNER_DECISION — stay `NOT_RATIFIED`, fail closed)
 
-**Q-A3 · R00 receipt seal.** The R00 post-merge receipt ceremony (branch `evidence/r00-receipt`,
-GraphQL snapshot validation) was designed but the sealed `evidence/receipts/R00.json` does not
-exist in `main`. Its validator requires live GitHub API evidence at seal time.
-**Default:** B-series uses a proportionate receipt schema (B01 defines it); the R00-specific
-ceremony receipt stays honestly OPEN for the operator to run (or to ratify the B-series receipt
-law as its replacement).
+All eight ship as `NOT_RATIFIED` registry rows; `require()` refuses them; runtime fails closed.
 
-**Q-A4 · GitHub branch ruleset (issue #5).** A `main` ruleset requiring exact-head CI + review
-cannot be configured from this session (repository-settings write is an operator permission).
-**Default:** merges continue under the working practice (merge only on green CI); issue #5 stays
-open for the operator to configure the ruleset and attach settings evidence.
+| Row | Parameter | Required before | Owner | Status | Failure behavior while open |
+|---|---|---|---|---|---|
+| B1 | PAR-070 `PRODUCTION_RISK_BUDGET` (bps-of-NAV **and** absolute quote cap) | G9 | Operator | OPEN | No production sizing representable; F20 catalog `DENY` |
+| B2 | PAR-072 `PRODUCTION_GROSS_EXPOSURE_CAP` | G9 | Operator | OPEN | Same |
+| B3 | PAR-076 `MAX_DAILY_NET_LOSS` (stop, UTC reset, realized/unrealized, rel+abs caps) | G7 | Operator | OPEN | No canary window may open |
+| B4 | PAR-077 `MAX_PEAK_TO_TROUGH_DRAWDOWN` (+ HWM reset governance) | G7 | Operator | OPEN | Same |
+| B5 | PAR-118 `CANARY_CAPSULE` (exactly one semantic version + parameter digest) | G7 | Operator | OPEN | Same |
+| B6 | PAR-119 `CANARY_INSTRUMENT` (one venue-qualified instrument) | G7 | Operator | OPEN | Same |
+| B7 | PAR-120 `CANARY_SIDE` (one side enum) | G7 | Operator | OPEN | Same |
+| B8 | PAR-121 `CANARY_ACCOUNT` (isolated account/risk cell + position mode + permissions) | G7 | Operator | OPEN | Same |
 
-**Q-A5 · Checkpoint ceremony scope.** The estate checkpoint law (five-repo ceremony) does not
-name TriadOrigin.
-**Default:** seal TriadOrigin-local checkpoints only (`checkpoint/<date>-origin-v7-build` +
-`CHECKPOINTS.md` in this repo); no sibling-repo checkpoint branches are created for this build.
+## C · Research decisions (BLOCKING_RESEARCH_DECISION — interfaces + named abstention only)
 
-**Q-A6 · Estate/operator lanes.** 361 ESTATE + 57 OPERATOR ledger rows (other repos, on-box
-acts, G-1 credential rotation, G5+ live stages) are named and tracked but not built here.
-**Confirm:** this partition matches your intent ("if you need to wire with the other surfaces,
-then you wire with the other surfaces later"). Estate wiring stubs in this repo are limited to
-contract shapes + ingress expectations.
+| Row | Parameter | Required before | Owner | Status | Failure behavior while open |
+|---|---|---|---|---|---|
+| C1 | RC3-PAR-STRUCT-001 `EQUAL_LEVEL_MAX_SPAN` | B03 **result emission** (interface/refusal may land) | Research + Operator ratify | OPEN | F06 emits the named abstention `F06_UNAVAILABLE_MAX_SPAN_NOT_RATIFIED`; equal-level structures and dependent capsules `SAFE_HOLD` |
+| C2 | RC3-PAR-STRUCT-002 `BOOK_TILT_MIN_QUOTE_DEPTH` | B04 result emission | Research + Operator | OPEN | F17 tilt emits its named abstention; dependent capsules `SAFE_HOLD` |
+| C3 | RC3-PAR-STRUCT-003 `PROTECTED_SWING_REDUCER_VERSION` | B03 result emission (F08); B06 CHOCH-capsule availability | Research + Operator | OPEN | F08 has **no semantic implementation** (RC3: none authorized); state stays `UNINITIALIZED`; F09 emits accepted breaks with BOS/CHOCH labels withheld (`UNCLASSIFIED_STRUCTURE_STATE_UNAVAILABLE`) |
 
-**Q-A7 · Control-plane homing (comparator / authority router / legacy bridge / replay runner).**
-The R00-era repository law listed "runtime legacy bridge" and "authority router" in the never-add
-list (reading them as out-of-repo services), while the specification (Doc 06 SRV-005/006/007/025,
-RC3 wiring W07–W09 with 8 atomic tasks each) requires them built, and your directive says build
-everything.
-**Default:** they are built **here** as pure, dark, import-isolated library modules (comparator
-side-effect-free; router lease-verify-only; bridge control-candidates-only; no network/process
-wiring); where their *processes* are deployed remains an estate decision. Veto if you want them
-in a different repo.
+## D · Proposed parameter bundle (123 × `PROPOSED_RC2_MUST_RATIFY`)
 
-## B · Activation values (BLOCKING_OWNER_DECISION — stay NOT_RATIFIED / fail closed)
+| Row | Decision | Required before | Owner | Status | Disposition | Failure behavior while open |
+|---|---|---|---|---|---|---|
+| D | Ratify the RC2 proposal bundle wholesale for SHADOW operation, selectively, or keep symbolic until trial registration | B06 candidate emission (consumed subset); G2 (full) | Operator | OPEN — DEFAULT_IN_FORCE for build | Carried verbatim as a status-labelled, digest-pinned **proposal bundle**; tests exercise formulas with explicitly-labelled test vectors; `require()` refuses `PROPOSED_*` in any non-test context | No semantic result emission on a proposed value; machines fail closed or emit named abstention |
 
-These eight ship as `NOT_RATIFIED` registry rows; runtime fails closed without them. Provide
-values (or defer) at answer time:
+## E · Specification conflicts (dispositioned per RC3/RC4 precedence — confirm or veto)
 
-| Q | Parameter | What you must declare |
-|---|---|---|
-| Q-B1 | PAR-070 `PRODUCTION_RISK_BUDGET` | bps-of-NAV **and** absolute quote cap |
-| Q-B2 | PAR-072 `PRODUCTION_GROSS_EXPOSURE_CAP` | finite positive integer bps cap |
-| Q-B3 | PAR-076 `MAX_DAILY_NET_LOSS` | daily stop, UTC reset, realized/unrealized treatment, relative + absolute caps |
-| Q-B4 | PAR-077 `MAX_PEAK_TO_TROUGH_DRAWDOWN` | finite drawdown stop + high-water-mark reset governance |
-| Q-B5 | PAR-118 `CANARY_CAPSULE` | exactly one capsule semantic version + parameter digest |
-| Q-B6 | PAR-119 `CANARY_INSTRUMENT` | exactly one venue-qualified instrument |
-| Q-B7 | PAR-120 `CANARY_SIDE` | exactly one side enum |
-| Q-B8 | PAR-121 `CANARY_ACCOUNT` | one isolated account/risk cell + position mode + permissions |
+| Row | Conflict | Required before | Status | Disposition |
+|---|---|---|---|---|
+| E1 | ADR-005 "no testnet ever" vs RC4 four-plane law | B05 | DEFAULT_IN_FORCE | RC4 wins (later owner directive): TESTNET is a canonical isolated venue environment; sibling-repo estate rules untouched |
+| E2 | RC1 `*_ns` fields vs UTC-microsecond law | B01 (closed in code) | DEFAULT_IN_FORCE | UTC Unix **microseconds**; ns remainder carried separately |
+| E3 | int64 ticks vs base-10 string wire encoding | B01 (closed in code) | DEFAULT_IN_FORCE | Semantic int64 ticks; JSON wire base-10 string |
+| E4 | F02 ATR window inclusion (BLK-RC2-007) | B03 semantic merge | DEFAULT_IN_FORCE | RC3 formula text + GV-004 pin the window: the 14 TRs strictly before the evaluation origin (the most recent finalized bar is TR_{x−1}) |
+| E5 | F04 fractal tie-break (BLK-RC2-009) | B03 semantic merge | DEFAULT_IN_FORCE | Strict extreme; ties reject (GV-006) |
+| E6 | Capsule family naming (BLK-RC2-011) | B06 candidate emission | OPEN — corrected | **No guessed ordinal↔semantic map** (audit P0): B06 builds the explicit semantic-ID registry (`dc_swing_bos_first_retest.v1`, …); RC2 `CAP01…CAP05` ordinal parameters are non-executable until explicitly remapped by decision |
+| E7 | Candidate lifecycle abstention/withdrawal (BLK-RC2-013) | B06 | DEFAULT_IN_FORCE | RC3 lifecycle graph; withdrawal is a first-class transition |
+| E8 | F18 stop-side `abs()` defect (BLK-RC2-014) | B06 | DEFAULT_IN_FORCE | Directional stop-side invariant; one-tick vectors |
+| E9 | W06 cluster-ID circularity (BLK-RC2-012) | B06 | DEFAULT_IN_FORCE | Frozen earliest prospective root ordered by `(availability, candidate_id)`; never re-root |
 
-## C · Research decisions (BLOCKING_RESEARCH_DECISION — built symbolic, fail closed)
+## F · Estate wiring handoffs (Track B)
 
-| Q | Parameter | Effect while unanswered |
-|---|---|---|
-| Q-C1 | RC3-PAR-STRUCT-001 `EQUAL_LEVEL_MAX_SPAN` | F06 equal-level clusters cannot emit (named abstention) |
-| Q-C2 | RC3-PAR-STRUCT-002 `BOOK_TILT_MIN_QUOTE_DEPTH` | F16 OFI/tilt cannot emit (named abstention) |
-| Q-C3 | RC3-PAR-STRUCT-003 `PROTECTED_SWING_REDUCER_VERSION` | protected-swing promotion runs only under an explicitly versioned reducer supplied by parameter bundle; tests exercise the RC3-documented candidate semantics |
-
-## D · Proposed parameter bundle (123 × PROPOSED_RC2_MUST_RATIFY)
-
-The RC2 declarations propose 123 numeric values (plus 8 DECLARED_RC2, 4 CURRENT_VENDOR_REQUIRED,
-8 TARGET_FROM_TOPOLOGY, …).
-**Default (per BLK-RC2-010 disposition):** they are carried verbatim as a **DARK proposal
-bundle** in the parameter registry (status-labelled, digest-pinned). Tests exercise formulas with
-explicit test bundles; nothing runs on a proposed value in any non-test context. **Question:** do
-you want to ratify the proposal bundle wholesale for DARK/shadow operation at answer time, ratify
-selectively, or keep everything symbolic until trial registration?
-
-## E · Specification conflicts already dispositioned (confirm or veto)
-
-| Q | Conflict | Disposition taken (per RC3/RC4 precedence) |
-|---|---|---|
-| Q-E1 | ADR-005 "no testnet ever" vs RC4 four-plane law | RC4 wins (later owner directive): TESTNET is a canonical isolated venue environment; estate-wide NO-TESTNET rules in sibling repos are untouched by this repo |
-| Q-E2 | RC1 `*_ns` envelope fields vs UTC-microsecond law | RC3 parameter row wins: UTC Unix **microseconds**; ns-precision carries remainder separately |
-| Q-E3 | int64 ticks vs base-10 string wire encoding | Both: semantic type is signed int64 ticks; JSON wire encoding is base-10 string (BLK-RC2-006 disposition) |
-| Q-E4 | F02 ATR window bar inclusion (BLK-RC2-007) | RC3 formula text + golden vector is authoritative; vector pins the choice |
-| Q-E5 | F04 fractal tie-break (BLK-RC2-009) | RC3 formula + vectors reject ties per PAR/GV row |
-| Q-E6 | Capsule family naming (BLK-RC2-011) | RC3 CAP-01…05 registry with ordinal↔semantic-version map recorded in the capsule registry artifact |
-| Q-E7 | Candidate lifecycle abstention/withdrawal (BLK-RC2-013) | RC3 lifecycle graph implemented; withdrawal is a first-class transition record |
-| Q-E8 | F18 geometry stop-side `abs()` defect (BLK-RC2-014) | directional stop-side invariant implemented; one-tick vectors added |
-| Q-E9 | W06 cluster-ID circularity (BLK-RC2-012) | non-circular prospective cluster-root design per RC3 overlay |
-
-## F · Estate wiring handoffs (for the "wire with other surfaces later" phase)
-
-- **Q-F1:** Which repo/process will host the E01 `market_state.v2` bridge from `context.packets`
-  (W01/W02) when ORIGIN is deployed dark — TriadEngine, or a new bridge service?
-- **Q-F2:** The legacy bridge consumes `candidate.v1` from the current E02. Confirm the source
-  topic/ledger path to freeze for the control arm.
-- **Q-F3:** Divergence + candidate-authority topics (`edge.divergence.v1`, `edge.authority.v1`):
-  file-ledger paths/ownership on the box, for `transport_bindings.v1`.
-- **Q-F4:** The SHADOW recorder (RC4): does the estate's existing shadow bank (TriadDTBNK)
-  consume ORIGIN's shadow dispositions, or does ORIGIN keep a local shadow ledger until an estate
-  consumer lands? Default: local durable ledger + contract-shaped rows.
-- **Q-F5:** RC4 L1 as-built census covers seven external engines (QuantTrade 0, YoloNaut 1,
-  YoloBot V2, UPONLY Core, NewNaut, …) — entirely outside this repo. Confirm these are a separate
-  program.
+| Row | Question | Required before | Owner | Status |
+|---|---|---|---|---|
+| F1 | Host repo/process for the E01 `market_state.v2` bridge (W01/W02) | G5 estate homing | Operator | OPEN |
+| F2 | Legacy `candidate.v1` source topic/ledger path to freeze for the control arm | G4 | Operator | OPEN |
+| F3 | Divergence/authority topic file-ledger paths for `transport_bindings.v1` | G4 | Operator | OPEN |
+| F4 | SHADOW disposition consumer: estate shadow bank vs local durable ledger | G5 | Operator | OPEN — default: local durable ledger, contract-shaped rows |
+| F5 | RC4 L1 as-built census of the seven external engines | G5 | Operator | OPEN — confirmed a separate program by default |
 
 ## G · Session-scope confirmations
 
-- **Q-G1:** RC1-complete-edition HTML (4.0 MB) was hash-registered but not vendored (the 11
-  modular RC1 docs are already in `docs/spec/`; RC3 embeds RC1). Confirm hash-registration
-  suffices.
-- **Q-G2:** Milestone receipts are sealed one-behind (milestone N's receipt lands in milestone
-  N+1's PR, reproduced from merged `main`). Confirm.
+| Row | Question | Required before | Status | Disposition |
+|---|---|---|---|---|
+| G1 | RC1-complete-edition HTML hash-registered, not vendored | B01 (was) | DEFAULT_IN_FORCE | Hash registration suffices; RC3 embeds RC1 |
+| G2 | Receipt cadence | B00C receipt | CLOSED (audit) | The one-behind scheme is **rejected**. One source PR + one post-merge evidence-only receipt PR per milestone; next branch only after the receipt merges and validates. Historical B00/B01 receipts: content retained, cadence disposition recorded (A3) |

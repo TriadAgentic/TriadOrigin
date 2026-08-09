@@ -1,0 +1,51 @@
+{
+  "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "build_commit": "241b301d1144e3e2a0a15f4bfe9ffef5b51068ed",
+  "config_bundle_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "contract_manifest_sha256": "22148f164f4b0c0f5837974c0f0b907eecd7be2164e629cceb1649f59247eddc",
+  "emitted_at_us": 1786250000000000,
+  "event_id": "evt_receipt_R00_supersession",
+  "event_kind": "EVIDENCE_RECEIPT",
+  "payload": {
+    "builder": "claude-fable-5-build-session",
+    "evidence_ids": [
+      "r00-supersession-mapping-doc",
+      "r00-state-fixture-95-files",
+      "r00-state-fixture-digest",
+      "merge-control-pr7",
+      "implementation-merge-241b301d1144e3e2",
+      "review-threads-inherited-pinned-in-validator",
+      "ci-runs-recorded-pr1-pr7",
+      "pytest-seed0-seed1",
+      "capability-gate",
+      "absent-evidence-named:graphql-thread-export",
+      "absent-evidence-named:ci-log-hash-export",
+      "r00-ceremony-status:NOT_EXECUTED"
+    ],
+    "evidence_sha256s": [
+      "2715de947007556b1fbf059bac4a9cfa0af59b5b13e32b06c88a334ed4a1f00d",
+      "21c47cdb22cee4d8e34824150427f148df1a299cb12babdd9bc2001a17e552aa"
+    ],
+    "expires_at_us": 1788842000000000,
+    "observed_at_us": 1786250000000000,
+    "producer_digests": {
+      "canonical_manifest_hash": "22148f164f4b0c0f5837974c0f0b907eecd7be2164e629cceb1649f59247eddc",
+      "r00_state_fixture": "21c47cdb22cee4d8e34824150427f148df1a299cb12babdd9bc2001a17e552aa",
+      "supersession_document": "2715de947007556b1fbf059bac4a9cfa0af59b5b13e32b06c88a334ed4a1f00d"
+    },
+    "receipt_id": "receipt-R00-supersession",
+    "result": "PASS",
+    "reviewer": "operator-countersignature-requested",
+    "scope": {
+      "merged_main_sha": "241b301d1144e3e2a0a15f4bfe9ffef5b51068ed",
+      "milestone": "R00",
+      "pull_request": "7",
+      "repository": "TriadAgentic/TriadOrigin"
+    },
+    "signature": "9b622042fdb4aae2c77569e5b8ff1b73f811a8c0d2712b04ab20ae71f7da8f46"
+  },
+  "producer_instance_id": "b-series-build",
+  "producer_service": "governance-evidence",
+  "schema": "triad.evidence_receipt.v2",
+  "schema_version": "2.0.0"
+}

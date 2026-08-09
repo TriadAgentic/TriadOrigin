@@ -23,3 +23,13 @@ blocks embedded in `docs/spec_rc3/…RC3.html` (ids `rc3-overlay-schema`, `rc3-n
 `rc3-effective-control-bundle`, `rc3-effective-bundle-manifest`, `rc3-effective-validation-report`,
 `rc3-executable-builder` base64); the RC4 bundle from `rc4-control-bundle` in
 `docs/spec_rc4/…RC4.html`. Re-extraction reproduces these bytes.
+
+## B00C · row review + combined DAG (2026-08-09)
+
+The ledger is `REVIEWED_V2`: the reconciled plan's corrections are applied to the rule table
+(F01/F07 → E01 estate lane; four-plane substrate → B05; capsules/candidates → B06), and every
+one of the 1,250 rows carries a reviewer/disposition record in `build_ledger_review.v1.json`
+(`--verify` fails without full coverage/agreement). `tools/validate_combined_dag.py` validates
+the combined RC3+RC4 composition: referential closure, cycle freedom, one scheduling owner per
+task, source-authority preservation, reviewed inversion classes, and cross-lane blocker
+visibility. Neither artifact marks any task complete.

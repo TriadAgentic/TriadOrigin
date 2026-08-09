@@ -383,6 +383,12 @@ def build_ledger() -> None:
     _run_tool("build_ledger.py", "--verify")
 
 
+@stage("combined_dag", "Combined RC3+RC4 DAG: closure, no cycles, one owner, source authority "
+                       "preserved, inversions reviewed (B00C)")
+def combined_dag() -> None:
+    _run_tool("validate_combined_dag.py")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")
