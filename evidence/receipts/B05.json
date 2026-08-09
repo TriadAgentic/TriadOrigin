@@ -1,0 +1,47 @@
+{
+  "artifact_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "build_commit": "bab29bcbff62686b689048569d99625e8d68de61",
+  "config_bundle_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "contract_manifest_sha256": "13c4788c7bb3a1a7c9b7802f7d5bf5ac9d473e46a66bae37ccdcaeca4717073e",
+  "emitted_at_us": 1789280000000000,
+  "event_id": "evt_receipt_B05",
+  "event_kind": "EVIDENCE_RECEIPT",
+  "payload": {
+    "builder": "claude-fable-5-build-session",
+    "evidence_ids": [
+      "pr-20-ci-run-31303846548",
+      "gate-reproduced-on-merged-main-bab29bcb",
+      "pytest-seed0-seed1-1159-tests-green",
+      "e2e-audit-20-stages-four-plane-walk",
+      "lever-law-35-aliases-10-combinations-32-refusal-codes-drift-locked",
+      "lever-registry-cas-revision-fencing-staleness-proven",
+      "shadow-ledger-tradeability-dedup-freeze-no-fabricated-geometry-proven",
+      "shadow-health-heartbeat-backlog-persistence-containment-proven",
+      "paper-ledger-keyless-position-arithmetic-population-separation-proven",
+      "adr-005-supersession-artifact-prepared-unsigned",
+      "ultracode-fanout-3-agents-0-errors"
+    ],
+    "evidence_sha256s": [
+      "3f8d5bcee704aece5442a22f4353a457c1567723d01df9e1cd58c27ecc8d4c25"
+    ],
+    "expires_at_us": 1791872000000000,
+    "observed_at_us": 1789280000000000,
+    "producer_digests": {
+      "canonical_manifest_hash": "13c4788c7bb3a1a7c9b7802f7d5bf5ac9d473e46a66bae37ccdcaeca4717073e"
+    },
+    "receipt_id": "receipt-B05",
+    "result": "PASS",
+    "reviewer": "github-actions-ci-run-31303846548",
+    "scope": {
+      "merged_main_sha": "bab29bcbff62686b689048569d99625e8d68de61",
+      "milestone": "B05",
+      "pull_request": "20",
+      "repository": "TriadAgentic/TriadOrigin"
+    },
+    "signature": "acce82b55da4e1f28b823c17369c9db003a3e3086d6f15d70ed812f0de18cf06"
+  },
+  "producer_instance_id": "b-series-build",
+  "producer_service": "governance-evidence",
+  "schema": "triad.evidence_receipt.v2",
+  "schema_version": "2.0.0"
+}

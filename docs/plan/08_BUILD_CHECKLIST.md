@@ -112,8 +112,8 @@ separate gate receipt._
 - [x] Physical and analytical separation: SHADOW/PAPER/TESTNET/LIVE — `population` is a hardcoded per-module constant, never a caller field; `test_population_separation.py` proves cross-schema validation fails both ways
 - [x] ADR-005 supersession artifact prepared; no non-OFF activation without owner signature — `docs/governance/ADR-005-SUPERSESSION.md` (unsigned)
 - [x] End-to-end four-plane/refusal/health stage — e2e stage 20 `four_plane_walk`
-- [ ] Source PR merged green
-- [ ] Post-merge B05 receipt passed
+- [x] Source PR merged green — PR #20, CI `31303846548`
+- [x] Post-merge B05 receipt passed — `evidence/receipts/B05.json` binds `bab29bcb…`
 
 ## B06 · F14/F18/F19 reaction, capsules, candidates
 
