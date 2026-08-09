@@ -325,7 +325,49 @@ def _semantic_gate_receipt_v2(event: dict) -> None:
         raise ContractError("GATE_PASS_APPROVER_NOT_INDEPENDENT")
 
 
+def _semantic_binding_v2(event: dict) -> None:
+    """binding.v2 law (B01R): structural migration never activates a row.
+
+    ACTIVE demands a fully-resolved semantic binding (EXACTLY_ONE cardinality, migrated state,
+    non-empty slot/condition/scope/precedence/unit contract, no wildcard scope, not superseded);
+    any non-ACTIVE status demands a named disposition. The digest identity binds the row bytes.
+    """
+    payload = _payload_of(event)
+    digest = payload.get("binding_digest")
+    unsigned = {k: v for k, v in payload.items() if k != "binding_digest"}
+    from .canonical import canonical_json, sha256_hex
+    if digest != sha256_hex(canonical_json(unsigned)):
+        raise ContractError("BINDING_DIGEST_MISMATCH")
+    status = payload.get("status")
+    if status == "ACTIVE":
+        if payload.get("lifecycle_status") != "ACTIVE":
+            raise ContractError("BINDING_ACTIVE_LIFECYCLE_MISMATCH")
+        if payload.get("cardinality") != "EXACTLY_ONE":
+            raise ContractError("BINDING_ACTIVE_WITH_UNRESOLVED_CARDINALITY")
+        if payload.get("migration_state") == "BLOCKED_NOT_STARTED":
+            raise ContractError("BINDING_ACTIVE_WITH_UNMIGRATED_STATE")
+        for field in ("semantic_slot", "condition", "activation_scope", "precedence",
+                      "unit_contract", "consumer", "consuming_wiring_ids"):
+            if not payload.get(field):
+                raise ContractError(f"BINDING_ACTIVE_EMPTY_FIELD: {field}")
+        if "*" in payload.get("activation_scope", ""):
+            raise ContractError("BINDING_ACTIVE_WILDCARD_SCOPE")
+        if payload.get("superseded_by"):
+            raise ContractError("BINDING_ACTIVE_BUT_SUPERSEDED")
+    else:
+        if not payload.get("disposition_reason"):
+            raise ContractError("BINDING_BLOCKED_WITHOUT_DISPOSITION")
+
+
+# Semantic validators that read ONLY payload fields (no envelope cross-reference) also run in
+# validate_payload, so a payload-level consumer (registry loader, read face) cannot admit a
+# schema-valid but semantically illegal payload.
+PAYLOAD_SEMANTIC_VALIDATORS = {
+    "triad.binding.v2": _semantic_binding_v2,
+}
+
 SEMANTIC_VALIDATORS = {
+    "triad.binding.v2": _semantic_binding_v2,
     "triad.engine_attestation.v2": _semantic_engine_attestation_v2,
     "triad.engine_control_manifest.v2": _semantic_engine_control_manifest_v2,
     "triad.evidence_receipt.v2": _semantic_evidence_receipt_v2,
@@ -351,6 +393,9 @@ def validate_payload(schema_id: str, payload: dict) -> None:
     _validate_against_schema(payload_schema, payload)
     if schema_id in {"triad.edge_candidate.v1", "triad.edge_candidate.v2"}:
         assert_no_forbidden_candidate_fields({"payload": payload})
+    payload_semantic = PAYLOAD_SEMANTIC_VALIDATORS.get(schema_id)
+    if payload_semantic is not None:
+        payload_semantic({"payload": payload})
 
 
 def _require_canonical_wire(value: dict, label: str) -> None:

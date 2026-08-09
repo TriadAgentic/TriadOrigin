@@ -475,6 +475,43 @@ CONTRACTS = [
                                   "task_receipt_ids": ["t-1"],
                                   "verification_receipt_ids": ["v-1"]}),
 
+    # B01R / reconciled plan §6: binding.v2 — one formula-parameter binding row with semantic
+    # slot, cardinality, condition, scope, precedence, consuming node/edge, and digest identity.
+    # Structural migration NEVER activates a row: the source status is preserved verbatim and a
+    # blocked binding is not consumable (enforced by triad_origin.bindings + the semantic law).
+    _c("triad.binding.v2", "2.0.0", "contract-governance", ["origin", "governance", "audit"],
+       ["BINDING_RECORD"], False,
+       ["binding_id", "semantic_slot", "formula_id", "parameter_id", "parameter_name",
+        "declared_value", "unit", "unit_contract", "cardinality", "condition",
+        "activation_scope", "precedence", "consumer", "consuming_wiring_ids", "gate",
+        "status", "lifecycle_status", "migration_state", "failure_behavior", "boundary_rule",
+        "operation_id", "source_binding_id", "superseded_by", "disposition_reason",
+        "binding_digest"],
+       {"cardinality": ["EXACTLY_ONE", "UNRESOLVED_BLOCKING"],
+        "status": ["ACTIVE", "BLOCKED", "BLOCKED_BINDING_V2_MIGRATION"],
+        "lifecycle_status": ["ACTIVE", "BLOCKED"],
+        "migration_state": ["NOT_APPLICABLE", "BLOCKED_NOT_STARTED"]},
+       payload_overrides={
+           "binding_id": "FPB-0001", "semantic_slot": "ingress_price_wire_integer_ticks",
+           "formula_id": "F00", "parameter_id": "PAR-001", "parameter_name": "PRICE_WIRE_TYPE",
+           "declared_value": "price_ticks=exact_div(venue_price,tick_size)", "unit": "tick",
+           "unit_contract": "exact decimal venue price / exact tick_size -> signed int64 ticks",
+           "cardinality": "EXACTLY_ONE",
+           "condition": "accepted venue price parse under exact metadata revision",
+           "activation_scope": "E01;G1;venue/instrument/metadata-revision exact scope",
+           "precedence": "AT_INGRESS_BEFORE_CANONICAL_EVENT_PUBLICATION",
+           "consumer": "E01", "consuming_wiring_ids": "W01", "gate": "G1",
+           "status": "ACTIVE", "lifecycle_status": "ACTIVE", "migration_state": "NOT_APPLICABLE",
+           "failure_behavior": "QUARANTINE_INGRESS_EVENT", "boundary_rule": "nonzero remainder quarantines",
+           "operation_id": "RC3-BOP-010", "source_binding_id": "FPB-0001",
+           "superseded_by": "", "disposition_reason": "",
+           "binding_digest": "__BINDING_DIGEST__"},
+       # Invalid golden: claims ACTIVE while cardinality is unresolved — the migration-activation
+       # confusion the semantic law exists to refuse.
+       invalid_payload_overrides={"status": "ACTIVE", "lifecycle_status": "ACTIVE",
+                                  "cardinality": "UNRESOLVED_BLOCKING",
+                                  "migration_state": "BLOCKED_NOT_STARTED"}),
+
     # CTRL-B01-002 / BLK-RC2-016: attestation v2 — payload identity fields MUST equal their
     # envelope twins (the semantic equality law); valid golden satisfies it by construction,
     # invalid golden carries one mismatched digest.
@@ -661,8 +698,22 @@ def build_valid(c: dict, schema: dict) -> dict:
     for f in c["required"]:
         payload[f] = _sample_for(_field_schema(f, c["enums"]))
     payload.update(c.get("payload_overrides", {}))
+    if payload.get("binding_digest") == "__BINDING_DIGEST__":
+        payload["binding_digest"] = _binding_digest(payload)
     env["payload"] = payload
     return env
+
+
+def _binding_digest(payload: dict) -> str:
+    """The binding.v2 digest identity: sha256 over the canonical payload minus the digest field.
+
+    Must byte-agree with triad_origin.bindings/contracts (the same canonical_json law).
+    """
+    import sys
+    sys.path.insert(0, str(ROOT / "src"))
+    from triad_origin.canonical import canonical_json, sha256_hex
+    unsigned = {k: v for k, v in payload.items() if k != "binding_digest"}
+    return sha256_hex(canonical_json(unsigned))
 
 
 def build_invalid(c: dict) -> dict:
@@ -675,6 +726,9 @@ def build_invalid(c: dict) -> dict:
     v = build_valid(c, {})
     if c.get("invalid_payload_overrides"):
         v["payload"].update(c["invalid_payload_overrides"])
+        if "binding_digest" in v["payload"]:
+            # Keep the digest identity true so the ONLY defect is the semantic-law violation.
+            v["payload"]["binding_digest"] = _binding_digest(v["payload"])
         return v
     dropped = c["required"][0]
     v["payload"].pop(dropped, None)

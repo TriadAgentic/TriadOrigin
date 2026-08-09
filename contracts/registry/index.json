@@ -457,6 +457,18 @@
       "schema_version": "2.0.0"
     },
     {
+      "authority_fenced": false,
+      "consumers": [
+        "origin",
+        "governance",
+        "audit"
+      ],
+      "contract_id": "triad.binding.v2",
+      "producer": "contract-governance",
+      "schema_path": "contracts/schemas/triad.binding.v2.schema.json",
+      "schema_version": "2.0.0"
+    },
+    {
       "authority_fenced": true,
       "consumers": [
         "consumers",
