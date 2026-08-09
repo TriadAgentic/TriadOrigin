@@ -5,10 +5,10 @@ This module is the ONE in-repo home of:
 * the closed direction vocabulary and its mirror (RC3 mirror rule: C -> -C, up <-> down,
   high <-> low, bullish <-> bearish);
 * exact integer helpers (``ceil_div`` — every RC3 rational parameter expression rounds up);
-* the declared RC3/RC2 rational parameter expressions (PAR-036 / PAR-041 / PAR-043 / PAR-156),
-  each admitted ONLY by its exact declared-value string — a caller supplying any other rule is a
-  hidden experiment and fails closed, and a caller supplying nothing fails closed via
-  ``transition.require``;
+* the declared RC3/RC2 rational parameter expressions (PAR-036 / PAR-041 / PAR-043 / PAR-156 /
+  PAR-046 / PAR-159 / PAR-158), each admitted ONLY by its exact declared-value string — a caller
+  supplying any other rule is a hidden experiment and fails closed, and a caller supplying
+  nothing fails closed via ``transition.require``;
 * the ``NOT_RATIFIED`` sentinel + named-abstention event builder (W03/W04 failure law: a missing
   required dependency yields a NAMED abstention, never a silent null and never a fabricated
   value);
@@ -111,6 +111,67 @@ def evaluate_declared_rational(declared_rule: str, atr14_ticks: int) -> int:
         raise StructureLawError("ATR14_ticks must be a positive integer (warm-up abstains upstream)")
     floor_ticks, divisor = _RATIONAL_RULES[declared_rule]
     return max(floor_ticks, ceil_div(atr, divisor))
+
+
+# ---------------------------------------------------------------------------------------------
+# Declared fixed-fraction parameter expressions (PAR-046, PAR-159 — F11)
+#
+# These are NOT of the ``max(floor, ceil(ATR/divisor))`` shape ``evaluate_declared_rational``
+# implements: they are a plain declared fraction (a bar-range ratio) compared against a
+# caller-computed numerator/denominator, with no ATR scaling at all. The same admit-only-the-
+# exact-declared-byte-string discipline applies, so the (numerator, denominator) pair below is
+# looked up from the declared string, never hardcoded a second time at the call site.
+# ---------------------------------------------------------------------------------------------
+
+DECLARED_DISPLACEMENT_BODY_FRACTION = "13/20"    # PAR-046 (F11)
+DECLARED_DISPLACEMENT_CLOSE_LOCATION = "4/5"     # PAR-159 (F11)
+
+_FRACTION_RULES = {
+    DECLARED_DISPLACEMENT_BODY_FRACTION: (13, 20),
+    DECLARED_DISPLACEMENT_CLOSE_LOCATION: (4, 5),
+}
+
+
+def declared_fraction(declared_rule: str) -> tuple[int, int]:
+    """The exact ``(numerator, denominator)`` pair for a declared fixed-fraction rule.
+
+    Only the exact declared byte-strings above are admitted; anything else fails closed. The
+    caller cross-multiplies against this pair — never a floating division — so an equality
+    boundary (PAR-009 inclusive) is decided exactly regardless of magnitude.
+    """
+    if declared_rule not in _FRACTION_RULES:
+        raise StructureLawError(
+            f"undeclared fraction parameter rule: {declared_rule!r} — only the exact declared "
+            "value strings are executable")
+    return _FRACTION_RULES[declared_rule]
+
+
+# ---------------------------------------------------------------------------------------------
+# PAR-158 DISPLACEMENT_MIN_MOVE (F11) — a dedicated function, not the shared ATR-rational table
+#
+# The declared expression is ``max(5, ceil(ATR14_before_origin*3/2))`` — a ``*3`` multiplier
+# ahead of the ``/2`` divide that ``evaluate_declared_rational``'s ``max(floor, ceil(atr /
+# divisor))`` shape cannot express (that helper has no multiplier term). Rather than force-fit
+# it, this is a separate pure function; the string-gate discipline still applies — the machine
+# takes the declared string as a required parameter and refuses any other value — it is simply
+# enforced at the call site (the machine), not inside this function.
+# ---------------------------------------------------------------------------------------------
+
+DECLARED_DISPLACEMENT_MIN_MOVE = "max(5,ceil(ATR14_before_origin*3/2))"  # PAR-158 (F11)
+
+
+def evaluate_displacement_min_move(atr14_before_origin_ticks: int) -> int:
+    """``max(5, ceil(3 * ATR14_before_origin_ticks / 2))`` — the PAR-158 displacement floor.
+
+    The ATR input must be a positive exact tick integer (a null/absent ATR is the caller's
+    warm-up abstention, never a zero here — the same domain law as
+    ``evaluate_declared_rational``).
+    """
+    atr = require_int(atr14_before_origin_ticks, "atr14_before_origin_ticks")
+    if atr <= 0:
+        raise StructureLawError(
+            "ATR14_before_origin_ticks must be a positive integer (warm-up abstains upstream)")
+    return max(5, ceil_div(3 * atr, 2))
 
 
 # ---------------------------------------------------------------------------------------------

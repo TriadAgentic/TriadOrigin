@@ -71,6 +71,10 @@ All eight ship as `NOT_RATIFIED` registry rows; `require()` refuses them; runtim
 | E11 | F05 rolling extreme has NO linked RC3 golden vector (`BLOCKED_MISSING_LINKED_GOLDEN_VECTOR`); its exact values are pinned by repository tests only | G2 | Research + Operator | OPEN | Repo tests pin warm-up boundary + current-bar exclusion; the linked RC3 vector remains owed |
 | E12 | F06 span-law boundary is INCLUSIVE (span ≤ max_span joins, per PAR-009); an intended strict bound would be a formula-row spec change | B03 (implemented per PAR-009) | Operator | DEFAULT_IN_FORCE | `typed_level_registry.py` + boundary tests |
 
+| E13 | F16 OFI has no linked RC3 golden vector and no timestamp field on the declared book-update input, so PAR-057's max-age window cannot be applied structurally; the parameter is fetched/validated fail-closed but age-filtering is deferred to a future producer-side envelope revision | G2 | Research + Operator | OPEN | `flow_atoms.py` pins its own hand-worked vector; the sequence/watermark/min-updates laws are enforced now |
+| E14 | F12 causal order block: RC3's PAR-047/PAR-161 boundary-rule texts state slightly different tie-break wording (latest-event-then-source-id vs latest-qualifier-then-notional-then-source-id); implemented the fuller PAR-161 rule (notional, then source_id) per this build's task law | B04 (implemented; confirm or veto) | Operator/Research | DEFAULT_IN_FORCE | `order_block_registry.py`; a veto is a tie-break re-derivation, not a new module |
+| E15 | F12 has no TTL: RC3's formula row names a generic "TTL" input but no specific PAR governs it (unlike F10's PAR-051); implemented with none (only PENDING→EXPIRED-by-horizon and CONFIRMED→BROKEN are terminal paths) | B04 (implemented; confirm or veto) | Operator/Research | DEFAULT_IN_FORCE | A ratified F12-specific TTL parameter would be a follow-up binding + code change |
+
 ## F · Estate wiring handoffs (Track B)
 
 | Row | Question | Required before | Owner | Status |
