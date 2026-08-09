@@ -37,6 +37,12 @@ name TriadOrigin.
 **Default:** seal TriadOrigin-local checkpoints only (`checkpoint/<date>-origin-v7-build` +
 `CHECKPOINTS.md` in this repo); no sibling-repo checkpoint branches are created for this build.
 
+**Q-A6 · Estate/operator lanes.** 361 ESTATE + 57 OPERATOR ledger rows (other repos, on-box
+acts, G-1 credential rotation, G5+ live stages) are named and tracked but not built here.
+**Confirm:** this partition matches your intent ("if you need to wire with the other surfaces,
+then you wire with the other surfaces later"). Estate wiring stubs in this repo are limited to
+contract shapes + ingress expectations.
+
 **Q-A7 · Control-plane homing (comparator / authority router / legacy bridge / replay runner).**
 The R00-era repository law listed "runtime legacy bridge" and "authority router" in the never-add
 list (reading them as out-of-repo services), while the specification (Doc 06 SRV-005/006/007/025,
@@ -46,12 +52,6 @@ everything.
 side-effect-free; router lease-verify-only; bridge control-candidates-only; no network/process
 wiring); where their *processes* are deployed remains an estate decision. Veto if you want them
 in a different repo.
-
-**Q-A6 · Estate/operator lanes.** 361 ESTATE + 57 OPERATOR ledger rows (other repos, on-box
-acts, G-1 credential rotation, G5+ live stages) are named and tracked but not built here.
-**Confirm:** this partition matches your intent ("if you need to wire with the other surfaces,
-then you wire with the other surfaces later"). Estate wiring stubs in this repo are limited to
-contract shapes + ingress expectations.
 
 ## B · Activation values (BLOCKING_OWNER_DECISION — stay NOT_RATIFIED / fail closed)
 
@@ -73,8 +73,8 @@ values (or defer) at answer time:
 
 | Q | Parameter | Effect while unanswered |
 |---|---|---|
-| Q-C1 | RC3-PAR-STRUCT-001 `EQUAL_LEVEL_MAX_SPAN` | F07 equal-level clusters cannot emit (named abstention) |
-| Q-C2 | RC3-PAR-STRUCT-002 `BOOK_TILT_MIN_QUOTE_DEPTH` | F17 tilt cannot emit (named abstention) |
+| Q-C1 | RC3-PAR-STRUCT-001 `EQUAL_LEVEL_MAX_SPAN` | F06 equal-level clusters cannot emit (named abstention) |
+| Q-C2 | RC3-PAR-STRUCT-002 `BOOK_TILT_MIN_QUOTE_DEPTH` | F16 OFI/tilt cannot emit (named abstention) |
 | Q-C3 | RC3-PAR-STRUCT-003 `PROTECTED_SWING_REDUCER_VERSION` | protected-swing promotion runs only under an explicitly versioned reducer supplied by parameter bundle; tests exercise the RC3-documented candidate semantics |
 
 ## D · Proposed parameter bundle (123 × PROPOSED_RC2_MUST_RATIFY)
@@ -95,10 +95,10 @@ selectively, or keep everything symbolic until trial registration?
 | Q-E2 | RC1 `*_ns` envelope fields vs UTC-microsecond law | RC3 parameter row wins: UTC Unix **microseconds**; ns-precision carries remainder separately |
 | Q-E3 | int64 ticks vs base-10 string wire encoding | Both: semantic type is signed int64 ticks; JSON wire encoding is base-10 string (BLK-RC2-006 disposition) |
 | Q-E4 | F02 ATR window bar inclusion (BLK-RC2-007) | RC3 formula text + golden vector is authoritative; vector pins the choice |
-| Q-E5 | F04 tie-break (BLK-RC2-009) | RC3 formula + vectors reject ties per PAR/GV row |
+| Q-E5 | F04 fractal tie-break (BLK-RC2-009) | RC3 formula + vectors reject ties per PAR/GV row |
 | Q-E6 | Capsule family naming (BLK-RC2-011) | RC3 CAP-01…05 registry with ordinal↔semantic-version map recorded in the capsule registry artifact |
 | Q-E7 | Candidate lifecycle abstention/withdrawal (BLK-RC2-013) | RC3 lifecycle graph implemented; withdrawal is a first-class transition record |
-| Q-E8 | F18 stop-side `abs()` defect (BLK-RC2-014) | directional stop-side invariant implemented; one-tick vectors added |
+| Q-E8 | F18 geometry stop-side `abs()` defect (BLK-RC2-014) | directional stop-side invariant implemented; one-tick vectors added |
 | Q-E9 | W06 cluster-ID circularity (BLK-RC2-012) | non-circular prospective cluster-root design per RC3 overlay |
 
 ## F · Estate wiring handoffs (for the "wire with other surfaces later" phase)

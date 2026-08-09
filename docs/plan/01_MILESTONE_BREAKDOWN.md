@@ -71,68 +71,68 @@ migration vectors prove v1 stability; e2e gains a v2-identity stage. **Slice.** 
   restart.
 - **RC4 timings registry:** the 17 declared timing bounds as a versioned data artifact + loader
   (pure; consumers receive values, never read clocks).
-- F01 (exact tick/step conversion) golden vectors wired to `instrument_math`.
+- F00 (exact tick/step conversion) golden vectors wired to `instrument_math`.
 
 **Acceptance.** New falsification tests; e2e gains anchor + fence-restore stages. **Slice.** B02
 rows (W22/W24 in-repo, G1 in-repo). **Deps.** B01.
 
 ---
 
-## B03 · Structure semantics I (G2 — F02–F10)
+## B03 · Structure semantics I (F01–F09)
 
 **Scope.** The first half of the pure causal detector core.
 
 **Deliverables** (each a pure state machine over `transition()` with its RC3 formula):
-- `feature_primitives.py` — F02 finalized time-bar aggregation, F03 true range/trailing ATR in
-  ticks, F06 trailing rolling extreme; warm-up honest-null.
-- `structures/typed_level_registry.py` — F04 directional-change swing, F05 closed fractal pivot,
-  F07 anchored equal-level cluster (span bound symbolic → RESEARCH), F08 UTC session level.
-- `structures/structure_state.py` — F09 directional structure + protected swing (reducer version
-  symbolic → RESEARCH), F10 accepted break / BOS / CHOCH with precedence law.
+- `feature_primitives.py` — F01 finalized time-bar aggregation, F02 true range/trailing ATR in
+  ticks, F05 trailing rolling extreme; warm-up honest-null.
+- `structures/typed_level_registry.py` — F03 directional-change swing, F04 closed fractal pivot,
+  F06 anchored equal-level cluster (span bound symbolic → RESEARCH), F07 UTC session level.
+- `structures/structure_state.py` — F08 directional structure + protected swing (reducer version
+  symbolic → RESEARCH), F09 accepted break / BOS / CHOCH with precedence law.
 - `structure_atom.v2` / `structure_transition.v2` emission shapes wired to the journal.
 
 **Acceptance.** Per-detector: formation predicate, lifecycle-to-terminal, precedence, LONG/SHORT
 mirror, prefix/restart/duplicate invariance, fail-closed-on-missing-param, null honesty; RC2/RC3
-golden vectors for F02–F10; e2e gains a synthetic market-state → structures stage.
+golden vectors for F01–F09; e2e gains a synthetic market-state → structures stage.
 **Execution.** Ultracode fan-out (one agent per module family, self-tested), full-suite re-verify.
-**Slice.** B03 rows (W03/W04, F02–F10, ORIGIN feature/structure nodes). **Deps.** B02.
+**Slice.** B03 rows (W03/W04, F01–F09, ORIGIN feature/structure nodes). **Deps.** B02.
 
 ---
 
-## B04 · Structure semantics II (G2 — F11–F14, F16–F18)
+## B04 · Structure semantics II (F10–F13, F15–F17)
 
 **Scope.** The second half: gap/block/reclaim structures and flow atoms, plus the lifecycle
 reducer.
 
 **Deliverables.**
-- `structures/fvg_registry.py` — F11 three-bar fair-value gap + penetration lifecycle.
-- `structures/order_block_registry.py` — F12 qualified displacement + F13 causal order block
+- `structures/fvg_registry.py` — F10 three-bar fair-value gap + penetration lifecycle.
+- `structures/order_block_registry.py` — F11 qualified displacement + F12 causal order block
   (origin + displacement + linked BOS).
-- `structures/excursion_reclaim_registry.py` — F14 frozen-level excursion → timed reclaim → hold.
-- `structures/flow_atoms.py` — F16 trade-flow imbalance, F17 best-level order-flow imbalance
-  (min-depth symbolic → RESEARCH), F18 book depth tilt; no-future-venue law; null honesty.
+- `structures/excursion_reclaim_registry.py` — F13 frozen-level excursion → timed reclaim → hold.
+- `structures/flow_atoms.py` — F15 trade-flow imbalance, F16 best-level order-flow imbalance
+  (min-depth symbolic → RESEARCH), F17 book depth tilt; no-future-venue law; null honesty.
 - Lifecycle reducer (W05): structure lifecycle transitions with illegal-transition rejection.
 
-**Acceptance.** Same proof-obligation battery per module; goldens for F11–F18; e2e stage extends
+**Acceptance.** Same proof-obligation battery per module; goldens for F10–F17; e2e stage extends
 the walk through gaps/blocks/reclaims/flow. **Execution.** Ultracode fan-out. **Slice.** B04 rows
-(W05, F11–F18, lifecycle reducer node). **Deps.** B03.
+(W05, F10–F17, lifecycle reducer node). **Deps.** B03.
 
 ---
 
-## B05 · Reaction, capsules & candidates (G3 — F15, F19, F20)
+## B05 · Reaction, capsules & candidates (F14, F18, F19)
 
 **Scope.** Confirmed structures → immutable trade hypotheses → published candidates.
 
 **Deliverables.**
-- `reaction_engine.py` — F15 departure + first retest/touch; location → freshness → departure →
+- `reaction_engine.py` — F14 departure + first retest/touch; location → freshness → departure →
   trigger → confirmation → geometry.
 - `capsule_host.py` — isolated per-capsule runtime (one formula/parameter/trial identity each).
 - `capsules/` — the five capsules (`dc_swing_bos_first_retest.v1`,
   `protected_swing_choch_first_retest.v1`, `fvg_displacement_first_touch.v1`,
   `ob_displacement_bos_first_touch.v1`, `level_excursion_reclaim_flow_confirmed.v1`).
-- `opportunity_clusterer.py` — F20 clustering + alias control with the non-circular prospective
+- `opportunity_clusterer.py` — F19 clustering + alias control with the non-circular prospective
   cluster-root law (BLK-RC2-012 disposition per RC3).
-- `candidate_publisher.py` — F19 candidate geometry + geometric RR (directional stop-side
+- `candidate_publisher.py` — F18 candidate geometry + geometric RR (directional stop-side
   invariant per BLK-RC2-014 disposition), RR ≥ 2.0 floor, immutable `edge_candidate.v2`,
   lifecycle with named abstention + withdrawal (BLK-RC2-013 disposition), forbidden-money-field
   guard.
@@ -140,7 +140,7 @@ the walk through gaps/blocks/reclaims/flow. **Execution.** Ultracode fan-out. **
 **Acceptance.** End-to-end synthetic sequence market-state → structures → reaction → candidate,
 with RR-floor rejection, withdrawal on invalidation, capsule isolation (no cross-capsule vote),
 contract validity; e2e full-funnel stage. **Execution.** Host/engine authored directly; capsules
-fanned out. **Slice.** B05 rows (W06, F15/F19/F20, capsule/candidate nodes). **Deps.** B04.
+fanned out. **Slice.** B05 rows (W06, F14/F18/F19, capsule/candidate nodes). **Deps.** B04.
 
 ---
 
@@ -219,7 +219,7 @@ explicitly `READY_NO_AUTHORITY` with named missing-evidence inputs; e2e stage re
 **Deliverables.**
 - `tests/matrix/` — offline-feasible verification rows tagged with RC3 verification IDs; a
   conformance report tool mapping implemented tests → registry rows (counts by gate).
-- Estate-formula catalog (F21–F24): contract shapes + golden vectors only, clearly marked
+- Estate-formula catalog (F20–F23): contract shapes + golden vectors only, clearly marked
   CATALOG (no execution semantics in this repo).
 - `docs/runbooks/` — migration/rollback/incident/DR runbooks distilled from Doc 09 + RC4 L7
   (procedures only); `docs/VERIFICATION.md` obligations → tests map.

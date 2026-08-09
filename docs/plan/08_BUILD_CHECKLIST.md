@@ -32,31 +32,31 @@ green._
 - [ ] Cold/warm exactly-once parity evidence
 - [ ] Per-scope fence state sealed in checkpoint, restored before consumption
 - [ ] RC4 timing registry (17 bounds) as data + loader
-- [ ] F01 golden vectors on `instrument_math`
+- [ ] F00 golden vectors on `instrument_math`
 - [ ] e2e: anchor + fence-restore stages · B01 receipt · PR merged green
 
-## B03 · Structure semantics I (F02–F10)
-- [ ] `feature_primitives.py` (F02 bars, F03 ATR, F06 rolling extremes)
-- [ ] `structures/typed_level_registry.py` (F04 DC swing, F05 fractal, F07 equal-level*, F08 session)
-- [ ] `structures/structure_state.py` (F09 structure/protected swing*, F10 break/BOS/CHOCH)
-- [ ] Proof-obligation battery ×3 modules + RC goldens F02–F10
+## B03 · Structure semantics I (F01–F09)
+- [ ] `feature_primitives.py` (F01 bars, F02 ATR, F05 rolling extremes)
+- [ ] `structures/typed_level_registry.py` (F03 DC swing, F04 fractal, F06 equal-level*, F07 session)
+- [ ] `structures/structure_state.py` (F08 structure/protected swing*, F09 break/BOS/CHOCH)
+- [ ] Proof-obligation battery ×3 modules + RC goldens F01–F09
 - [ ] `structure_atom.v2` emission wired to journal
 - [ ] e2e: market-state → structures stage · B02 receipt · PR merged green
   \* research-blocked parameters symbolic, named abstention
 
-## B04 · Structure semantics II (F11–F14, F16–F18)
-- [ ] `structures/fvg_registry.py` (F11)
-- [ ] `structures/order_block_registry.py` (F12+F13)
-- [ ] `structures/excursion_reclaim_registry.py` (F14)
-- [ ] `structures/flow_atoms.py` (F16, F17*, F18)
+## B04 · Structure semantics II (F10–F13, F15–F17)
+- [ ] `structures/fvg_registry.py` (F10)
+- [ ] `structures/order_block_registry.py` (F11+F12)
+- [ ] `structures/excursion_reclaim_registry.py` (F13)
+- [ ] `structures/flow_atoms.py` (F15, F16*, F17)
 - [ ] Lifecycle reducer (W05) + illegal-transition rejection
-- [ ] Proof-obligation battery ×4 modules + goldens F11–F18
+- [ ] Proof-obligation battery ×4 modules + goldens F10–F17
 - [ ] e2e: gaps/blocks/reclaims/flow stage · B03 receipt · PR merged green
 
-## B05 · Reaction, capsules & candidates (F15, F19, F20)
-- [ ] `reaction_engine.py` (F15) · `capsule_host.py` · 5 capsules
-- [ ] `opportunity_clusterer.py` (F20, non-circular cluster root)
-- [ ] `candidate_publisher.py` (F19, RR≥2.0, stop-side invariant, withdrawal, forbidden-field guard)
+## B05 · Reaction, capsules & candidates (F14, F18, F19)
+- [ ] `reaction_engine.py` (F14) · `capsule_host.py` · 5 capsules
+- [ ] `opportunity_clusterer.py` (F19, non-circular cluster root)
+- [ ] `candidate_publisher.py` (F18, RR≥2.0, stop-side invariant, withdrawal, forbidden-field guard)
 - [ ] Isolation proof (no cross-capsule vote) + full-funnel synthetic test
 - [ ] e2e: full-funnel stage · B04 receipt · PR merged green
 
@@ -84,7 +84,7 @@ green._
 
 ## B09 · Verification matrix & runbooks
 - [ ] `tests/matrix/` tagged with RC3 verification IDs + conformance report tool
-- [ ] F21–F24 estate-formula catalog vectors (CATALOG marked)
+- [ ] F20–F23 estate-formula catalog vectors (CATALOG marked)
 - [ ] `docs/runbooks/` + `docs/VERIFICATION.md`
 - [ ] B08 receipt · PR merged green
 

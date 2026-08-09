@@ -88,13 +88,13 @@ can never silently drift from the vendored bundles.
 | **B00** | Authority & control baseline | vendored bundles, plan, ledger, e2e audit v0, questions doc | — |
 | **B01** | Foundation corrections | typed identity v2, attestation equality, manifest descriptor, strict receipt schemas, v2/v3 contract catalog (incl. `fill.v3`, `structure_atom.v2`, `edge_candidate.v2`) | G0 |
 | **B02** | Kernel hardening | ledger external anchor + tail-deletion falsification, per-scope fence restore, RC4 timing registry | G0/G1 |
-| **B03** | Structure semantics I | feature primitives, typed levels, structure state (F02–F10) | G2 |
-| **B04** | Structure semantics II | FVG, displacement, order block, excursion/reclaim, flow atoms (F11–F14, F16–F18), lifecycle reducer | G2 |
-| **B05** | Reaction, capsules & candidates | reaction engine (F15), geometry+RR (F19), clustering (F20), capsule host, 5 capsules, candidate publisher | G3 |
+| **B03** | Structure semantics I | feature primitives, typed levels, structure state (F01–F09) | G2 |
+| **B04** | Structure semantics II | FVG, displacement, order block, excursion/reclaim, flow atoms (F10–F13, F15–F17), lifecycle reducer | G2 |
+| **B05** | Reaction, capsules & candidates | reaction engine (F14), geometry+RR (F18), clustering (F19), capsule host, 5 capsules, candidate publisher | G3 |
 | **B06** | Lever & four-plane control | `engine_control_manifest.v2`, lever parser/resolver/attestation, 32 refusal codes, shadow-law recorder, plane-population guards | RC4 L0–L5 |
 | **B07** | Config, wiring & services | signed config artifacts + parameter registry, comparator, authority router, legacy bridge, replay runner, service main | G4 |
 | **B08** | Read faces & evidence | read-only evidence projections, readiness truth, funnel/zero-reason telemetry | G5, RC4 L6 |
-| **B09** | Verification matrix & runbooks | Doc 08 matrix consolidation, estate-formula catalog vectors (F21–F24), runbooks | — |
+| **B09** | Verification matrix & runbooks | Doc 08 matrix consolidation, estate-formula catalog vectors (F20–F23), runbooks | — |
 | **B10** | Audit rounds & seal | multi-round adversarial audits, implementation report, clarification report, checkpoint seal | — |
 
 Sequencing: strictly B00 → B01 → … → B10. Detail: [`01_MILESTONE_BREAKDOWN.md`](01_MILESTONE_BREAKDOWN.md).

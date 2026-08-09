@@ -80,15 +80,16 @@ GATE_MILESTONE = {
     "G9": OPERATOR,
 }
 
+# Effective-bundle formula ids are F00..F23 (F00 tick/step … F23 campaign PnL).
 FORMULA_MILESTONE = {
-    "F01": "B02",
-    "F02": "B03", "F03": "B03", "F04": "B03", "F05": "B03", "F06": "B03",
-    "F07": "B03", "F08": "B03", "F09": "B03", "F10": "B03",
-    "F11": "B04", "F12": "B04", "F13": "B04", "F14": "B04",
-    "F16": "B04", "F17": "B04", "F18": "B04",
-    "F15": "B05", "F19": "B05", "F20": "B05",
-    # Estate-owned economics: contracts + golden vectors only in this repo.
-    "F21": "B09", "F22": "B09", "F23": "B09", "F24": "B09",
+    "F00": "B02",
+    "F01": "B03", "F02": "B03", "F03": "B03", "F04": "B03", "F05": "B03",
+    "F06": "B03", "F07": "B03", "F08": "B03", "F09": "B03",
+    "F10": "B04", "F11": "B04", "F12": "B04", "F13": "B04",
+    "F15": "B04", "F16": "B04", "F17": "B04",
+    "F14": "B05", "F18": "B05", "F19": "B05",
+    # Estate-owned economics (G6): contracts + golden vectors only in this repo.
+    "F20": "B09", "F21": "B09", "F22": "B09", "F23": "B09",
 }
 
 WIRING_MILESTONE = {
