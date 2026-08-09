@@ -25,15 +25,15 @@ green._
 - [x] Epoch-law regression audit (current accepted / lower rejected; new authority contracts epoch-fenced)
 - [x] B-series milestone receipt law (`tools/validate_b_receipt.py`) + B00 receipt sealed
 - [x] R00 ceremony tests repointed to the frozen R00-era fixture (`tests/fixtures/r00_state`)
-- [ ] e2e: identity-v2 + lever-law + receipt stages · PR merged green
+- [x] e2e: identity-v2 + lever-law + receipt stages · PR merged green (#9, squash `a00e2ee`)
 
 ## B02 · Kernel hardening
-- [ ] Ledger external durable anchor + tail-deletion/replacement falsification
-- [ ] Cold/warm exactly-once parity evidence
-- [ ] Per-scope fence state sealed in checkpoint, restored before consumption
-- [ ] RC4 timing registry (17 bounds) as data + loader
-- [ ] F00 golden vectors on `instrument_math`
-- [ ] e2e: anchor + fence-restore stages · B01 receipt · PR merged green
+- [x] Ledger external durable anchor (`anchor.py`: chained anchor journal, ANCHOR_TAIL_DELETED / ANCHOR_TAIL_REPLACED / ANCHOR_FILE_REPLACED falsifications proven beyond self-verification)
+- [x] Cold/warm exactly-once parity evidence (anchored ledger + checkpoint resume == cold rebuild)
+- [x] Per-scope fence state (lease tokens + revocations + producer epochs) sealed in checkpoint **v3**, restored-before-consumption; lower-token/lower-epoch acceptance falsified across restart; v1/v2 checkpoints require migration
+- [x] RC4 timing registry (`timings.py`, 17 bounds drift-locked to the vendored bundle; pure staleness predicate; clock inversion never fresh)
+- [x] F00 golden vectors on `instrument_math` (GV-001 BUY-floor/SELL-ceil; venue-fact EXACT quarantine; side-rounding path opened for computed prices)
+- [ ] e2e: anchor + fence-restore + timing stages · B01 receipt · PR merged green
 
 ## B03 · Structure semantics I (F01–F09)
 - [ ] `feature_primitives.py` (F01 bars, F02 ATR, F05 rolling extremes)

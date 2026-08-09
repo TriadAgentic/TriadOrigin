@@ -10,7 +10,7 @@ before warm restore can assert terminal-prefix/no-loss identity (Doc 02 §02.16)
 from __future__ import annotations
 
 import pathlib
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 from .canonical import CanonicalError, canonical_json, loads_canonical, sha256_hex
 
@@ -23,8 +23,11 @@ class CheckpointMigrationRequired(CheckpointError):
     """A recognized legacy checkpoint cannot be trusted for warm restore."""
 
 
-CHECKPOINT_IDENTITY_VERSION = "origin.checkpoint.v2"
-LEGACY_CHECKPOINT_IDENTITY_VERSION = "origin.checkpoint.v1"
+# v3 (CTRL-B02-002): the closed per-scope fence state (accepted lease tokens + revocations +
+# producer-epoch high-waters) is part of the sealed restart identity — a restore that cannot
+# reproduce its fences must cold-rebuild, never guess.
+CHECKPOINT_IDENTITY_VERSION = "origin.checkpoint.v3"
+LEGACY_CHECKPOINT_IDENTITY_VERSIONS = ("origin.checkpoint.v1", "origin.checkpoint.v2")
 REQUIRED_DIGEST_KEYS = frozenset({"build", "config", "contract", "parameter", "instrument"})
 
 
@@ -43,6 +46,8 @@ class Checkpoint:
     state_seq: int
     last_transition_id: str
     digests: dict[str, str]
+    fence_state: dict = field(default_factory=lambda: {
+        "lease": {"highest": {}, "revoked": []}, "epoch": {}})
     state_checksum: str = ""
     identity_schema_version: str = CHECKPOINT_IDENTITY_VERSION
 
@@ -62,6 +67,7 @@ class Checkpoint:
             "state_seq": self.state_seq,
             "last_transition_id": self.last_transition_id,
             "digests": self.digests,
+            "fence_state": self.fence_state,
             "identity_schema_version": self.identity_schema_version,
         }
 
@@ -91,6 +97,7 @@ class Checkpoint:
             state_seq=material["state_seq"],
             last_transition_id=material["last_transition_id"],
             digests=material["digests"],
+            fence_state=material["fence_state"],
             state_checksum=sha256_hex(canonical_json(material)),
             identity_schema_version=material["identity_schema_version"],
         )
@@ -119,10 +126,11 @@ def load(path: str | pathlib.Path) -> Checkpoint:
         raise CheckpointError(f"checkpoint is not exact canonical UTF-8 JSON: {p}") from exc
     if not isinstance(raw, dict):
         raise CheckpointError("checkpoint root must be an object")
-    if raw.get("identity_schema_version") == LEGACY_CHECKPOINT_IDENTITY_VERSION:
+    if raw.get("identity_schema_version") in LEGACY_CHECKPOINT_IDENTITY_VERSIONS:
         raise CheckpointMigrationRequired(
-            "origin.checkpoint.v1 did not authenticate the complete restart identity; cold rebuild "
-            "and write origin.checkpoint.v2 before warm restore"
+            f"{raw.get('identity_schema_version')} did not authenticate the complete restart "
+            "identity (v1: replay metadata; v2: per-scope fence state); cold rebuild and write "
+            "origin.checkpoint.v3 before warm restore"
         )
     required = {
         "partition",
@@ -139,6 +147,7 @@ def load(path: str | pathlib.Path) -> Checkpoint:
         "last_transition_id",
         "state_checksum",
         "digests",
+        "fence_state",
         "identity_schema_version",
     }
     missing = sorted(required - raw.keys())
@@ -161,6 +170,7 @@ def load(path: str | pathlib.Path) -> Checkpoint:
         state_seq=raw["state_seq"],
         last_transition_id=raw["last_transition_id"],
         digests=raw["digests"],
+        fence_state=raw["fence_state"],
         state_checksum=raw["state_checksum"],
         identity_schema_version=raw["identity_schema_version"],
     )
@@ -223,6 +233,24 @@ def _validate_fields(cp: Checkpoint, *, loading: bool) -> None:
         raise CheckpointError("checkpoint genesis state requires last_transition_id='genesis'")
     if cp.state_seq >= 0 and not cp.last_transition_id.startswith("stx_"):
         raise CheckpointError("checkpoint last_transition_id must identify a state transition")
+    fence = cp.fence_state
+    if (not isinstance(fence, dict) or set(fence) != {"lease", "epoch"}
+            or not isinstance(fence.get("lease"), dict)
+            or set(fence["lease"]) != {"highest", "revoked"}
+            or not isinstance(fence["lease"]["highest"], dict)
+            or not isinstance(fence["lease"]["revoked"], list)
+            or not isinstance(fence.get("epoch"), dict)):
+        raise CheckpointError(
+            "checkpoint fence_state must be exactly {lease:{highest,revoked}, epoch}")
+    for scope, token in fence["lease"]["highest"].items():
+        if not isinstance(scope, str) or not scope or isinstance(token, bool)                 or not isinstance(token, int) or token <= 0:
+            raise CheckpointError(f"checkpoint fence lease token invalid for scope {scope!r}")
+    for scope in fence["lease"]["revoked"]:
+        if not isinstance(scope, str) or not scope:
+            raise CheckpointError("checkpoint fence revoked scope must be non-empty text")
+    for scope, epoch in fence["epoch"].items():
+        if not isinstance(scope, str) or not scope or isinstance(epoch, bool)                 or not isinstance(epoch, int) or epoch < 0:
+            raise CheckpointError(f"checkpoint fence epoch invalid for scope {scope!r}")
     if not isinstance(cp.digests, dict) or set(cp.digests) != REQUIRED_DIGEST_KEYS:
         raise CheckpointError(
             "checkpoint digests require exactly build/config/contract/parameter/instrument"

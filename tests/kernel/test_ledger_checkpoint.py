@@ -169,7 +169,7 @@ def test_legacy_v1_checkpoint_requires_explicit_cold_rebuild(tmp_path):
         "input_offset": 7,
         "state_checksum": cp.sha256_hex(cp.canonical_json(state)),
         "digests": {"build": "legacy"},
-        "identity_schema_version": cp.LEGACY_CHECKPOINT_IDENTITY_VERSION,
+        "identity_schema_version": cp.LEGACY_CHECKPOINT_IDENTITY_VERSIONS[0],
     }
     path.write_bytes(cp.canonical_json(raw))
     with pytest.raises(cp.CheckpointMigrationRequired, match="cold rebuild"):
@@ -188,7 +188,7 @@ def test_unknown_checkpoint_version_fails_closed(tmp_path):
 
 def test_writer_refuses_legacy_or_unknown_checkpoint_version(tmp_path):
     checkpoint = _checkpoint(
-        identity_schema_version=cp.LEGACY_CHECKPOINT_IDENTITY_VERSION,
+        identity_schema_version=cp.LEGACY_CHECKPOINT_IDENTITY_VERSIONS[0],
     )
     with pytest.raises(cp.CheckpointError, match="refusing to write unsupported"):
         cp.save(tmp_path / "legacy.checkpoint", checkpoint)
