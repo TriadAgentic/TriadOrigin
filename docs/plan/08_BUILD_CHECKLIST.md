@@ -117,19 +117,19 @@ separate gate receipt._
 
 ## B06 · F14/F18/F19 reaction, capsules, candidates
 
-- [ ] F14 departure/first-retest reaction engine
-- [ ] F18 directional geometry/RR; one-tick stop and RR ≥ 2.0 boundaries
-- [ ] F19 frozen earliest prospective cluster root; no re-root
-- [ ] Semantic capsule registry with five stable IDs
-- [ ] RC2 ordinal capsule parameters removed from executable binding unless explicitly remapped
-- [ ] Isolated capsule host; no voting/ensemble
-- [ ] Complete immutable `edge_candidate.v2`; no money fields
-- [ ] Append-only expiry/withdrawal/data-invalid transitions
-- [ ] Atomic mandatory SHADOW fork for every candidate disposition
-- [ ] Malformed candidate goes only to rejection audit; no fabricated trade
-- [ ] Trial family preregistered before result access
-- [ ] Leave-one-conjunct ablations registered
-- [ ] End-to-end structures → reaction → candidate → SHADOW stage
+- [x] F14 departure/first-retest reaction engine — `structures/reaction.py` `DepartureAndFirstTouch`, `ELIGIBLE→DEPARTED→FIRST_TOUCH_CONSUMED|EXPIRED|INVALIDATED`, GV-012
+- [x] F18 directional geometry/RR; one-tick stop and RR ≥ 2.0 boundaries — `structures/candidate_geometry.py` `evaluate_candidate_geometry`, exact cross-multiplication `reward*1>=risk*2`, GV-015 (T=104 admits, T=103 abstains one tick below)
+- [x] F19 frozen earliest prospective cluster root; no re-root — `structures/clustering.py` `OpportunityClusterRegistry`, connected-components join; a genuine two-cluster match resolves per the RC3 errata (earliest root wins deterministically, the other cluster is RECORDED as an alias — `CLUSTER_ALIASED`, never a merge, never a refusal), GV-016
+- [x] Semantic capsule registry with five stable IDs — `structures/capsules.py` `CANONICAL_SEMANTIC_IDS` (5), each bound by NAME and/or `formula_refs` evidence, never by ordinal position
+- [x] RC2 ordinal capsule parameters removed from executable binding unless explicitly remapped — `capsules.resolve_capsule` refuses every `CAP01..CAP05` ordinal spelling (`CapsuleUnavailableError`); PAR-178 registered honestly as `ORPHANED_LEGACY_PARAMETERS`, bound to no capsule
+- [x] Isolated capsule host; no voting/ensemble — `resolve_capsule` returns exactly one `CapsuleDefinition` or raises; no blending code path exists
+- [x] Complete immutable `edge_candidate.v2`; no money fields — `structures/candidate_publisher.py` composes the full payload, validated via `contracts.validate_payload` (schema + `assert_no_forbidden_candidate_fields`); a candidate's stored geometry never mutates (disagreeing redelivery raises)
+- [x] Append-only expiry/withdrawal/data-invalid transitions — `CandidatePublisher._transition_candidate`, `PUBLISHED→WITHDRAWN|EXPIRED|DATA_INVALID`, each terminal; an already-terminal candidate refuses by name
+- [x] Atomic mandatory SHADOW fork for every candidate disposition — `CandidatePublisher._publish` nests `ShadowLedger().transition(...)` inside its own transition call: every `PUBLISH_CANDIDATE` produces a candidate+shadow_trade pair or a shadow_rejection_audit alone, never neither, never a follow-up call
+- [x] Malformed candidate goes only to rejection audit; no fabricated trade — an `edge_candidate_valid=False` (schema-invalid, or a forbidden money field) or any of the 12 re-derived tradeability flags false routes to `CANDIDATE_PUBLICATION_REFUSED` + `SHADOW_REJECTION_AUDIT_RECORDED`, never a published candidate
+- [x] Trial family preregistered before result access — `structures/trial_registry.py` `TrialRegistry`, append-only/immutable-once-set; `resolve_trial` (candidate_publisher's own read) raises `TrialUnavailableError` for an unregistered `trial_id`
+- [x] Leave-one-conjunct ablations registered — `trial_registry._derive_ablations`, N conjuncts → N deterministic ablation ids, auto-derived, never hand-picked
+- [x] End-to-end structures → reaction → candidate → SHADOW stage — e2e stage 21 `candidate_publisher_walk` (F14 GV-012 → F18 GV-015 → F19 GV-016 → capsule/trial identity → the atomic fork → untradeable path → lifecycle withdrawal)
 - [ ] Source PR merged green
 - [ ] Post-merge B06 receipt passed
 

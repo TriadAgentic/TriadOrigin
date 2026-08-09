@@ -842,6 +842,250 @@ def four_plane_walk() -> None:
         raise AssertionError("ADR-005 artifact must name LEV-0001 and its scope boundary")
 
 
+# ---------------------------------------------------------------- stage 21
+@stage("candidate_publisher_walk",
+       "B06: F14 departure/first-touch (GV-012) -> F18 geometry (GV-015) -> F19 clustering "
+       "(GV-016) -> capsule/trial identity -> the mandatory atomic SHADOW fork -> lifecycle")
+def candidate_publisher_walk() -> None:
+    from triad_origin import canonical, contracts, transition
+    from triad_origin.structures import capsules, common, trial_registry
+    from triad_origin.structures.candidate_geometry import (
+        ABSTAIN_GEOMETRY_BELOW_FLOOR,
+        DECLARED_MIN_GEOMETRIC_RR,
+        PARAM_MIN_GEOMETRIC_RR_RULE,
+        evaluate_candidate_geometry,
+    )
+    from triad_origin.structures.candidate_publisher import (
+        CANDIDATE_PUBLICATION_REFUSED,
+        CANDIDATE_PUBLISHED,
+        CANDIDATE_TRANSITIONED,
+        STATE_WITHDRAWN,
+        CandidatePublisher,
+    )
+    from triad_origin.structures.clustering import (
+        CLUSTER_FORMED,
+        CLUSTER_JOINED,
+        PARAM_CLUSTER_WINDOW_MS,
+        OpportunityClusterRegistry,
+    )
+    from triad_origin.structures.reaction import (
+        DECLARED_CONTACT_PRICE_SOURCE,
+        PARAM_CONTACT_PRICE_SOURCE,
+        PARAM_FIRST_TOUCH_ORDINAL,
+        PARAM_MIN_DEPART_EVENTS,
+        PARAM_MIN_DEPART_TIME_MS,
+        PARAM_MIN_DEPARTURE_RULE,
+        REACTION_CONFIRMED,
+        DepartureAndFirstTouch,
+    )
+    from triad_origin.control.shadow_ledger import SHADOW_TRADE_RECORDED
+
+    CAPSULE_ID = "fvg_displacement_first_touch.v1"
+
+    # 1 · F14 — GV-012: zone [100,105], departure exactly at the PAR-050/166/167 floors (each
+    #     inclusive per PAR-009), then a first touch at price [105,110] (the golden vector's own
+    #     inputs) consumes eligibility, and an identical second touch never yields a second
+    #     candidate.
+    f14_params = {
+        PARAM_MIN_DEPARTURE_RULE: common.DECLARED_MIN_DEPARTURE,
+        PARAM_MIN_DEPART_EVENTS: 1,
+        PARAM_MIN_DEPART_TIME_MS: 60_000,
+        PARAM_CONTACT_PRICE_SOURCE: DECLARED_CONTACT_PRICE_SOURCE,
+        PARAM_FIRST_TOUCH_ORDINAL: 1,
+    }
+    f14_inputs = [
+        {"event_id": "z1", "kind": "ZONE_REGISTERED",
+         "payload": {"zone_id": "Z1", "direction": common.LONG, "z_near_ticks": 105,
+                    "z_far_ticks": 100, "knowledge_time_us": 0}},
+        {"event_id": "d1", "kind": "DEPARTURE_CANDIDATE",
+         "payload": {"zone_id": "Z1", "directional_distance_from_near_edge_ticks": 2,
+                    "depart_event_count": 1, "elapsed_depart_time_ms": 60_000,
+                    "atr14_ticks": 20}},
+        {"event_id": "c1", "kind": "CONTACT_OBSERVATION",
+         "payload": {"zone_id": "Z1", "contact_source": DECLARED_CONTACT_PRICE_SOURCE,
+                    "observed_low_ticks": 105, "observed_high_ticks": 110,
+                    "event_time_us": 1_000}},
+        {"event_id": "c2", "kind": "CONTACT_OBSERVATION",  # second identical touch: GV-012
+         "payload": {"zone_id": "Z1", "contact_source": DECLARED_CONTACT_PRICE_SOURCE,
+                    "observed_low_ticks": 105, "observed_high_ticks": 110,
+                    "event_time_us": 2_000}},
+    ]
+    f14_result = transition.run(DepartureAndFirstTouch(), f14_inputs, f14_params)
+    confirmed = [e for e in f14_result.events if e["event_kind"] == REACTION_CONFIRMED]
+    if len(confirmed) != 1:
+        raise AssertionError(
+            f"F14 GV-012: expected exactly one REACTION_CONFIRMED (first touch consumes; a second "
+            f"identical touch must be silently ignored), got {len(confirmed)}")
+    source_reaction_id = confirmed[0]["source_reaction_id"]
+
+    # 2 · F18 — GV-015: LONG E=100, source=99, ATR14=20 -> buffer=1 -> S=98 -> risk=2; T=104 ->
+    #     reward=4, admits with the UNREDUCED pair (4, 2); T=103 -> reward=3, one tick below the
+    #     PAR-061 2:1 floor -> ABSTAIN, never a crash, never a fabricated admit.
+    f18_params = {
+        capsules.PAR_NATURAL_INVALIDATION_BUFFER_RULE: capsules.DECLARED_NATURAL_INVALIDATION_BUFFER,
+        capsules.PAR_TARGET_AVAILABILITY_RULE: capsules.TARGET_AVAILABILITY_RULE,
+        capsules.PAR_TARGET_SELECTOR: capsules.TARGET_SELECTOR_PRIORITY,
+        PARAM_MIN_GEOMETRIC_RR_RULE: DECLARED_MIN_GEOMETRIC_RR,
+    }
+
+    def geometry(target_ticks: int):
+        return evaluate_candidate_geometry(
+            direction=common.LONG, entry_reference_ticks=100,
+            natural_invalidation_source_ticks=99, atr14_ticks=20,
+            capsule_semantic_id=CAPSULE_ID,
+            available_targets=[{"target_type": "PROTECTED_SWING", "target_ticks": target_ticks,
+                               "knowledge_time_us": 0, "root_id": "t1"}],
+            candidate_knowledge_time_us=1_000, params=f18_params)
+
+    admitted = geometry(104)
+    if not admitted.admitted or (admitted.rr_numerator, admitted.rr_denominator) != (4, 2):
+        raise AssertionError(
+            f"F18 GV-015 admit case failed: {admitted.admitted}, "
+            f"({admitted.rr_numerator}, {admitted.rr_denominator}) != (4, 2) — the unreduced pair")
+    below_floor = geometry(103)
+    if below_floor.admitted or below_floor.abstain_reason != ABSTAIN_GEOMETRY_BELOW_FLOOR:
+        raise AssertionError("F18 GV-015 below-floor boundary (T=103) must abstain, never admit")
+
+    # 3 · F19 — GV-016: same instrument/side, zones touching at one tick, availability delta
+    #     exactly 30000ms (the PAR-060 window, ms->us converted) -> SAME cluster; in an isolated
+    #     pair, delta 30001ms with no source overlap -> a SEPARATE cluster (one ms past the
+    #     inclusive boundary).
+    f19_params = {PARAM_CLUSTER_WINDOW_MS: 30_000}
+    params_digest = capsules.capsule_digest(capsules.resolve_capsule(CAPSULE_ID))
+    same_cluster_inputs = [
+        {"event_id": "occ_a", "kind": "CANDIDATE_OCCURRENCE",
+         "payload": {"candidate_id": "CAND-A", "instrument": "BTCUSDT.BINANCE.UMF",
+                    "side": common.LONG, "source_structure_id": "", "source_reaction_id": "",
+                    "entry_zone_low_ticks": 100, "entry_zone_high_ticks": 105,
+                    "availability_us": 0, "occurrence_version": 1, "capsule_id": CAPSULE_ID,
+                    "capsule_params_digest": params_digest}},
+        {"event_id": "occ_b", "kind": "CANDIDATE_OCCURRENCE",
+         "payload": {"candidate_id": "CAND-B", "instrument": "BTCUSDT.BINANCE.UMF",
+                    "side": common.LONG, "source_structure_id": "", "source_reaction_id": "",
+                    "entry_zone_low_ticks": 105, "entry_zone_high_ticks": 110,
+                    "availability_us": 30_000_000,  # exactly 30000ms: inclusive boundary
+                    "occurrence_version": 1, "capsule_id": CAPSULE_ID,
+                    "capsule_params_digest": params_digest}},
+    ]
+    f19_same = transition.run(OpportunityClusterRegistry(), same_cluster_inputs, f19_params)
+    if f19_same.events[0]["event_kind"] != CLUSTER_FORMED:
+        raise AssertionError("F19: the root occurrence must form a new cluster")
+    if f19_same.events[1]["event_kind"] != CLUSTER_JOINED:
+        raise AssertionError("F19 GV-016: an occurrence exactly at the 30000ms window boundary "
+                             "must join the existing cluster, not root a new one")
+    opportunity_cluster_id = f19_same.events[0]["cluster_id"]
+
+    separate_cluster_inputs = [
+        {"event_id": "occ_e", "kind": "CANDIDATE_OCCURRENCE",
+         "payload": {"candidate_id": "CAND-E", "instrument": "BTCUSDT.BINANCE.UMF",
+                    "side": common.LONG, "source_structure_id": "", "source_reaction_id": "",
+                    "entry_zone_low_ticks": 100, "entry_zone_high_ticks": 105,
+                    "availability_us": 0, "occurrence_version": 1, "capsule_id": CAPSULE_ID,
+                    "capsule_params_digest": params_digest}},
+        {"event_id": "occ_f", "kind": "CANDIDATE_OCCURRENCE",
+         "payload": {"candidate_id": "CAND-F", "instrument": "BTCUSDT.BINANCE.UMF",
+                    "side": common.LONG, "source_structure_id": "", "source_reaction_id": "",
+                    "entry_zone_low_ticks": 100, "entry_zone_high_ticks": 105,
+                    "availability_us": 30_001_000,  # 30001ms: one ms past the window
+                    "occurrence_version": 1, "capsule_id": CAPSULE_ID,
+                    "capsule_params_digest": params_digest}},
+    ]
+    f19_separate = transition.run(OpportunityClusterRegistry(), separate_cluster_inputs, f19_params)
+    if f19_separate.events[1]["event_kind"] != CLUSTER_FORMED:
+        raise AssertionError("F19 GV-016: 30001ms with no source overlap must root a SEPARATE "
+                             "cluster, not join")
+
+    # 4 · Capsule + trial identity: every one of the five ratified semantic capsules resolves; an
+    #     RC2 ordinal spelling is never accepted as an alias.
+    for semantic_id in capsules.CANONICAL_SEMANTIC_IDS:
+        capsules.resolve_capsule(semantic_id)
+    try:
+        capsules.resolve_capsule("CAP01_OB_ENTRY")
+    except capsules.CapsuleUnavailableError:
+        pass
+    else:
+        raise AssertionError("an RC2 CAP-ordinal spelling must never resolve as a capsule alias")
+
+    trial_id = "E2E-TRIAL-1"
+    trial_state = transition.run(
+        trial_registry.TrialRegistry(),
+        [{"event_id": "pre1", "kind": "PREREGISTER_TRIAL",
+          "payload": {"trial_id": trial_id, "capsule_semantic_id": CAPSULE_ID,
+                     "conjunct_set": ["c1"], "results_available_after_us": 1,
+                     "preregistered_at_us": 0}}], {}).final_state
+
+    # 5 · The composed edge_candidate.v2 payload, built from the F14/F18/F19 outputs above -> the
+    #     mandatory atomic SHADOW fork. No candidate path without a durable SHADOW write.
+    edge_candidate_payload = {
+        "candidate_id": "E2E-CAND-1", "hypothesis_id": "E2E-HYP-1",
+        "opportunity_cluster_id": opportunity_cluster_id, "capsule_id": CAPSULE_ID,
+        "capsule_version": "1", "parameter_digest": "a" * 64, "trial_id": trial_id,
+        "source_structure_id": "E2E-STRUCT-1", "source_reaction_id": source_reaction_id,
+        "canonical_instrument_id": "BTCUSDT.BINANCE.UMF", "direction": common.LONG,
+        "horizon": "100", "entry_policy": "MARKET_TOUCH",
+        "entry_reference_ticks": canonical.tick_to_str(admitted.entry_reference_ticks),
+        "natural_invalidation_ticks": canonical.tick_to_str(admitted.natural_invalidation_ticks),
+        "targets": [{"target_type": admitted.selected_target_type,
+                    "target_ticks": canonical.tick_to_str(admitted.selected_target_ticks)}],
+        "rr_numerator": canonical.tick_to_str(admitted.rr_numerator),
+        "rr_denominator": canonical.tick_to_str(admitted.rr_denominator),
+        "ttl_us": 5_000, "not_before_us": 1_000, "cancellation_conditions": [],
+        "cost_model_id": "COST1", "fill_model_id": "FILL1", "arm": "SHADOW", "quality": {},
+        "prerequisites": [], "provenance_hash": "b" * 64,
+    }
+    publish_result = transition.run(
+        CandidatePublisher(),
+        [{"event_id": "pub1", "kind": "PUBLISH_CANDIDATE",
+          "payload": {"edge_candidate": edge_candidate_payload,
+                     "trial_registry_state": trial_state, "event_time_us": 10_000,
+                     "market_watermark": {"watermark_us": 5_000},
+                     "evaluation_notional_quote": "1000000", "simulator_version": "sim-1",
+                     "resolver_version": "res-1", "cost_model_version": "cost-1"}}],
+        {})
+    kinds = [e["event_kind"] for e in publish_result.events]
+    if kinds != [CANDIDATE_PUBLISHED, SHADOW_TRADE_RECORDED]:
+        raise AssertionError(f"composed publish did not fork atomically: {kinds}")
+    trade = list(publish_result.final_state["shadow"]["trades"].values())[0]
+    if trade["origin_disposition"] != "ACCEPTED_NOT_EXECUTED":
+        raise AssertionError("an ORIGIN-published candidate must fork ACCEPTED_NOT_EXECUTED, "
+                             "never REJECTED (ORIGIN holds no execution authority)")
+    contracts.validate_payload("triad.edge_candidate.v2", edge_candidate_payload)
+
+    # 6 · The untradeable path: a candidate with no surviving target (F18's own ABSTAIN_NO_TARGET/
+    #     GEOMETRY_BELOW_FLOOR shape, mirrored here as an empty targets array) forks ONLY a
+    #     shadow_rejection_audit — never a published candidate, never a crash.
+    untradeable_payload = dict(edge_candidate_payload, candidate_id="E2E-CAND-2", targets=[])
+    untradeable_result = transition.run(
+        CandidatePublisher(),
+        [{"event_id": "pub2", "kind": "PUBLISH_CANDIDATE",
+          "payload": {"edge_candidate": untradeable_payload, "trial_registry_state": trial_state,
+                     "event_time_us": 10_000, "market_watermark": {"watermark_us": 5_000},
+                     "evaluation_notional_quote": "1000000", "simulator_version": "sim-1",
+                     "resolver_version": "res-1", "cost_model_version": "cost-1"}}],
+        {})
+    if untradeable_result.events[0]["event_kind"] != CANDIDATE_PUBLICATION_REFUSED:
+        raise AssertionError("an untradeable candidate must be refused, never published")
+    if "E2E-CAND-2" in untradeable_result.final_state["candidates"]:
+        raise AssertionError("an untradeable candidate must never appear in the published set")
+
+    # 7 · The append-only lifecycle: a published candidate withdraws cleanly.
+    withdraw_result = transition.run(
+        CandidatePublisher(),
+        [{"event_id": "pub1", "kind": "PUBLISH_CANDIDATE",
+          "payload": {"edge_candidate": edge_candidate_payload,
+                     "trial_registry_state": trial_state, "event_time_us": 10_000,
+                     "market_watermark": {"watermark_us": 5_000},
+                     "evaluation_notional_quote": "1000000", "simulator_version": "sim-1",
+                     "resolver_version": "res-1", "cost_model_version": "cost-1"}},
+         {"event_id": "wd1", "kind": "WITHDRAW_CANDIDATE",
+          "payload": {"candidate_id": "E2E-CAND-1", "reason": "E2E_WALK", "event_time_us": 20_000}}],
+        {})
+    if withdraw_result.events[-1]["event_kind"] != CANDIDATE_TRANSITIONED:
+        raise AssertionError("withdrawal after publication must transition cleanly")
+    if withdraw_result.events[-1]["to_state"] != STATE_WITHDRAWN:
+        raise AssertionError("withdrawal must reach the terminal WITHDRAWN state")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")
