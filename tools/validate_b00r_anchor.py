@@ -103,9 +103,9 @@ def _validate_ruleset(doc: dict) -> None:
             "FAIL: TAG_RULESET_SOURCE_MISMATCH: "
             f"source_type={doc.get('source_type')!r} source={doc.get('source')!r}"
         )
-    if doc.get("current_user_can_bypass") is not False:
+    if doc.get("current_user_can_bypass") != "never":
         raise AnchorError(
-            "FAIL: TAG_RULESET_CURRENT_USER_BYPASS_NOT_FALSE: "
+            "FAIL: TAG_RULESET_CURRENT_USER_BYPASS_NOT_NEVER: "
             f"{doc.get('current_user_can_bypass')!r}"
         )
     conditions = doc.get("conditions")
