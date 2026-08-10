@@ -13,8 +13,10 @@ separate gate receipt._
 
 > **2026-08-10 correction:** PR #27 merged source engineering but its strict governance gate
 > accepted an explicitly declarative, unenforced ruleset stub. That merge is not B00R closure.
-> The main-ruleset row below remains unchecked; B01C is still forbidden until a real provider
-> capture, corrective source merge, signed receipt-only merge, and protected anchor all validate.
+> The main-ruleset row below remains unchecked; B01C is still forbidden until live provider
+> revalidation, a real independent CODEOWNERS identity, the canonical rejected-push canary,
+> corrective source merge, newly rebuilt receipt-only merge, and protected anchor all validate.
+> Draft PR #29 is not reusable because it binds the invalid PR #27 merge; draft PR #30 is box-only.
 
 ## Global controls
 
@@ -44,7 +46,9 @@ separate gate receipt._
 - [x] Combined RC3+RC4 referential/cycle/inversion/one-owner/source-authority validator — `tools/validate_combined_dag.py` (CI + e2e stage 16)
 - [x] `evidence_receipt.v2`, `task_status_event.v2`, `gate_receipt.v2` + semantic validator — landed B01, gate-receipt PASS law hardened at B00C
 - [x] Invalid receipt fixtures: stale/scope/digest/reviewer/blocker/rollback/composition failures — `tests/test_b00c_control_closure.py` refusal battery
-- [ ] Configure main ruleset from issue #5 or sign time-bounded equivalent waiver
+- [ ] Configure live no-bypass main + `b00r-ruleset-canary` ruleset from issue #5; bind
+  `CI / test-and-verify` to GitHub Actions integration; replace the CODEOWNERS placeholder; capture
+  and pin the live object; prove the rejected direct-push canary (no prose/waiver substitute)
 - [x] Seal R00 disposition and exact-current-main B00 receipt — `R00_SUPERSESSION.md` + `evidence/receipts/{R00,B00}.json`
 - [x] B00C source PR merged green — PR #12, CI `31296105920`
 - [x] B00C post-merge receipt passed; B01R may open — `evidence/receipts/B00C.json` binds `b641edc…` (this receipt PR)
