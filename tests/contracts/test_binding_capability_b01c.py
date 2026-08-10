@@ -48,8 +48,8 @@ def _trust(role: str = "AUTHORITY_OWNER", revoked: bool = False,
 
 
 def _bytes_bound_verify(pk: str, msg: bytes, sig_hex: str) -> bool:
-    """A stand-in for a real Ed25519 verify: the signature is bound to the exact signed bytes."""
-    return sig_hex == hashlib.sha256(msg + bytes.fromhex(pk)).hexdigest()
+    """A 64-byte stand-in signature bound to the exact bytes (Ed25519 encoding is 128 hex)."""
+    return sig_hex == hashlib.sha512(msg + bytes.fromhex(pk)).hexdigest()
 
 
 def _sign_over(registry: bindings.BindingRegistry, **kw) -> dict:
@@ -60,7 +60,7 @@ def _sign_over(registry: bindings.BindingRegistry, **kw) -> dict:
         authority_digest=kw["authority_digest"], engine=kw["engine"], plane=kw["plane"],
         environment=kw["environment"], scope=kw["scope"],
         row_count=registry.status_counts_total(), status_counts=registry.status_counts())
-    sig_hex = hashlib.sha256(root + bytes.fromhex(OWNER_PK)).hexdigest()
+    sig_hex = hashlib.sha512(root + bytes.fromhex(OWNER_PK)).hexdigest()
     return {"key_id": OWNER_KID, "signature_hex": sig_hex}
 
 

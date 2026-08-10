@@ -124,7 +124,9 @@ def test_neg008_no_external_signatures_is_blocked():
 def test_neg008_v2_self_hash_receipt_cannot_pass_strict():
     proc = _run("tools/validate_b_receipt.py", "--strict", "--milestone", "B00",
                 "evidence/receipts/B00.json")
-    assert proc.returncode == 1  # v2 is not a v3 closure
+    # Missing strict closure inputs are a CLI-usage refusal (2); a fully supplied v2 remains a
+    # validation refusal (1). Either way the historical self-hash can never return closure success.
+    assert proc.returncode != 0
 
 
 # --- NEG-009 · unknown/revoked/duplicate/wrong-role signer fails ----------------------------------
