@@ -11,6 +11,11 @@ separate gate receipt._
 > validated `B00R_RECEIPT_ANCHOR`; until then B01C onward stays frozen. See `04_STATUS.md` §B00R and
 > `docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json`.
 
+> **2026-08-10 correction:** PR #27 merged source engineering but its strict governance gate
+> accepted an explicitly declarative, unenforced ruleset stub. That merge is not B00R closure.
+> The main-ruleset row below remains unchecked; B01C is still forbidden until a real provider
+> capture, corrective source merge, signed receipt-only merge, and protected anchor all validate.
+
 ## Global controls
 
 - [ ] Controlling result displayed as `DENIED_SAFE_HOLD` in every status/readiness face
