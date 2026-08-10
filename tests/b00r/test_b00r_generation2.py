@@ -26,6 +26,7 @@ POLICY_V2 = "docs/control/b00r_policy.v2.json"
 PROFILE_1 = "docs/governance/decisions/DEC-RECEIPT-PROFILE-001.template.json"
 PROFILE_2 = "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.template.json"
 REPAIR_2 = "docs/governance/decisions/DEC-B00-REPAIR-002.template.json"
+TRUST_2_TEMPLATE = "docs/governance/trust/receipt_trust_registry.g2.v1.template.json"
 
 
 def _json(relative_path: str) -> dict:
@@ -83,7 +84,7 @@ def test_generation_2_receipt_shape_cannot_be_accepted_as_generation_1():
 def test_generation_1_receipt_profile_cannot_be_reused_for_generation_2():
     with pytest.raises(
         governance.GovernanceError,
-        match="RECEIPT_PROFILE_CLOSURE_ANCHOR_MISMATCH",
+        match="RECEIPT_PROFILE_TRUST_PATH_MISMATCH",
     ):
         governance.receipt_profile_from_decision(
             _json(PROFILE_1), repair_generation=2,
@@ -99,6 +100,8 @@ def test_generation_2_profile_has_exact_receipt_root_and_anchor():
     assert scope["repair_generation"] == 2
     assert scope["receipt_path"] == "evidence/receipts/B00R.g2.receipt.v3.json"
     assert scope["evidence_root"] == "evidence/B00R_G2"
+    assert scope["trust_registry"] == \
+        "docs/governance/trust/receipt_trust_registry.g2.v1.json"
     assert scope["closure_anchor_mechanism"] == (
         "protected annotated tag B00R_RECEIPT_ANCHOR_G2 plus externally pinned active "
         "no-update/no-delete/no-bypass tag ruleset"
@@ -119,6 +122,8 @@ def test_generation_2_authority_profile_selects_generation_2_decisions_and_pins(
         "B00R_G2_REPAIR_DECISION_SHA256",
         "DEC-B00-REPAIR-002",
     )
+    assert subjects["trust_registry"][0] == "RECEIPT_G2_TRUST_REGISTRY_SHA256"
+    assert subjects["trust_registry"][3] == ROOT / TRUST_2_TEMPLATE
     assert canonical_paths["receipt_profile"] == (
         "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json"
     )
@@ -175,4 +180,3 @@ def test_policy_ledger_and_generation_1_immutable_bindings_are_consistent():
         == profile["scope"]["receipt_path"]
     assert policy["closure_anchor"]["evidence_root"] == generation_2["evidence_root"] \
         == profile["scope"]["evidence_root"]
-

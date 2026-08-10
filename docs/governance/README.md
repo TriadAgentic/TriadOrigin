@@ -31,15 +31,16 @@ Engineering artifacts fail closed until the owner/provider acts below are authen
 | Authority-bundle decision | `decisions/DEC-AUTHORITY-BUNDLE-001.json` | `AUTHORITY_BUNDLE_DECISION_SHA256` |
 | G2 receipt-profile decision | `decisions/DEC-RECEIPT-PROFILE-002.json` | `RECEIPT_PROFILE_G2_DECISION_SHA256` |
 | G2 forward-repair decision | `decisions/DEC-B00-REPAIR-002.json` | `B00R_G2_REPAIR_DECISION_SHA256` |
-| Public trust registry | `trust/receipt_trust_registry.v1.json` | `RECEIPT_TRUST_REGISTRY_SHA256` |
+| G2 public trust registry | `trust/receipt_trust_registry.g2.v1.json` | `RECEIPT_G2_TRUST_REGISTRY_SHA256` |
 | Normalized main-ruleset index | `rulesets/main.ruleset.provider.json` | Derived from the raw provider response |
 | Raw main-ruleset response | `rulesets/main.ruleset.provider.raw.json` | `MAIN_RULESET_EVIDENCE_SHA256` |
 | Independent critical-path owner | `.github/CODEOWNERS` | `@djordi10`, live permission, and exact-head submitted approval |
 | G2 tag-ruleset response | `../../evidence/B00R_G2/tag_ruleset.provider.json` | `B00R_G2_TAG_RULESET_SHA256` |
 
-The `002` decision templates are deliberately unauthenticated. The owner publishes signed objects
-at the non-template paths. `authenticated:true`, a digest in the same PR, or an arbitrary signature
-string is not authentication.
+The `002` decisions and G2 trust-registry template are deliberately unauthenticated. The owner must
+publish and externally pin a distinct G2 registry whose owner key explicitly scopes all three
+required decisions; the generation-1 registry is preserved and cannot authorize `-002`. A flag,
+same-PR digest, or arbitrary signature string is not authentication.
 
 The main ruleset must be active before the corrective source merge, target exactly
 `refs/heads/main` plus `refs/heads/b00r-ruleset-canary` with no exclusions, expose no bypass, require

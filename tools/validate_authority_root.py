@@ -26,6 +26,7 @@ from triad_origin import governance  # noqa: E402
 
 GOV = ROOT / "docs" / "governance"
 TRUST_REL = "docs/governance/trust/receipt_trust_registry.v1.json"
+TRUST_REL_G2 = "docs/governance/trust/receipt_trust_registry.g2.v1.json"
 AUTHORITY_SUBJECT_PATHS = {
     "RC2_complete_checklist":
         "docs/spec_rc2/01_TRIAD_ORIGIN_V7_COMPLETE_IMPLEMENTATION_CHECKLIST_1.0.0_RC2.html",
@@ -55,7 +56,7 @@ GENERATION_2_AUTHORITY_PATHS = {
     "authority_bundle": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.json",
     "receipt_profile": "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json",
     "b00_repair": "docs/governance/decisions/DEC-B00-REPAIR-002.json",
-    "trust_registry": "docs/governance/trust/receipt_trust_registry.v1.json",
+    "trust_registry": TRUST_REL_G2,
 }
 CRYPTOGRAPHY_VERSION = "50.0.0"
 
@@ -88,7 +89,10 @@ GENERATION_2_SUBJECTS = {
         "B00R_G2_REPAIR_DECISION_SHA256", "DEC-B00-REPAIR-002",
         GOV / "decisions" / "DEC-B00-REPAIR-002.json",
         GOV / "decisions" / "DEC-B00-REPAIR-002.template.json"),
-    "trust_registry": SUBJECTS["trust_registry"],
+    "trust_registry": (
+        "RECEIPT_G2_TRUST_REGISTRY_SHA256", None,
+        GOV / "trust" / "receipt_trust_registry.g2.v1.json",
+        GOV / "trust" / "receipt_trust_registry.g2.v1.template.json"),
 }
 
 
@@ -280,8 +284,9 @@ def _verify_subject_bindings(
     authority_paths = AUTHORITY_SUBJECT_PATHS
     profile_paths = PROFILE_SUBJECT_PATHS
     profile = decisions["receipt_profile"]
-    if profile.get("authority_registry") != TRUST_REL \
-            or profile.get("scope", {}).get("trust_registry") != TRUST_REL:
+    trust_rel = TRUST_REL if repair_generation == 1 else TRUST_REL_G2
+    if profile.get("authority_registry") != trust_rel \
+            or profile.get("scope", {}).get("trust_registry") != trust_rel:
         raise AuthorityRootError("RECEIPT_PROFILE_TRUST_REGISTRY_PATH_MISMATCH")
     if set(profile.get("subject_sha256s", {})) != set(profile_paths):
         raise AuthorityRootError("RECEIPT_PROFILE_SUBJECT_SET_MISMATCH")
@@ -351,7 +356,7 @@ def _verify_subject_bindings(
         if proc.returncode:
             raise AuthorityRootError(f"B00_REPAIR_{label}")
     for name, doc in decisions.items():
-        if doc.get("authority_registry") != TRUST_REL:
+        if doc.get("authority_registry") != trust_rel:
             raise AuthorityRootError(f"DECISION_AUTHORITY_REGISTRY_MISMATCH:{name}")
 
 

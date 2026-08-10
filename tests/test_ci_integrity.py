@@ -122,7 +122,7 @@ def test_ci_never_ignores_owner_validators_and_wires_external_pins():
         "AUTHORITY_BUNDLE_DECISION_SHA256",
         "RECEIPT_PROFILE_G2_DECISION_SHA256",
         "B00R_G2_REPAIR_DECISION_SHA256",
-        "RECEIPT_TRUST_REGISTRY_SHA256",
+        "RECEIPT_G2_TRUST_REGISTRY_SHA256",
         "MAIN_RULESET_EVIDENCE_SHA256",
     ):
         assert f"{name}: ${{{{ vars.{name} }}}}" in workflow

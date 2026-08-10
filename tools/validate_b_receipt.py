@@ -48,7 +48,12 @@ class ReceiptBindingError(ValueError):
     """Receipt bytes do not bind to the declared manifest or Git graph."""
 
 
+class ReceiptBindingUnavailable(ReceiptBindingError):
+    """A live provider or credential needed for terminal proof is unavailable."""
+
+
 EVIDENCE_ROOT = "evidence/B00R_G2"
+CANONICAL_MANIFEST_PATH = f"{EVIDENCE_ROOT}/evidence_manifest.json"
 CANONICAL_RECEIPT_PATH = "evidence/receipts/B00R.g2.receipt.v3.json"
 CANARY_PATH = f"{EVIDENCE_ROOT}/provider_negative_canary.v1.json"
 CANARY_TRANSCRIPT_ROLE = "PROVIDER_NEGATIVE_CANARY_TRANSCRIPT"
@@ -189,10 +194,11 @@ def _validate_source_pr_provider_record(
             raise ReceiptBindingError("SOURCE_PR_PROVIDER_LIVE_NOW_ABSENT")
         try:
             fetch_and_match_pull_request(raw, token=github_token, now_us=now_us)
+        except LiveRulesetUnavailable as exc:
+            raise ReceiptBindingUnavailable(
+                f"SOURCE_PR_PROVIDER_LIVE_PROOF:{exc}") from exc
         except LiveRulesetError as exc:
-            prefix = "UNAVAILABLE_" if isinstance(exc, LiveRulesetUnavailable) else ""
-            raise ReceiptBindingError(
-                f"{prefix}SOURCE_PR_PROVIDER_LIVE_PROOF:{exc}") from exc
+            raise ReceiptBindingError(f"SOURCE_PR_PROVIDER_LIVE_PROOF:{exc}") from exc
     return merged_at_us
 
 
@@ -257,10 +263,11 @@ def _validate_source_pr_approved_review(
                 raw, token=github_token, now_us=now_us)
             fetch_repository_permission(
                 reviewer, token=github_token, now_us=now_us)
+        except LiveRulesetUnavailable as exc:
+            raise ReceiptBindingUnavailable(
+                f"SOURCE_PR_REVIEW_LIVE_PROOF:{exc}") from exc
         except LiveRulesetError as exc:
-            prefix = "UNAVAILABLE_" if isinstance(exc, LiveRulesetUnavailable) else ""
-            raise ReceiptBindingError(
-                f"{prefix}SOURCE_PR_REVIEW_LIVE_PROOF:{exc}") from exc
+            raise ReceiptBindingError(f"SOURCE_PR_REVIEW_LIVE_PROOF:{exc}") from exc
 
 
 def _validate_provider_negative_canary(
@@ -447,10 +454,12 @@ def _validate_provider_negative_canary(
                 fetch_canary_ref_sha(token=github_token, now_us=now_us)
                 if require_live_ref else before_sha
             )
+        except LiveRulesetUnavailable as exc:
+            raise ReceiptBindingUnavailable(
+                f"PROVIDER_NEGATIVE_CANARY_LIVE_PROOF:{exc}") from exc
         except LiveRulesetError as exc:
-            prefix = "UNAVAILABLE_" if isinstance(exc, LiveRulesetUnavailable) else ""
             raise ReceiptBindingError(
-                f"{prefix}PROVIDER_NEGATIVE_CANARY_LIVE_PROOF:{exc}") from exc
+                f"PROVIDER_NEGATIVE_CANARY_LIVE_PROOF:{exc}") from exc
         if current_ref_sha != before_sha:
             raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_REMOTE_REF_MOVED")
 
@@ -498,6 +507,8 @@ def validate_receipt_bindings(
         if milestone == governance.ROOT_MILESTONE
         else f"evidence/{milestone}/"
     )
+    if milestone == governance.ROOT_MILESTONE and manifest_rel != CANONICAL_MANIFEST_PATH:
+        raise ReceiptBindingError(f"MANIFEST_PATH_NONCANONICAL:{manifest_rel}")
     if not manifest_rel.startswith(expected_namespace):
         raise ReceiptBindingError(f"MANIFEST_PATH_WRONG_MILESTONE:{manifest_rel}")
 
@@ -686,11 +697,10 @@ def _validate_governance_evidence(
         fetch_and_match_live_ruleset(
             raw_bytes, token=os.environ.get("GITHUB_TOKEN"), now_us=now_us,
             require_bypass_visibility=require_bypass_visibility)
+    except LiveRulesetUnavailable as exc:
+        raise ReceiptBindingUnavailable(f"LIVE_PROVIDER_REVALIDATION:{exc}") from exc
     except LiveRulesetError as exc:
-        detail = str(exc)
-        prefix = "UNAVAILABLE_" if isinstance(exc, LiveRulesetUnavailable) else ""
-        raise ReceiptBindingError(
-            f"{prefix}LIVE_PROVIDER_REVALIDATION:{detail}") from exc
+        raise ReceiptBindingError(f"LIVE_PROVIDER_REVALIDATION:{exc}") from exc
 
 
 def _strict(
@@ -753,6 +763,9 @@ def _strict(
             provider_pin=provider_pin, git_root=git_root, now_us=now_us,
             source_merge_time_us=provider_merge_time_us,
             require_bypass_visibility=require_bypass_visibility)
+    except ReceiptBindingUnavailable as exc:
+        print(f"BLOCKED: UNAVAILABLE_RECEIPT_BINDING:{exc}")
+        return 1
     except (OSError, ValueError, ReceiptBindingError) as exc:
         print(f"FAIL: RECEIPT_BINDING_INVALID:{exc}", file=sys.stderr)
         return 1

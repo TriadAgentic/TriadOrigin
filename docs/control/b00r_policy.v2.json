@@ -35,8 +35,9 @@
     },
     {
       "id": "receipt_trust_registry",
-      "authenticated_path": "docs/governance/trust/receipt_trust_registry.v1.json",
-      "external_pin": "RECEIPT_TRUST_REGISTRY_SHA256"
+      "template": "docs/governance/trust/receipt_trust_registry.g2.v1.template.json",
+      "authenticated_path": "docs/governance/trust/receipt_trust_registry.g2.v1.json",
+      "external_pin": "RECEIPT_G2_TRUST_REGISTRY_SHA256"
     },
     {
       "id": "main_ruleset_evidence",

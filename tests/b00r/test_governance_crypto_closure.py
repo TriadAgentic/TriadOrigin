@@ -868,6 +868,20 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
         governance_evidence_paths=(snapshot_path, provider_raw_path),
         require_live_source_pr=False)
 
+    alternate_manifest = repo / "evidence/B00R_G2/alternate_manifest.json"
+    alternate_manifest.write_bytes(manifest_path.read_bytes())
+    _git(repo, "add", alternate_manifest.relative_to(repo).as_posix())
+    _git(repo, "commit", "-m", "alternate manifest attack")
+    with pytest.raises(ReceiptBindingError, match="MANIFEST_PATH_NONCANONICAL"):
+        validate_receipt_bindings(
+            receipt, receipt_path=receipt_path, manifest_path=alternate_manifest, git_root=repo,
+            expected_head=_git(repo, "rev-parse", "HEAD"), authority=authority,
+            governance_evidence_paths=(snapshot_path, provider_raw_path),
+            require_live_source_pr=False)
+    alternate_manifest.unlink()
+    _git(repo, "add", "-u")
+    _git(repo, "commit", "-m", "remove alternate manifest attack")
+
     extra = repo / "evidence/B00R_G2/unlisted.json"
     extra.write_text("{}")
     _git(repo, "add", extra.relative_to(repo).as_posix())

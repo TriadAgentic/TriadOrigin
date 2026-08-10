@@ -460,8 +460,11 @@ def receipt_profile_from_decision(
     if scope.get("clock_law") != \
             "observed_at_us > source_merge_time_us; emitted_at_us >= observed_at_us; zero future tolerance":
         raise GovernanceError("RECEIPT_PROFILE_CLOCK_LAW_MISMATCH")
-    if scope.get("trust_registry") != \
-            "docs/governance/trust/receipt_trust_registry.v1.json":
+    trust_paths = {
+        1: "docs/governance/trust/receipt_trust_registry.v1.json",
+        2: "docs/governance/trust/receipt_trust_registry.g2.v1.json",
+    }
+    if scope.get("trust_registry") != trust_paths.get(repair_generation):
         raise GovernanceError("RECEIPT_PROFILE_TRUST_PATH_MISMATCH")
     anchors = {
         1: "B00R_RECEIPT_ANCHOR",

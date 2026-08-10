@@ -62,7 +62,7 @@ override these facts.
 | Authority decision | `docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.json` |
 | Generation-2 receipt profile | `docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json` |
 | Generation-2 repair decision | `docs/governance/decisions/DEC-B00-REPAIR-002.json` |
-| Trust registry | `docs/governance/trust/receipt_trust_registry.v1.json` |
+| G2 trust registry | `docs/governance/trust/receipt_trust_registry.g2.v1.json` |
 | Main ruleset index | `docs/governance/rulesets/main.ruleset.provider.json` |
 | Raw main ruleset response | `docs/governance/rulesets/main.ruleset.provider.raw.json` |
 | Evidence root | `evidence/B00R_G2/` |
@@ -76,7 +76,7 @@ The required protected external pins are:
 AUTHORITY_BUNDLE_DECISION_SHA256
 RECEIPT_PROFILE_G2_DECISION_SHA256
 B00R_G2_REPAIR_DECISION_SHA256
-RECEIPT_TRUST_REGISTRY_SHA256
+RECEIPT_G2_TRUST_REGISTRY_SHA256
 MAIN_RULESET_EVIDENCE_SHA256
 B00R_G2_TAG_RULESET_SHA256
 ```
@@ -124,8 +124,14 @@ canonical non-template paths:
 
 The last two supersede their `001` counterparts only for generation 2. They do not mutate the
 generation-1 objects. Each decision must bind its declared subjects, be signed by a valid
-`AUTHORITY_OWNER` Ed25519 identity in the externally pinned trust registry, and carry a real
+`AUTHORITY_OWNER` Ed25519 identity in the distinct externally pinned G2 trust registry, and carry a real
 effective time. Typing `authenticated:true` without a valid signature is a failure.
+
+The existing generation-1 registry scopes its owner key only to `-001` decisions and is therefore
+incapable of authenticating generation 2. Materialize
+`receipt_trust_registry.g2.v1.template.json` as `receipt_trust_registry.g2.v1.json`, with owner scope
+covering `DEC-AUTHORITY-BUNDLE-001,DEC-RECEIPT-PROFILE-002,DEC-B00-REPAIR-002`, then externally pin
+those exact bytes as `RECEIPT_G2_TRUST_REGISTRY_SHA256`.
 
 Validate the exact source head with generation 2 selected:
 

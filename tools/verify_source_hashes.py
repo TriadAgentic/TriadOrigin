@@ -42,6 +42,7 @@ REQUIRED_MEMBERSHIP = [
     "docs/governance/B00R_GENERATION_LEDGER.v1.json",
     "docs/governance/decisions/DEC-B00-REPAIR-002.template.json",
     "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.template.json",
+    "docs/governance/trust/receipt_trust_registry.g2.v1.template.json",
     "contracts/schemas/triad.evidence_receipt.v3.schema.json",
     "contracts/schemas/triad.receipt_trust_registry.v1.schema.json",
     "contracts/schemas/triad.governance_decision.v1.schema.json",

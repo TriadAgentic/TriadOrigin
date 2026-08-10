@@ -1,6 +1,6 @@
 {
   "authenticated": false,
-  "authority_registry": "docs/governance/trust/receipt_trust_registry.v1.json",
+  "authority_registry": "docs/governance/trust/receipt_trust_registry.g2.v1.json",
   "decision": "RATIFY_B00R_GENERATION_2_RECEIPT_V3_PROFILE",
   "decision_id": "DEC-RECEIPT-PROFILE-002",
   "decision_kind": "GOVERNANCE_DECISION",
@@ -23,7 +23,7 @@
       "INDEPENDENT_COUNTERSIGNER"
     ],
     "signer_threshold": 2,
-    "trust_registry": "docs/governance/trust/receipt_trust_registry.v1.json"
+    "trust_registry": "docs/governance/trust/receipt_trust_registry.g2.v1.json"
   },
   "signatures": [],
   "subject_sha256s": {
