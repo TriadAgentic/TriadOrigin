@@ -1,8 +1,17 @@
 # 04 · Status — Evidence-Based Reconciled View
 
-_As of 2026-08-09 · Runtime truth is unknown until fresh attestation. No activation is authorized._
+_As of 2026-08-10 · Runtime truth is unknown until fresh attestation. No activation is authorized._
 
 ## B00R forward-repair (2026-08-10) — the only open root repair
+
+> **Integrity correction after PR #27:** source merge `03787b7cc800998be461a4df0312ef9c3ff6c1fb`
+> is not a valid governance merge. Its purported provider response carries
+> `id: "DECLARATIVE"` and explicitly says enforcement is pending, while the strict validator
+> accepted it as a no-bypass GitHub control. B00R therefore remains `MERGED_UNVERIFIED`; issue #5
+> remains open; every later milestone stays frozen. The corrective source branch
+> `agent/b00r-provider-evidence-fail-closed` rejects synthetic provider evidence and cannot merge
+> green until a real live ruleset capture replaces the stub.
+
 
 The B00–B07 milestone **artifacts exist** but **no milestone is legitimately closed**: the old
 chain is invalid at its root (branch-governance issue #5 open, self-hash "signatures" that
@@ -14,7 +23,7 @@ never edited into a retroactive pass.
 
 | Item | State | Meaning |
 |---|---|---|
-| B00R engineering (schemas, validators, ledger/DAG fail-closed, receipt-v3, tools, tests, e2e stage, CI role gate) | `BUILT_AND_GREEN` | Deterministic gates pass; see `tools/b00r_gate.py`. |
+| B00R engineering (schemas, validators, ledger/DAG fail-closed, receipt-v3, tools, tests, e2e stage, CI role gate) | `MERGED_WITH_FALSE_GREEN — CORRECTION OPEN` | Most deterministic gates passed, but provider-evidence authenticity did not; PR #27 cannot certify repository governance. |
 | B00R owner-gated closure (authenticated decisions, pinned trust registry, no-bypass `main` ruleset, threshold-signed receipt-v3, closure anchor) | `BLOCKED — OWNER_REQUIRED` | Templates carry `authenticated:false`; every dependent gate fail-closes to `BLOCKED`/`UNAVAILABLE`, never `PASS`. |
 | Historical B00–B07 closure | `INVALIDATED / BUILT_ON_INVALID_ANCESTRY` | Preserved as immutable evidence; not a closure. |
 | B00R result | `PASS_REPOSITORY_SAFE_HOLD` only after all six dimensions (authority · implementation · repository · governance · evidence · chain) pass | Absent owner authority the result is `BLOCKED`. |
