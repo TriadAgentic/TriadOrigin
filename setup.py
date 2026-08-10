@@ -28,6 +28,14 @@ class BuildPyWithContracts(build_py):
         if target.exists():
             shutil.rmtree(target)
         shutil.copytree(ROOT / "contracts", target)
+        # B01C-BIND-03: package the canonical binding bundle so an installed wheel loads it as a
+        # package resource, never from the repository-relative docs/control tree.
+        control = pathlib.Path(self.build_lib) / "triad_origin" / "_control"
+        control.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(
+            ROOT / "docs" / "control" / "binding_registry.v2.json",
+            control / "binding_registry.v2.json",
+        )
 
 
 class DeterministicSdist(sdist):

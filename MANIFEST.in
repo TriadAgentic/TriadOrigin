@@ -1,3 +1,6 @@
 include contracts/MANIFEST.sha256
 recursive-include contracts *.json
 include constraints/ci.txt
+# B01C-BIND-03: the canonical binding bundle must ride the sdist so a wheel built from it can
+# package the bundle as an installed resource (setup.py copies it into triad_origin/_control/).
+include docs/control/binding_registry.v2.json

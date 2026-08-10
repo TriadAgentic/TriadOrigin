@@ -26,7 +26,12 @@ from . import governance
 from .canonical import canonical_json, sha256_hex
 
 _ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
-DEFAULT_REGISTRY_PATH = _ROOT / "docs" / "control" / "binding_registry.v2.json"
+# B01C-BIND-03: an installed wheel must not depend on the repository-relative docs/control tree.
+# setup.py copies the canonical bundle into the package as _control/binding_registry.v2.json; the
+# repository copy is the editable/test fallback (repository-relative paths are test-only).
+_PACKAGED_REGISTRY = pathlib.Path(__file__).resolve().parent / "_control" / "binding_registry.v2.json"
+_SOURCE_REGISTRY = _ROOT / "docs" / "control" / "binding_registry.v2.json"
+DEFAULT_REGISTRY_PATH = _PACKAGED_REGISTRY if _PACKAGED_REGISTRY.is_file() else _SOURCE_REGISTRY
 
 REGISTRY_VERSION = "origin.binding-registry.v2"
 
@@ -102,6 +107,10 @@ class BindingRegistry:
         for row in rows:
             try:
                 contracts.validate_payload("triad.binding.v2", row)
+            except contracts.SchemaValidatorUnavailable:
+                # B01C-CON-03: the full validator is absent — fail closed with the precise
+                # environment reason, not a "registry invalid" wrap (the bytes may be fine).
+                raise
             except contracts.ContractError as exc:
                 raise BindingRegistryError(
                     f"registry row {row.get('binding_id') if isinstance(row, dict) else '?'!r} "

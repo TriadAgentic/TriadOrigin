@@ -111,9 +111,25 @@ import hashlib
 import json
 import pathlib
 import triad_origin
-from triad_origin import contracts
+from triad_origin import contracts, bindings
 assert len(contracts.known_contracts()) == 44
 assert contracts._CONTRACTS_DIR.name == '_contracts'
+
+# B01C-BIND-03: the binding bundle resolves to the packaged resource, never a repo-relative path.
+assert bindings._PACKAGED_REGISTRY.is_file(), bindings._PACKAGED_REGISTRY
+assert bindings.DEFAULT_REGISTRY_PATH == bindings._PACKAGED_REGISTRY
+assert not bindings._SOURCE_REGISTRY.exists(), 'installed wheel must not see docs/control'
+# B01C-CON-03 end to end: the loader validates every row with the full validator, which is absent
+# in this --no-deps wheel, so load_registry() fails closed (never a fallback PASS) even though the
+# packaged bundle bytes are present and readable.
+import json as _json
+assert _json.loads(bindings._PACKAGED_REGISTRY.read_text())['row_count'] == 105
+try:
+    bindings.load_registry()
+except contracts.SchemaValidatorUnavailable:
+    pass
+else:
+    raise AssertionError('binding loader validated rows without the full validator')
 root = contracts._CONTRACTS_DIR
 manifest_text = root / 'MANIFEST.sha256'
 legacy_manifest_json = root / 'manifest' / 'contract_bundle.manifest.v1.json'
