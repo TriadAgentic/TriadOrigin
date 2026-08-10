@@ -10,3 +10,19 @@ or reaches a venue/credential/order/money path; a face that cannot compute a fac
 Nothing here reads a system clock, opens a socket, or holds a credential (Doc 04 §04.17 DARK
 posture); every 'current' fact is caller-supplied.
 """
+
+from .faces import (
+    FACE_FOUR_PLANE_STATUS,
+    FACE_INVENTORY_RECONCILIATION,
+    FACE_LEVER_ATTESTATION,
+    FACE_LEVER_HISTORY,
+    FACE_LEVER_REGISTRY,
+    FACE_SHADOW_HEALTH,
+    INVENTORY_AXES,
+    get_engine_inventory_reconciliation,
+    get_engine_lever_attestation,
+    get_engine_lever_history,
+    get_engine_lever_registry,
+    get_four_plane_status,
+    get_shadow_health,
+)
