@@ -351,9 +351,9 @@ class TestSourceReactionIdentityMaterial:
             departure("Z1", distance=5),
             contact("Z1", low=105, high=110),
         ]
-        sid = self._first_touch_id(inputs)
-        assert len(sid) == 64
-        int(sid, 16)  # decodes cleanly as hex
+        reaction_ident = self._first_touch_id(inputs)
+        assert len(reaction_ident) == 64
+        int(reaction_ident, 16)  # decodes cleanly as hex
 
 
 class TestInvariance:

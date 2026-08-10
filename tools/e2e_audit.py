@@ -390,10 +390,11 @@ def combined_dag() -> None:
 
 
 @stage("structures_walk", "B03: E01 bars -> F02 ATR -> F03 swing -> F09 accepted break -> "
-                          "structure atom -> journal; F06/F08 refuse by name")
+                          "structure atom -> journal; F06/F08 refuse by name; F05 rolling extreme; "
+                          "F07 E01 session-level ingress accept + calendar/watermark refusals")
 def structures_walk() -> None:
-    from triad_origin import contracts, transition
-    from triad_origin.features import AtrCalculator
+    from triad_origin import contracts, e01_interface, transition
+    from triad_origin.features import AtrCalculator, RollingExtreme
     from triad_origin.journal import StateJournal, rebuild_projection
     from triad_origin.structures import common
     from triad_origin.structures.structure_state import (
@@ -492,17 +493,63 @@ def structures_walk() -> None:
     if rebuilt != {"last_atom": payload}:
         raise AssertionError("structure atom journal round-trip mismatch")
 
+    # 6 · F05-1 rolling extreme (trailing, current bar excluded; window=3, PAR-039). Three warm-up
+    #     abstentions then the trailing extreme over the 3 prior bars: upper=max(1005,1010,1008)=1010,
+    #     lower=min(995,990,992)=990; the current bar (index 3) is excluded (dependency_range [0,2]).
+    re_bars = [bar_event(0, 1000, 1005, 995, 1000), bar_event(1, 1000, 1010, 990, 1000),
+               bar_event(2, 1000, 1008, 992, 1000), bar_event(3, 1000, 1000, 1000, 1000)]
+    re_run = transition.run(RollingExtreme(), re_bars, {"window": 3})
+    re_feats = [e for e in re_run.events if e.get("event_kind") == "FEATURE"]
+    re_warm = [e for e in re_run.events if e.get("reason_code") == "F05_WARMUP"]
+    if len(re_warm) != 3:
+        raise AssertionError(f"F05 expected exactly 3 warm-up abstentions, got {len(re_warm)}")
+    if not re_feats or (re_feats[-1]["upper_ticks"], re_feats[-1]["lower_ticks"]) != (1010, 990):
+        raise AssertionError(f"F05-1 rolling extreme mismatch: {re_feats[-1] if re_feats else None}")
+    if re_feats[-1]["dependency_range"] != {"first_bar_index": 0, "last_bar_index": 2}:
+        raise AssertionError("F05-1 dependency range must exclude the current bar")
+
+    # 7 · F07-1 E01 session-level ingress (E01-owned; ORIGIN consumes/validates, never authors).
+    #     A UTC-day-aligned final session accepts; a calendar-id disagreement and a final-flag set
+    #     before the session-end watermark each reject by name (never a repaired fact).
+    _DAY_US = e01_interface.DAY_US
+
+    def session_payload(**overrides):
+        payload = {
+            "state_kind": "SESSION_LEVEL", "calendar_id": "CAL-UTC",
+            "calendar_row": {"calendar_id": "CAL-UTC", "utc_day_offset_us": 0,
+                             "session_length_us": _DAY_US},
+            "session_start_us": 0, "session_end_us": _DAY_US,
+            "session_open_ticks": 100, "session_high_ticks": 110, "session_low_ticks": 90,
+            "final": False}
+        payload.update(overrides)
+        return {"event_id": "e2e_session", "payload": payload}
+
+    accepted = e01_interface.validate_session_level(
+        session_payload(final=True, session_end_watermark_us=_DAY_US))
+    if not accepted.get("accepted") or accepted.get("kind") != "SESSION_LEVEL":
+        raise AssertionError(f"F07-1 valid session level was not accepted: {accepted}")
+    mismatch = e01_interface.validate_session_level(session_payload(calendar_id="CAL-OTHER"))
+    if mismatch.get("reason_code") != e01_interface.E01_SESSION_CALENDAR_MISMATCH:
+        raise AssertionError("F07-1 calendar mismatch must reject E01_SESSION_CALENDAR_MISMATCH")
+    early_final = e01_interface.validate_session_level(
+        session_payload(final=True, session_end_watermark_us=_DAY_US - 1))
+    if early_final.get("reason_code") != e01_interface.E01_SESSION_FINAL_BEFORE_WATERMARK:
+        raise AssertionError(
+            "F07-1 final-before-watermark must reject E01_SESSION_FINAL_BEFORE_WATERMARK")
+
 
 @stage("structure_flow_walk", "B04: FVG GV-009 -> displacement GV-010 -> order block "
                               "PENDING/CONFIRMED -> excursion/reclaim GV-011 -> TFI GV-013 -> "
-                              "tilt refuses by name -> lifecycle reducer illegal-transition wall")
+                              "OFI (-1) + crossed-book refusal -> tilt refuses by name -> "
+                              "lifecycle reducer illegal-transition wall")
 def structure_flow_walk() -> None:
     from triad_origin import transition
     from triad_origin.structures import common
     from triad_origin.structures.displacement import QualifiedDisplacement
     from triad_origin.structures.excursion_reclaim_registry import (
         CONFIRMED as RECLAIM_CONFIRMED, ExcursionReclaimTracker)
-    from triad_origin.structures.flow_atoms import BookDepthTilt, TradeFlowImbalance
+    from triad_origin.structures.flow_atoms import (
+        BookDepthTilt, OrderFlowImbalance, TradeFlowImbalance)
     from triad_origin.structures.fvg_registry import FvgZoneRegistry, ZONE_FORMED
     from triad_origin.structures.lifecycle_reducer import LifecycleReducer
 
@@ -539,38 +586,77 @@ def structure_flow_walk() -> None:
         raise AssertionError("F11 GV-010 displacement did not qualify")
 
     # 3 · F13 excursion/reclaim — GV-011: two consecutive qualifying closes confirm.
+    #     After the F1213 direction correction a LONG level reclaims by closing ABOVE it (>= level
+    #     + reclaim buffer); the low-side excursion (low=999 below level 1000) still qualifies, and
+    #     the two consecutive closes 1002/1003 (above 1000) confirm.
     reclaim_run = transition.run(
         ExcursionReclaimTracker(),
         [{"event_id": "r_exc", "kind": "EXCURSION_CANDIDATE", "payload": {
               "level_id": "e2e_L1", "direction": common.LONG, "level_ticks": 1000,
               "high_ticks": 1001, "low_ticks": 999, "atr14_ticks": 20}},
          {"event_id": "r_o1", "kind": "RECLAIM_OBSERVATION", "payload": {
-              "level_id": "e2e_L1", "ordinal": 1, "close_ticks": 998, "atr14_ticks": 20}},
+              "level_id": "e2e_L1", "ordinal": 1, "close_ticks": 1002, "atr14_ticks": 20}},
          {"event_id": "r_o2", "kind": "RECLAIM_OBSERVATION", "payload": {
-              "level_id": "e2e_L1", "ordinal": 2, "close_ticks": 997, "atr14_ticks": 20}}],
+              "level_id": "e2e_L1", "ordinal": 2, "close_ticks": 1003, "atr14_ticks": 20}}],
         {"excursion_min_rule": common.DECLARED_BOS_CLOSE_BUFFER,
          "reclaim_close_buffer_rule": common.DECLARED_BOS_CLOSE_BUFFER,
          "reclaim_horizon": 3, "reclaim_hold_bars": 2})
     if reclaim_run.final_state["levels"]["e2e_L1"]["reclaim_state"] != RECLAIM_CONFIRMED:
         raise AssertionError("F13 GV-011 reclaim did not confirm")
 
-    # 4 · F15 TFI — GV-013: buy=70, sell=30 -> 40/100 exact.
+    # 4 · F15 TFI — GV-013: buy=70, sell=30 -> 40/100 exact. PAR-055 flow_atom_ttl_ms is a
+    #     required (fail-closed) parameter now, stamped onto every emitted atom.
     tfi_run = transition.run(
         TradeFlowImbalance(),
         [{"event_id": f"t{i}", "kind": "TRADE", "evaluation_time_us": i,
           "payload": {"quote_notional_ticks": 1, "aggressor_side": "BUY" if i < 70 else "SELL",
                      "event_time_us": i}} for i in range(100)],
-        {"tfi_window_trades": 100, "tfi_window_max_age_ms": 2000, "tfi_min_trades": 20})
+        {"tfi_window_trades": 100, "tfi_window_max_age_ms": 2000, "tfi_min_trades": 20,
+         "flow_atom_ttl_ms": 500})
     tfi_events = [e for e in tfi_run.events if e.get("event_kind") == "FEATURE"]
     if not tfi_events or (tfi_events[-1]["numerator"], tfi_events[-1]["denominator"]) != (40, 100):
         raise AssertionError(f"F15 GV-013 TFI mismatch: {tfi_events[-1] if tfi_events else None}")
+    if tfi_events[-1].get("freshness_deadline_us") != tfi_events[-1]["evaluation_time_us"] + 500 * 1000:
+        raise AssertionError("F15 PAR-055 freshness_deadline_us not stamped from flow_atom_ttl_ms")
 
-    # 5 · F17 tilt refuses by name while RC3-PAR-STRUCT-002 stays NOT_RATIFIED.
+    # 4b · F16 OFI — best-level order-flow imbalance over three sequence-continuous VALID book
+    #      updates -> OFI = -1; a crossed best book fires F16_INVALID_BOOK by name. PAR-055
+    #      flow_atom_ttl_ms is required here too.
+    ofi_params = {"ofi_window_updates": 100, "ofi_window_max_age_ms": 2000,
+                  "ofi_min_updates": 2, "flow_atom_ttl_ms": 500}
+    ofi_run = transition.run(
+        OrderFlowImbalance(),
+        [{"event_id": "b1", "kind": "BOOK_UPDATE", "payload": {
+              "sequence": 1, "best_bid_price_ticks": 100, "best_bid_qty_steps": 5,
+              "best_ask_price_ticks": 101, "best_ask_qty_steps": 7, "watermark_complete": True}},
+         {"event_id": "b2", "kind": "BOOK_UPDATE", "payload": {
+              "sequence": 2, "best_bid_price_ticks": 100, "best_bid_qty_steps": 8,
+              "best_ask_price_ticks": 101, "best_ask_qty_steps": 4, "watermark_complete": True}},
+         {"event_id": "b3", "kind": "BOOK_UPDATE", "payload": {
+              "sequence": 3, "best_bid_price_ticks": 100, "best_bid_qty_steps": 1,
+              "best_ask_price_ticks": 101, "best_ask_qty_steps": 4, "watermark_complete": True}}],
+        ofi_params)
+    ofi_events = [e for e in ofi_run.events if e.get("event_kind") == "FEATURE"]
+    if not ofi_events or ofi_events[-1]["ofi_value"] != -1:
+        raise AssertionError(f"F16 OFI mismatch: {ofi_events[-1] if ofi_events else None}")
+    crossed = transition.run(
+        OrderFlowImbalance(),
+        [{"event_id": "bx", "kind": "BOOK_UPDATE", "payload": {
+              "sequence": 1, "best_bid_price_ticks": 101, "best_bid_qty_steps": 5,
+              "best_ask_price_ticks": 100, "best_ask_qty_steps": 7, "watermark_complete": True}}],
+        ofi_params)
+    if crossed.events[0].get("reason_code") != "F16_INVALID_BOOK":
+        raise AssertionError("F16 must name F16_INVALID_BOOK for a crossed best book")
+
+    # 5 · F17 tilt refuses by name while RC3-PAR-STRUCT-002 stays NOT_RATIFIED. PAR-059
+    #     book_tilt_band_bps and PAR-055 flow_atom_ttl_ms are required (fetched fail-closed)
+    #     before the NOT_RATIFIED min-depth refusal is reached.
     tilt_run = transition.run(
         BookDepthTilt(),
         [{"event_id": "tilt0", "kind": "BOOK_DEPTH", "payload": {
               "bid_quote_depth_ticks_steps": 600, "ask_quote_depth_ticks_steps": 400}}],
-        {"book_tilt_min_quote_depth": common.NOT_RATIFIED})
+        {"book_tilt_min_quote_depth": common.NOT_RATIFIED, "book_tilt_band_bps": 5,
+         "flow_atom_ttl_ms": 500})
     if tilt_run.events[0]["reason_code"] != "F17_UNAVAILABLE_MIN_DEPTH_NOT_RATIFIED":
         raise AssertionError("F17 must refuse with its named abstention while unratified")
 
@@ -669,7 +755,7 @@ def four_plane_walk() -> None:
     bad_alias = lever_law.resolve_manifest(
         {"venue_environment": "OFF", "venue_activation": "live", "paper_activation": "OFF",
          "shadow_activation": "LIVE"})
-    if bad_alias.refusal_code != "VENUE_ACTIVATION_VALUE_INVALID":
+    if bad_alias.refusal_code != "LEGACY_LEVER_ALIAS_FORBIDDEN":
         raise AssertionError("alias refusal law not enforced in the e2e walk")
     off_live = lever_law.resolve_manifest(
         {"venue_environment": "OFF", "venue_activation": "LIVE", "paper_activation": "OFF",
@@ -1233,6 +1319,85 @@ def b07_control_plane_walk() -> None:
     if degraded is Readiness.READY_NO_AUTHORITY:
         raise AssertionError("an unresolvable control-plane conjunct must never report "
                              "READY_NO_AUTHORITY")
+
+
+# ---------------------------------------------------------------- stage 22 (B0R tooling)
+@stage("repair_tooling_walk", "B0R tooling: spec/control counts (strict) -> tracked secret scan "
+                              "(clean) -> RFC 8785 JCS canonicalization (deterministic) -> receipt "
+                              "profile-decision + two-key trust registry drafts -> Ed25519 verify "
+                              "fails closed on an unsigned envelope")
+def repair_tooling_walk() -> None:
+    import hashlib
+
+    def _tool(script: str, *args: str, expect_zero: bool = True) -> subprocess.CompletedProcess:
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / "tools" / script), *args],
+            capture_output=True, text=True, cwd=ROOT)
+        if expect_zero and proc.returncode != 0:
+            raise AssertionError(
+                f"tools/{script} {' '.join(args)} exited {proc.returncode}\n"
+                f"stdout: {proc.stdout}\nstderr: {proc.stderr}")
+        return proc
+
+    # 1 · Spec/control count reconciliation (strict): exactly one strict-JSON object, exit 0.
+    counts = json.loads(_tool("verify_spec_control_counts.py", "--strict").stdout)
+    if counts.get("schema") != "triad.origin.spec_control_counts.v1":
+        raise AssertionError(f"spec/control counts schema mismatch: {counts.get('schema')!r}")
+    if (counts.get("rc1_test_count"), counts.get("rc3_effective_verification_count"),
+            counts.get("rc4_fixture_count")) != (408, 1523, 125):
+        raise AssertionError(f"spec/control counts drifted from the pinned expectations: {counts}")
+
+    # 2 · Tracked secret scan: clean (no hit) on the current tree, exit 0.
+    scan = _tool("scan_secrets.py", "--tracked", "--fail-on-hit")
+    if scan.stdout.strip():
+        raise AssertionError(f"tracked secret scan reported hits:\n{scan.stdout}")
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp = pathlib.Path(td)  # outside the repository (the tools refuse an in-repo --out)
+
+        # 3 · RFC 8785 JCS canonicalization: key-sorted, whitespace-free, and deterministic.
+        jcs_fixture = tmp / "jcs.json"
+        jcs_fixture.write_text('{"b": 2, "a": {"d": 4, "c": 3}}', encoding="utf-8")
+        one = _tool("jcs_canonical.py", str(jcs_fixture)).stdout
+        two = _tool("jcs_canonical.py", str(jcs_fixture)).stdout
+        if one != two or one != '{"a":{"c":3,"d":4},"b":2}':
+            raise AssertionError(f"JCS canonicalization is not deterministic/RFC 8785: {one!r}")
+
+        # 4 · Receipt-ceremony draft builders: the ratified profile decision and a two-key trust
+        #     registry; each writes deterministic bytes and prints exactly the file's SHA-256.
+        profile = tmp / "profile_decision.json"
+        pd = _tool("build_profile_decision.py", "--out", str(profile))
+        if pd.stdout.strip() != hashlib.sha256(profile.read_bytes()).hexdigest():
+            raise AssertionError("build_profile_decision stdout is not the file SHA-256")
+
+        import base64
+        far_future = str(4_102_444_800_000_000)  # ~year 2100, UTC epoch microseconds
+        spec = tmp / "registry_spec.json"
+        spec.write_text(json.dumps([
+            {"key_id": "e2e-producer", "identity": "builder-a", "role": "PRODUCER",
+             "public_key_base64": base64.b64encode(bytes(range(32))).decode("ascii"),
+             "valid_from_us": "0", "valid_until_us": far_future, "approved_milestones": ["ALL"]},
+            {"key_id": "e2e-countersigner", "identity": "reviewer-b", "role": "COUNTERSIGNER",
+             "public_key_base64": base64.b64encode(bytes(range(32, 64))).decode("ascii"),
+             "valid_from_us": "0", "valid_until_us": far_future, "approved_milestones": ["ALL"]},
+        ]), encoding="utf-8")
+        registry = tmp / "registry.json"
+        tr = _tool("build_trust_registry.py", "--spec", str(spec), "--out", str(registry))
+        if tr.stdout.strip() != hashlib.sha256(registry.read_bytes()).hexdigest():
+            raise AssertionError("build_trust_registry stdout is not the file SHA-256")
+
+        # 5 · Ed25519 verification fails CLOSED: an UNSIGNED DSSE envelope (no signatures) yields no
+        #     verified signer against a valid two-key registry, so the tool exits non-zero. (This
+        #     repository holds verify-only tooling — signing is an external operator act.)
+        envelope = tmp / "envelope.json"
+        envelope.write_text(json.dumps({
+            "payloadType": "application/vnd.triad.evidence-receipt.v3+json",
+            "payload": base64.b64encode(b"{}").decode("ascii"),
+            "signatures": []}), encoding="utf-8")
+        ev = _tool("ed25519_verify.py", "--envelope", str(envelope), "--registry", str(registry),
+                   expect_zero=False)
+        if ev.returncode == 0:
+            raise AssertionError("ed25519_verify must fail closed on an unsigned envelope")
 
 
 def main(argv: list[str]) -> int:

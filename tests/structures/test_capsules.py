@@ -86,8 +86,8 @@ class TestOrphanedLegacyRow:
 
 class TestIsolation:
     def test_capsule_digest_is_stable_and_distinct_per_capsule(self):
-        digests = {sid: capsules.capsule_digest(capsules.resolve_capsule(sid))
-                   for sid in capsules.CANONICAL_SEMANTIC_IDS}
+        digests = {struct_ident: capsules.capsule_digest(capsules.resolve_capsule(struct_ident))
+                   for struct_ident in capsules.CANONICAL_SEMANTIC_IDS}
         assert len(set(digests.values())) == 5  # every capsule has a distinct identity
         # Determinism: recomputing yields the exact same digest.
         again = capsules.capsule_digest(capsules.resolve_capsule("fvg_displacement_first_touch.v1"))

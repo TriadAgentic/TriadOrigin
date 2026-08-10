@@ -181,16 +181,16 @@ def validate(event: dict, *, schema_id: str | None = None) -> None:
         raise ContractError("event must be a JSON object")
     _require_canonical_wire(event, "event")
     declared = event.get("schema")
-    sid = schema_id or declared
-    if sid is None:
+    schema_ident = schema_id or declared
+    if schema_ident is None:
         raise ContractError("event has no 'schema' field")
     if declared is not None and schema_id is not None and declared != schema_id:
         raise ContractError(f"schema mismatch: envelope says {declared!r}, expected {schema_id!r}")
-    schema = _schema_for_validation(sid)
+    schema = _schema_for_validation(schema_ident)
     _validate_against_schema(schema, event)
-    if sid in {"triad.edge_candidate.v1", "triad.edge_candidate.v2"}:
+    if schema_ident in {"triad.edge_candidate.v1", "triad.edge_candidate.v2"}:
         assert_no_forbidden_candidate_fields(event)
-    semantic = SEMANTIC_VALIDATORS.get(sid)
+    semantic = SEMANTIC_VALIDATORS.get(schema_ident)
     if semantic is not None:
         semantic(event)
 

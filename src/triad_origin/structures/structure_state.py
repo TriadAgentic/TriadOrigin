@@ -307,7 +307,7 @@ def build_structure_atom_payload(
         _nonempty_str(venue_model, "venue_model"),
         _nonempty_str(timeframe, "timeframe"),
     )
-    sid = ids.structure_id(
+    struct_ident = ids.structure_id(
         _nonempty_str(canonical_instrument_id, "canonical_instrument_id"),
         venue_model,
         _nonempty_str(structure_kind, "structure_kind"),
@@ -319,7 +319,7 @@ def build_structure_atom_payload(
     if not isinstance(dependency_quality, dict):
         raise common.StructureLawError("dependency_quality must be an object")
     return {
-        "structure_id": sid,
+        "structure_id": struct_ident,
         "semantic_instance_id": semantic,
         "structure_kind": structure_kind,
         "structure_subtype": _nonempty_str(structure_subtype, "structure_subtype"),

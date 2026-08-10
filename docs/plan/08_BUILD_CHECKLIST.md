@@ -56,8 +56,8 @@ separate gate receipt._
 ## B02 · Kernel and E01 interfaces
 
 - [x] F00 exact tick/step conversion + boundary goldens — GV-001 side rounding conformance, PR #10
-- [ ] Validate/consume E01 F01 finalized bars; ORIGIN cannot publish them — **GAP → B03 source PR**
-- [ ] Validate/consume E01 F07 UTC session levels; ORIGIN cannot publish them — **GAP → B03 source PR**
+- [x] Validate/consume E01 F01 finalized bars; ORIGIN cannot publish them — `e01_interface.validate_finalized_bar`, PR #16 (B03); e2e `structures_walk` F02/F05 legs
+- [x] Validate/consume E01 F07 UTC session levels; ORIGIN cannot publish them — `e01_interface.validate_session_level`, PR #16 (B03); e2e `structures_walk` F07-1 ingress leg (accept + calendar-mismatch + final-before-watermark)
 - [x] External durable journal anchor + tail deletion/replacement falsification — PR #10
 - [x] Cold/warm/restart exactly-once parity — PR #10
 - [x] Per-scope fencing high-water sealed/restored before consumption — checkpoint v3 fence state, PR #10
@@ -84,7 +84,7 @@ separate gate receipt._
 
 ## B04 · F10–F13 and F15–F17 structure/flow layer
 
-- [x] F10 FVG + TTL/invalidation/same-bar/future-touch boundaries — GV-009 exact, monotonic shrink
+- [x] F10 FVG + TTL/same-bar/future-touch boundaries — GV-009 exact, monotonic shrink; **F10 invalidation-rule binding NOT delivered** (no code parameter, no INVALIDATED state — the second half of BLOCKED_PENDING_EXACT_TTL_INVALIDATION_BINDING; register E36/F10-1)
 - [x] F11 displacement + parameter/golden closure — GV-010 exact, exact-rational never float
 - [x] F12 causal OB + linked BOS — PENDING/CONFIRMED/EXPIRED/BROKEN lifecycle; no TTL per formula row (register E15)
 - [x] F13 excursion/reclaim + parameter closure — GV-011 exact, horizon boundary inclusive
@@ -103,7 +103,7 @@ separate gate receipt._
 - [x] All 10 valid combinations and all 32 exact refusal/containment rows — `control/lever_law.py VALID_COMBINATIONS`/`REFUSAL_CODES`, drift-locked to `rc4_control_bundle.json`
 - [x] Exact OFF/OFF/OFF/LIVE baseline manifest — `control/lever_law.py BASELINE_MANIFEST`
 - [x] Manifest scope/digest/revision/staleness resolver; stale means venue/PAPER OFF — `control/lever_registry.py` (CAS revision fencing, digest binding, `RESOLVE_STALENESS`)
-- [x] Durable SHADOW outbox, ledger, rejection audit, resolver, heartbeat, backlog, coverage — `control/shadow_ledger.py` + `control/shadow_health.py`
+- [x] Durable SHADOW outbox, ledger, rejection audit, resolver, heartbeat, backlog — `control/shadow_ledger.py` + `control/shadow_health.py`; **`coverage` (LEV-0088 100%-reconciliation / `triad.shadow_health.v1` `coverage` compute) NOT yet built — pending B08 `get_shadow_health` read face** (register E36/CTL-9)
 - [x] All SHADOW dispositions and `SHADOW_UNTRADEABLE` malformed path — `shadow_ledger.py` REJECTED/ACCEPTED_NOT_EXECUTED/PROVEN_NO_VENUE_EFFECT + the 12-conjunct tradeability gate
 - [x] Frozen geometry/watermark + versioned evaluation model + fixed notional + bps/R + `NO_FILL` — `shadow_ledger.py` freeze-at-`SHADOW_CANDIDATE` + `SHADOW_FILL_MODEL`'s one designed exception
 - [x] Persistence deadline and writer/resolver stale tests force venue/PAPER OFF — `shadow_health.py` (100/1000/5000/60000 ms bounds via `timings.py`)

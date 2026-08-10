@@ -172,8 +172,9 @@ reducer.
 - Append-only lifecycle reducer with invalid-transition rejection, withdrawal, expiry, and frozen
   original geometry.
 
-**Acceptance evidence.** Same-bar/future-touch rejection; first-qualifying-event law; TTL and
-invalidation boundaries; missing/gapped market data refusal; exact mirror; restart parity;
+**Acceptance evidence.** Same-bar/future-touch rejection; first-qualifying-event law; TTL
+boundaries (F10 invalidation-rule binding NOT delivered — register E36/F10-1); missing/gapped
+market data refusal; exact mirror; restart parity;
 no-future-venue-state law; all formula-specific goldens.
 
 **Hard blockers.** F10 TTL/invalidation, F11/PAR-158, F12 zone/TTL/goldens, F13 parameter set,

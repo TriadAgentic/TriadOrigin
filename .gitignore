@@ -18,3 +18,7 @@ htmlcov/
 *.checkpoint
 secrets/
 *.env
+
+# The frozen independent audit runner is deployed BESIDE the repo by the operator,
+# never committed (its SHA-256 is pinned in docs/plan/AUDIT_RUNNER_PROVENANCE.md).
+audit_package/
