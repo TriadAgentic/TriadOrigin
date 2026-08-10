@@ -42,6 +42,11 @@ class ReceiptBindingError(ValueError):
     """Receipt bytes do not bind to the declared manifest or Git graph."""
 
 
+CANARY_PATH = "evidence/B00R/provider_negative_canary.v1.json"
+CANARY_TRANSCRIPT_ROLE = "PROVIDER_NEGATIVE_CANARY_TRANSCRIPT"
+CANARY_REF = "refs/heads/b00r-ruleset-canary"
+
+
 def _loads_unique_json(data: bytes | str, label: str) -> dict:
     def _unique_object(pairs):
         value = {}
@@ -107,6 +112,92 @@ def _relative_inside(path: pathlib.Path, root: pathlib.Path, label: str) -> str:
         return path.resolve(strict=True).relative_to(root).as_posix()
     except (OSError, ValueError):
         raise ReceiptBindingError(f"{label}_OUTSIDE_GIT_ROOT") from None
+
+
+def _validate_provider_negative_canary(
+    *,
+    entries: list[dict],
+    root: pathlib.Path,
+    provider_raw_path: pathlib.Path,
+    source_merge_time_us: int,
+) -> None:
+    canary_entries = [entry for entry in entries
+                      if entry.get("role") == "PROVIDER_NEGATIVE_CANARY"]
+    if len(canary_entries) != 1:
+        raise ReceiptBindingError(
+            f"PROVIDER_NEGATIVE_CANARY_ROLE_COUNT:{len(canary_entries)}")
+    entry = canary_entries[0]
+    if entry.get("path") != CANARY_PATH or entry.get("role_unique") is not True:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_PATH_OR_UNIQUENESS")
+    canary = _loads_unique_json((root / CANARY_PATH).read_bytes(), "PROVIDER_NEGATIVE_CANARY")
+    expected_fields = {
+        "schema", "schema_version", "canary_kind", "provider", "repository",
+        "ruleset_id", "ruleset_node_id", "ref", "operation", "result", "exit_code",
+        "attempted_at_us", "provider_request_id", "transcript_path", "transcript_sha256",
+    }
+    if set(canary) != expected_fields:
+        raise ReceiptBindingError(
+            f"PROVIDER_NEGATIVE_CANARY_FIELDS:{sorted(set(canary) ^ expected_fields)}")
+    expected_constants = {
+        "schema": "triad.provider_negative_canary.v1",
+        "schema_version": "1.0.0",
+        "canary_kind": "PROVIDER_NEGATIVE_CANARY",
+        "provider": "github",
+        "repository": "TriadAgentic/TriadOrigin",
+        "ref": CANARY_REF,
+        "operation": "DIRECT_PUSH",
+        "result": "REJECTED_BY_RULESET",
+    }
+    if any(canary.get(key) != value for key, value in expected_constants.items()):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_IDENTITY_MISMATCH")
+    exit_code = canary.get("exit_code")
+    if not isinstance(exit_code, int) or isinstance(exit_code, bool) or exit_code == 0:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_EXIT_CODE_NOT_REJECTED")
+    request_id = canary.get("provider_request_id")
+    if not isinstance(request_id, str) or not request_id.strip():
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_REQUEST_ID_ABSENT")
+
+    raw = _loads_unique_json(provider_raw_path.read_bytes(), "MAIN_RULESET_RAW")
+    ruleset_id = raw.get("id")
+    node_id = raw.get("node_id")
+    if (not isinstance(ruleset_id, int) or isinstance(ruleset_id, bool) or ruleset_id <= 0
+            or not isinstance(node_id, str) or not node_id.startswith("RRS_")
+            or canary.get("ruleset_id") != ruleset_id
+            or canary.get("ruleset_node_id") != node_id):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_RULESET_IDENTITY_MISMATCH")
+    ref_name = raw.get("conditions", {}).get("ref_name", {})
+    includes = ref_name.get("include") if isinstance(ref_name, dict) else None
+    if not isinstance(includes, list) or CANARY_REF not in includes:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_REF_NOT_RULESET_TARGET")
+    try:
+        ruleset_updated_us = governance._parse_provider_utc_us(raw.get("updated_at"))  # noqa: SLF001
+    except governance.GovernanceError as exc:
+        raise ReceiptBindingError(
+            f"PROVIDER_NEGATIVE_CANARY_RULESET_TIME_INVALID:{exc}") from exc
+    attempted_at_us = canary.get("attempted_at_us")
+    if (not isinstance(attempted_at_us, int) or isinstance(attempted_at_us, bool)
+            or not ruleset_updated_us <= attempted_at_us < source_merge_time_us):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_CHRONOLOGY_INVALID")
+
+    transcript_path = canary.get("transcript_path")
+    transcript_sha = canary.get("transcript_sha256")
+    try:
+        governance.assert_hex64(
+            transcript_sha, "provider_negative_canary.transcript_sha256")
+    except governance.GovernanceError as exc:
+        raise ReceiptBindingError(str(exc)) from exc
+    transcript_entries = [
+        item for item in entries
+        if item.get("role") == CANARY_TRANSCRIPT_ROLE
+        and item.get("path") == transcript_path
+        and item.get("sha256") == transcript_sha
+    ]
+    if (len(transcript_entries) != 1
+            or not isinstance(transcript_path, str)
+            or not transcript_path.startswith("evidence/B00R/")
+            or transcript_path == CANARY_PATH
+            or transcript_entries[0].get("role_unique") is not True):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_TRANSCRIPT_NOT_CLOSED")
 
 
 def validate_receipt_bindings(
@@ -197,6 +288,15 @@ def validate_receipt_bindings(
 
     source_merge = payload["source_merge_sha"]
     source_merge_time_us = payload["source_merge_time_us"]
+    if milestone == governance.ROOT_MILESTONE:
+        if governance_evidence_paths is None:
+            raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_GOVERNANCE_EVIDENCE_ABSENT")
+        _validate_provider_negative_canary(
+            entries=entries,
+            root=root,
+            provider_raw_path=governance_evidence_paths[1],
+            source_merge_time_us=source_merge_time_us,
+        )
     for name, decision in authority.decisions.items():
         effective_at_us = decision.get("effective_at_us")
         if (not isinstance(effective_at_us, int) or isinstance(effective_at_us, bool)
