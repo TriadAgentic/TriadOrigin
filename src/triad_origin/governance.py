@@ -953,20 +953,25 @@ def validate_governance_snapshot(
         return "FAIL", "GOVERNANCE_RAW_SOURCE_TYPE_MISMATCH"
     if raw.get("current_user_can_bypass") != "never":
         return "FAIL", "GOVERNANCE_RAW_CURRENT_USER_BYPASS_NOT_NEVER"
+    # node_id/_links are useful corroboration but optional in GitHub's published REST schema.
+    # When present they must be provider-shaped and bind the same repository/ruleset identity.
     node_id = raw.get("node_id")
-    if (not isinstance(node_id, str)
-            or re.fullmatch(r"RRS_[A-Za-z0-9_-]+", node_id) is None):
+    if (node_id is not None
+            and (not isinstance(node_id, str)
+                 or re.fullmatch(r"RRS_[A-Za-z0-9_-]+", node_id) is None)):
         return "FAIL", "GOVERNANCE_RAW_NODE_ID_NOT_PROVIDER"
     links = raw.get("_links")
-    self_link = links.get("self") if isinstance(links, dict) else None
-    html_link = links.get("html") if isinstance(links, dict) else None
-    expected_self = (
-        f"https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/{raw_id}"
-    )
-    expected_html = f"https://github.com/TriadAgentic/TriadOrigin/rules/{raw_id}"
-    if (not isinstance(self_link, dict) or self_link.get("href") != expected_self
-            or not isinstance(html_link, dict) or html_link.get("href") != expected_html):
-        return "FAIL", "GOVERNANCE_RAW_PROVIDER_LINKS_MISMATCH"
+    if links is not None:
+        self_link = links.get("self") if isinstance(links, dict) else None
+        html_link = links.get("html") if isinstance(links, dict) else None
+        expected_self = (
+            f"https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/{raw_id}"
+        )
+        expected_html = f"https://github.com/TriadAgentic/TriadOrigin/rules/{raw_id}"
+        html_href = html_link.get("href") if isinstance(html_link, dict) else None
+        if (not isinstance(self_link, dict) or self_link.get("href") != expected_self
+                or html_href not in (None, expected_html)):
+            return "FAIL", "GOVERNANCE_RAW_PROVIDER_LINKS_MISMATCH"
     try:
         created_us = _parse_provider_utc_us(raw.get("created_at"))
         updated_us = _parse_provider_utc_us(raw.get("updated_at"))
@@ -990,9 +995,10 @@ def validate_governance_snapshot(
     ref = conditions.get("ref_name", {})
     includes = ref.get("include") if isinstance(ref, dict) else None
     excludes = ref.get("exclude") if isinstance(ref, dict) else None
-    main_tokens = {"refs/heads/main", "~DEFAULT_BRANCH"}
-    if (not isinstance(includes, list) or not main_tokens.intersection(includes)
-            or not isinstance(excludes, list) or main_tokens.intersection(excludes)):
+    exact_main_targets = (["refs/heads/main"], ["~DEFAULT_BRANCH"])
+    # GitHub applies exclusions after inclusions.  Requiring an empty exclusion list prevents a
+    # wildcard such as refs/heads/* from silently excluding main while a literal-token check passes.
+    if includes not in exact_main_targets or excludes != []:
         return "FAIL", "GOVERNANCE_RAW_MAIN_TARGET_NOT_PROVEN"
     raw_rules = raw.get("rules")
     if not isinstance(raw_rules, list):
@@ -1025,8 +1031,11 @@ def validate_governance_snapshot(
             or not isinstance(checks_raw[0], dict)):
         return "FAIL", "GOVERNANCE_RAW_STATUS_CHECKS_MALFORMED"
     contexts = [checks_raw[0].get("context")]
+    integration_id = checks_raw[0].get("integration_id")
     if (status.get("strict_required_status_checks_policy") is not True
-            or contexts != ["CI / test-and-verify"]):
+            or contexts != ["CI / test-and-verify"]
+            or not isinstance(integration_id, int) or isinstance(integration_id, bool)
+            or integration_id <= 0):
         return "FAIL", "GOVERNANCE_RAW_STATUS_CONTROL_MISMATCH"
     if len(by_type.get("deletion", [])) != 1 or len(by_type.get("non_fast_forward", [])) != 1:
         return "FAIL", "GOVERNANCE_RAW_HISTORY_CONTROLS_MISSING"
