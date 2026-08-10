@@ -107,6 +107,21 @@ def _provider_date_us(value: str, now_us: int) -> int:
     return observed_us
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        return None
+
+
+_DIRECT_OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}),
+    _NoRedirect(),
+)
+
+
+def _direct_urlopen(request, *, timeout: float):
+    return _DIRECT_OPENER.open(request, timeout=timeout)
+
+
 def fetch_and_match_live_ruleset(
     committed_raw: bytes,
     *,
@@ -114,7 +129,7 @@ def fetch_and_match_live_ruleset(
     now_us: int,
     require_bypass_visibility: bool = False,
     timeout_s: float = DEFAULT_TIMEOUT_S,
-    opener: Callable[..., object] = urllib.request.urlopen,
+    opener: Callable[..., object] = _direct_urlopen,
 ) -> LiveRuleset:
     """Fetch the fixed endpoint and require a fresh, security-equivalent provider object."""
 
