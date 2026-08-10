@@ -15,6 +15,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PY = sys.executable
@@ -58,11 +59,6 @@ COMMON_GATES = (
     Gate("dark_capability", (PY, "tools/verify_no_forbidden_capabilities.py")),
     Gate("e2e_audit", (PY, "tools/e2e_audit.py")),
 )
-CODEOWNERS_GATES = (
-    Gate("codeowners_identity", (PY, "tools/verify_codeowners.py"), owner_gated=True),
-)
-
-
 class HeadIdentityError(ValueError):
     """The checked-out commit is not the exact event head requested by the caller."""
 
@@ -96,6 +92,22 @@ def verify_expected_head(expected: str, root: pathlib.Path = ROOT) -> str:
     if actual != expected:
         raise HeadIdentityError(f"EXPECTED_HEAD_MISMATCH: actual={actual} expected={expected}")
     return actual
+
+
+def _advanced_trusted_now_us(
+    trusted_start_us: int,
+    monotonic_start_ns: int,
+    monotonic_end_ns: int | None = None,
+) -> int:
+    """Advance a trusted start instant by local monotonic elapsed time for late provider checks."""
+    end_ns = time.monotonic_ns() if monotonic_end_ns is None else monotonic_end_ns
+    if (not isinstance(trusted_start_us, int) or isinstance(trusted_start_us, bool)
+            or trusted_start_us <= 0
+            or not isinstance(monotonic_start_ns, int) or isinstance(monotonic_start_ns, bool)
+            or not isinstance(end_ns, int) or isinstance(end_ns, bool)
+            or end_ns < monotonic_start_ns):
+        raise HeadIdentityError("TRUSTED_TIME_MONOTONIC_ADVANCE_INVALID")
+    return trusted_start_us + (end_ns - monotonic_start_ns) // 1_000
 
 
 def _run(gate: Gate) -> tuple[str, str]:
@@ -243,6 +255,20 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
     return gates
 
 
+def _codeowners_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
+    github_token = os.environ.get("GITHUB_TOKEN")
+    github_env = {"GITHUB_TOKEN": github_token} if github_token else {}
+    command = (
+        PY,
+        "tools/verify_codeowners.py",
+        "--now-us",
+        str(args.now_us),
+        "--expected-head",
+        args.expected_head,
+    )
+    return (Gate("codeowners_identity", command, owner_gated=True, env=github_env),)
+
+
 def overall_result(mode: str, results: dict[str, str]) -> str:
     """Compute terminal state; SOURCE diagnostics can never close B00R."""
     if any(value == "FAIL" for value in results.values()):
@@ -313,17 +339,38 @@ def main(argv: list[str]) -> int:
             return 1
         print(f"  [PASS   ] exact_head: {actual}")
 
-    gates: tuple[Gate, ...] = COMMON_GATES
+    monotonic_start_ns = time.monotonic_ns()
+    deterministic_gates: tuple[Gate, ...] = COMMON_GATES
     if args.mode == "receipt":
-        gates += _receipt_gates(args)
-    gates += CODEOWNERS_GATES
-    gates += _owner_gates(args)
+        deterministic_gates += _receipt_gates(args)
 
     results: dict[str, str] = {}
-    for gate in gates:
+    for gate in deterministic_gates:
         status, tail = _run(gate)
         results[gate.gate_id] = status
         print(f"  [{status:7}] {gate.gate_id}: {tail[:160]}")
+
+    if any(status != "PASS" for status in results.values()):
+        # Never construct or invoke a provider-authenticated command after repository-controlled
+        # deterministic code has already failed.  Besides avoiding a misleading mixed report,
+        # this keeps provider credentials out of validators on a head that is known unsafe.
+        print("  [SKIPPED] owner_provider_gates: deterministic precondition failed")
+    else:
+        # The caller's trusted time is captured before potentially long dual-seed/build gates.
+        # Advance it only by monotonic elapsed time so fresh provider Date headers are not falsely
+        # "in future".
+        owner_args = argparse.Namespace(**vars(args))
+        try:
+            owner_args.now_us = _advanced_trusted_now_us(args.now_us, monotonic_start_ns)
+        except HeadIdentityError as exc:
+            print(f"  [FAIL   ] trusted_time: {exc}", file=sys.stderr)
+            results["trusted_time"] = "FAIL"
+            owner_args.now_us = args.now_us
+        if results.get("trusted_time") != "FAIL":
+            for gate in _codeowners_gates(owner_args) + _owner_gates(owner_args):
+                status, tail = _run(gate)
+                results[gate.gate_id] = status
+                print(f"  [{status:7}] {gate.gate_id}: {tail[:160]}")
 
     overall = overall_result(args.mode, results)
     print(f"B00R result: {overall}")

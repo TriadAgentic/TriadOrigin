@@ -134,7 +134,7 @@ def main(argv: list[str]) -> int:
                 print(f"FAIL: {exc}", file=sys.stderr)
                 return 1
             try:
-                fetch_and_match_live_ruleset(
+                live = fetch_and_match_live_ruleset(
                     raw_bytes, token=os.environ.get("GITHUB_TOKEN"), now_us=args.now_us)
             except LiveRulesetError as exc:
                 detail = str(exc)
@@ -147,8 +147,20 @@ def main(argv: list[str]) -> int:
                 stream = sys.stdout if unavailable else sys.stderr
                 print(f"{prefix}: LIVE_PROVIDER_REVALIDATION:{detail}", file=stream)
                 return 1
-        print(f"OK: governance snapshot is raw-provider-derived, externally pinned, live "
-              f"revalidated, no-bypass main control ({path.name})")
+            if not live.bypass_visible:
+                print(
+                    "OK_NONTERMINAL: governance snapshot security fields match live provider; "
+                    "the externally pinned capture declares empty bypass actors, but this token "
+                    f"cannot observe bypass_actors and this result cannot close B00R ({path.name})"
+                )
+                return 0
+            print(f"OK: governance snapshot is raw-provider-derived, externally pinned, live "
+                  f"revalidated, with visible empty bypass actors ({path.name})")
+            return 0
+        print(
+            f"OK_STATIC: governance snapshot is raw-provider-derived and externally pinned; "
+            f"strict live provider validation was not requested ({path.name})"
+        )
         return 0
     stream = sys.stderr if result == "FAIL" else sys.stdout
     print(f"{result}: {reason} ({path.name})", file=stream)

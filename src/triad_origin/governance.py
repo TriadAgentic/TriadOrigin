@@ -62,6 +62,7 @@ SAFETY_POSTURE = {
     "shadow_activation": "LIVE",
 }
 ACTIVATION_RESULT = "DENIED_SAFE_HOLD"
+GITHUB_ACTIONS_INTEGRATION_ID = 15368
 
 # Trust-registry / decision vocabulary.
 SIGNER_ROLES = ("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER", "AUTHORITY_OWNER")
@@ -997,14 +998,13 @@ def validate_governance_snapshot(
     excludes = ref.get("exclude") if isinstance(ref, dict) else None
     canary_ref = "refs/heads/b00r-ruleset-canary"
     allowed_include_sets = (
-        {"refs/heads/main"},
-        {"~DEFAULT_BRANCH"},
         {"refs/heads/main", canary_ref},
-        {"~DEFAULT_BRANCH", canary_ref},
     )
     # GitHub applies exclusions after inclusions.  Requiring an empty exclusion list prevents a
-    # wildcard such as refs/heads/* from silently excluding main.  The only permitted extra target
-    # is the dedicated harmless branch used for the mandatory negative provider canary.
+    # wildcard such as refs/heads/* from silently excluding main.  An explicit main ref is required;
+    # ~DEFAULT_BRANCH could silently retarget if the repository default changes. The harmless canary
+    # target is mandatory before the corrective source merge so the provider rejection can predate
+    # that merge; it cannot be bolted on later without invalidating the closure chronology.
     if (not isinstance(includes, list)
             or not all(isinstance(item, str) for item in includes)
             or len(includes) != len(set(includes))
@@ -1044,8 +1044,7 @@ def validate_governance_snapshot(
     integration_id = checks_raw[0].get("integration_id")
     if (status.get("strict_required_status_checks_policy") is not True
             or contexts != ["CI / test-and-verify"]
-            or not isinstance(integration_id, int) or isinstance(integration_id, bool)
-            or integration_id <= 0):
+            or integration_id != GITHUB_ACTIONS_INTEGRATION_ID):
         return "FAIL", "GOVERNANCE_RAW_STATUS_CONTROL_MISMATCH"
     if len(by_type.get("deletion", [])) != 1 or len(by_type.get("non_fast_forward", [])) != 1:
         return "FAIL", "GOVERNANCE_RAW_HISTORY_CONTROLS_MISSING"

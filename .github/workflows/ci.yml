@@ -120,7 +120,15 @@ jobs:
         run: printf 'now_us=%s000000\n' "$(date -u +%s)" >> "$GITHUB_OUTPUT"
       # Owner checks come last so an expected ceremony block cannot hide deterministic evidence.
       - name: Concrete critical-path CODEOWNERS identity
-        run: python tools/verify_codeowners.py
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NOW_US: ${{ steps.owner_time.outputs.now_us }}
+          EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: >-
+          python tools/verify_codeowners.py --now-us "$NOW_US"
+          --expected-head "$EXPECTED_HEAD"
+          --pr-author "$PR_AUTHOR"
       # SOURCE cannot merge green until owner authority and the provider-enforced main ruleset are
       # both present, externally pinned, current, and strict.  UNAVAILABLE is a non-zero block.
       - name: Strict source authority control
@@ -161,7 +169,6 @@ jobs:
           steps.milestone_role.outputs.role == 'RECEIPT'
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ github.token }}
           NOW_US: ${{ steps.owner_time.outputs.now_us }}
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
           AUTHORITY_BUNDLE_DECISION_SHA256: ${{ vars.AUTHORITY_BUNDLE_DECISION_SHA256 }}
@@ -215,6 +222,7 @@ jobs:
           --governance-snapshot docs/governance/rulesets/main.ruleset.provider.json
           --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json
           --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256"
+          --nonterminal-provider-proof
           "$RECEIPT_PATH"
       # This job authenticates the exact receipt PR/main-push head. It does not claim terminal
       # closure: after the receipt merge, `b00r_gate --mode receipt --expected-head <merge>

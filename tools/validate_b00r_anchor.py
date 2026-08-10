@@ -24,10 +24,12 @@ import sys
 
 try:  # importable both as `python tools/...` and as `from tools import ...`
     from tools.github_ruleset_live import (  # type: ignore
-        LiveRulesetError, LiveRulesetUnavailable, fetch_and_match_live_ruleset)
+        LiveRulesetError, LiveRulesetUnavailable, fetch_anchor_tag_object_sha,
+        fetch_and_match_live_ruleset)
 except ModuleNotFoundError:  # pragma: no cover - direct script fallback
     from github_ruleset_live import (  # type: ignore
-        LiveRulesetError, LiveRulesetUnavailable, fetch_and_match_live_ruleset)
+        LiveRulesetError, LiveRulesetUnavailable, fetch_anchor_tag_object_sha,
+        fetch_and_match_live_ruleset)
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TAG_NAME = "B00R_RECEIPT_ANCHOR"
@@ -216,7 +218,7 @@ def _verify_static_bundle(
     receipt_path: pathlib.Path,
     ruleset_path: pathlib.Path,
     ruleset_pin: str | None,
-) -> tuple[str, bytes]:
+) -> tuple[str, bytes, str]:
     root = root.resolve()
     if HEX40_RE.fullmatch(expected_head or "") is None:
         raise AnchorError(f"FAIL: EXPECTED_HEAD_NOT_CANONICAL_HEX40: {expected_head!r}")
@@ -236,10 +238,14 @@ def _verify_static_bundle(
         raise AnchorError("FAIL: RECEIPT_WORKTREE_DIFFERS_FROM_EXPECTED_HEAD")
 
     ref = f"refs/tags/{TAG_NAME}"
-    object_type = _git(root, "cat-file", "-t", ref, blocked_if_missing=True).decode().strip()
+    tag_object_sha = _git(
+        root, "rev-parse", "--verify", ref, blocked_if_missing=True).decode().strip()
+    if HEX40_RE.fullmatch(tag_object_sha) is None:
+        raise AnchorError("FAIL: ANCHOR_TAG_OBJECT_SHA_INVALID")
+    object_type = _git(root, "cat-file", "-t", tag_object_sha).decode().strip()
     if object_type != "tag":
         raise AnchorError(f"FAIL: ANCHOR_TAG_NOT_ANNOTATED: type={object_type!r}")
-    raw_tag = _git(root, "cat-file", "tag", ref)
+    raw_tag = _git(root, "cat-file", "tag", tag_object_sha)
     headers, message = _parse_tag(raw_tag)
     if headers.get("object") != expected_head or headers.get("type") != "commit":
         raise AnchorError(
@@ -253,7 +259,6 @@ def _verify_static_bundle(
         raise AnchorError("FAIL: ANCHOR_RECEIPT_PATH_MISMATCH")
     if values["receipt_sha256"] != receipt_sha:
         raise AnchorError("FAIL: ANCHOR_RECEIPT_DIGEST_MISMATCH")
-
     if ruleset_pin is None or ruleset_pin == "":
         raise AnchorError(f"BLOCKED: EXTERNAL_TAG_RULESET_PIN_ABSENT: {PIN_ENV}")
     if HEX64_RE.fullmatch(ruleset_pin) is None or ruleset_pin == "0" * 64:
@@ -269,7 +274,7 @@ def _verify_static_bundle(
         raise AnchorError("FAIL: TAG_RULESET_EXTERNAL_PIN_MISMATCH")
     ruleset = _loads_unique_object(ruleset_bytes)
     _validate_ruleset(ruleset)
-    return receipt_sha, ruleset_bytes
+    return receipt_sha, ruleset_bytes, tag_object_sha
 
 
 def _verify_static(
@@ -281,7 +286,7 @@ def _verify_static(
     ruleset_pin: str | None,
 ) -> str:
     """Run the static anchor checks and return the bound receipt digest for unit callers."""
-    receipt_sha, _ruleset_bytes = _verify_static_bundle(
+    receipt_sha, _ruleset_bytes, _tag_object_sha = _verify_static_bundle(
         root=root,
         expected_head=expected_head,
         receipt_path=receipt_path,
@@ -304,7 +309,7 @@ def verify(
     """Run the complete terminal anchor gate, including a fresh authenticated provider GET."""
     if not isinstance(now_us, int) or isinstance(now_us, bool) or now_us <= 0:
         raise AnchorError("FAIL: NOW_US_INVALID")
-    receipt_sha, ruleset_bytes = _verify_static_bundle(
+    receipt_sha, ruleset_bytes, tag_object_sha = _verify_static_bundle(
         root=root,
         expected_head=expected_head,
         receipt_path=receipt_path,
@@ -314,6 +319,10 @@ def verify(
     fetch_and_match_live_ruleset(
         ruleset_bytes, token=github_token, now_us=now_us,
         require_bypass_visibility=True)
+    live_tag_object_sha = fetch_anchor_tag_object_sha(
+        token=github_token, now_us=now_us)
+    if live_tag_object_sha != tag_object_sha:
+        raise AnchorError("FAIL: LIVE_ANCHOR_TAG_OBJECT_MISMATCH")
     return receipt_sha
 
 
@@ -347,7 +356,13 @@ def main(argv: list[str]) -> int:
     except LiveRulesetUnavailable as exc:
         print(f"BLOCKED: LIVE_TAG_PROVIDER_UNAVAILABLE:{exc}")
         return 1
-    except (LiveRulesetError, AnchorError, OSError, ValueError) as exc:
+    except LiveRulesetError as exc:
+        if str(exc) == "LIVE_ANCHOR_TAG_REF_HTTP_STATUS:404":
+            print("BLOCKED: LIVE_ANCHOR_TAG_ABSENT")
+            return 1
+        print(str(exc), file=sys.stderr)
+        return 1
+    except (AnchorError, OSError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
     print(
