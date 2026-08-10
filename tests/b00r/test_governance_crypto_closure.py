@@ -199,8 +199,13 @@ def test_receipt_profile_cannot_collapse_two_party_separation():
 
 def _raw_ruleset() -> dict:
     return {
-        "id": 42, "name": "main", "target": "branch", "source": "TriadAgentic/TriadOrigin",
-        "enforcement": "active", "bypass_actors": [],
+        "id": 42, "name": "main", "target": "branch", "source_type": "Repository",
+        "source": "TriadAgentic/TriadOrigin", "enforcement": "active", "bypass_actors": [],
+        "node_id": "RRS_provider42",
+        "_links": {
+            "self": {"href": "https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/42"},
+            "html": {"href": "https://github.com/TriadAgentic/TriadOrigin/rules/42"},
+        },
         "created_at": "1970-01-01T00:00:05Z",
         "updated_at": "1970-01-01T00:00:10Z",
         "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": []}},
@@ -249,6 +254,81 @@ def test_governance_snapshot_is_derived_from_pinned_raw_provider_response():
     result, reason = gov.validate_governance_snapshot(
         changed, provider_raw_bytes=altered_bytes, external_pin=altered_pin, now_us=30_000_000)
     assert result == "FAIL" and "BYPASS" in reason
+
+
+def _snapshot_for_raw(raw: dict) -> tuple[dict, bytes, str]:
+    raw_bytes = canonical_json(raw)
+    pin = sha256_hex(raw_bytes)
+    doc = {
+        "schema": "triad.governance_snapshot.v1", "schema_version": "1.0.0",
+        "snapshot_kind": "GOVERNANCE_SNAPSHOT", "authenticated": True,
+        "effective_at_us": 10_000_000,
+        "provider": {"name": "github", "repository": "TriadAgentic/TriadOrigin",
+                     "captured_at_us": 20_000_000, "api_response_path": "evidence/raw.json",
+                     "api_response_sha256": pin},
+        "ruleset": {"ruleset_id": str(raw.get("id")), "target": "refs/heads/main",
+                    "pull_request_required": True,
+                    "required_status_check": "CI / test-and-verify",
+                    "strict_required_status": True, "required_approvals": 1,
+                    "dismiss_stale_reviews": True, "require_conversation_resolution": True,
+                    "block_force_push": True, "block_deletions": True, "bypass_actors": []},
+    }
+    return doc, raw_bytes, pin
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        (lambda raw: raw.__setitem__("id", "DECLARATIVE"), "RULESET_ID"),
+        (lambda raw: raw.__setitem__("name", "PLACEHOLDER"), "RULESET_NAME"),
+        (lambda raw: raw.__setitem__("note", "actual enforcement pending"), "SYNTHETIC"),
+        (lambda raw: raw.pop("source_type"), "SOURCE_TYPE"),
+        (lambda raw: raw.pop("node_id"), "NODE_ID"),
+        (lambda raw: raw.pop("_links"), "PROVIDER_LINKS"),
+        (
+            lambda raw: raw["_links"]["self"].__setitem__(
+                "href", "https://example.invalid/forged"
+            ),
+            "PROVIDER_LINKS",
+        ),
+    ],
+)
+def test_governance_snapshot_rejects_non_provider_ruleset_shapes(mutation, reason):
+    raw = _raw_ruleset()
+    mutation(raw)
+    doc, raw_bytes, pin = _snapshot_for_raw(raw)
+    result, actual = gov.validate_governance_snapshot(
+        doc, provider_raw_bytes=raw_bytes, external_pin=pin, now_us=30_000_000
+    )
+    assert result == "FAIL"
+    assert reason in actual
+
+
+def test_checked_in_declarative_ruleset_stub_cannot_pass_even_when_pinned():
+    doc = json.loads(
+        (ROOT / "docs/governance/rulesets/main.ruleset.provider.json").read_text()
+    )
+    raw_bytes = (
+        ROOT / "docs/governance/rulesets/main.ruleset.provider.raw.json"
+    ).read_bytes()
+    pin = sha256_hex(raw_bytes)
+    doc["authenticated"] = True
+    result, reason = gov.validate_governance_snapshot(
+        doc, provider_raw_bytes=raw_bytes, external_pin=pin,
+        now_us=doc["provider"]["captured_at_us"] + 1,
+    )
+    assert result == "FAIL"
+    assert "SYNTHETIC" in reason or "RULESET_ID" in reason
+
+
+def test_normalized_snapshot_commentary_cannot_authenticate_provider_bytes():
+    raw = _raw_ruleset()
+    doc, raw_bytes, pin = _snapshot_for_raw(raw)
+    doc["provider"]["note"] = "hand-authored declaration"
+    result, reason = gov.validate_governance_snapshot(
+        doc, provider_raw_bytes=raw_bytes, external_pin=pin, now_us=30_000_000
+    )
+    assert (result, reason) == ("FAIL", "GOVERNANCE_PROVIDER_SYNTHETIC_METADATA")
 
 
 def test_source_governance_evidence_is_exact_head_bound(tmp_path):
