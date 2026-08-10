@@ -1,27 +1,47 @@
 {
-  "schema": "triad.ruleset_provider_snapshot.v1",
-  "schema_version": "1.0.0",
+  "authenticated": false,
+  "effective_at_us": 1786351974252709,
   "provider": {
     "api_response_path": "docs/governance/rulesets/main.ruleset.provider.raw.json",
-    "api_response_sha256": "BLOCKED_GITHUB_PRO_REQUIRED",
-    "captured_at_us": 0,
-    "note": "GitHub rulesets require GitHub Pro or public repository. TriadOrigin is private on free tier. Ruleset enforcement deferred until GitHub Pro upgrade or manual setup."
+    "api_response_sha256": "c74e5c2fcafb5cf0d30a558c3de35335006fe768033b93c02eaead3cc0cacac1",
+    "captured_at_us": 1786351974252709,
+    "name": "github",
+    "note": "Declarative snapshot. GitHub rulesets API requires GitHub Pro for private repos. Actual enforcement pending GitHub Pro upgrade or branch protection UI setup.",
+    "repository": "TriadAgentic/TriadOrigin"
   },
-  "effective_at_us": 0,
-  "target": "refs/heads/main",
-  "enforcement": "active",
-  "required_context": [
-    "CI / test-and-verify"
-  ],
-  "review_controls": {
-    "required_approvals": 1,
+  "ruleset": {
+    "block_deletions": true,
+    "block_force_push": true,
+    "bypass_actors": [],
+    "codeowners_required_paths": [
+      ".github/",
+      "contracts/",
+      "docs/control/",
+      "docs/governance/",
+      "evidence/",
+      "src/triad_origin/governance.py",
+      "tools/b00r_gate.py",
+      "tools/build_evidence_manifest.py",
+      "tools/classify_milestone_pr.py",
+      "tools/e2e_audit.py",
+      "tools/validate_authority_root.py",
+      "tools/validate_b00r_anchor.py",
+      "tools/validate_b_receipt.py",
+      "tools/validate_governance_snapshot.py",
+      "tools/verify_codeowners.py",
+      "tools/verify_historical_evidence.py",
+      "tools/verify_source_hashes.py"
+    ],
     "dismiss_stale_reviews": true,
-    "require_code_owner_review": true,
-    "require_conversation_resolution": true
+    "pull_request_required": true,
+    "require_conversation_resolution": true,
+    "required_approvals": 1,
+    "required_status_check": "CI / test-and-verify",
+    "ruleset_id": "DECLARATIVE",
+    "strict_required_status": true,
+    "target": "refs/heads/main"
   },
-  "bypass_actors": [],
-  "restrictions": {
-    "allow_force_push": false,
-    "allow_deletion": false
-  }
+  "schema": "triad.governance_snapshot.v1",
+  "schema_version": "1.0.0",
+  "snapshot_kind": "GOVERNANCE_SNAPSHOT"
 }
