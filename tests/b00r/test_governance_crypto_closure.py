@@ -19,7 +19,8 @@ from triad_origin.canonical import canonical_json, sha256_hex  # noqa: E402
 from tools.validate_authority_root import (  # noqa: E402
     AuthorityContext, AuthorityRootError, CANONICAL_AUTHORITY_PATHS, SUBJECTS,
     load_authority_context, validate_git_bound_authority)
-from tools.validate_b_receipt import ReceiptBindingError, validate_receipt_bindings  # noqa: E402
+from tools.validate_b_receipt import (  # noqa: E402
+    ReceiptBindingError, _validate_provider_negative_canary, validate_receipt_bindings)
 from tools.validate_governance_snapshot import _validate_git_binding  # noqa: E402
 
 
@@ -362,6 +363,65 @@ def test_normalized_snapshot_commentary_cannot_authenticate_provider_bytes():
         doc, provider_raw_bytes=raw_bytes, external_pin=pin, now_us=30_000_000
     )
     assert (result, reason) == ("FAIL", "GOVERNANCE_PROVIDER_SYNTHETIC_METADATA")
+
+
+def test_provider_negative_canary_is_mandatory_and_bound_to_ruleset(tmp_path):
+    raw_path = tmp_path / "raw.json"
+    raw_path.write_bytes(canonical_json({
+        "id": 42,
+        "node_id": "RRS_provider42",
+        "updated_at": "1970-01-01T00:00:10Z",
+        "conditions": {"ref_name": {"include": [
+            "refs/heads/main", "refs/heads/b00r-ruleset-canary"
+        ], "exclude": []}},
+    }))
+    transcript_rel = "evidence/B00R/provider_negative_canary.transcript.txt"
+    transcript = b"rejected\n"
+    transcript_path = tmp_path / transcript_rel
+    transcript_path.parent.mkdir(parents=True)
+    transcript_path.write_bytes(transcript)
+    canary = {
+        "schema": "triad.provider_negative_canary.v1",
+        "schema_version": "1.0.0",
+        "canary_kind": "PROVIDER_NEGATIVE_CANARY",
+        "provider": "github",
+        "repository": "TriadAgentic/TriadOrigin",
+        "ruleset_id": 42,
+        "ruleset_node_id": "RRS_provider42",
+        "ref": "refs/heads/b00r-ruleset-canary",
+        "operation": "DIRECT_PUSH",
+        "result": "REJECTED_BY_RULESET",
+        "exit_code": 1,
+        "attempted_at_us": 20_000_000,
+        "provider_request_id": "REQ:canary:42",
+        "transcript_path": transcript_rel,
+        "transcript_sha256": sha256_hex(transcript),
+    }
+    canary_path = tmp_path / "evidence/B00R/provider_negative_canary.v1.json"
+    canary_path.write_bytes(canonical_json(canary))
+    entries = [
+        {"path": canary_path.relative_to(tmp_path).as_posix(),
+         "role": "PROVIDER_NEGATIVE_CANARY", "role_unique": True,
+         "sha256": sha256_hex(canary_path.read_bytes())},
+        {"path": transcript_rel, "role": "PROVIDER_NEGATIVE_CANARY_TRANSCRIPT",
+         "role_unique": True, "sha256": sha256_hex(transcript)},
+    ]
+    _validate_provider_negative_canary(
+        entries=entries, root=tmp_path, provider_raw_path=raw_path,
+        source_merge_time_us=30_000_000,
+    )
+    with pytest.raises(ReceiptBindingError, match="ROLE_COUNT"):
+        _validate_provider_negative_canary(
+            entries=entries[1:], root=tmp_path, provider_raw_path=raw_path,
+            source_merge_time_us=30_000_000,
+        )
+    canary["ruleset_id"] = 99
+    canary_path.write_bytes(canonical_json(canary))
+    with pytest.raises(ReceiptBindingError, match="RULESET_IDENTITY"):
+        _validate_provider_negative_canary(
+            entries=entries, root=tmp_path, provider_raw_path=raw_path,
+            source_merge_time_us=30_000_000,
+        )
 
 
 def test_source_governance_evidence_is_exact_head_bound(tmp_path):
