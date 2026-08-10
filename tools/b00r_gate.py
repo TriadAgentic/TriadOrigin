@@ -99,7 +99,8 @@ def verify_expected_head(expected: str, root: pathlib.Path = ROOT) -> str:
 
 
 def _run(gate: Gate) -> tuple[str, str]:
-    env = dict(os.environ)
+    # A provider token is never inherited by ordinary build, test, or audit subprocesses.
+    env = {name: value for name, value in os.environ.items() if name != "GITHUB_TOKEN"}
     env.update(gate.env)
     # This marker prevents a regression test from recursively launching a complete gate while the
     # gate's own dual-seed pytest runs are in progress.
@@ -161,6 +162,8 @@ def _optional_pair(flag: str, value: str | None) -> tuple[str, ...]:
 
 def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
     """Build strict owner gates without ever running receipt closure in SOURCE mode."""
+    github_token = os.environ.get("GITHUB_TOKEN")
+    github_env = {"GITHUB_TOKEN": github_token} if github_token else {}
     authority_command = (
         PY,
         "tools/validate_authority_root.py",
@@ -191,7 +194,8 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
     )
     gates: tuple[Gate, ...] = (
         Gate("authority_root", authority_command, owner_gated=True),
-        Gate("governance_snapshot", governance_command, owner_gated=True),
+        Gate(
+            "governance_snapshot", governance_command, owner_gated=True, env=github_env),
     )
     if args.mode == "source":
         return gates
@@ -214,6 +218,7 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
         args.governance_snapshot,
         "--provider-raw",
         args.provider_raw,
+        "--require-bypass-visibility",
         *_optional_pair("--pins", args.pins),
         *_optional_pair("--provider-pin", args.provider_pin),
         args.receipt,
@@ -230,8 +235,8 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
         *_optional_pair("--ruleset-pin", args.anchor_ruleset_pin),
     )
     gates += (
-        Gate("receipt_v3_closure", receipt_command, owner_gated=True),
-        Gate("receipt_anchor", anchor_command, owner_gated=True),
+        Gate("receipt_v3_closure", receipt_command, owner_gated=True, env=github_env),
+        Gate("receipt_anchor", anchor_command, owner_gated=True, env=github_env),
     )
     return gates
 
