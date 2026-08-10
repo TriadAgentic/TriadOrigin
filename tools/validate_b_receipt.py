@@ -284,7 +284,8 @@ def _validate_governance_evidence(
         raise ReceiptBindingError(f"GOVERNANCE_SNAPSHOT_{result}:{reason}")
     try:
         fetch_and_match_live_ruleset(
-            raw_bytes, token=os.environ.get("GITHUB_TOKEN"))
+            raw_bytes, token=os.environ.get("GITHUB_TOKEN"), now_us=now_us,
+            require_bypass_visibility=True)
     except LiveRulesetError as exc:
         detail = str(exc)
         unavailable = (
