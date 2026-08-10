@@ -537,6 +537,26 @@ def structures_walk() -> None:
         raise AssertionError(
             "F07-1 final-before-watermark must reject E01_SESSION_FINAL_BEFORE_WATERMARK")
 
+    # 8 · F04 FractalPivot benchmark (GV-006, left=2/right=2). Highs [8,9,12,11,10] publish a single
+    #     pivot_high level_ticks=12 whose origin is the centre bar (seq 2), confirmed only when the
+    #     second right bar finalizes; an incomplete right window never publishes early.
+    from triad_origin.structures.typed_level_registry import FractalPivot
+
+    def fractal_bar(seq, high):
+        return {"event_id": f"fp{seq}", "kind": "BAR",
+                "payload": {"high_ticks": high, "low_ticks": high - 7, "bar_seq": seq}}
+
+    fp_params = {"fractal_left_bars": 2, "fractal_right_bars": 2}
+    fp_bars = [fractal_bar(seq, high) for seq, high in enumerate([8, 9, 12, 11, 10])]
+    fp_run = transition.run(FractalPivot(), fp_bars, fp_params)
+    fp_levels = [e for e in fp_run.events if e.get("event_kind") == "TYPED_LEVEL"]
+    if [(e["kind"], e["level_ticks"], e["origin_bar_seq"]) for e in fp_levels] != [
+            ("pivot_high", 12, 2)]:
+        raise AssertionError(f"F04 GV-006 fractal pivot mismatch: {fp_levels}")
+    fp_early = transition.run(FractalPivot(), fp_bars[:4], fp_params)
+    if [e for e in fp_early.events if e.get("event_kind") == "TYPED_LEVEL"]:
+        raise AssertionError("F04 published a pivot before the second right bar finalized")
+
 
 @stage("structure_flow_walk", "B04: FVG GV-009 -> displacement GV-010 -> order block "
                               "PENDING/CONFIRMED -> excursion/reclaim GV-011 -> TFI GV-013 -> "
@@ -584,6 +604,38 @@ def structure_flow_walk() -> None:
     qualified = [e for e in disp_run.events if e.get("event_kind") == "DISPLACEMENT_QUALIFIED"]
     if not qualified:
         raise AssertionError("F11 GV-010 displacement did not qualify")
+
+    # 2b · F12 OrderBlockRegistry (PAR-047 lookback=8 / PAR-160 H_bos=5). A LONG origin-search batch
+    #      opens one PENDING block; a same-direction LINKED_BOS at exactly the 5th finalized bar after
+    #      availability (bar 105, avail 100) confirms it to CONFIRMED; a BOS at the 6th bar (106) is
+    #      one bar past the horizon and never confirms.
+    from triad_origin.structures.order_block_registry import (
+        ORDER_BLOCK_CONFIRMED, ORDER_BLOCK_PENDING, OrderBlockRegistry)
+
+    ob_params = {"order_block_lookback_bars": 8, "order_block_bos_horizon_bars": 5,
+                 "order_block_break_buffer_rule": common.DECLARED_BOS_CLOSE_BUFFER}
+    ob_batch = {"event_id": "ob_b1", "kind": "ORIGIN_SEARCH_BATCH", "payload": {
+        "displacement_origin_bar_index": 100, "displacement_direction": common.LONG,
+        "displacement_availability_bar_index": 100,
+        "candidates": [{"source_id": "s1", "offset": 1, "open_ticks": 1000, "close_ticks": 990,
+                        "high_ticks": 1010, "low_ticks": 980}]}}
+
+    def ob_bos(bar_index):
+        return {"event_id": f"ob_bos_{bar_index}", "kind": "LINKED_BOS",
+                "payload": {"bos_bar_index": bar_index, "bos_direction": common.LONG}}
+
+    ob_confirm = transition.run(OrderBlockRegistry(), [ob_batch, ob_bos(105)], ob_params)
+    if not [e for e in ob_confirm.events if e.get("event_kind") == ORDER_BLOCK_PENDING]:
+        raise AssertionError("F12 origin-search batch did not open a PENDING order block")
+    ob_conf = [e for e in ob_confirm.events if e.get("event_kind") == ORDER_BLOCK_CONFIRMED]
+    if len(ob_conf) != 1 or ob_conf[0]["bos_bar_index"] != 105:
+        raise AssertionError(f"F12 order block did not confirm at the 5th bar: {ob_conf}")
+    ob_blocks = list(ob_confirm.final_state["order_blocks"].values())
+    if len(ob_blocks) != 1 or ob_blocks[0]["state"] != "CONFIRMED":
+        raise AssertionError(f"F12 confirmed block state mismatch: {ob_blocks}")
+    ob_late = transition.run(OrderBlockRegistry(), [ob_batch, ob_bos(106)], ob_params)
+    if [e for e in ob_late.events if e.get("event_kind") == ORDER_BLOCK_CONFIRMED]:
+        raise AssertionError("F12 BOS one bar past the horizon must not confirm")
 
     # 3 · F13 excursion/reclaim — GV-011: two consecutive qualifying closes confirm.
     #     After the F1213 direction correction a LONG level reclaims by closing ABOVE it (>= level
