@@ -123,7 +123,7 @@ def test_lookback_boundary_at_exactly_offset_eight_qualifies():
     assert event["origin_offset"] == 8
 
 
-# --- Tie-break: latest (smallest offset) wins; ties by notional then source_id -------------------
+# --- Tie-break: latest (smallest offset) wins; ties by source_id ONLY (no candle-body notional) --
 
 
 def test_latest_smallest_offset_wins_over_an_earlier_larger_notional_candidate():
@@ -135,16 +135,19 @@ def test_latest_smallest_offset_wins_over_an_earlier_larger_notional_candidate()
     assert event["origin_offset"] == 1
 
 
-def test_offset_tie_breaks_by_larger_body_quote_notional():
-    small_notional = candidate("s_small", 3, 1000, 999, 1010, 990)   # |C-O| = 1
-    large_notional = candidate("s_large", 3, 1000, 900, 1010, 890)   # |C-O| = 100
-    result = run([batch("b1", common.LONG, [small_notional, large_notional])])
+def test_offset_tie_ignores_body_notional_and_breaks_by_minimum_source_id():
+    # RC3 errata removes the body quote-notional key: a smaller-body candidate whose source_id is
+    # lexicographically smaller WINS over a larger-body candidate at the same offset. (The pre-fix
+    # code selected "z_large" on the removed larger-notional key.)
+    small_body = candidate("a_small", 3, 1000, 999, 1010, 990)   # |C-O| = 1,   source "a_small"
+    large_body = candidate("z_large", 3, 1000, 900, 1010, 890)   # |C-O| = 100, source "z_large"
+    result = run([batch("b1", common.LONG, [large_body, small_body])])
     (event,) = pending(result.events)
-    assert event["origin_source_id"] == "s_large"
+    assert event["origin_source_id"] == "a_small"
 
 
-def test_offset_and_notional_tie_breaks_by_minimum_source_id():
-    zulu = candidate("zulu", 3, 1000, 900, 1010, 890)   # |C-O| = 100, same as alpha
+def test_offset_tie_breaks_by_minimum_source_id_regardless_of_body():
+    zulu = candidate("zulu", 3, 1000, 900, 1010, 890)
     alpha = candidate("alpha", 3, 1000, 900, 1010, 890)
     result = run([batch("b1", common.LONG, [zulu, alpha])])
     (event,) = pending(result.events)
@@ -191,10 +194,20 @@ def test_bos_does_not_confirm_at_the_sixth_bar_after_availability():
     assert block["state"] == ob.STATE_PENDING
 
 
-def test_bos_confirms_at_availability_itself():
+def test_bos_at_availability_itself_does_not_confirm_zero_bars_after_displacement():
+    # PAR-160 unit is "finalized bars AFTER displacement": a BOS on the availability bar itself is
+    # zero bars after and is OUTSIDE the window. (The pre-fix code confirmed here off the
+    # inclusive lower edge.)
     result = run([_long_pending_batch(availability=100), bos("bos1", 100, common.LONG)])
+    assert confirmed(result.events) == []
+    (block,) = result.final_state["order_blocks"].values()
+    assert block["state"] == ob.STATE_PENDING
+
+
+def test_bos_confirms_at_the_first_bar_after_availability():
+    result = run([_long_pending_batch(availability=100), bos("bos1", 101, common.LONG)])
     (event,) = confirmed(result.events)
-    assert event["bos_bar_index"] == 100
+    assert event["bos_bar_index"] == 101
 
 
 # --- Mismatched-direction BOS is ignored, not an error --------------------------------------------

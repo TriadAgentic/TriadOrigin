@@ -67,11 +67,12 @@ for a SHORT/bear displacement it must be bullish (``close_ticks > open_ticks``).
 qualifying (opposing) candidates the LATEST wins — the smallest ``offset``, i.e. the bar closest in
 time to the displacement origin. A genuine tie (more than one qualifying candidate at the same
 minimal offset — a caller-supplied data-quality edge case, since a single well-formed backward walk
-carries one bar per offset) breaks by body quote-notional (larger wins; documented choice, since no
-quantity is modeled here: ``quote_notional = abs(close_ticks - open_ticks)`` ticks, never a
-price*qty product), then by minimum immutable ``source_id`` (lexicographic string comparison). No
-qualifying candidate anywhere in ``[1, W]`` -> named abstention ``F12_NO_OPPOSING_ORIGIN_IN_LOOKBACK``;
-no order-block state is created for that batch at all.
+carries one bar per offset) breaks by the lexicographically smallest immutable ``source_id`` ONLY.
+Per the RC3 errata for F12 ("Remove undefined body quote-notional tie-break … No candle-body volume
+estimate is permitted"), the RC2 source formula's body quote-notional key is REMOVED — no candle-body
+quantity estimate enters the selection anywhere. No qualifying candidate anywhere in ``[1, W]`` ->
+named abstention ``F12_NO_OPPOSING_ORIGIN_IN_LOOKBACK``; no order-block state is created for that batch
+at all.
 
 **Zone geometry (PAR-161 zone convention — the RC3-declared edges, never the full bar range).**
 ``bull_zone = [low_origin, open_origin]`` (a demand zone, LONG); ``bear_zone = [open_origin,
@@ -81,11 +82,12 @@ edge of the zone away from where displacement moved: ``low_origin`` for a bull/L
 
 **Confirmation (PAR-160 ``ORDER_BLOCK_BOS_HORIZON`` = ``H_bos``).** A ``PENDING`` block confirms to
 ``CONFIRMED`` on the first ``LINKED_BOS`` whose ``bos_direction`` matches the block's direction
-exactly AND whose ``bos_bar_index`` falls in the inclusive window
-``[displacement_availability_bar_index, displacement_availability_bar_index + H_bos]`` (the
-``H_bos``-th bar is included, the ``(H_bos+1)``-th is excluded — PAR-009/PAR-160 boundary rule). A
-mismatched-direction BOS is silently ignored (not an error, not adopted) whether or not it falls in
-the window. **Open concern, documented rather than silently assumed away:** if no matching in-horizon
+exactly AND whose ``bos_bar_index`` falls in the window
+``[displacement_availability_bar_index + 1, displacement_availability_bar_index + H_bos]`` — the
+``H_bos`` finalized bars STRICTLY AFTER displacement (PAR-160 unit "finalized bars after
+displacement"): the ``H_bos``-th bar is included, the ``(H_bos+1)``-th is excluded, and a BOS on the
+availability bar itself (zero bars after displacement) does NOT confirm. A mismatched-direction BOS
+is silently ignored (not an error, not adopted) whether or not it falls in the window. **Open concern, documented rather than silently assumed away:** if no matching in-horizon
 ``LINKED_BOS`` ever arrives, and the caller never feeds a ``HORIZON_ELAPSED`` marker either, the
 block stays ``PENDING`` forever in this machine's view — the absence of a future BOS is not itself a
 negative signal this module can observe; it can only react to what it is told. A block expires to
@@ -204,16 +206,18 @@ def _opposes(candidate: dict, direction: str) -> bool:
 def _select_origin(candidates: list[dict], direction: str, lookback: int) -> dict | None:
     """The LATEST (smallest-offset) opposing candidate within ``[1, lookback]``.
 
-    Ties (same minimal offset) break by larger body quote-notional, then minimum ``source_id``.
+    Ties (same minimal offset) break by lexicographically smallest immutable ``source_id`` ONLY.
+    The RC3 errata for F12 ("Remove undefined body quote-notional tie-break … No candle-body
+    volume estimate is permitted") removes the RC2 source formula's body-notional key, so no
+    candle-body quantity estimate enters the selection.
     """
     in_window = [c for c in candidates if 1 <= c["offset"] <= lookback]
     qualifying = [c for c in in_window if _opposes(c, direction)]
     if not qualifying:
         return None
 
-    def sort_key(candidate: dict) -> tuple[int, int, str]:
-        notional = abs(candidate["close_ticks"] - candidate["open_ticks"])
-        return (candidate["offset"], -notional, candidate["source_id"])
+    def sort_key(candidate: dict) -> tuple[int, str]:
+        return (candidate["offset"], candidate["source_id"])
 
     return min(qualifying, key=sort_key)
 
@@ -374,7 +378,10 @@ class OrderBlockRegistry:
             block = blocks[order_block_id]
             if block["state"] != STATE_PENDING or block["direction"] != bos_direction:
                 continue
-            if not (block["displacement_availability_bar_index"]
+            # PAR-160 unit is "finalized bars AFTER displacement": the window is the H_bos bars
+            # strictly after the availability bar, [availability+1, availability+H_bos]. A BOS on
+            # the availability bar itself is zero bars after displacement and does not confirm.
+            if not (block["displacement_availability_bar_index"] + 1
                     <= bos_bar_index <= block["bos_horizon_deadline_bar_index"]):
                 continue
             block["state"] = STATE_CONFIRMED
