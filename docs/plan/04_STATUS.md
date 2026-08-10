@@ -8,9 +8,12 @@ _As of 2026-08-10 · Runtime truth is unknown until fresh attestation. No activa
 > is not a valid governance merge. Its purported provider response carries
 > `id: "DECLARATIVE"` and explicitly says enforcement is pending, while the strict validator
 > accepted it as a no-bypass GitHub control. B00R therefore remains `MERGED_UNVERIFIED`; issue #5
-> remains open; every later milestone stays frozen. The corrective source branch
-> `agent/b00r-provider-evidence-fail-closed` rejects synthetic provider evidence and cannot merge
-> green until a real live ruleset capture replaces the stub.
+> remains open; every later milestone stays frozen. Corrective draft PR #28 rejects synthetic
+> provider evidence, re-fetches the live GitHub object in every terminal path, requires the canonical
+> negative canary, rejects wildcard exclusions and the declared CODEOWNERS placeholder, and cannot
+> merge until the owner installs a real live `main` ruleset and real independent owner identity.
+> Draft receipt PR #29 is frozen: it binds the invalid PR #27 merge and known declarative stub.
+> The box investigation handoff is separate draft PR #30 and cannot affect B00R.
 
 
 The B00–B07 milestone **artifacts exist** but **no milestone is legitimately closed**: the old
@@ -31,9 +34,12 @@ never edited into a retroactive pass.
 
 Owner acts required to close B00R (each fails closed until supplied — see `docs/governance/README.md`):
 authenticate `DEC-AUTHORITY-BUNDLE-001` / `DEC-RECEIPT-PROFILE-001` / `DEC-B00-REPAIR-001`; publish
-+ externally pin the receipt trust registry; install the no-bypass `main` ruleset and capture
-provider evidence; close issue #5 on the compliant merge; produce the threshold-signed receipt-v3 and
-the `B00R_RECEIPT_ANCHOR`. Safety posture is invariant `DENIED_SAFE_HOLD`, OFF/OFF/OFF/LIVE throughout.
++ externally pin the receipt trust registry; replace the CODEOWNERS placeholder with a proven
+independent identity; install the no-bypass `main` + canonical canary ruleset with the status check
+bound to GitHub Actions; capture and externally pin provider evidence; prove the rejected canary
+push; merge the corrective source only on exact-head green CI/review; rebuild the receipt from that
+new merge; and publish the live-validated protected `B00R_RECEIPT_ANCHOR`. Close issue #5 only after
+those controls pass. Safety posture is invariant `DENIED_SAFE_HOLD`, OFF/OFF/OFF/LIVE throughout.
 
 ## Controlling status
 
@@ -106,9 +112,9 @@ SHADOW and money populations.
 
 ## Immediate next action
 
-Execute B00C only. Do not open B01 until the corrected plan/ledger is merged, branch governance is
-closed or validly waived, strict receipt v2 is in place, and the B00 post-merge receipt validates
-against current `main`.
+Complete B00R only: install the real provider controls and independent CODEOWNERS identity, finish
+draft PR #28, then rebuild (do not reuse) draft PR #29 from the corrective merge and complete the
+receipt-anchor ceremony. Do not begin B01C or treat box work as repository closure.
 
 
 ---
