@@ -11,11 +11,14 @@ configuration precedence. Those facts must be resolved on the box and recorded b
 
 ## 0. Non-negotiable boundary
 
-TriadOrigin remains the deterministic DARK-only E02 edge core. E08 authorizes and E09 executes. This
-change must not read, export, edit, or restart any Origin, judge, Executor, E08, E09, venue, or order
-control.
+TriadOrigin remains the deterministic DARK-only E02 edge core. E08 authorizes and E09 executes.
+Do not inspect, disclose, mutate, or invoke configurations, credentials, control APIs, or processes
+belonging to Origin, Judge, Executor, E08, E09, or venues. The only permitted execution-derived reads
+are the ledger `live_fills` and `live_intents` data accessed internally by the six approved
+investigation tools. Private machine processing of the selected config target is permitted only for
+backup, four-key validation, and rollback; unrelated values must never be displayed or returned.
 
-The safety posture remains:
+The Origin safety posture remains distinct from enabling this read-only MCP family:
 
 ```text
 activation_result=DENIED_SAFE_HOLD
@@ -123,8 +126,10 @@ tests/mcp/test_investigation_family.py
 ```
 
 All nine documented tests must pass. Do not install dependencies or run unreviewed live/integration
-tests on production. Reproduce the complete MCP suite on a clean non-production runner at the exact
-same commit; the supplied books disagree on historical totals and document two pre-existing failures.
+tests on production. Record the run ID, commit, and exact result of any complete MCP suite executed on
+a clean non-production runner. That full-suite result is an MCP source/release signal, not an
+additional production-box activation gate; the supplied books disagree on historical totals and
+document two pre-existing failures.
 
 ## 3. Measure the live baseline
 
@@ -183,10 +188,10 @@ Back up exactly the proven effective config target, then edit only the investiga
 
 | Environment form | JSON form |
 |---|---|
-| `TRIAD_MCP_INVESTIGATION_FAMILY_ENABLED=1` | `investigation_family_enabled: true` |
-| `TRIAD_MCP_INVESTIGATION_BANK_PATH=<canonical bank>` | `investigation_bank_path` |
-| `TRIAD_MCP_INVESTIGATION_LEDGER_ROOT=<canonical ledger>` | `investigation_ledger_root` |
-| exact accounts key proven from deployed code | `investigation_accounts` |
+| `TRIAD_MCP_INVESTIGATION_FAMILY_ENABLED=1` | `"investigation_family_enabled": true` |
+| `TRIAD_MCP_INVESTIGATION_BANK_PATH=<canonical bank>` | `"investigation_bank_path": "<canonical bank>"` |
+| `TRIAD_MCP_INVESTIGATION_LEDGER_ROOT=<canonical ledger>` | `"investigation_ledger_root": "<canonical ledger>"` |
+| exact accounts key proven from deployed code | `"investigation_accounts": "<approved IDs>"` |
 
 Do not assume an environment accounts key that the deployed `config.py` does not implement.
 
@@ -220,26 +225,38 @@ replacement fingerprint triggers Section 8 rollback.
 
 Open a new MCP session. Never reuse a pre-restart session.
 
-Save a second sorted tool inventory and machine-compute additions and removals.
+Save a second sorted tool inventory and machine-compute additions and removals. Also preserve the
+complete `tools/list` entries for the canonical six: names, descriptions, and `inputSchema`.
+Compare them with the reviewed deployed registration and reject any write/control argument or schema
+change. Record the initialize response's actual server name/version and negotiated protocol before
+and after. A name match with a signature, schema, server, or protocol mismatch is
+`BLOCKED_DEPLOYMENT_DRIFT`.
 
 | Mode | Required exact result |
 |---|---|
 | `ACTIVATION` | additions equal the canonical six; removals empty |
 | `VERIFICATION_ONLY` | full before/after lists identical; canonical six already present |
 
-Call each canonical tool once. The normalizer must require the expected JSON-RPC ID, reject a
+Record host and MCP-process RSS/memory-pressure evidence before and after the calls. Call each
+canonical tool once, strictly sequentially; do not overlap heavy tools. The normalizer must require
+the expected JSON-RPC ID, reject a
 JSON-RPC error, reject `result.isError=true`, require every examined content item to be an object,
 and extract exactly one JSON tool envelope. Functional acceptance requires all six envelopes to have
 `ok:true`.
 
-`DISJOINT` and `CONTAMINATED` are data verdicts, not transport failures. `NOT_MEASURABLE` and
+`DISJOINT` and `CONTAMINATED` are data verdicts, not transport failures. A `CONTAMINATED`
+result may leave the MCP transport technically verified, but it must emit a named contamination
+finding and the affected scorecard must not be treated as P&L; do not return an unqualified verified
+outcome. `NOT_MEASURABLE` and
 `UNRESOLVED_SYMBOL` may be valid data results. Any `unavailable`, `tool_timeout`,
 `not_implemented`, missing/duplicate envelope, malformed content, or HTTP/session failure leaves
 functional verification incomplete.
 
 Run a separate recorded data-law review:
 
-- provenance identifies the resolved database and ledger paths and source-versus-mirror status;
+- provenance reports authoritative source status; its resolved database and ledger real paths and
+  account set exactly equal the approved preflight inputs; `MIRROR`, `UNKNOWN`, or any mismatch
+  is `BLOCKED_PROVENANCE_MISMATCH` and triggers rollback in activation mode;
 - every result names SHADOW or MONEY and never blends the planes;
 - while side/role is absent, WR, EV, MFE, MAE, and capture remain `NOT_MEASURABLE` under F-004;
 - when symbol is absent, it is recovered only through the documented
@@ -266,7 +283,9 @@ Return a redacted archive and a checksum containing:
 - final outcome: `VERIFIED_ACTIVATION`, `VERIFIED_ALREADY_ENABLED`, `ROLLED_BACK`, or
   `BLOCKED_<REASON>`.
 
-Before packaging, delete private response headers. Scan the archive for session IDs, tokens, API
+Keep shell tracing disabled while handling sessions or configuration. Build the return archive from
+an explicit allowlist of the items above; do not archive the evidence directory wholesale. Before
+packaging, delete private response headers. Scan the allowlisted archive for session IDs, tokens, API
 keys, cookies, pairing codes, credentials, private keys, signing seeds, full environment dumps, raw
 keeper/config copies, and raw diffs. The private rollback directory is never returned.
 
@@ -274,18 +293,23 @@ keeper/config copies, and raw diffs. The private rollback directory is never ret
 
 Rollback is mandatory for any activation-mode failure after the config edit.
 
-1. Re-verify the current keeper and child using the complete PID/start-time/user/PPID/Python/command
-   fingerprint.
-2. Restore the private pre-change copy to the exact selected target.
-3. Validate it with `bash -n` or `jq -e .`.
-4. Require the original SHA-256, owner, group, and mode.
-5. During the approved interruption window, terminate only the freshly re-verified MCP child.
-6. Require an identity-matching replacement child.
-7. Initialize a new session and list tools.
-8. Require the full post-rollback tool-name list to be byte-identical to the measured original
+1. Re-verify the keeper PID, start time, user, and command.
+2. If exactly one expected MCP child exists, re-verify its complete
+   PID/start-time/user/PPID/Python/command fingerprint.
+3. If no listener/child exists because the bad config caused a crash loop, restore and validate the
+   config first; do not require or attempt to terminate a nonexistent child. Wait for the unchanged
+   keeper to spawn one valid child.
+4. If an unknown process owns port 8801, do not kill it. Restore the private config copy and escalate.
+5. Restore the private pre-change copy to the exact selected target and validate it with `bash -n`
+   or `jq -e .`.
+6. Require the original SHA-256, owner, group, and mode.
+7. Only in the verified-child branch, during the approved interruption window, terminate that
+   freshly re-verified child and require an identity-matching replacement.
+8. Initialize a new session and list tools.
+9. Require the full post-rollback tool-name list to be byte-identical to the measured original
    baseline.
-9. Do not call the six investigation tools after restoring a zero-tool baseline.
-10. Recheck firewall/listener state and return `ROLLED_BACK` with redacted evidence.
+10. Do not call the six investigation tools after restoring a zero-tool baseline.
+11. Recheck firewall/listener state and return `ROLLED_BACK` with redacted evidence.
 
 If safe rollback cannot be completed, stop, preserve the private recovery material on the box, and
 escalate `BLOCKED_ROLLBACK`. Do not improvise changes to Origin, E08, E09, venue, or execution
