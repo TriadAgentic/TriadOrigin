@@ -951,6 +951,8 @@ def validate_governance_snapshot(
         return "FAIL", "GOVERNANCE_RAW_RULESET_NAME_NOT_PROVIDER"
     if raw.get("source_type") != "Repository":
         return "FAIL", "GOVERNANCE_RAW_SOURCE_TYPE_MISMATCH"
+    if raw.get("current_user_can_bypass") is not False:
+        return "FAIL", "GOVERNANCE_RAW_CURRENT_USER_BYPASS_NOT_FALSE"
     node_id = raw.get("node_id")
     if (not isinstance(node_id, str)
             or re.fullmatch(r"RRS_[A-Za-z0-9_-]+", node_id) is None):
