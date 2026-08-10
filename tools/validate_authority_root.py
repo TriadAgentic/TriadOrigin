@@ -220,7 +220,10 @@ def load_external_pins(
     if unknown:
         raise AuthorityRootError(f"UNKNOWN_EXTERNAL_PIN_NAMES:{sorted(unknown)}")
     for name in allowed:
-        if name in env:
+        # GitHub `${{ vars.NAME }}` expands an undefined variable to the empty string. Treat that
+        # exact representation as absent owner input (UNAVAILABLE), not as a malformed supplied
+        # digest (FAIL). Nonempty whitespace or any other malformed value remains a hard failure.
+        if name in env and env[name] != "":
             if name in pins and pins[name] != env[name]:
                 raise AuthorityRootError(f"CONFLICTING_EXTERNAL_PIN:{name}")
             pins[name] = env[name]

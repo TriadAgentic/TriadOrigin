@@ -285,9 +285,26 @@ def test_authority_root_unavailable_on_templates_strict():
     assert "UNAVAILABLE_AUTHORITY_ROOT" in (proc.stdout + proc.stderr)
 
 
-def test_governance_snapshot_unavailable_on_template_strict():
-    proc = _run("tools/validate_governance_snapshot.py", "--strict")
-    assert proc.returncode == 1
+def test_governance_snapshot_unavailable_on_template_strict(capsys):
+    from tools import validate_governance_snapshot as snapshot
+    assert snapshot.main(["--strict"]) == 1
+    captured = capsys.readouterr()
+    assert "UNAVAILABLE" in (captured.out + captured.err)
+
+
+def test_absent_canonical_governance_snapshot_is_unavailable_not_fabricated_fail(capsys):
+    from tools import validate_governance_snapshot as snapshot
+    assert snapshot.main([
+        "--strict", "--snapshot", "docs/governance/rulesets/main.ruleset.provider.json",
+    ]) == 1
+    captured = capsys.readouterr()
+    assert "UNAVAILABLE" in (captured.out + captured.err)
+
+
+def test_empty_provider_expansion_does_not_become_a_malformed_authority_pin():
+    from tools import validate_authority_root as authority
+    empty_ci_environment = {meta[0]: "" for meta in authority.SUBJECTS.values()}
+    assert authority.load_external_pins(environ=empty_ci_environment) == {}
 
 
 def test_decision_templates_are_unauthenticated():

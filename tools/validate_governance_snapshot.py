@@ -76,7 +76,16 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     path = args.snapshot or (DEFAULT if DEFAULT.exists() else TEMPLATE)
     if not path.exists():
-        print("FAIL: no governance snapshot file", file=sys.stderr)
+        # The canonical provider-derived file is an owner artifact. Its pre-ceremony absence is an
+        # explicit unavailable control, while an arbitrary requested path remains an operator error.
+        try:
+            requested = path.resolve(strict=False)
+        except OSError:
+            requested = path.absolute()
+        if requested == DEFAULT.resolve(strict=False):
+            print("UNAVAILABLE: canonical governance snapshot owner input absent")
+            return 1 if args.strict else 0
+        print("FAIL: requested governance snapshot file does not exist", file=sys.stderr)
         return 1
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
