@@ -194,6 +194,7 @@ jobs:
           steps.milestone_role.outputs.role == 'RECEIPT'
         shell: bash
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           NOW_US: ${{ steps.owner_time.outputs.now_us }}
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
           RECEIPT_PATH: ${{ steps.milestone_role.outputs.receipt_path }}
