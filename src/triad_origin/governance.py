@@ -995,10 +995,18 @@ def validate_governance_snapshot(
     ref = conditions.get("ref_name", {})
     includes = ref.get("include") if isinstance(ref, dict) else None
     excludes = ref.get("exclude") if isinstance(ref, dict) else None
-    exact_main_targets = (["refs/heads/main"], ["~DEFAULT_BRANCH"])
+    canary_ref = "refs/heads/b00r-ruleset-canary"
+    allowed_include_sets = (
+        {"refs/heads/main"},
+        {"~DEFAULT_BRANCH"},
+        {"refs/heads/main", canary_ref},
+        {"~DEFAULT_BRANCH", canary_ref},
+    )
     # GitHub applies exclusions after inclusions.  Requiring an empty exclusion list prevents a
-    # wildcard such as refs/heads/* from silently excluding main while a literal-token check passes.
-    if includes not in exact_main_targets or excludes != []:
+    # wildcard such as refs/heads/* from silently excluding main.  The only permitted extra target
+    # is the dedicated harmless branch used for the mandatory negative provider canary.
+    if (not isinstance(includes, list) or len(includes) != len(set(includes))
+            or set(includes) not in allowed_include_sets or excludes != []):
         return "FAIL", "GOVERNANCE_RAW_MAIN_TARGET_NOT_PROVEN"
     raw_rules = raw.get("rules")
     if not isinstance(raw_rules, list):
