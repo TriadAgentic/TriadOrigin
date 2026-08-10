@@ -178,6 +178,10 @@ class LeverRegistry:
             "levers": {},
             "accepted_manifest_digest_sha256": None,
             "attestations": {},
+            # The last accepted top-level venue_environment (LEV-0006/0104): the ONE fact the
+            # DIRECT_ENVIRONMENT_TRANSITION_FORBIDDEN sequence law is decidable from. None until a
+            # first manifest is accepted.
+            "venue_environment": None,
         }
 
     def transition(
@@ -218,13 +222,33 @@ class LeverRegistry:
             return TransitionResult(state, (_refusal_event(MANIFEST_REFUSED, resolution),))
         manifest_digest = _require_canonical_text(manifest_digest, "manifest_digest_sha256")
 
+        # LEV-0040 (LEV-V-0064): a canonical top-level control name may never appear as an
+        # activations-map key — the four levers are not shadowable features. Enforced on EVERY
+        # manifest, INCLUDING the first (before any baseline key set exists), so a reserved key can
+        # never poison the baseline set.
+        activations = payload.get("activations") or {}
+        if set(activations) & set(lever_law.CANONICAL_LEVER_FIELDS):
+            resolution = lever_law.refuse("LEVER_REGISTRY_INCOMPLETE")
+            return TransitionResult(state, (_refusal_event(MANIFEST_REFUSED, resolution),))
+
         # LEV-0032/0040: once a baseline key set exists, every subsequent manifest must name that
         # exact set — a missing, dropped, or unknown key rejects the whole manifest, never a
         # partial row update.
-        activations = payload.get("activations") or {}
         existing_levers = state["levers"]
         if existing_levers and set(activations) != set(existing_levers):
             resolution = lever_law.refuse("LEVER_REGISTRY_INCOMPLETE")
+            return TransitionResult(state, (_refusal_event(MANIFEST_REFUSED, resolution),))
+
+        # LEV-0006/0104 (LEV-V-0072/0073): a direct LIVE<->TESTNET environment change is refused
+        # unless the immediately-preceding accepted revision passed through an OFF venue_environment
+        # (the intervening reconciliation/flatness/isolation evidence stays a caller-supplied
+        # EXTERNAL_EVIDENCE conjunct — this checks the SEQUENCE half ORIGIN's own registry owns). A
+        # resolve_manifest-accepted payload always carries a valid LIVE/TESTNET/OFF environment.
+        prior_env = state["venue_environment"]
+        next_env = payload["venue_environment"]
+        if (prior_env in ("LIVE", "TESTNET") and next_env in ("LIVE", "TESTNET")
+                and prior_env != next_env):
+            resolution = lever_law.refuse("DIRECT_ENVIRONMENT_TRANSITION_FORBIDDEN")
             return TransitionResult(state, (_refusal_event(MANIFEST_REFUSED, resolution),))
 
         new_levers = {
@@ -236,6 +260,7 @@ class LeverRegistry:
             "levers": new_levers,
             "accepted_manifest_digest_sha256": manifest_digest,
             "attestations": dict(state["attestations"]),
+            "venue_environment": next_env,
         }
         event = {"event_kind": MANIFEST_ACCEPTED, "revision": revision, "levers": new_levers}
         return TransitionResult(new_state, (event,))
@@ -267,12 +292,9 @@ class LeverRegistry:
         attestations[engine_id] = {
             "accepted_revision": accepted_revision, "attested_age_ms": freshness_age_ms,
         }
-        new_state = {
-            "revision": state["revision"],
-            "levers": state["levers"],
-            "accepted_manifest_digest_sha256": state["accepted_manifest_digest_sha256"],
-            "attestations": attestations,
-        }
+        # Rebuild from the whole prior state (preserving venue_environment and any future field) —
+        # an attestation moves only the attestations table, never the accepted lever facts.
+        new_state = dict(state, attestations=attestations)
         event = {"event_kind": ATTESTATION_ACCEPTED, "engine_id": engine_id,
                  "revision": accepted_revision}
         return TransitionResult(new_state, (event,))

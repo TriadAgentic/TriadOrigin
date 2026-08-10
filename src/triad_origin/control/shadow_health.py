@@ -30,9 +30,17 @@ their exact instruction text:
   ``("SHADOW_MONEY_CONTAMINATION")`` alongside the plain counter event — a contamination finding is
   never silent, and it is never merely counted without also being refused.
 * **LEV-0070** — "Dedupe at-least-once delivery and refuse identity collisions with unequal payload
-  hashes." ``RECORD_DEDUPE``/``RECORD_COLLISION`` are the durable tallies :mod:`shadow_ledger`
-  drives when it makes exactly those two calls — this module owns the counter, not the dedupe
-  decision itself (that decision is made, per row, inside :mod:`triad_origin.control.shadow_ledger`).
+  hashes." ``RECORD_DEDUPE``/``RECORD_COLLISION`` are the durable tallies a COMPOSING CALLER drives;
+  this module owns the counters, never the dedupe decision itself (that decision is made, per row,
+  inside :mod:`triad_origin.control.shadow_ledger`). The two halves are observable differently, by
+  design: the COLLISION path emits a ``LEVER_REFUSAL`` event (``SHADOW_LINEAGE_INCOMPLETE``) a
+  caller maps to ``RECORD_COLLISION``; the exact-redelivery DEDUPE path is a SILENT no-op
+  (``shadow_ledger`` returns state unchanged with NO event — LEV-0070's "at-least-once redelivery
+  is a no-op" law), so a composing caller that wants the dedupe tally detects that no-op itself
+  (its supplied event produced neither a new trade nor a refusal) and drives ``RECORD_DEDUPE`` — a
+  new-``event_id`` content-identical redelivery is NOT counted by ``transition.run``'s
+  same-``event_id`` ``duplicate_count``, so the ledger's silence, not a ledger event, is the dedupe
+  signal.
 
 Bound names are referenced by their exact declared string directly against
 :mod:`triad_origin.timings` (the ONE in-repo source of the 17 RC4 timing bounds) — never restated

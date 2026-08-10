@@ -154,6 +154,17 @@ def test_retimed_when_only_timing_differs():
     assert record["divergence_class"] == "RETIMED"
 
 
+def test_identity_divergence_beats_a_simultaneous_timing_divergence():
+    # CTL-7: the docstring's CORRECTED check precedence is geometry > identity > timing (distinct
+    # from the schema enum listing). A pair diverging on BOTH identity and timing must classify
+    # REIDENTIFIED, never RETIMED — this pins the middle rung of the stated precedence chain.
+    control, treatment = _matched_pair(
+        candidate_id="a-different-id", source_reaction_id="a-different-reaction")
+    record = c.compare_engine_cohort(
+        control, treatment, input_offset=1, evaluated_at_us=100, divergence_id="d1")
+    assert record["divergence_class"] == "REIDENTIFIED"
+
+
 def test_lifecycle_when_only_state_differs():
     control, treatment = _matched_pair(state="WITHDRAWN")
     record = c.compare_engine_cohort(

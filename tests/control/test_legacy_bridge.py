@@ -242,3 +242,29 @@ def test_bridge_returns_a_deep_copy_not_sharing_legacy_payload_across_calls():
     assert env_a["legacy_payload"] is not env_b["legacy_payload"]
     env_b["legacy_payload"]["price"] = "TAMPERED"
     assert state.bridged_at("t", 0)["legacy_payload"] == LEGACY_RECORD
+
+
+def test_same_offset_same_bytes_but_a_different_arm_refuses():
+    # CTL-5 / RC3-WOP-002: intelligence_arm is an independent envelope typing axis; the same bytes
+    # re-bridged at an already-bridged offset under a DIFFERENT declared arm is a pinned-identity
+    # conflict — never silently served with the earlier arm's label.
+    state = lb.LegacyBridgeState()
+    state.bridge(LEGACY_RECORD, intelligence_arm="DETERMINISTIC_CONTROL",
+                 source_topic="t", input_offset=0, bridged_at_us=1000)
+    with pytest.raises(lb.LegacyBridgeError):
+        state.bridge(LEGACY_RECORD, intelligence_arm="INTELLIGENCE_TREATMENT",
+                     source_topic="t", input_offset=0, bridged_at_us=1000)
+    # the originally-bridged envelope is untouched and still carries its own arm
+    assert state.bridged_at("t", 0)["intelligence_arm"] == "DETERMINISTIC_CONTROL"
+
+
+def test_same_offset_same_bytes_same_arm_is_still_idempotent():
+    # the arm axis only tightens the conflict check; a true redelivery (bytes AND arm equal) stays
+    # an idempotent no-op that does not double-advance the offset.
+    state = lb.LegacyBridgeState()
+    a = state.bridge(LEGACY_RECORD, intelligence_arm="INTELLIGENCE_TREATMENT",
+                     source_topic="t", input_offset=0, bridged_at_us=1000)
+    b = state.bridge(LEGACY_RECORD, intelligence_arm="INTELLIGENCE_TREATMENT",
+                     source_topic="t", input_offset=0, bridged_at_us=1000)
+    assert a == b
+    assert state.resume_from_offset("t") == 1

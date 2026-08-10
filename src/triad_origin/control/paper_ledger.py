@@ -156,13 +156,19 @@ SIDES = (SIDE_LONG, SIDE_SHORT)
 MARKET_WATERMARK_TS_KEY = "watermark_us"
 
 # LEV-0089: PAPER may never even transit a field naming a venue order/trade/account identity, or
-# either of the two secret-shaped field names — both spelled apart below (never a contiguous
-# literal anywhere in this module's own source) so this module's own keylessness scan proves the
-# absence of an actual capability import, not merely the absence of a lookalike string.
+# either of the two secret-shaped field names — the secret-shaped names are spelled apart below
+# (never a contiguous literal anywhere in this module's own source) so this module's own keylessness
+# scan proves the absence of an actual capability import, not merely the absence of a lookalike
+# string. Three of the plain names below (``account_id``, ``venue``, and the raw-secret field) are
+# the exact ``false`` (structurally denied) subschema keys of ``triad.paper_trade.v1`` — a stored
+# paper_trade row can never carry them, so the intake envelope must never even transit them.
 _FORBIDDEN_VENUE_FIELDS = frozenset({
     "venue_order_id",
     "venue_trade_id",
     "venue_account_id",
+    "account_id",
+    "venue",
+    "raw_" + "cred" + "entials",
     "api" + "_key",
     "cred" + "ential",
 })

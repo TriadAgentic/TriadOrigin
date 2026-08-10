@@ -98,6 +98,23 @@ ORIGIN_DISPOSITIONS = ("REJECTED", "ACCEPTED_NOT_EXECUTED", "PROVEN_NO_VENUE_EFF
 
 MARKER_SHADOW_UNTRADEABLE = "SHADOW_UNTRADEABLE"
 
+# LEV-0089 (LEV-V-0100/0116): a SHADOW row may never carry a venue MONEY fact. SHADOW is the
+# keyless, no-money population, so a candidate/resolution whose payload names a venue order/trade/
+# account identity or a raw-credential field anywhere is money contamination — refused
+# SHADOW_MONEY_CONTAMINATION (its _QUARANTINE_ACTION containment) before any row is built, so the
+# frozen row can never even transit such a field. The first four are the exact ``false``
+# (structurally-denied) names in ``triad.shadow_trade.v1``; the secret-shaped one is spelled apart
+# (never a contiguous literal) so a keyless-source scan proves the absence of a capability, not a
+# lookalike string.
+_FORBIDDEN_VENUE_IDENTITY_FIELDS = frozenset({
+    "venue_order_id",
+    "venue_trade_id",
+    "venue_account_id",
+    "account_id",
+    "venue",
+    "raw_" + "cred" + "entials",
+})
+
 # The structural key ORIGIN uses inside the opaque ``market_watermark`` object to carry the
 # candidate's own frozen causal-watermark instant. The schema leaves ``market_watermark`` an
 # opaque object; this is this module's own populated shape, not a schema requirement.
@@ -150,6 +167,28 @@ def _require_int(value: object, name: str) -> int:
 def _failing_requirements(payload: dict) -> list[str]:
     """Every tradeability conjunct not supplied as the literal ``True`` (LEV-0067)."""
     return [name for name in TRADEABILITY_REQUIREMENTS if payload.get(name) is not True]
+
+
+def _forbidden_venue_identity(value: object) -> str | None:
+    """The first venue-money-identity field name found anywhere in ``value``, or ``None``
+    (LEV-0089). Recursive over dicts and lists — a nested ``proposed_geometry``/``market_watermark``
+    or fill-model result carrying such a field is caught as readily as a top-level one."""
+    if isinstance(value, dict):
+        hit = _FORBIDDEN_VENUE_IDENTITY_FIELDS.intersection(value)
+        if hit:
+            return sorted(hit)[0]
+        for nested in value.values():
+            found = _forbidden_venue_identity(nested)
+            if found is not None:
+                return found
+        return None
+    if isinstance(value, (list, tuple)):
+        for nested in value:
+            found = _forbidden_venue_identity(nested)
+            if found is not None:
+                return found
+        return None
+    return None
 
 
 def _content_hash(row: dict) -> str:
@@ -268,6 +307,12 @@ class ShadowLedger:
     # -- SHADOW_CANDIDATE -----------------------------------------------------------------------
 
     def _on_candidate(self, state: State, payload: dict) -> TransitionResult:
+        contaminant = _forbidden_venue_identity(payload)
+        if contaminant is not None:
+            resolution = lever_law.refuse("SHADOW_MONEY_CONTAMINATION")
+            event = _lever_event(resolution, refs={"contaminated_field": contaminant})
+            return TransitionResult(state, (event,))  # quarantine: no row built, state UNTOUCHED
+
         failing = _failing_requirements(payload)
         if failing:
             audit = _build_untradeable_audit(payload, failing)
@@ -303,6 +348,12 @@ class ShadowLedger:
     # -- SHADOW_FILL_MODEL ------------------------------------------------------------------------
 
     def _on_fill_model(self, state: State, payload: dict) -> TransitionResult:
+        contaminant = _forbidden_venue_identity(payload)
+        if contaminant is not None:
+            resolution = lever_law.refuse("SHADOW_MONEY_CONTAMINATION")
+            event = _lever_event(resolution, refs={"contaminated_field": contaminant})
+            return TransitionResult(state, (event,))  # quarantine: no resolution, state UNTOUCHED
+
         shadow_trade_id = _require_str(payload.get("shadow_trade_id"), "shadow_trade_id")
         row = state["trades"].get(shadow_trade_id)
         if row is None:

@@ -292,6 +292,21 @@ class TestForbiddenVenueField:
         ])
         assert result.events[-1]["reason_code"] == "PAPER_VENUE_EFFECT_FORBIDDEN"
 
+    def test_the_three_schema_denied_names_are_all_guarded(self):
+        # CTL-3: triad.paper_trade.v1 marks account_id/venue/raw_credentials the `false` subschema —
+        # the intake guard must carry those exact names (the raw-secret one spelled at runtime).
+        for name in ("account_id", "venue", "raw_" + "cred" + "entials"):
+            assert name in ledger._FORBIDDEN_VENUE_FIELDS, name
+
+    @pytest.mark.parametrize("name", ["account_id", "venue", "raw_" + "cred" + "entials"])
+    def test_schema_denied_name_nested_in_entry_policy_refuses(self, name):
+        result = run([
+            account_open("e1"),
+            order("e2", "O1", entry_policy={"limit_ticks": 100, name: "x"}),
+        ])
+        assert result.events[-1]["reason_code"] == "PAPER_VENUE_EFFECT_FORBIDDEN"
+        assert result.final_state["accounts"]["ACCT-1"]["orders"] == {}
+
 
 class TestAcceptedElsewhere:
     def test_covered_by_paper_true_when_an_order_exists(self):

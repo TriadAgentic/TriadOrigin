@@ -177,3 +177,35 @@ class TestInvariance:
         replayed_from_scratch = run(full + [full[-1]])
         assert replayed_from_scratch.duplicate_count == 1
         assert replayed_from_scratch.final_state == whole.final_state
+
+
+def test_dedupe_tally_is_caller_driven_over_the_ledgers_silent_no_op():
+    # CTL-8: the LEV-0070 dedupe half is a COMPOSITION contract, not a ledger event. The
+    # shadow_ledger exact-redelivery path is a SILENT no-op (no event, state unchanged); a
+    # composing caller detects that silence and drives RECORD_DEDUPE, which this module owns as a
+    # pure counter. This pins both halves of the corrected docstring's law.
+    from triad_origin.control import shadow_ledger as ledger
+
+    cand = {
+        "event_id": "s1", "kind": "SHADOW_CANDIDATE",
+        "payload": {
+            "candidate_id": "CAND-1", "hypothesis_id": "HYP-1", "origin_disposition": "REJECTED",
+            "rejection_stage": "E08_RISK", "rejection_reason": "oversized",
+            "market_watermark": {ledger.MARKET_WATERMARK_TS_KEY: 1_000},
+            "proposed_geometry": {"side": "LONG", "entry_ticks": 100},
+            "evaluation_notional_quote": "1000000", "simulator_version": "sim-1",
+            "resolver_version": "res-1", "cost_model_version": "cost-1", "event_time_us": 1_000,
+        },
+    }
+    for name in ledger.TRADEABILITY_REQUIREMENTS:
+        cand["payload"][name] = True
+    redelivery = dict(cand, event_id="s2")  # NEW event_id, byte-identical content
+    ledger_result = transition.run(ledger.ShadowLedger(), [cand, redelivery], {})
+    # the redelivery emitted NOTHING and did not double-advance duplicate_count (new event_id)
+    assert len(ledger_result.events) == 1
+    assert ledger_result.duplicate_count == 0
+
+    # the composing caller, seeing the ledger's silence, drives RECORD_DEDUPE on shadow_health
+    health_result = run([dedupe("d1")])
+    assert health_result.final_state["dedupe_count"] == 1
+    assert health_result.events[0]["event_kind"] == health.SHADOW_DEDUPE_RECORDED

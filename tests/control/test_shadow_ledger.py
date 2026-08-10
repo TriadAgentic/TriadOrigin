@@ -238,3 +238,43 @@ class TestInvariance:
         replayed_from_scratch = run(full + [full[-1]])  # exact duplicate final envelope
         assert replayed_from_scratch.duplicate_count == 1
         assert replayed_from_scratch.final_state == whole.final_state
+
+
+class TestShadowMoneyContamination:
+    """CTL-4 / LEV-0089 (LEV-V-0100/0116): a SHADOW candidate/resolution carrying a venue money
+    identity anywhere is quarantined SHADOW_MONEY_CONTAMINATION — no row built, state untouched."""
+
+    def test_candidate_geometry_with_a_venue_trade_id_is_quarantined(self):
+        result = run([candidate("c1", "CAND-1", "HYP-1",
+                                 proposed_geometry={"entry": 1, "venue_trade_id": "VT-9"})])
+        assert kinds(result.events) == [ledger.LEVER_REFUSAL]
+        assert result.events[-1]["reason_code"] == "SHADOW_MONEY_CONTAMINATION"
+        assert result.final_state == ShadowLedger().initial_state()
+
+    @pytest.mark.parametrize(
+        "field", ["venue_order_id", "venue_trade_id", "account_id", "raw_" + "cred" + "entials"])
+    def test_each_venue_identity_field_anywhere_in_the_candidate_refuses(self, field):
+        result = run([candidate("c1", "CAND-1", "HYP-1", flags={field: "x"})])
+        assert result.events[-1]["reason_code"] == "SHADOW_MONEY_CONTAMINATION"
+        assert result.final_state["trades"] == {}
+
+    def test_contaminant_nested_inside_market_watermark_is_caught(self):
+        cand = candidate("c1", "CAND-1", "HYP-1")
+        cand["payload"]["market_watermark"]["venue_order_id"] = "VO-1"
+        result = run([cand])
+        assert result.events[-1]["reason_code"] == "SHADOW_MONEY_CONTAMINATION"
+
+    def test_a_clean_candidate_still_records_a_trade(self):
+        result = run([candidate("c1", "CAND-1", "HYP-1")])
+        assert kinds(result.events) == [ledger.SHADOW_TRADE_RECORDED]
+
+    def test_fill_model_carrying_a_venue_identity_is_quarantined(self):
+        cand = candidate("c1", "CAND-1", "HYP-1")
+        trade_id = ledger._shadow_trade_id(cand["payload"])
+        result = run([cand, fill_model("f1", trade_id,
+                                       fill_model_result={"result": "FILLED",
+                                                          "venue_trade_id": "VT-1"})])
+        assert result.events[-1]["reason_code"] == "SHADOW_MONEY_CONTAMINATION"
+        # the frozen trade row is unresolved (its pending fill-model untouched)
+        row = result.final_state["trades"][trade_id]
+        assert row["fill_model_result"] == ledger.FILL_MODEL_PENDING

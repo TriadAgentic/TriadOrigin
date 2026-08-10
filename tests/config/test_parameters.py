@@ -169,6 +169,40 @@ def test_digest_changes_if_a_row_changes(registry):
     assert original.parameter_digest != changed.parameter_digest
 
 
+def test_gv_021_digest_change_is_stale_immediately_wall_clock_age_zero_does_not_save_it(registry):
+    """GV-021 (linked PAR-128 SEMANTIC_EVIDENCE_EXPIRY=DIGEST_CHANGE_ONLY): a receipt built against
+    digest A while the active build is digest B is STALE IMMEDIATELY — wall-clock age zero never
+    saves a digest mismatch. Pinned at BOTH in-repo digest-pin sites."""
+    from triad_origin import transition
+    from triad_origin.control.lever_registry import (
+        ATTESTATION_REFUSED, LeverRegistry)
+
+    # Site 1 — parameters.require: the staleness law is age-INDEPENDENT (no clock at all); a
+    # digest-B caller against the digest-A bundle refuses before any status/scope check.
+    with pytest.raises(p.ParameterDigestMismatchError):
+        registry.require("PAR-001", expected_digest="0" * 64)
+
+    # Site 2 — lever_registry ATTEST_RUNTIME: a runtime whose accepted digest (B) differs from the
+    # registry's accepted digest (A) is refused even at freshness_age_ms == 0 (the age-zero
+    # boundary), BEFORE the freshness bound is consulted — the digest mismatch dominates.
+    manifest = {
+        "venue_environment": "OFF", "venue_activation": "OFF", "paper_activation": "OFF",
+        "shadow_activation": "LIVE", "activations": {"origin.pub": "OFF"},
+        "manifest_digest_sha256": "digestA", "revision": 1,
+    }
+    registered = transition.run(
+        LeverRegistry(),
+        [{"event_id": "reg", "kind": "REGISTER_MANIFEST", "payload": manifest}], {}).final_state
+    result = transition.run(
+        LeverRegistry(),
+        [{"event_id": "att", "kind": "ATTEST_RUNTIME",
+          "payload": {"engine_id": "eng-1", "accepted_manifest_digest_sha256": "digestB",
+                      "accepted_revision": 1, "freshness_age_ms": 0}}],
+        {}, initial=registered)
+    assert result.events[-1]["event_kind"] == ATTESTATION_REFUSED
+    assert result.events[-1]["refusal_code"] == "RUNTIME_LEVER_ATTESTATION_MISMATCH"
+
+
 # ---------------------------------------------------------------------------------------------
 # Scope law
 # ---------------------------------------------------------------------------------------------

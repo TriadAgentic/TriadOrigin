@@ -21,18 +21,34 @@ scope while existing exit/reconciliation/protection authority is explicitly pres
 
 **Refusal-code reachability is honestly split** (recorded per-code in :data:`REFUSAL_SCOPE`):
 
-* ``EVENT_LOCAL`` — decidable from one manifest/attestation payload alone; :func:`resolve_manifest`
-  implements every one of these directly, in the RC4-declared priority order (first-failing wins).
+* ``EVENT_LOCAL`` — decidable from one manifest/attestation/bundle payload alone. The per-manifest
+  ones (value/alias validity · the combination law · the venue_binding cross-checks · the LIVE/LIVE
+  promotion receipt) are raised directly by :func:`resolve_manifest` in the RC4 canonical evaluation
+  order (parse exact bytes → validate closed enums → validate the venue pair → binding → receipt;
+  first-failing wins). The cross-MEMBER one — ``MIXED_ENVIRONMENT_BUNDLE_FORBIDDEN`` — is raised by
+  :func:`resolve_bundle` over a bundle of members (a single manifest whose ``venue_binding`` itself
+  names both a live_* and a testnet_* member is also caught in :func:`resolve_manifest`). The
+  ``SHADOW_*``/``PAPER_*`` event-local codes are raised by the sibling SHADOW/PAPER ledger that owns
+  that event stream (e.g. ``SHADOW_MONEY_CONTAMINATION`` in :mod:`shadow_ledger`,
+  ``PAPER_VENUE_EFFECT_FORBIDDEN`` in :mod:`paper_ledger`), each importing :data:`REFUSAL_CODES`
+  from here rather than re-deriving the vocabulary.
 * ``STATEFUL_IN_REPO`` — decidable from ORIGIN's own owned state (the append-only lever registry,
-  the SHADOW/PAPER ledgers, the declared :mod:`triad_origin.timings` bounds); implemented in the
-  sibling :mod:`triad_origin.control` modules that own that state, each importing
-  :data:`REFUSAL_CODES`/:func:`containment_action` from here rather than re-deriving them.
+  the SHADOW/PAPER ledgers, the declared :mod:`triad_origin.timings` bounds). The lever-registry
+  ones (``DIRECT_ENVIRONMENT_TRANSITION_FORBIDDEN``, ``LEVER_REGISTRY_INCOMPLETE``,
+  ``RUNTIME_LEVER_ATTESTATION_MISMATCH``, ``LEVER_REVISION_STALE``) are raised by
+  :mod:`lever_registry`; the SHADOW-freshness/persistence ones by :mod:`shadow_ledger`/
+  :mod:`shadow_health`. ``PAPER_LEDGER_CONTAMINATION`` and ``ACCEPTED_CANDIDATE_UNRECORDED`` name
+  cross-population aggregation / coverage state that only a COMPOSING driver observes (the PAPER
+  ledger owns one population and never reads another's — LEV-0084); they are registered here
+  (LEV-0011) but stay registration-only until that composing surface exists.
 * ``EXTERNAL_EVIDENCE`` — the refusal names a fact this repository does not itself observe (open
-  venue exposure, venue-effect reconciliation, opposite-environment reachability — E08/E09/venue
-  truth, ``REFERENCE_ONLY``/``OUT_OF_REPO`` per this repo's own CLAUDE.md ownership law). This
-  module still REGISTERS the code, its meaning, and its containment action (LEV-0011 is satisfied
-  for the registration half); classifying whether it FIRES requires an explicit, named boolean the
-  caller supplies (never inferred, never defaulted) — see :func:`classify_external_refusal`.
+  venue exposure, venue-effect reconciliation, opposite-environment reachability, and the producer
+  LEASE facts — the lease coordinator/durable fencing ledger is ``OUT_OF_REPO`` per this repo's own
+  CLAUDE.md ownership law, so ``PRODUCER_LEASE_MISSING``/``PRODUCER_LEASE_CONFLICT`` are external
+  facts, not in-repo state — E08/E09/venue/governance truth). This module still REGISTERS the code,
+  its meaning, and its containment action (LEV-0011 is satisfied for the registration half);
+  classifying whether it FIRES requires an explicit, named boolean the caller supplies (never
+  inferred, never defaulted) — see :func:`classify_external_refusal`.
 
 No code here reads a wall clock, opens a socket, or holds a credential (Doc 04 §04.17).
 """
@@ -53,6 +69,18 @@ INVALID_ALIASES = frozenset({
     "PRODUCTION", "PROD", "DEV", "STAGE", "ARMED", "DISARMED", "OPERATIONAL", "execution",
     "small_live", "PILOT", "log", "enforce", "trigger_veto", "", "null",
 })
+
+# The four frozen canonical lever field names (LEV-0004) — the ONE in-repo list a reserved-key
+# guard (lever_registry) and :func:`containment_action` both read, never a re-typed literal.
+CANONICAL_LEVER_FIELDS = (
+    "venue_environment", "venue_activation", "paper_activation", "shadow_activation",
+)
+
+# venue_environment's two "population" words: they ARE members of :data:`INVALID_ALIASES`, but on
+# the venue_environment slot specifically the RC4 field-enum law (LEV-V-0062/0063: "SHADOW/PAPER is
+# a population, not a venue environment value") resolves them ``VENUE_ENVIRONMENT_VALUE_INVALID``,
+# not ``LEGACY_LEVER_ALIAS_FORBIDDEN``. On any OTHER canonical slot they stay legacy aliases.
+_ENV_POPULATION_VALUES = frozenset({"SHADOW", "PAPER"})
 
 # The RC4-declared 10 valid (venue_environment, venue_activation, paper_activation) combinations.
 # shadow_activation is always "LIVE" and is not itself a combination axis (LEV-0002/LEV-0005).
@@ -260,8 +288,13 @@ REFUSAL_SCOPE: dict[str, str] = {
     "LEVER_REGISTRY_INCOMPLETE": "STATEFUL_IN_REPO",
     "RUNTIME_LEVER_ATTESTATION_MISMATCH": "STATEFUL_IN_REPO",
     "LEVER_REVISION_STALE": "STATEFUL_IN_REPO",
-    "PRODUCER_LEASE_MISSING": "STATEFUL_IN_REPO",
-    "PRODUCER_LEASE_CONFLICT": "STATEFUL_IN_REPO",
+    # The lease coordinator / durable fencing ledger is OUT_OF_REPO (this repo's CLAUDE.md
+    # ownership law + docs/plan/02_TRACEABILITY): overlapping-scope prevention at issuance is the
+    # coordinator's, and different-scope overlap is undetectable from ORIGIN's own equal-token
+    # split-brain latch. These are therefore EXTERNAL_EVIDENCE facts the caller supplies, not
+    # in-repo state — reachable via :func:`classify_external_refusal` (COV-7 reconciliation).
+    "PRODUCER_LEASE_MISSING": "EXTERNAL_EVIDENCE",
+    "PRODUCER_LEASE_CONFLICT": "EXTERNAL_EVIDENCE",
     "VENUE_ENVIRONMENT_UNVERIFIED": "EXTERNAL_EVIDENCE",
     "VENUE_BINDING_MISMATCH": "EVENT_LOCAL",
     "OPPOSITE_ENVIRONMENT_REACHABLE": "EXTERNAL_EVIDENCE",
@@ -325,31 +358,104 @@ def _wildcard_or_blank(value: object) -> bool:
     return value is None
 
 
+def _slot_refusal(payload: dict, key: str, enum: tuple, value_invalid_code: str) -> str | None:
+    """Classify one canonical lever slot in the RC4 canonical evaluation order (§04): parse exact
+    bytes (do NOT trim, case-fold, alias, coerce, or default) BEFORE validating the closed enum.
+
+    * a missing key is the field's own ``*_VALUE_INVALID`` (the code's meaning: "missing or not
+      exactly …" — never treated as a JSON-null alias);
+    * a PRESENT non-string (JSON ``true``/``1``/``null``) is a coercion attempt →
+      ``LEGACY_LEVER_ALIAS_FORBIDDEN`` (LEV-V-0047..0055);
+    * a string carrying leading/trailing whitespace would need trimming →
+      ``LEGACY_LEVER_ALIAS_FORBIDDEN`` (LEV-V-0056..0059);
+    * a string that is a known legacy alias/word/blank/null →
+      ``LEGACY_LEVER_ALIAS_FORBIDDEN`` (LEV-V-0012..0046), EXCEPT the venue_environment population
+      carve-out (SHADOW/PAPER → ``VENUE_ENVIRONMENT_VALUE_INVALID``, LEV-V-0062/0063);
+    * a well-formed string simply not in the field's closed enum is the field's ``*_VALUE_INVALID``
+      (e.g. ``TESTNET`` on an activation slot — LEV-V-0060/0061).
+
+    Returns the first-failing refusal code for this slot, or ``None`` when the value is exactly a
+    member of ``enum``.
+    """
+    if key not in payload:
+        return value_invalid_code
+    value = payload[key]
+    if not isinstance(value, str):
+        return "LEGACY_LEVER_ALIAS_FORBIDDEN"
+    if value != value.strip():
+        return "LEGACY_LEVER_ALIAS_FORBIDDEN"
+    if value in INVALID_ALIASES and not (
+        key == "venue_environment" and value in _ENV_POPULATION_VALUES
+    ):
+        return "LEGACY_LEVER_ALIAS_FORBIDDEN"
+    if value not in enum:
+        return value_invalid_code
+    return None
+
+
+_RECEIPT_PASS_RESULTS = ("PASS", "SUCCESS")
+# The manifest digest/scope fields a TESTNET promotion receipt must equal for LIVE/LIVE (LEV-0042).
+_RECEIPT_EQUALITY_FIELDS = (
+    "build_commit", "build_digest", "scope", "config_bundle_sha256", "contract_manifest_sha256",
+    "parameter_digest", "strategy_digest", "adapter_digest", "registry_digest",
+)
+
+
+def _promotion_receipt_ok(payload: dict, receipt: dict) -> bool:
+    """LEV-0042 / LEV-V-0074/0075/0085/0086/0087: a LIVE/LIVE promotion receipt must be a current
+    PASS whose declared digests/scope EQUAL the manifest's own, and whose expiry (when both the
+    receipt expiry and a caller evaluation clock are present) is not past.
+
+    Additive + honest-null: a field the MANIFEST does not itself declare is never demanded of the
+    receipt (a receipt cannot be asked to match a digest the manifest does not carry), so a minimal
+    manifest+receipt pair is unchanged — while a receipt whose PROVIDED digest/scope disagrees, or
+    whose ``result`` is present and not a PASS/SUCCESS, or that is expired against a provided clock,
+    refuses ``LIVE_PROMOTION_RECEIPT_MISSING``.
+    """
+    result = receipt.get("result")
+    if result is not None and result not in _RECEIPT_PASS_RESULTS:
+        return False
+    for field in _RECEIPT_EQUALITY_FIELDS:
+        if field in payload and field in receipt and payload[field] != receipt[field]:
+            return False
+    expires_at = receipt.get("expires_at_us")
+    evaluated_at = payload.get("evaluation_clock_us")
+    if (isinstance(expires_at, int) and not isinstance(expires_at, bool)
+            and isinstance(evaluated_at, int) and not isinstance(evaluated_at, bool)
+            and expires_at <= evaluated_at):
+        return False
+    return True
+
+
 def resolve_manifest(payload: dict) -> LeverResolution:
     """Apply the full EVENT_LOCAL refusal law to one ``engine_control_manifest.v2``-shaped payload.
 
-    First-failing code wins, in the RC4-declared priority order (value validity before
-    combination law before binding/receipt cross-checks). Every STATEFUL_IN_REPO/EXTERNAL_EVIDENCE
-    code is registered in :data:`REFUSAL_CODES` but is never raised here — see the module
-    docstring's reachability split; sibling modules that own that state call
-    :func:`refuse` directly with the applicable code.
+    First-failing code wins, in the RC4 canonical evaluation order (§04: exact-byte/alias parse
+    before closed-enum validation before the venue pair before binding/receipt cross-checks). Every
+    STATEFUL_IN_REPO/EXTERNAL_EVIDENCE code is registered in :data:`REFUSAL_CODES` but is never
+    raised here — see the module docstring's reachability split; sibling modules that own that state
+    call :func:`refuse` directly with the applicable code. A whole-bundle mix is
+    :func:`resolve_bundle`'s job, not this one.
     """
     if not isinstance(payload, dict):
         raise LeverLawError("manifest payload must be an object")
 
-    venue_environment = payload.get("venue_environment")
-    venue_activation = payload.get("venue_activation")
-    paper_activation = payload.get("paper_activation")
     shadow_activation = payload.get("shadow_activation")
 
-    if venue_environment not in VENUE_ENVIRONMENT_ENUM or is_invalid_alias(venue_environment):
-        return _refused("VENUE_ENVIRONMENT_VALUE_INVALID")
-    if not is_valid_lever_value(venue_activation):
-        return _refused("VENUE_ACTIVATION_VALUE_INVALID")
-    if not is_valid_lever_value(paper_activation):
-        return _refused("PAPER_ACTIVATION_VALUE_INVALID")
+    for key, enum, code in (
+        ("venue_environment", VENUE_ENVIRONMENT_ENUM, "VENUE_ENVIRONMENT_VALUE_INVALID"),
+        ("venue_activation", ACTIVATION_ENUM, "VENUE_ACTIVATION_VALUE_INVALID"),
+        ("paper_activation", ACTIVATION_ENUM, "PAPER_ACTIVATION_VALUE_INVALID"),
+    ):
+        refusal = _slot_refusal(payload, key, enum, code)
+        if refusal is not None:
+            return _refused(refusal)
     if shadow_activation != "LIVE":
         return _refused("SHADOW_CAPTURE_OFF_FORBIDDEN")
+
+    venue_environment = payload["venue_environment"]
+    venue_activation = payload["venue_activation"]
+    paper_activation = payload["paper_activation"]
 
     activations = payload.get("activations")
     if activations is not None:
@@ -375,14 +481,29 @@ def resolve_manifest(payload: dict) -> LeverResolution:
         binding_env = venue_binding.get("environment")
         if binding_env is not None and binding_env != venue_environment:
             return _refused("VENUE_BINDING_MISMATCH")
+        # LEV-V-0083/0084: venue_binding's account/venue must equal the manifest scope's when both
+        # name them — a duplicate fact that disagrees refuses BEFORE authority (LEV-0041).
+        if isinstance(scope, dict):
+            for field in ("account_ref", "venue_id"):
+                scoped = scope.get(field)
+                bound = venue_binding.get(field)
+                if scoped is not None and bound is not None and scoped != bound:
+                    return _refused("VENUE_BINDING_MISMATCH")
         if venue_environment == "LIVE" and _binding_names_testnet(venue_binding):
             return _refused("LIVE_TESTNET_BINDING_FORBIDDEN")
         if venue_environment == "TESTNET" and _binding_names_live(venue_binding):
             return _refused("TESTNET_LIVE_BINDING_FORBIDDEN")
+        # LEV-V-0080: a single binding naming BOTH a live_* and a testnet_* member is a
+        # mixed-environment bundle regardless of the top-level environment (the two conditionals
+        # above already caught the more-specific LIVE-with-testnet / TESTNET-with-live cases).
+        if _binding_names_testnet(venue_binding) and _binding_names_live(venue_binding):
+            return _refused("MIXED_ENVIRONMENT_BUNDLE_FORBIDDEN")
 
     if venue_environment == "LIVE" and venue_activation == "LIVE":
         receipt = payload.get("testnet_promotion_receipt")
         if not isinstance(receipt, dict) or not receipt:
+            return _refused("LIVE_PROMOTION_RECEIPT_MISSING")
+        if not _promotion_receipt_ok(payload, receipt):
             return _refused("LIVE_PROMOTION_RECEIPT_MISSING")
 
     return _accepted()
@@ -400,6 +521,41 @@ def _binding_names_testnet(binding: dict) -> bool:
 
 def _binding_names_live(binding: dict) -> bool:
     return any(k in _LIVE_BINDING_KEYS for k in binding)
+
+
+def _member_environments(member: dict) -> set:
+    """Every venue environment a single bundle member signals — its explicit ``environment`` tag
+    (LIVE/TESTNET only) plus any live_*/testnet_* order/fill/account/route/endpoint key it names."""
+    envs: set = set()
+    declared = member.get("environment")
+    if declared in ("LIVE", "TESTNET"):
+        envs.add(declared)
+    if _binding_names_live(member):
+        envs.add("LIVE")
+    if _binding_names_testnet(member):
+        envs.add("TESTNET")
+    return envs
+
+
+def resolve_bundle(members: list) -> LeverResolution:
+    """LEV-0099 / LEV-V-0080: refuse a WHOLE evidence/authority bundle that mixes LIVE and TESTNET
+    members (orders, fills, accounts, or routes) — never retain a supposedly safe subset.
+
+    A bundle whose union of member environments contains BOTH LIVE and TESTNET refuses
+    ``MIXED_ENVIRONMENT_BUNDLE_FORBIDDEN``; the whole bundle is rejected, never the offending
+    member alone. A malformed member (not an object) or a non-list bundle is a usage error (fail
+    closed, raised — never a silent partial accept).
+    """
+    if not isinstance(members, (list, tuple)):
+        raise LeverLawError("bundle members must be a list")
+    seen: set = set()
+    for member in members:
+        if not isinstance(member, dict):
+            raise LeverLawError("each bundle member must be an object")
+        seen |= _member_environments(member)
+    if "LIVE" in seen and "TESTNET" in seen:
+        return _refused("MIXED_ENVIRONMENT_BUNDLE_FORBIDDEN")
+    return _accepted()
 
 
 def refuse(code: str) -> LeverResolution:
@@ -435,11 +591,9 @@ def containment_action(refusal_code: str, current: dict) -> dict:
     action = REFUSAL_CODES[refusal_code]["minimum_action"]
     result = dict(current)
     for key, value in action.items():
-        if key in ("venue_environment", "venue_activation", "paper_activation",
-                   "shadow_activation") and value is not None:
+        if key in CANONICAL_LEVER_FIELDS and value is not None:
             result[key] = value
-        elif key not in ("venue_environment", "venue_activation", "paper_activation",
-                        "shadow_activation"):
+        elif key not in CANONICAL_LEVER_FIELDS:
             result[key] = value
     result["shadow_activation"] = "LIVE"
     return result

@@ -20,10 +20,12 @@ intelligence alias inference." This bridge:
 **RESTART/OMISSION LAW**: :class:`LegacyBridgeState` tracks the highest bridged offset PER
 ``source_topic``. A restart queries :meth:`LegacyBridgeState.resume_from_offset` and continues
 from there — no gap, no silent reprocessing. Re-bridging the SAME offset with byte-identical
-content is idempotent (returns the cached envelope); re-bridging the same offset with DIFFERENT
-content refuses (mirrors :mod:`authority_fact_verifier`'s duplicate-conflict law — a bridged
-record's identity is pinned to its offset, never silently overwritten). A field the legacy record
-never carried stays absent in ``legacy_payload`` forever — never defaulted to a fabricated value.
+content AND the same declared ``intelligence_arm`` is idempotent (returns the cached envelope);
+re-bridging the same offset with DIFFERENT payload content OR a different declared
+``intelligence_arm`` refuses (mirrors :mod:`authority_fact_verifier`'s duplicate-conflict law — a
+bridged record's identity, including its RC3-WOP-002 experiment-typing axis, is pinned to its
+offset, never silently overwritten nor silently re-labelled). A field the legacy record never
+carried stays absent in ``legacy_payload`` forever — never defaulted to a fabricated value.
 
 Pure and side-effect-free: no clock, no I/O, no network. The caller supplies the raw legacy
 record and every stamped label/offset/timestamp explicitly.
@@ -129,10 +131,13 @@ class LegacyBridgeState:
     ) -> dict:
         """Bridge ``raw_record`` and record it against ``(source_topic, input_offset)``.
 
-        A byte-identical redelivery at an already-bridged offset returns the SAME cached
-        envelope (idempotent). A DIFFERENT record at an already-bridged offset refuses
-        (:class:`LegacyBridgeError`) — an offset's bridged identity is pinned once set, never
-        silently overwritten.
+        A byte-identical redelivery at an already-bridged offset — SAME payload bytes AND SAME
+        declared ``intelligence_arm`` — returns the SAME cached envelope (idempotent). A DIFFERENT
+        record at an already-bridged offset refuses (:class:`LegacyBridgeError`); "different" spans
+        BOTH identity axes: disagreeing payload bytes OR a disagreeing ``intelligence_arm`` (the
+        RC3-WOP-002 envelope typing — ``intelligence_arm`` is required independently, so the same
+        bytes under a different declared arm is a distinct, conflicting envelope, never silently
+        served with the earlier arm's label).
 
         Every returned envelope is a DEEP copy of the internally cached one: the ``legacy_payload``
         sub-dict is nested, so a shallow copy would still let a caller mutating its RETURNED
@@ -144,11 +149,13 @@ class LegacyBridgeState:
         topic_offsets = self._by_topic.setdefault(source_topic, {})
         existing = topic_offsets.get(input_offset)
         if existing is not None:
-            if existing["legacy_payload_digest"] == envelope["legacy_payload_digest"]:
+            if (existing["legacy_payload_digest"] == envelope["legacy_payload_digest"]
+                    and existing["intelligence_arm"] == envelope["intelligence_arm"]):
                 return copy.deepcopy(existing)
             raise LegacyBridgeError(
                 f"offset {input_offset} for topic {source_topic!r} is already bridged with "
-                f"disagreeing content — an offset's bridged identity is pinned once set")
+                f"disagreeing content or intelligence_arm — an offset's bridged identity is pinned "
+                f"once set")
         topic_offsets[input_offset] = envelope
         return copy.deepcopy(envelope)
 

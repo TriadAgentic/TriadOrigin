@@ -2,10 +2,19 @@
 
 Compares two labeled candidate payloads at a matching input offset and classifies any divergence
 per the closed :data:`triad.divergence_record.v1` taxonomy — exactly one of MISSING, EXTRA,
-RETIMED, REIDENTIFIED, GEOMETRY, LIFECYCLE, QUALITY, DOWNSTREAM_ELIGIBILITY, checked in that
-fixed precedence order (the first difference found wins; a divergence record never claims more
-than one class even when several fields disagree — the caller's ``detail`` string names every
-field this run actually compared).
+RETIMED, REIDENTIFIED, GEOMETRY, LIFECYCLE, QUALITY, DOWNSTREAM_ELIGIBILITY (that ordering is the
+schema/telemetry ENUM order — the closed vocabulary, not the check precedence). A divergence
+record never claims more than one class even when several fields disagree (the first difference
+found wins; the caller's ``detail`` string names every field this run actually compared).
+
+**The CHECK precedence** (the order :func:`_compare` actually tests, deliberately distinct from the
+enum listing above; no RC3 clause pins a check order, and a most-material-first order is chosen so a
+multi-field divergence attributes to the class an operator most needs to see): presence first
+(MISSING when only control is present, EXTRA when only treatment is), then **GEOMETRY**
+(the trade thesis — direction/entry/invalidation/targets/RR), then **REIDENTIFIED** (candidate_id),
+then **RETIMED** (source structure/reaction ids), then LIFECYCLE (state), then QUALITY, then
+DOWNSTREAM_ELIGIBILITY. So a pair diverging on BOTH geometry and identity classifies GEOMETRY
+(pinned by ``test_geometry_divergence_beats_a_simultaneous_identity_divergence``).
 
 **Two independent axes** (RC3-WOP-001/002's ``required_typing``; the materialized
 ``RC3-PAR-EXP-001``/``RC3-PAR-EXP-002`` parameters):

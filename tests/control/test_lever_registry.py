@@ -147,6 +147,60 @@ class TestRegisterManifest:
             LeverRegistry().transition(LeverRegistry().initial_state(), envelope, {}, {})
 
 
+class TestDirectEnvironmentTransition:
+    """COV-2/CTL-2 / LEV-0006/0104 (LEV-V-0072/0073): a direct LIVE<->TESTNET environment change is
+    refused unless the immediately-preceding accepted revision passed through OFF environment."""
+
+    def _reg(self, revision, env, digest, receipt=None):
+        overrides = {"venue_environment": env}
+        if env in ("LIVE", "TESTNET"):
+            # a lawful non-OFF combination needs venue_activation OFF here (or a promotion receipt
+            # for LIVE/LIVE) — keep venue_activation OFF so resolve_manifest accepts.
+            overrides["venue_activation"] = "OFF"
+        return register(revision, digest=digest, **overrides)
+
+    def test_first_manifest_persists_the_accepted_environment(self):
+        state = run([self._reg(1, "LIVE", "d1")]).final_state
+        assert state["venue_environment"] == "LIVE"
+
+    def test_direct_live_to_testnet_is_refused_and_state_unchanged(self):
+        first = run([self._reg(1, "LIVE", "d1")]).final_state
+        result = run([self._reg(2, "TESTNET", "d2")], initial=first)
+        assert result.final_state == first  # a refused manifest never moves a byte
+        event = only_event(result)
+        assert event["event_kind"] == MANIFEST_REFUSED
+        assert event["refusal_code"] == "DIRECT_ENVIRONMENT_TRANSITION_FORBIDDEN"
+        assert event["minimum_action"]["shadow_activation"] == "LIVE"
+
+    def test_direct_testnet_to_live_is_refused(self):
+        first = run([self._reg(1, "TESTNET", "d1")]).final_state
+        result = run([self._reg(2, "LIVE", "d2")], initial=first)
+        assert only_event(result)["refusal_code"] == "DIRECT_ENVIRONMENT_TRANSITION_FORBIDDEN"
+
+    def test_live_then_off_then_testnet_is_lawful(self):
+        s1 = run([self._reg(1, "LIVE", "d1")]).final_state
+        s2 = run([self._reg(2, "OFF", "d2")], initial=s1).final_state
+        assert s2["venue_environment"] == "OFF"
+        s3 = run([self._reg(3, "TESTNET", "d3")], initial=s2)
+        assert only_event(s3)["event_kind"] == MANIFEST_ACCEPTED
+        assert s3.final_state["venue_environment"] == "TESTNET"
+
+
+class TestReservedActivationKey:
+    """COV-6 / LEV-0040 (LEV-V-0064): a canonical top-level lever name in the activations map is
+    refused on EVERY manifest, including the first (it can never poison the baseline key set)."""
+
+    @pytest.mark.parametrize(
+        "reserved", ["venue_environment", "venue_activation", "paper_activation",
+                     "shadow_activation"])
+    def test_reserved_activation_key_refused_on_the_first_manifest(self, reserved):
+        result = run([register(1, activations={reserved: "OFF", "origin.pub": "OFF"})])
+        assert result.final_state == LeverRegistry().initial_state()  # baseline never poisoned
+        event = only_event(result)
+        assert event["event_kind"] == MANIFEST_REFUSED
+        assert event["refusal_code"] == "LEVER_REGISTRY_INCOMPLETE"
+
+
 class TestAttestRuntime:
     def _registered(self):
         return run([register(1)]).final_state
