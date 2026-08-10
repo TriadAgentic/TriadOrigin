@@ -228,6 +228,8 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
         "tools/validate_b00r_anchor.py",
         "--expected-head",
         args.expected_head,
+        "--now-us",
+        str(args.now_us),
         "--receipt",
         args.receipt,
         "--ruleset",
