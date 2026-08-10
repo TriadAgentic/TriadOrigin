@@ -320,6 +320,12 @@ def _snapshot_for_raw(raw: dict) -> tuple[dict, bytes, str]:
             "MAIN_TARGET",
         ),
         (
+            lambda raw: raw["conditions"]["ref_name"].__setitem__(
+                "include", [{"malformed": True}]
+            ),
+            "MAIN_TARGET",
+        ),
+        (
             lambda raw: raw["rules"][1]["parameters"]["required_status_checks"][0].pop(
                 "integration_id"
             ),
@@ -381,7 +387,8 @@ def test_provider_negative_canary_is_mandatory_and_bound_to_ruleset(tmp_path):
     transcript_path.parent.mkdir(parents=True)
     transcript_path.write_bytes(transcript)
     canary = {
-        "profile": "TRIAD-B00R-PROVIDER-NEGATIVE-CANARY-V1",
+        "schema": "triad.provider_negative_canary.v1",
+        "schema_version": "1.0.0",
         "canary_kind": "PROVIDER_NEGATIVE_CANARY",
         "provider": "github",
         "repository": "TriadAgentic/TriadOrigin",
@@ -523,7 +530,8 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
     })
     canary_rel = "evidence/B00R/provider_negative_canary.v1.json"
     canary = canonical_json({
-        "profile": "TRIAD-B00R-PROVIDER-NEGATIVE-CANARY-V1",
+        "schema": "triad.provider_negative_canary.v1",
+        "schema_version": "1.0.0",
         "canary_kind": "PROVIDER_NEGATIVE_CANARY",
         "provider": "github",
         "repository": "TriadAgentic/TriadOrigin",
