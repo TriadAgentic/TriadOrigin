@@ -348,11 +348,23 @@ def _anchored_receipt_repo(root: pathlib.Path) -> tuple[str, pathlib.Path, pathl
     ruleset.parent.mkdir(parents=True)
     ruleset.write_text(json.dumps({
         "id": 1001,
+        "name": "b00r-receipt-anchor",
         "target": "tag",
         "source_type": "Repository",
         "source": "TriadAgentic/TriadOrigin",
         "current_user_can_bypass": "never",
         "enforcement": "active",
+        "node_id": "RRS_anchor1001",
+        "_links": {
+            "self": {
+                "href": "https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/1001"
+            },
+            "html": {
+                "href": "https://github.com/TriadAgentic/TriadOrigin/rules/1001"
+            },
+        },
+        "created_at": "2026-08-10T00:00:00Z",
+        "updated_at": "2026-08-10T00:00:01Z",
         "conditions": {
             "ref_name": {
                 "include": ["refs/tags/B00R_RECEIPT_ANCHOR"],
