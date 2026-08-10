@@ -1,0 +1,42 @@
+{
+  "authenticated": false,
+  "keys": [
+    {
+      "algorithm": "ed25519",
+      "identity": "joseph@uponlytrader.com (Authority Owner)",
+      "key_id": "owner-ed25519-2026",
+      "not_after_us": 1798761600000000,
+      "not_before_us": 1735689600000000,
+      "public_key_hex": "17ca05c58ecd2119f0a1b440acf71a2d92949a53ddd2c6d4dad3da7f9a05d651",
+      "revoked": false,
+      "role": "AUTHORITY_OWNER",
+      "scope": "DEC-AUTHORITY-BUNDLE-001,DEC-RECEIPT-PROFILE-001,DEC-B00-REPAIR-001"
+    },
+    {
+      "algorithm": "ed25519",
+      "identity": "joseph@uponlytrader.com (Evidence Producer)",
+      "key_id": "producer-ed25519-2026",
+      "not_after_us": 1798761600000000,
+      "not_before_us": 1735689600000000,
+      "public_key_hex": "8ba3a8a6ff937ab135e78a1dd14f7771868a3c565a324492b0237a4bd324204b",
+      "revoked": false,
+      "role": "EVIDENCE_PRODUCER",
+      "scope": "B00R..B07"
+    },
+    {
+      "algorithm": "ed25519",
+      "identity": "reviewer@uponlytrader.com (Independent Countersigner)",
+      "key_id": "countersigner-ed25519-2026",
+      "not_after_us": 1798761600000000,
+      "not_before_us": 1735689600000000,
+      "public_key_hex": "e2e9913b616793d97f809a710010a1507510bb716dce3db4a0fcea0e55d7c5f3",
+      "revoked": false,
+      "role": "INDEPENDENT_COUNTERSIGNER",
+      "scope": "B00R..B07"
+    }
+  ],
+  "registry_id": "triad-origin-receipt-trust/1",
+  "registry_kind": "RECEIPT_TRUST_REGISTRY",
+  "schema": "triad.receipt_trust_registry.v1",
+  "schema_version": "1.0.0"
+}

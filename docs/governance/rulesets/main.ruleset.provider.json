@@ -1,0 +1,27 @@
+{
+  "schema": "triad.ruleset_provider_snapshot.v1",
+  "schema_version": "1.0.0",
+  "provider": {
+    "api_response_path": "docs/governance/rulesets/main.ruleset.provider.raw.json",
+    "api_response_sha256": "BLOCKED_GITHUB_PRO_REQUIRED",
+    "captured_at_us": 0,
+    "note": "GitHub rulesets require GitHub Pro or public repository. TriadOrigin is private on free tier. Ruleset enforcement deferred until GitHub Pro upgrade or manual setup."
+  },
+  "effective_at_us": 0,
+  "target": "refs/heads/main",
+  "enforcement": "active",
+  "required_context": [
+    "CI / test-and-verify"
+  ],
+  "review_controls": {
+    "required_approvals": 1,
+    "dismiss_stale_reviews": true,
+    "require_code_owner_review": true,
+    "require_conversation_resolution": true
+  },
+  "bypass_actors": [],
+  "restrictions": {
+    "allow_force_push": false,
+    "allow_deletion": false
+  }
+}
