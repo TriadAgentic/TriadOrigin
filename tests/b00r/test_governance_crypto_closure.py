@@ -789,6 +789,9 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
     payload = receipt["payload"]
     payload.update({
         "source_pr": 1,
+        "observed_at_us": 40_000_000,
+        "emitted_at_us": 50_000_000,
+        "expires_at_us": 60_000_000,
         "source_merge_sha": source, "source_merge_tree": source_tree,
         "final_source_head": source, "source_merge_time_us": source_time,
         "audited_start_sha": source, "repair_decision_sha256": "d" * 64,

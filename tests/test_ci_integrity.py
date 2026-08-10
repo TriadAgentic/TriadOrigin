@@ -91,9 +91,9 @@ def test_ci_never_ignores_owner_validators_and_wires_external_pins():
     assert "python tools/validate_authority_root.py --strict" in workflow
     assert "python tools/validate_governance_snapshot.py --strict" in workflow
     assert "name: Strict source authority control" in workflow
-    assert "name: Strict source provider control" in workflow
+    assert "name: Nonterminal source provider revalidation" in workflow
     assert "name: Strict B00R authority control" in workflow
-    assert "name: Strict B00R provider control" in workflow
+    assert "name: Nonterminal B00R provider revalidation" in workflow
     assert "name: Mark deterministic engineering complete" in workflow
     assert workflow.count("steps.engineering_complete.outcome == 'success'") == 5
     assert "Source safe-hold governance report" not in workflow
@@ -109,10 +109,11 @@ def test_ci_never_ignores_owner_validators_and_wires_external_pins():
         assert workflow.index(completed_first) < owner_offset
     assert "--snapshot docs/governance/rulesets/main.ruleset.provider.json" in workflow
     assert "--provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json" in workflow
-    assert "name: Resolve trusted owner-validation time" in workflow
-    assert "NOW_US: ${{ steps.owner_time.outputs.now_us }}" in workflow
+    assert "name: Resolve trusted owner-validation time" not in workflow
+    assert "NOW_US: ${{ steps.owner_time.outputs.now_us }}" not in workflow
     assert "NOW_US: ${{ steps.event_facts.outputs.now_us }}" not in workflow
-    assert workflow.count('--expected-head "$EXPECTED_HEAD"') == 5
+    assert workflow.count('NOW_US="$(date -u +%s)000000"') == 6
+    assert workflow.count('--expected-head "$EXPECTED_HEAD"') == 6
     assert workflow.count("--git-root .") == 5
     for name in (
         "AUTHORITY_BUNDLE_DECISION_SHA256",
