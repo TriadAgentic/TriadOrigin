@@ -23,6 +23,7 @@ import argparse
 import copy
 import json
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -92,13 +93,29 @@ def _wrong_typed_value(value: object) -> object:
     return "not_null"
 
 
+def _violates(pattern: str, candidate: str) -> bool:
+    """True iff ``candidate`` genuinely fails ``pattern`` under jsonschema semantics (re.search).
+
+    jsonschema matches ``pattern`` with an unanchored, case-sensitive ``re.search``. Verifying the
+    candidate against that exact predicate makes a REFUSE mutation *provably* pattern-violating —
+    never a heuristic guess that a future unanchored/case-insensitive pattern could quietly satisfy.
+    """
+    try:
+        return re.search(pattern, candidate) is None
+    except re.error:
+        return False  # an unparseable pattern is not a guaranteed violation
+
+
 def _pattern_violator(pattern: str, value: str) -> str | None:
     """A string that DEFINITELY violates ``pattern``, or None if we cannot guarantee violation."""
+    candidate: str | None = None
     if "[0-9a-f]" in pattern and "{" in pattern and value:
         upper = value.upper()
-        return upper if upper != value else None  # uppercase a lowercase-hex field
-    if ("(0|[1-9]" in pattern or "[0-9]" in pattern) and pattern.startswith("^"):
-        return "01"  # a leading-zero integer violates every canonical wire-int pattern
+        candidate = upper if upper != value else None  # uppercase a lowercase-hex field
+    elif ("(0|[1-9]" in pattern or "[0-9]" in pattern) and pattern.startswith("^"):
+        candidate = "01"  # a leading-zero integer violates every canonical wire-int pattern
+    if candidate is not None and _violates(pattern, candidate):
+        return candidate
     return None
 
 
@@ -140,7 +157,8 @@ def _mutations(schema_root: dict, node: dict, value: object, ptr: str):
             bad = _pattern_violator(node["pattern"], value)
             if bad is not None:
                 yield ("bad_pattern", ptr, (lambda v, b=bad: b), "REFUSE")
-            if "[0-9]" in node["pattern"] and ("(0|" in node["pattern"] or "[1-9]" in node["pattern"]):
+            if "[0-9]" in node["pattern"] and ("(0|" in node["pattern"] or "[1-9]" in node["pattern"]) \
+                    and _violates(node["pattern"], " 1"):
                 yield ("wire_noncanonical", ptr, (lambda v: " 1"), "REFUSE")  # leading whitespace
         return
 

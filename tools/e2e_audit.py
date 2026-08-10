@@ -1336,12 +1336,11 @@ def b01c_contract_binding_promotion() -> None:
 
     # 1 · CON-03/06 — the authoritative validator refuses every closure-required mutation; the
     #     CON-01/02 open-boundary surface is inventoried, never silently closed.
-    report = rcm.run_profile("B01C")
+    report = rcm.run_profile("B01C")  # in-proc run IS the proof (the CLI exit is proven by its test)
     assert report["totals"]["closure_required_wrongly_passed"] == 0, report["wrongly_passed"]
     assert report["totals"]["closure_required_refused"] > 1000
     assert len(report["corpus_digest"]) == 64
     assert report["totals"]["open_boundaries"] == len(report["open_boundary_inventory"])
-    _run_tool("run_contract_mutations.py", "--profile", "B01C", "--require-all-refused")
 
     # 2 · BIND-01/03/06 — a real capability authenticates and all six authenticity attacks are
     #     refused; the packaged bundle inventories to 105 rows; no owner preimage => UNAVAILABLE.
