@@ -425,7 +425,14 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
     snapshot_path = governance_dir / "main.ruleset.provider.json"
     provider_raw_path = governance_dir / "main.ruleset.provider.raw.json"
     snapshot_path.write_bytes(b"source snapshot")
-    provider_raw_path.write_bytes(b"source raw")
+    provider_raw_path.write_bytes(canonical_json({
+        "id": 42,
+        "node_id": "RRS_provider42",
+        "updated_at": "1970-01-01T00:00:10Z",
+        "conditions": {"ref_name": {"include": [
+            "refs/heads/main", "refs/heads/b00r-ruleset-canary"
+        ], "exclude": []}},
+    }))
     _git(repo, "add", ".")
     _git(repo, "commit", "-m", "source")
     source = _git(repo, "rev-parse", "HEAD")
@@ -443,6 +450,45 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
         path.write_bytes(data)
         entries.append({"path": rel, "role": role, "media_type": "application/json",
                         "size": len(data), "sha256": sha256_hex(data)})
+    transcript_rel = "evidence/B00R/provider_negative_canary.transcript.txt"
+    transcript = b"remote: direct push rejected by repository ruleset 42\n"
+    transcript_path = repo / transcript_rel
+    transcript_path.write_bytes(transcript)
+    entries.append({
+        "path": transcript_rel,
+        "role": "PROVIDER_NEGATIVE_CANARY_TRANSCRIPT",
+        "role_unique": True,
+        "media_type": "text/plain",
+        "size": len(transcript),
+        "sha256": sha256_hex(transcript),
+    })
+    canary_rel = "evidence/B00R/provider_negative_canary.v1.json"
+    canary = canonical_json({
+        "schema": "triad.provider_negative_canary.v1",
+        "schema_version": "1.0.0",
+        "canary_kind": "PROVIDER_NEGATIVE_CANARY",
+        "provider": "github",
+        "repository": "TriadAgentic/TriadOrigin",
+        "ruleset_id": 42,
+        "ruleset_node_id": "RRS_provider42",
+        "ref": "refs/heads/b00r-ruleset-canary",
+        "operation": "DIRECT_PUSH",
+        "result": "REJECTED_BY_RULESET",
+        "exit_code": 1,
+        "attempted_at_us": 20_000_000,
+        "provider_request_id": "REQ:canary:42",
+        "transcript_path": transcript_rel,
+        "transcript_sha256": sha256_hex(transcript),
+    })
+    (repo / canary_rel).write_bytes(canary)
+    entries.append({
+        "path": canary_rel,
+        "role": "PROVIDER_NEGATIVE_CANARY",
+        "role_unique": True,
+        "media_type": "application/json",
+        "size": len(canary),
+        "sha256": sha256_hex(canary),
+    })
     entries.sort(key=lambda item: item["path"])
     manifest = {"schema": "triad.evidence_manifest.v1", "schema_version": "1.0.0",
                 "manifest_kind": "EVIDENCE_MANIFEST", "entry_count": len(entries),
