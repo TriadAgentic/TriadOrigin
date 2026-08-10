@@ -394,7 +394,7 @@ def _anchored_receipt_repo(root: pathlib.Path) -> tuple[str, pathlib.Path, pathl
 def test_receipt_anchor_binds_merge_receipt_and_pinned_immutable_ruleset(tmp_path):
     repo = tmp_path / "repo"
     head, receipt, ruleset, pin = _anchored_receipt_repo(repo)
-    receipt_sha = validate_b00r_anchor.verify(
+    receipt_sha = validate_b00r_anchor._verify_static(
         root=repo,
         expected_head=head,
         receipt_path=receipt,
@@ -404,11 +404,26 @@ def test_receipt_anchor_binds_merge_receipt_and_pinned_immutable_ruleset(tmp_pat
     assert receipt_sha == hashlib.sha256(receipt.read_bytes()).hexdigest()
 
 
+def test_receipt_anchor_terminal_verify_requires_live_provider_token(tmp_path):
+    repo = tmp_path / "repo"
+    head, receipt, ruleset, pin = _anchored_receipt_repo(repo)
+    with pytest.raises(validate_b00r_anchor.LiveRulesetUnavailable, match="TOKEN_ABSENT"):
+        validate_b00r_anchor.verify(
+            root=repo,
+            expected_head=head,
+            receipt_path=receipt,
+            ruleset_path=ruleset,
+            ruleset_pin=pin,
+            now_us=1,
+            github_token=None,
+        )
+
+
 def test_receipt_anchor_rejects_absent_pin_and_bypassable_ruleset(tmp_path):
     repo = tmp_path / "repo"
     head, receipt, ruleset, pin = _anchored_receipt_repo(repo)
     with pytest.raises(validate_b00r_anchor.AnchorError, match="EXTERNAL_TAG_RULESET_PIN_ABSENT"):
-        validate_b00r_anchor.verify(
+        validate_b00r_anchor._verify_static(
             root=repo,
             expected_head=head,
             receipt_path=receipt,
@@ -433,7 +448,7 @@ def test_receipt_anchor_rejects_absent_pin_and_bypassable_ruleset(tmp_path):
     _git(repo, "tag", "-a", validate_b00r_anchor.TAG_NAME, "-m", message, head)
     unsafe_pin = hashlib.sha256(ruleset.read_bytes()).hexdigest()
     with pytest.raises(validate_b00r_anchor.AnchorError, match="BYPASS_ACTORS_PRESENT"):
-        validate_b00r_anchor.verify(
+        validate_b00r_anchor._verify_static(
             root=repo,
             expected_head=head,
             receipt_path=receipt,
