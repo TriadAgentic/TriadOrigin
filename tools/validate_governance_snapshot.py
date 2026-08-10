@@ -14,6 +14,12 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 from triad_origin import governance  # noqa: E402
+try:  # importable both as `python tools/...` and as `from tools import ...`
+    from tools.github_ruleset_live import (  # type: ignore  # noqa: E402
+        LiveRulesetError, fetch_and_match_live_ruleset)
+except ModuleNotFoundError:  # pragma: no cover - direct script fallback
+    from github_ruleset_live import (  # type: ignore  # noqa: E402
+        LiveRulesetError, fetch_and_match_live_ruleset)
 
 DEFAULT = ROOT / "docs/governance/rulesets/main.ruleset.provider.json"
 TEMPLATE = ROOT / "docs/governance/rulesets/main.ruleset.provider.template.json"
@@ -127,8 +133,22 @@ def main(argv: list[str]) -> int:
             except (OSError, ValueError) as exc:
                 print(f"FAIL: {exc}", file=sys.stderr)
                 return 1
-        print(f"OK: governance snapshot is raw-provider-derived, externally pinned, no-bypass "
-              f"main control ({path.name})")
+            try:
+                fetch_and_match_live_ruleset(
+                    raw_bytes, token=os.environ.get("GITHUB_TOKEN"))
+            except LiveRulesetError as exc:
+                detail = str(exc)
+                unavailable = (
+                    detail == "GITHUB_TOKEN_ABSENT"
+                    or detail.startswith("LIVE_RULESET_FETCH_FAILED:")
+                    or detail.startswith("LIVE_RULESET_HTTP_STATUS:")
+                )
+                prefix = "UNAVAILABLE" if unavailable else "FAIL"
+                stream = sys.stdout if unavailable else sys.stderr
+                print(f"{prefix}: LIVE_PROVIDER_REVALIDATION:{detail}", file=stream)
+                return 1
+        print(f"OK: governance snapshot is raw-provider-derived, externally pinned, live "
+              f"revalidated, no-bypass main control ({path.name})")
         return 0
     stream = sys.stderr if result == "FAIL" else sys.stdout
     print(f"{result}: {reason} ({path.name})", file=stream)
