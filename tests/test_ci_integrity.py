@@ -28,25 +28,30 @@ def test_ci_actions_are_sha_pinned_and_solver_uses_committed_constraints():
     assert "actions: read" in workflow
     assert "contents: read" in workflow
     assert "issues: read" in workflow
-    assert "fetch-depth: 2" in workflow
+    # B00R needs the merge base to classify the PR-role, so the checkout is full history.
+    assert "fetch-depth: 0" in workflow
     assert "ref: ${{ github.event.pull_request.head.sha || github.sha }}" in workflow
     assert "ref: ${{ github.head_ref || github.sha }}" not in workflow
     assert "name: Checkout exact head" in workflow
-    assert "name: Establish receipt evidence branch" in workflow
-    assert "git switch --force-create evidence/r00-receipt" in workflow
-    assert '"${{ github.event.pull_request.head.sha }}"' in workflow
+    assert "name: Bind checks to exact event head" in workflow
     assert "name: Set up Python 3.11" in workflow
-    assert "hashFiles('evidence/receipts/R00.json')" in workflow
-    assert "github.head_ref == 'evidence/r00-receipt'" in workflow
-    assert workflow.count(
-        "github.event.pull_request.head.repo.full_name == github.repository"
-    ) == 2
-    assert "github.event_name == 'pull_request'" in workflow
     assert "GITHUB_TOKEN: ${{ github.token }}" in workflow
-    assert (
-        "run: python tools/validate_milestone_receipt.py "
-        "evidence/receipts/R00.json"
-    ) in workflow
+
+
+def test_ci_has_no_branch_specific_receipt_skip_and_is_role_aware():
+    """B00R-D16 / CI-002: the receipt authenticator is invoked by diff-derived role on every PR,
+    never gated behind a mutable branch name; the old evidence/r00-receipt skip is gone."""
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    # The branch-specific R00 receipt skip and force-create branch step are removed.
+    assert "github.head_ref == 'evidence/r00-receipt'" not in workflow
+    assert "git switch --force-create evidence/r00-receipt" not in workflow
+    assert "Establish receipt evidence branch" not in workflow
+    # The role-aware gate and the always-run source-hash inventory are present.
+    assert "Role-aware milestone gate" in workflow
+    assert "tools/classify_milestone_pr.py" in workflow
+    assert "tools/verify_source_hashes.py" in workflow
+    # The stable required context is the job name (surfaced as "CI / test-and-verify").
+    assert "test-and-verify:" in workflow
 
 
 def test_ci_constraint_snapshot_is_exact_and_unique():

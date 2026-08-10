@@ -1,0 +1,19 @@
+{
+  "authenticated": false,
+  "ruleset": {
+    "block_deletions": true,
+    "block_force_push": true,
+    "bypass_actors": [],
+    "dismiss_stale_reviews": true,
+    "pull_request_required": true,
+    "require_conversation_resolution": true,
+    "required_approvals": 1,
+    "required_status_check": "CI / test-and-verify",
+    "ruleset_id": "UNSET",
+    "strict_required_status": true,
+    "target": "refs/heads/main"
+  },
+  "schema": "triad.governance_snapshot.v1",
+  "schema_version": "1.0.0",
+  "snapshot_kind": "GOVERNANCE_SNAPSHOT"
+}

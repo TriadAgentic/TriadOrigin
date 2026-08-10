@@ -1,0 +1,29 @@
+{
+  "authenticated": false,
+  "provider": {
+    "note": "Populate from the GitHub rulesets API with authenticated provider evidence; do not hand-write."
+  },
+  "ruleset": {
+    "block_deletions": true,
+    "block_force_push": true,
+    "bypass_actors": [],
+    "codeowners_required_paths": [
+      ".github/workflows/",
+      "contracts/",
+      "docs/governance/",
+      "tools/validate_b_receipt.py",
+      "tools/e2e_audit.py"
+    ],
+    "dismiss_stale_reviews": true,
+    "pull_request_required": true,
+    "require_conversation_resolution": true,
+    "required_approvals": 1,
+    "required_status_check": "CI / test-and-verify",
+    "ruleset_id": "UNSET",
+    "strict_required_status": true,
+    "target": "refs/heads/main"
+  },
+  "schema": "triad.governance_snapshot.v1",
+  "schema_version": "1.0.0",
+  "snapshot_kind": "GOVERNANCE_SNAPSHOT"
+}

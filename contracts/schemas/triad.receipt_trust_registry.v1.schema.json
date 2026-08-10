@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "triad.receipt_trust_registry.v1",
+  "title": "TRIAD receipt trust registry v1 (public keys only)",
+  "description": "The externally pinned public trust registry for receipt-v3 signature verification. Carries only public material — no private key, seed, or credential. Its digest is pinned outside the tree (receipt_trust_registry_sha256).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "registry_kind", "registry_id", "keys"],
+  "properties": {
+    "schema": {"const": "triad.receipt_trust_registry.v1"},
+    "schema_version": {"const": "1.0.0"},
+    "registry_kind": {"const": "RECEIPT_TRUST_REGISTRY"},
+    "registry_id": {"type": "string", "minLength": 1},
+    "authenticated": {"type": "boolean"},
+    "keys": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key_id", "identity", "role", "algorithm", "public_key_hex", "revoked"],
+        "properties": {
+          "key_id": {"type": "string", "minLength": 1},
+          "identity": {"type": "string", "minLength": 1},
+          "role": {"enum": ["EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER", "AUTHORITY_OWNER"]},
+          "algorithm": {"enum": ["ed25519"]},
+          "public_key_hex": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "not_before_us": {"type": "integer"},
+          "not_after_us": {"type": "integer"},
+          "scope": {"type": "string", "minLength": 1},
+          "revoked": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

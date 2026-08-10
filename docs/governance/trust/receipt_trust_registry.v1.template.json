@@ -1,0 +1,31 @@
+{
+  "authenticated": false,
+  "keys": [
+    {
+      "algorithm": "ed25519",
+      "identity": "UNSET_OWNER_EVIDENCE_PRODUCER",
+      "key_id": "UNSET-evidence-producer",
+      "not_after_us": 1,
+      "not_before_us": 0,
+      "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "revoked": true,
+      "role": "EVIDENCE_PRODUCER",
+      "scope": "B00R..B07"
+    },
+    {
+      "algorithm": "ed25519",
+      "identity": "UNSET_OWNER_COUNTERSIGNER",
+      "key_id": "UNSET-independent-countersigner",
+      "not_after_us": 1,
+      "not_before_us": 0,
+      "public_key_hex": "1111111111111111111111111111111111111111111111111111111111111111",
+      "revoked": true,
+      "role": "INDEPENDENT_COUNTERSIGNER",
+      "scope": "B00R..B07"
+    }
+  ],
+  "registry_id": "triad-origin-receipt-trust/1",
+  "registry_kind": "RECEIPT_TRUST_REGISTRY",
+  "schema": "triad.receipt_trust_registry.v1",
+  "schema_version": "1.0.0"
+}

@@ -1,0 +1,15 @@
+{
+  "entries": [
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/example.json",
+      "role": "EXAMPLE",
+      "sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "size": 3
+    }
+  ],
+  "entry_count": 1,
+  "manifest_kind": "EVIDENCE_MANIFEST",
+  "schema": "triad.evidence_manifest.v1",
+  "schema_version": "1.0.0"
+}

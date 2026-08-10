@@ -1,0 +1,24 @@
+{
+  "authenticated": false,
+  "authority_registry": "docs/governance/trust/receipt_trust_registry.v1.json",
+  "decision": "AUTHORIZE_FORWARD_REPAIR_B00R (root receipt with no valid predecessor; B00-B07 historical closure invalidated additively)",
+  "decision_id": "DEC-B00-REPAIR-001",
+  "decision_kind": "GOVERNANCE_DECISION",
+  "effective_at_us": 0,
+  "failure_behavior": "B01C_BLOCKED_NO_ROOT",
+  "issuer": "UNSET_AUTHORITY_OWNER",
+  "schema": "triad.governance_decision.v1",
+  "schema_version": "1.0.0",
+  "scope": {
+    "audited_start": "main@e1f76b845bc1251c156d37a662f87fc468397fb0",
+    "historical_treatment": "additive_disposition_only",
+    "milestone": "B00R",
+    "root_variant": "B00R_ONLY"
+  },
+  "signatures": [],
+  "subject_sha256s": {
+    "audited_start_sha": "e1f76b845bc1251c156d37a662f87fc468397fb0",
+    "invalidation_manifest": "797c5bd1bca18615fdbb763a8993c06806bcfe24b4e59356f3c3e21c4a938a61"
+  },
+  "supersedes": []
+}

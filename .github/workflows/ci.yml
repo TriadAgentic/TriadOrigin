@@ -31,18 +31,8 @@ jobs:
           # pull_request defaults to GitHub's synthetic merge ref. Milestone evidence is bound to
           # the immutable PR head instead; a SHA also works when the head branch lives in a fork.
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          # The receipt branch is exactly one commit atop the corrective merge; the sealer reads
-          # both raw commit objects and therefore must not use checkout's depth-1 default.
-          fetch-depth: 2
-      - name: Establish receipt evidence branch
-        if: >-
-          ${{ github.event_name == 'pull_request' &&
-              github.event.pull_request.head.repo.full_name == github.repository &&
-              github.head_ref == 'evidence/r00-receipt' }}
-        shell: bash
-        run: >-
-          git switch --force-create evidence/r00-receipt
-          "${{ github.event.pull_request.head.sha }}"
+          # B00R needs the merge base to classify the PR's changed-path role; fetch full history.
+          fetch-depth: 0
       - name: Bind checks to exact event head
         shell: bash
         run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
@@ -61,6 +51,8 @@ jobs:
         run: python -m pytest
       - name: Exact pytest collection identity
         run: python tools/collect_test_ids.py
+      - name: Source-hash inventory (B00R)
+        run: python tools/verify_source_hashes.py
       - name: Contract byte manifest
         run: python tools/verify_manifest.py
       - name: Contract manifest schema
@@ -77,12 +69,44 @@ jobs:
         run: python tools/build_ledger.py --verify
       - name: Combined RC3+RC4 composition DAG
         run: python tools/validate_combined_dag.py
-      - name: Authenticate sealed milestone receipt
-        if: >-
-          ${{ github.event_name == 'pull_request' &&
-              github.event.pull_request.head.repo.full_name == github.repository &&
-              github.head_ref == 'evidence/r00-receipt' &&
-              hashFiles('evidence/receipts/R00.json') != '' }}
+      # B00R-D16: the receipt authenticator is invoked on EVERY PR by role derived from the actual
+      # diff — never by a branch-name skip. A source PR classifies as SOURCE (no receipt to
+      # authenticate); a receipt PR (evidence/**) is authenticated under the ratified receipt-v3
+      # profile against the externally pinned trust registry. A PR mixing source+evidence fails.
+      - name: Role-aware milestone gate
+        if: github.event_name == 'pull_request'
+        shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python tools/validate_milestone_receipt.py evidence/receipts/R00.json
+        run: |
+          base="origin/${{ github.event.pull_request.base.ref }}"
+          git fetch --no-tags --quiet origin "${{ github.event.pull_request.base.ref }}" || true
+          if git merge-base "$base" HEAD >/dev/null 2>&1; then
+            git diff --name-only "$(git merge-base "$base" HEAD)" HEAD > changed_paths.txt
+          else
+            git diff --name-only HEAD~1 HEAD > changed_paths.txt
+          fi
+          echo "changed paths:"; cat changed_paths.txt
+          role_line="$(python tools/classify_milestone_pr.py --paths-file changed_paths.txt)"
+          echo "$role_line"
+          # Governance validators are always invoked (fail-closed reporting); a receipt PR must
+          # additionally present an authenticated receipt-v3, which fails closed absent owner pins.
+          python tools/validate_authority_root.py || true
+          python tools/validate_governance_snapshot.py || true
+          if echo "$role_line" | grep -q "PR_ROLE=RECEIPT"; then
+            shopt -s nullglob
+            found=0
+            for r in evidence/receipts/B0*.receipt.v3.json evidence/receipts/B0*.dsse.json; do
+              m="$(python - "$r" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1]))
+print(d.get("payload",{}).get("milestone",""))
+PY
+)"
+              [ -n "$m" ] && python tools/validate_b_receipt.py --strict --milestone "$m" "$r" && found=1
+            done
+            if [ "$found" != "1" ]; then
+              echo "RECEIPT PR carries no authenticated receipt-v3 (owner-gated closure absent)" >&2
+              exit 1
+            fi
+          fi

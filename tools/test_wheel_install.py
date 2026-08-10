@@ -140,7 +140,7 @@ for line in manifest_text.read_text(encoding='utf-8').splitlines():
         assert target.is_file(), name
         assert hashlib.sha256(target.read_bytes()).hexdigest() == digest, name
         entries.append(relative)
-assert len(entries) == 133
+assert len(entries) == 148
 actual = {{str(path.relative_to(root)) for path in root.rglob('*') if path.is_file()}}
 expected = set(entries) | {{
     'MANIFEST.sha256',

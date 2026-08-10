@@ -1,0 +1,19 @@
+{
+  "authenticated": false,
+  "decision": "AUTHORIZE_FORWARD_REPAIR_B00R",
+  "decision_id": "DEC-B00-REPAIR-001",
+  "decision_kind": "GOVERNANCE_DECISION",
+  "effective_at_us": 1000000,
+  "failure_behavior": "B01C_BLOCKED_NO_ROOT",
+  "issuer": "UNSET_OWNER",
+  "schema": "triad.governance_decision.v1",
+  "schema_version": "1.0.0",
+  "scope": {
+    "milestone": "B00R"
+  },
+  "signatures": [],
+  "subject_sha256s": {
+    "main_audited_start": "e1f76b845bc1251c156d37a662f87fc468397fb0"
+  },
+  "supersedes": []
+}

@@ -67,9 +67,15 @@ def golden_vectors() -> None:
     from triad_origin import contracts
 
     golden_root = ROOT / "contracts" / "golden"
+    wire_contracts = set(contracts.known_contracts())
     checked = 0
     for schema_dir in sorted(golden_root.iterdir()):
         if not schema_dir.is_dir():
+            continue
+        # Wire-contract goldens only; the B00R governance schemas (evidence_receipt.v3, trust
+        # registry, decision, snapshot, evidence manifest) are NOT wire contracts and are
+        # validated by the b00r_governance_evidence stage via triad_origin.governance.
+        if schema_dir.name not in wire_contracts:
             continue
         valid = schema_dir / "valid.json"
         invalid = schema_dir / "invalid.json"
@@ -1233,6 +1239,82 @@ def b07_control_plane_walk() -> None:
     if degraded is Readiness.READY_NO_AUTHORITY:
         raise AssertionError("an unresolvable control-plane conjunct must never report "
                              "READY_NO_AUTHORITY")
+
+
+# ---------------------------------------------------------------- B00R stage
+@stage("b00r_governance_evidence",
+       "B00R governance/evidence root: source hashes, PR-role, receipt-v3 fail-closed, "
+       "closed-scope/digest law, invalidation manifest, owner-gated validators")
+def b00r_governance_evidence_walk() -> None:
+    from triad_origin import governance as gov
+
+    # 1 · source-hash inventory recomputes and the RC3 composition manifest is consistent.
+    _run_tool("verify_source_hashes.py")
+
+    # 2 · PR-role classifier: a source path is SOURCE, an evidence path is RECEIPT, and mixing
+    #     source+evidence in one PR fails closed.
+    assert gov.classify_changed_paths(["src/triad_origin/contracts.py"])[0] == "SOURCE"
+    assert gov.classify_changed_paths(["evidence/receipts/B00R.dsse.json"])[0] == "RECEIPT"
+    assert gov.classify_changed_paths(
+        ["src/triad_origin/contracts.py", "evidence/receipts/B00R.dsse.json"])[0] == "MIXED"
+    _run_tool("classify_milestone_pr.py", "src/triad_origin/contracts.py")
+
+    # 3 · the five governance schemas validate their valid golden and reject their invalid golden.
+    for sid in ("triad.evidence_receipt.v3", "triad.receipt_trust_registry.v1",
+                "triad.governance_decision.v1", "triad.governance_snapshot.v1",
+                "triad.evidence_manifest.v1"):
+        valid = json.loads((ROOT / f"contracts/golden/{sid}/valid.json").read_text())
+        invalid = json.loads((ROOT / f"contracts/golden/{sid}/invalid.json").read_text())
+        gov.validate_structure(valid, sid)
+        try:
+            gov.validate_structure(invalid, sid)
+            raise AssertionError(f"{sid} invalid golden passed structural validation")
+        except gov.GovernanceError:
+            pass
+
+    # 4 · receipt-v3 is fail-closed without an externally pinned trust registry (never PASS).
+    root_receipt = json.loads(
+        (ROOT / "contracts/golden/triad.evidence_receipt.v3/valid.json").read_text())
+    result, reason = gov.validate_receipt_v3(root_receipt, milestone="B00R")
+    assert result == "BLOCKED", (result, reason)
+
+    # 5 · closed-scope and digest laws recursively reject empty/wildcard/placeholder.
+    for bad in ({}, [], "", "  ", "a*b", None):
+        try:
+            gov.assert_closed_scope(bad)
+            raise AssertionError(f"closed-scope admitted {bad!r}")
+        except gov.GovernanceError:
+            pass
+    for bad in ("", gov.ZERO_DIGEST, "A" * 64, "NOT_APPLICABLE"):
+        try:
+            gov.assert_hex64(bad, "x")
+            raise AssertionError(f"assert_hex64 admitted {bad!r}")
+        except gov.GovernanceError:
+            pass
+
+    # 6 · the historical invalidation manifest resolves every entry digest to the committed,
+    #     byte-unchanged receipt (real evidence check).
+    inv = json.loads(
+        (ROOT / "docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json").read_text())
+    from triad_origin.canonical import sha256_hex
+    assert inv["entries"], "invalidation manifest empty"
+    for entry in inv["entries"]:
+        data = (ROOT / entry["path"]).read_bytes()
+        assert sha256_hex(data) == entry["sha256"], entry["path"]
+        assert entry["disposition"] in inv["disposition_vocabulary"]
+
+    # 7 · the decision/trust/ruleset templates are fail-closed (unauthenticated), never a PASS.
+    dec = json.loads(
+        (ROOT / "docs/governance/decisions/DEC-B00-REPAIR-001.template.json").read_text())
+    assert gov.decision_is_authenticated(dec) is False
+    _run_tool("validate_authority_root.py")        # non-strict: UNAVAILABLE reported, exit 0
+    _run_tool("validate_governance_snapshot.py")   # non-strict: UNAVAILABLE reported, exit 0
+
+    # 8 · safety posture is exactly OFF/OFF/OFF/LIVE / DENIED_SAFE_HOLD.
+    assert gov.SAFETY_POSTURE == {
+        "venue_environment": "OFF", "venue_activation": "OFF",
+        "paper_activation": "OFF", "shadow_activation": "LIVE"}
+    assert gov.ACTIVATION_RESULT == "DENIED_SAFE_HOLD"
 
 
 def main(argv: list[str]) -> int:

@@ -1,0 +1,51 @@
+{
+  "schema": "triad.origin.b00r_policy.v1",
+  "schema_version": "1.0.0",
+  "milestone": "B00R",
+  "repair_generation": 1,
+  "audited_start_sha": "e1f76b845bc1251c156d37a662f87fc468397fb0",
+  "required_result": "PASS_REPOSITORY_SAFE_HOLD",
+  "activation_result": "DENIED_SAFE_HOLD",
+  "levers": {
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "predecessor": null,
+  "note": "B00R is the forward-repair root; only B00R uses the root receipt variant. B01C depends on the validated B00R receipt anchor, not merely the source merge.",
+  "owner_gated_inputs": [
+    {"id": "DEC-AUTHORITY-BUNDLE-001", "template": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.template.json", "default_while_absent": "UNAVAILABLE_AUTHORITY_ROOT"},
+    {"id": "DEC-RECEIPT-PROFILE-001", "template": "docs/governance/decisions/DEC-RECEIPT-PROFILE-001.template.json", "default_while_absent": "NO_RECEIPT_MAY_RETURN_PASS"},
+    {"id": "DEC-B00-REPAIR-001", "template": "docs/governance/decisions/DEC-B00-REPAIR-001.template.json", "default_while_absent": "B01C_BLOCKED_NO_ROOT"},
+    {"id": "receipt_trust_registry", "template": "docs/governance/trust/receipt_trust_registry.v1.template.json", "default_while_absent": "NO_TRUST_REGISTRY_PINNED"},
+    {"id": "main_ruleset_snapshot", "template": "docs/governance/rulesets/main.ruleset.provider.template.json", "default_while_absent": "GOVERNANCE_UNAVAILABLE"},
+    {"id": "external_pins", "pins": ["receipt_trust_registry_sha256", "receipt_profile_decision_sha256", "authority_bundle_decision_sha256", "b00_repair_decision_sha256"], "default_while_absent": "EXTERNAL_PINS_ABSENT"}
+  ],
+  "hard_gates": [
+    {"id": "baseline_containment", "command": "python tools/build_ledger.py --verify", "hard": true},
+    {"id": "source_hashes", "command": "python tools/verify_source_hashes.py", "hard": true},
+    {"id": "contract_byte_manifest", "command": "python tools/verify_manifest.py", "hard": true},
+    {"id": "contract_manifest_schema", "command": "python tools/validate_contract_manifest.py", "hard": true},
+    {"id": "combined_dag", "command": "python tools/validate_combined_dag.py", "hard": true},
+    {"id": "reproducible_build", "command": "python tools/verify_reproducible_build.py", "hard": true},
+    {"id": "wheel_install", "command": "python tools/test_wheel_install.py", "hard": true},
+    {"id": "dark_capability", "command": "python tools/verify_no_forbidden_capabilities.py", "hard": true},
+    {"id": "e2e_audit_b00r_stage", "command": "python tools/e2e_audit.py", "hard": true},
+    {"id": "test_ids", "command": "python tools/collect_test_ids.py", "hard": true},
+    {"id": "tests_seed0", "command": "PYTHONHASHSEED=0 python -m pytest -p no:cacheprovider", "hard": true},
+    {"id": "tests_seed1", "command": "PYTHONHASHSEED=1 python -m pytest -p no:cacheprovider", "hard": true},
+    {"id": "authority_root", "command": "python tools/validate_authority_root.py --strict", "hard": true, "owner_gated": true},
+    {"id": "governance_snapshot", "command": "python tools/validate_governance_snapshot.py --strict", "hard": true, "owner_gated": true},
+    {"id": "receipt_v3", "command": "python tools/validate_b_receipt.py --strict --milestone B00R", "hard": true, "owner_gated": true}
+  ],
+  "pr_role_law": {
+    "source_pr": {"may_touch": "any path except evidence/**", "must_not_contain": "a receipt for its own source merge"},
+    "receipt_pr": {"may_touch_only": ["evidence/B00R/**", "evidence/receipts/B00R.dsse.json"], "mixed_content": "FAIL"}
+  },
+  "closure_anchor": {
+    "id": "B00R_RECEIPT_ANCHOR",
+    "mechanism": "protected signed annotated tag or ratified two-signer provider snapshot",
+    "b01c_base": "exact B00R receipt merge commit named by the anchor"
+  }
+}

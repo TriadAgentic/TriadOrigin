@@ -1,0 +1,47 @@
+{
+  "payload": {
+    "activation_result": "DENIED_SAFE_HOLD",
+    "audited_start_sha": "e1f76b845bc1251c156d37a662f87fc468397fb0",
+    "config_bundle_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+    "contract_manifest_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+    "emitted_at_us": 3000000,
+    "evidence_ids": [
+      "evidence/B00R/example.json"
+    ],
+    "evidence_manifest_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+    "evidence_sha256s": [
+      "9999999999999999999999999999999999999999999999999999999999999999"
+    ],
+    "expires_at_us": 4000000,
+    "final_source_head": "e1f76b845bc1251c156d37a662f87fc468397fb0",
+    "invalidation_manifest_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+    "levers": {
+      "paper_activation": "OFF",
+      "shadow_activation": "LIVE",
+      "venue_activation": "OFF",
+      "venue_environment": "OFF"
+    },
+    "milestone": "B00R",
+    "observed_at_us": 2000000,
+    "repair_decision_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+    "repair_generation": 1,
+    "repository": "TriadAgentic/TriadOrigin",
+    "result": "PASS_REPOSITORY_SAFE_HOLD",
+    "rollback_proof_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "scope": {
+      "milestone": "B00R",
+      "repository": "TriadAgentic/TriadOrigin"
+    },
+    "signatures": [],
+    "source_merge_sha": "e1f76b845bc1251c156d37a662f87fc468397fb0",
+    "source_merge_time_us": 1000000,
+    "source_merge_tree": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "source_pr": 27,
+    "test_manifest_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "variant": "ROOT",
+    "workflow_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "receipt_kind": "EVIDENCE_RECEIPT_V3",
+  "schema": "triad.evidence_receipt.v3",
+  "schema_version": "3.0.0"
+}

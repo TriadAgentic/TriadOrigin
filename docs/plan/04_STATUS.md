@@ -2,6 +2,30 @@
 
 _As of 2026-08-09 · Runtime truth is unknown until fresh attestation. No activation is authorized._
 
+## B00R forward-repair (2026-08-10) — the only open root repair
+
+The B00–B07 milestone **artifacts exist** but **no milestone is legitimately closed**: the old
+chain is invalid at its root (branch-governance issue #5 open, self-hash "signatures" that
+authenticate no issuer, placeholder digests, impossible chronology, a branch-specific CI receipt
+skip). The repair is **forward-only** from `B00R`; historical R00/B00/B00C/B01–B07 receipts are
+preserved byte-unchanged and carry additive dispositions (`INVALIDATED`,
+`BUILT_ON_INVALID_ANCESTRY`) in `docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json`. They are
+never edited into a retroactive pass.
+
+| Item | State | Meaning |
+|---|---|---|
+| B00R engineering (schemas, validators, ledger/DAG fail-closed, receipt-v3, tools, tests, e2e stage, CI role gate) | `BUILT_AND_GREEN` | Deterministic gates pass; see `tools/b00r_gate.py`. |
+| B00R owner-gated closure (authenticated decisions, pinned trust registry, no-bypass `main` ruleset, threshold-signed receipt-v3, closure anchor) | `BLOCKED — OWNER_REQUIRED` | Templates carry `authenticated:false`; every dependent gate fail-closes to `BLOCKED`/`UNAVAILABLE`, never `PASS`. |
+| Historical B00–B07 closure | `INVALIDATED / BUILT_ON_INVALID_ANCESTRY` | Preserved as immutable evidence; not a closure. |
+| B00R result | `PASS_REPOSITORY_SAFE_HOLD` only after all six dimensions (authority · implementation · repository · governance · evidence · chain) pass | Absent owner authority the result is `BLOCKED`. |
+| B01C onward | `FROZEN` | May not begin until the exact `B00R_RECEIPT_ANCHOR` validates. |
+
+Owner acts required to close B00R (each fails closed until supplied — see `docs/governance/README.md`):
+authenticate `DEC-AUTHORITY-BUNDLE-001` / `DEC-RECEIPT-PROFILE-001` / `DEC-B00-REPAIR-001`; publish
++ externally pin the receipt trust registry; install the no-bypass `main` ruleset and capture
+provider evidence; close issue #5 on the compliant merge; produce the threshold-signed receipt-v3 and
+the `B00R_RECEIPT_ANCHOR`. Safety posture is invariant `DENIED_SAFE_HOLD`, OFF/OFF/OFF/LIVE throughout.
+
 ## Controlling status
 
 | Item | State | Evidence/meaning |
