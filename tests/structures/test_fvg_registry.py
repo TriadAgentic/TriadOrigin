@@ -173,6 +173,42 @@ def test_untouched_zone_expires_cleanly_with_its_full_original_range():
     assert zone["remaining_high_ticks"] == 101
 
 
+def test_expiry_bar_that_also_penetrates_expires_before_touch():
+    """Terminal precedence (the RC3 F10 override's one named behavioral clause, PAR-051:
+    "transition on bar 120 before touch evaluation"): a zone whose expiry bar would ALSO shrink
+    the remaining range must EXPIRE — never touch or fill — on that bar.
+
+    Discriminating vector. Both other TTL tests graze ``[103, 101]`` against zone ``[100, 101]``
+    (``bar_low == remaining_high`` -> zero-shrink), so a reversed touch-then-expire order passes
+    them byte-identically. Here the expiry bar's ``low_ticks`` penetrates below ``remaining_high``:
+    under the correct precedence the zone EXPIRES untouched; under the reversed order it would
+    instead FULLY_FILL and never expire.
+    """
+    params = dict(PARAMS, **{fvg.PARAM_ZONE_TTL_BARS: 3})
+    bars = [
+        bar(0, 100, 90),
+        bar(1, 1000, -1000),                     # wide guard
+        bar(2, 103, 101),                        # forms zone [100, 101]
+        bar(3, 103, 101, event_id="f0"),         # graze -> no shrink, age 1
+        bar(4, 103, 101, event_id="f1"),         # graze -> no shrink, age 2
+        bar(5, 103, 100, event_id="f2"),         # age 3 == ttl 3: low 100 penetrates [100, 101],
+                                                 # would FULLY_FILL if touch ran first
+    ]
+    result = run(bars, params)
+    assert touched(result.events) == []
+    assert fully_filled(result.events) == []
+    (expire_event,) = expired(result.events)
+    assert expire_event["expired_at_event_id"] == "f2"
+    assert expire_event["bars_since_formation"] == 3
+    # Untouched: terminal precedence ran before the penetrating touch, so the range is intact.
+    assert expire_event["remaining_low_ticks"] == 100
+    assert expire_event["remaining_high_ticks"] == 101
+    (zone,) = result.final_state["zones"]
+    assert zone["state"] == fvg.STATE_EXPIRED
+    assert zone["remaining_low_ticks"] == 100
+    assert zone["remaining_high_ticks"] == 101
+
+
 # --- TTL exact-bar-120 vs 119 boundary (PAR-051) ------------------------------------------------
 
 
