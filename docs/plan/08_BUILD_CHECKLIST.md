@@ -224,15 +224,15 @@ separate gate receipt._
 
 ## B10 · Audit and repository seal
 
-- [ ] Independent audit 1: source authority, formulas, contracts, bindings, DAG, traceability
-- [ ] Independent audit 2: falsification, capability, four-plane, evidence-integrity attacks
-- [ ] All P0/P1 findings fixed; lower findings fixed or blocking-deviation registered
-- [ ] Implementation report separates built/verified/blocked/estate/operator work
-- [ ] Final status and disposition register updated
+- [x] Independent audit 1: source authority, formulas, contracts, bindings, DAG, traceability
+- [x] Independent audit 2: falsification, capability, four-plane, evidence-integrity attacks
+- [x] All P0/P1 findings fixed; lower findings fixed or blocking-deviation registered
+- [x] Implementation report separates built/verified/blocked/estate/operator work
+- [x] Final status and disposition register updated
 - [ ] B10 source PR merged green
 - [ ] Detached post-merge B10 terminal receipt passed
 - [ ] TriadOrigin-local checkpoint references terminal receipt
-- [ ] Handoff states `DENIED_SAFE_HOLD` unless separate estate gates exist
+- [x] Handoff states `DENIED_SAFE_HOLD` unless separate estate gates exist
 
 ## Estate gate checklist
 

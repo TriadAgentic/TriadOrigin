@@ -402,15 +402,23 @@ _RECEIPT_EQUALITY_FIELDS = (
 
 
 def _promotion_receipt_ok(payload: dict, receipt: dict) -> bool:
-    """LEV-0042 / LEV-V-0074/0075/0085/0086/0087: a LIVE/LIVE promotion receipt must be a current
-    PASS whose declared digests/scope EQUAL the manifest's own, and whose expiry (when both the
-    receipt expiry and a caller evaluation clock are present) is not past.
+    """LEV-0042 / LEV-V-0074/0075/0085/0086/0087: the in-repo, honest-null half of the LIVE/LIVE
+    promotion-receipt gate. RC4 semantic_rules[2] / refusals[11] / LEV-0042 require a *current
+    successful same-digest* TESTNET promotion receipt for LIVE activation; that full binding — an
+    AFFIRMATIVE PASS result AND equality against EVERY manifest-declared digest/scope — is the
+    operator/estate **G-8/G-9 same-digest TESTNET certificate + production-risk signing** (an
+    EXTERNAL_EVIDENCE gate, out of ORIGIN's scope: ORIGIN never activates, activation_result is
+    always ``DENIED_SAFE_HOLD``). See ``docs/plan/09_OPEN_QUESTIONS.md`` E43 and
+    ``docs/plan/08_BUILD_CHECKLIST.md`` G-8/G-9.
 
-    Additive + honest-null: a field the MANIFEST does not itself declare is never demanded of the
-    receipt (a receipt cannot be asked to match a digest the manifest does not carry), so a minimal
-    manifest+receipt pair is unchanged — while a receipt whose PROVIDED digest/scope disagrees, or
-    whose ``result`` is present and not a PASS/SUCCESS, or that is expired against a provided clock,
-    refuses ``LIVE_PROMOTION_RECEIPT_MISSING``.
+    What THIS predicate enforces (additive + honest-null, deliberately a subset so the receipt is
+    never asked to match a digest the manifest does not itself carry): a receipt whose PROVIDED
+    ``result`` is present and not a PASS/SUCCESS, OR whose PROVIDED digest/scope field disagrees
+    with a digest the manifest DOES declare, OR that is expired against a provided evaluation clock,
+    refuses ``LIVE_PROMOTION_RECEIPT_MISSING``. It does NOT, in-repo, demand an affirmative result
+    or force digest presence — a receipt object's presence is the in-repo gate; the affirmative
+    same-digest binding is the out-of-repo estate certificate above. This honest-null subset is
+    pinned by ``tests/control/test_lever_law.py`` and the ``e2e_audit.py`` lever walk.
     """
     result = receipt.get("result")
     if result is not None and result not in _RECEIPT_PASS_RESULTS:

@@ -1,0 +1,40 @@
+{
+  "__UNSIGNED_DRAFT__": "B10 terminal-receipt config SCAFFOLD. Fields marked __OPERATOR_FILLS__ are external/operator-gated (register E45) and cannot be produced by an agent. See B10_receipt_scaffold.md. The operator completes these, then runs tools/build_receipt_v3.py OUTSIDE the repo, then signs the DSSE preimages in ceremony (E32).",
+  "milestone": "B10",
+  "receipt_id": "__OPERATOR_FILLS__ (e.g. TRIAD-ORIGIN-B10-TERMINAL-0001)",
+  "source_pr": "__OPERATOR_FILLS__ (B10 source PR number/URL, merged green)",
+  "receipt_pr": "__OPERATOR_FILLS__ (B10 evidence-only receipt PR number/URL)",
+  "build_commit": "__OPERATOR_FILLS__ (40-hex; the merged main hash == merge_commit)",
+  "merge_commit": "__OPERATOR_FILLS__ (40-hex; B10 source-PR squash-merge hash on main)",
+  "source_head_sha": "__OPERATOR_FILLS__ (40-hex; exact reviewed head)",
+  "reviewed_at_us": "__OPERATOR_FILLS__ (canonical int64 string, microseconds)",
+  "source_merge_at_us": "__OPERATOR_FILLS__ (canonical int64 string, microseconds)",
+  "observed_at_us": "__OPERATOR_FILLS__ (canonical int64 string; gate-reproduction time on merged main)",
+  "emitted_at_us": "__OPERATOR_FILLS__ (canonical int64 string)",
+  "expires_at_us": "__OPERATOR_FILLS__ (canonical int64 string; <= emitted + max_receipt_ttl)",
+  "builder": "__OPERATOR_FILLS__ (PRODUCER identity)",
+  "reviewer": "__OPERATOR_FILLS__ (independent reviewer identity; distinct from builder/CI)",
+  "predecessor": {
+    "id": "__OPERATOR_FILLS__ (the B09 evidence-only receipt id — NOT YET ON DISK; the B08/B09 receipts are operator-gated post-merge PRs, register E42/A3)",
+    "sha256": "__OPERATOR_FILLS__ (non-zero 64-hex of the sealed B09 receipt file bytes)"
+  },
+  "correction_of_receipt_ids": [],
+  "ci_runs": [
+    {
+      "run_id": "__OPERATOR_FILLS__ (green CI run id bound to source_head_sha)",
+      "head_sha": "__OPERATOR_FILLS__ (== source_head_sha)",
+      "conclusion": "SUCCESS",
+      "required_jobs_unskipped": true
+    }
+  ],
+  "evidence": [
+    {"evidence_id": "profile-decision", "digest_role": "RECEIPT_PROFILE_DECISION", "path": "__OPERATOR_FILLS__ (path to the ratified DECISION-RECEIPT-PROFILE-001 file; content must equal the runner's SUPPORTED_RECEIPT_PROFILE_DECISION; external artifact, E45.6)", "producer": "operator", "observed_at_us": "__OPERATOR_FILLS__", "media_type": "application/json"},
+    {"evidence_id": "artifact", "digest_role": "ARTIFACT", "path": "docs/reports/B10_IMPLEMENTATION_REPORT.md", "producer": "build-session-b10", "observed_at_us": "__OPERATOR_FILLS__", "media_type": "text/markdown"},
+    {"evidence_id": "config", "digest_role": "CONFIGURATION", "path": "docs/control/build_ledger_review.v1.json", "producer": "build-session-b10", "observed_at_us": "__OPERATOR_FILLS__", "media_type": "application/json"},
+    {"evidence_id": "contract-bundle", "digest_role": "CONTRACT_BUNDLE", "path": "contracts/manifest/contract_bundle.manifest.b01.v2.json", "producer": "build-session-b10", "observed_at_us": "__OPERATOR_FILLS__", "media_type": "application/json"},
+    {"evidence_id": "binding-bundle", "digest_role": "BINDING_BUNDLE", "path": "__OPERATOR_FILLS__ (repo-relative binding bundle path)", "producer": "build-session-b10", "observed_at_us": "__OPERATOR_FILLS__", "media_type": "application/json"},
+    {"evidence_id": "test-collection", "digest_role": "TEST_COLLECTION", "path": "__OPERATOR_FILLS__ (committed tools/collect_test_ids.py output for merged main)", "producer": "build-session-b10", "observed_at_us": "__OPERATOR_FILLS__", "media_type": "application/json"},
+    {"evidence_id": "evidence-manifest", "digest_role": "EVIDENCE_MANIFEST", "path": "__OPERATOR_FILLS__ (committed gate-reproduction transcript, cf. B07.gate_reproduction.log)", "producer": "build-session-b10", "observed_at_us": "__OPERATOR_FILLS__", "media_type": "text/plain"},
+    {"evidence_id": "rollback-proof", "digest_role": "ROLLBACK_PROOF", "path": "__OPERATOR_FILLS__ (repo-relative rollback-proof artifact)", "producer": "build-session-b10", "observed_at_us": "__OPERATOR_FILLS__", "media_type": "text/plain"}
+  ]
+}

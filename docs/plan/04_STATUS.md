@@ -98,3 +98,17 @@ addendum records the deltas and their dispositions. No claim here is a gate rece
 completion) → B03 (F02–F09 + E01 interface validators) → B04 → B05 (four-plane substrate) → B06
 (reaction/capsules/candidates) → B07 → B08 → B09 → B10. Each milestone: one source PR, one
 receipt PR, e2e growth in the source PR.
+
+---
+
+## B10 seal addendum — repository seal state (2026-08-10, HEAD `fe8d106`)
+
+_No claim here is a gate receipt. Activation is and remains `DENIED_SAFE_HOLD`._
+
+| Item | Current fact | Disposition |
+|---|---|---|
+| B10 audit | Two independent auditors at `fe8d106`: structural **CLEAN**; safety/evidence-integrity **two P3**, both confirmed and deliberately pinned/mooted (no P0/P1) | Register E42/E43/E44; the lever docstring overclaim narrowed (no behaviour change), scan_secrets left byte-verbatim from the frozen runner |
+| Reachable terminal | The frozen runner's full-PASS `exit 0` is **structurally unreachable** (check-evidence index self-referential git-hash fixed point) | Honest terminal = exit-3 `BLOCKED_INCOMPLETE`, every reachable hard gate green, WP checks `NOT_RUN` (index-absent). Register E31; `docs/reports/B10_TERMINAL_STATE.md` |
+| B10 terminal receipt | UNSIGNED scaffold + config draft shipped in-repo (`docs/reports/B10_receipt_scaffold.md`, `B10_receipt_config.DRAFT.json`); the operator signs in ceremony | Full self-check-passing draft cannot be produced by an agent — it needs the external trust-registry/profile-decision SHA pins + the (operator-gated) B08/B09 predecessor receipt chain, none of which exist on disk. Register E45 |
+| Operator ceremony | The complete external act list (exit-3 acceptance / key minting / branch rulesets / DSSE snapshot / work-order MDs / trust-registry + profile-decision / seal merge+receipt+checkpoint / G-1..G9) | Register E45; `08_BUILD_CHECKLIST.md` B10 + Estate gate checklist. All `BLOCKED_EXTERNAL` |
+| Handoff | `DENIED_SAFE_HOLD` unless separate estate gates exist | Controlling result unchanged |
