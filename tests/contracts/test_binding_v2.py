@@ -134,15 +134,19 @@ class TestRegistryIntegrity:
             bindings.load_registry(path)
 
     def test_duplicate_active_slot_overlap_fails(self, tmp_path):
+        # Keep the inventory at exactly 105 (BIND-02) by REPLACING a blocked row with a second
+        # ACTIVE row that claims FPB-0001's slot — so the loop-level OVERLAP law is what fires.
         def mutate(reg):
             src = next(r for r in reg["rows"] if r["binding_id"] == "FPB-0001")
+            victim = next(r for r in reg["rows"]
+                          if r["status"] == "BLOCKED_BINDING_V2_MIGRATION")
             clone = copy.deepcopy(src)
             clone["binding_id"] = "FPB-9999"
-            _resign(clone)
-            reg["rows"].append(clone)
-            reg["row_count"] = len(reg["rows"])
+            idx = reg["rows"].index(victim)
+            reg["rows"][idx] = _resign(clone)
             reg["status_counts"] = dict(reg["status_counts"])
             reg["status_counts"]["ACTIVE"] += 1
+            reg["status_counts"]["BLOCKED_BINDING_V2_MIGRATION"] -= 1
         path = self._load_mutated(tmp_path, mutate)
         with pytest.raises(bindings.BindingRegistryError, match="OVERLAP"):
             bindings.load_registry(path)
@@ -156,8 +160,13 @@ class TestRegistryIntegrity:
             bindings.load_registry(path)
 
     def test_duplicate_binding_id_fails(self, tmp_path):
+        # Keep exactly 105 rows: give a second blocked row a first blocked row's binding_id, so
+        # the id-uniqueness law fires rather than the exact-inventory count (BIND-02/BIND-06).
         def mutate(reg):
-            reg["rows"].append(copy.deepcopy(reg["rows"][0]))
+            blocked = [r for r in reg["rows"]
+                       if r["status"] == "BLOCKED_BINDING_V2_MIGRATION"]
+            blocked[1]["binding_id"] = blocked[0]["binding_id"]
+            _resign(blocked[1])
         path = self._load_mutated(tmp_path, mutate)
         with pytest.raises(bindings.BindingRegistryError, match="duplicate"):
             bindings.load_registry(path)

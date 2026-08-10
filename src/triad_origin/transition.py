@@ -59,6 +59,10 @@ def require(params: Params, name: str) -> Any:
     """Fetch a required semantic parameter or fail closed.
 
     A code default for a semantic threshold is a hidden experiment and is forbidden (Doc 02 §02.15).
+
+    **B01C-BIND-05:** this raw-mapping accessor is a TEST/REPLAY convenience only. Public production
+    entrypoints must consume a sealed :class:`~triad_origin.bindings.ResolvedParameterBundle`
+    through :func:`require_bundle`; a raw dictionary cannot enter a production formula path.
     """
     if name not in params:
         raise MissingParameterError(
@@ -67,6 +71,25 @@ def require(params: Params, name: str) -> Any:
     if value is None:
         raise MissingParameterError(f"required semantic parameter {name!r} is null; fail closed")
     return value
+
+
+def require_bundle(bundle: Any, parameter_id: str) -> Any:
+    """Fetch a required parameter from an authenticated, sealed capability, or fail closed.
+
+    B01C-BIND-05: the public production path accepts ONLY an exact
+    :class:`~triad_origin.bindings.ResolvedParameterBundle` — the unforgeable capability the
+    authenticated loader constructs. A raw dict, a copied/forged dataclass, a subclass, or a
+    reloaded marker is refused by an exact-type check *before* any lookup, so a presence-only
+    dictionary can never reach a formula. The bundle's own ``require`` face fails closed on an
+    absent/blocked/sentinel parameter (never a code default).
+    """
+    from .bindings import ResolvedParameterBundle, CapabilityForgeryError
+
+    if type(bundle) is not ResolvedParameterBundle:
+        raise CapabilityForgeryError(
+            "production parameters require a sealed ResolvedParameterBundle; "
+            f"got {type(bundle).__name__!r}")
+    return bundle.require(parameter_id)
 
 
 @dataclass(frozen=True)
