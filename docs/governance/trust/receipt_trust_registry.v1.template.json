@@ -3,6 +3,17 @@
   "keys": [
     {
       "algorithm": "ed25519",
+      "identity": "UNSET_AUTHORITY_OWNER",
+      "key_id": "UNSET-authority-owner",
+      "not_after_us": 1,
+      "not_before_us": 0,
+      "public_key_hex": "2222222222222222222222222222222222222222222222222222222222222222",
+      "revoked": true,
+      "role": "AUTHORITY_OWNER",
+      "scope": "DEC-AUTHORITY-BUNDLE-001,DEC-RECEIPT-PROFILE-001,DEC-B00-REPAIR-001"
+    },
+    {
+      "algorithm": "ed25519",
       "identity": "UNSET_OWNER_EVIDENCE_PRODUCER",
       "key_id": "UNSET-evidence-producer",
       "not_after_us": 1,

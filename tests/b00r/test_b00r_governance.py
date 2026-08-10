@@ -115,7 +115,9 @@ def test_neg008_no_external_signatures_is_blocked():
     receipt = _golden("triad.evidence_receipt.v3", "valid")
     trust = gov.validate_trust_registry(_golden("triad.receipt_trust_registry.v1", "valid"))
     # A profile-required threshold with an empty signatures array can never PASS.
-    result, reason = gov.validate_receipt_v3(receipt, milestone="B00R", trust=trust)
+    result, reason = gov.validate_receipt_v3(
+        receipt, milestone="B00R", trust=trust,
+        now_us=receipt["payload"]["emitted_at_us"])
     assert result == "BLOCKED" and reason == "NO_EXTERNAL_SIGNATURES"
 
 
@@ -149,7 +151,8 @@ def test_neg009_signer_threshold_rejections():
     # duplicate identity across two key ids
     ok, reason = gov.verify_signatures(
         signed_bytes=body,
-        signatures=[{"key_id": "k1", "signature_hex": "0"}, {"key_id": "k2", "signature_hex": "0"}],
+        signatures=[{"key_id": "k1", "signature_hex": "0" * 128},
+                    {"key_id": "k2", "signature_hex": "0" * 128}],
         trust=trust, required_roles=(), threshold=2)
     assert not ok and reason.startswith("DUPLICATE_SIGNER_IDENTITY")
     # empty signatures
@@ -220,15 +223,22 @@ def test_neg012_chronology_order_and_future():
 
 # --- NEG-017 · source PR touching receipt / receipt PR touching source fails ----------------------
 def test_neg017_pr_role_mixed_fails():
-    role, _ = gov.classify_changed_paths(["src/x.py", "evidence/receipts/B00R.dsse.json"])
+    role, _ = gov.classify_changed_paths(
+        ["src/x.py", "evidence/receipts/B00R.receipt.v3.json"])
     assert role == "MIXED"
-    proc = _run("tools/classify_milestone_pr.py", "src/x.py", "evidence/receipts/B00R.dsse.json")
+    proc = _run(
+        "tools/classify_milestone_pr.py",
+        "src/x.py",
+        "evidence/receipts/B00R.receipt.v3.json",
+    )
     assert proc.returncode == 1
 
 
 def test_neg017_pure_roles_pass():
     assert gov.classify_changed_paths(["src/x.py"])[0] == "SOURCE"
-    assert gov.classify_changed_paths(["evidence/receipts/B00R.dsse.json"])[0] == "RECEIPT"
+    assert gov.classify_changed_paths(
+        ["evidence/receipts/B00R.receipt.v3.json"]
+    )[0] == "RECEIPT"
 
 
 # --- NEG-018 · B01C without exact B00R anchor is blocked (successor variant) ----------------------
@@ -236,6 +246,7 @@ def test_neg018_successor_requires_predecessor_anchor():
     receipt = _golden("triad.evidence_receipt.v3", "valid")
     succ = copy.deepcopy(receipt)
     succ["payload"]["milestone"] = "B01C"
+    succ["payload"]["scope"]["milestone"] = "B01C"
     succ["payload"]["variant"] = "SUCCESSOR"
     # no predecessor block -> FAIL
     result, reason = gov.validate_receipt_v3(succ, milestone="B01C")
@@ -293,8 +304,43 @@ def test_invalidation_manifest_matches_committed_receipts():
         assert entry["disposition"] in inv["disposition_vocabulary"]
 
 
-def test_b00r_gate_reports_blocked_without_owner_inputs():
-    proc = _run("tools/b00r_gate.py", "--mode", "source")
-    # deterministic gates pass, owner-gated closure inputs absent -> overall not PASS.
-    assert proc.returncode == 1
-    assert "BLOCKED" in proc.stdout
+def test_b00r_gate_owner_commands_are_strict_and_use_one_canonical_receipt():
+    from argparse import Namespace
+    from tools import b00r_gate
+
+    args = Namespace(
+        mode="receipt",
+        expected_head="a" * 40,
+        now_us=1_000_000,
+        pins=None,
+        receipt=b00r_gate.CANONICAL_RECEIPT,
+        manifest=b00r_gate.CANONICAL_MANIFEST,
+        governance_snapshot=b00r_gate.CANONICAL_GOVERNANCE_SNAPSHOT,
+        provider_raw=b00r_gate.CANONICAL_PROVIDER_RAW,
+        provider_pin=None,
+        anchor_ruleset=b00r_gate.CANONICAL_ANCHOR_RULESET,
+        anchor_ruleset_pin=None,
+    )
+    gates = b00r_gate._owner_gates(args)
+    commands = [gate.argv for gate in gates]
+    assert all(gate.owner_gated for gate in gates)
+    assert any(
+        "--strict" in command
+        and any(part.endswith("/validate_authority_root.py") for part in command)
+        for command in commands
+    )
+    for command in commands[:2]:
+        assert "--expected-head" in command
+        assert "--git-root" in command
+        assert "--now-us" in command
+    receipt_commands = [
+        command for command in commands
+        if any(part.endswith("/validate_b_receipt.py") for part in command)
+    ]
+    assert len(receipt_commands) == 1
+    assert receipt_commands[0][-1] == "evidence/receipts/B00R.receipt.v3.json"
+    for flag in ("--now-us", "--manifest", "--git-root", "--expected-head",
+                 "--governance-snapshot", "--provider-raw"):
+        assert flag in receipt_commands[0]
+    assert "--trust" not in receipt_commands[0]
+    assert not any("dsse" in part.lower() for command in commands for part in command)

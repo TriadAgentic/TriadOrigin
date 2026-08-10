@@ -12,9 +12,10 @@
   "scope": {
     "canonicalization": "triad_origin.canonical.canonical_json (RFC8785-style sorted-key UTF-8)",
     "clock_law": "observed_at_us > source_merge_time_us; emitted_at_us >= observed_at_us; zero future tolerance",
-    "closure_anchor_mechanism": "protected signed annotated tag B00R_RECEIPT_ANCHOR (or ratified two-signer provider snapshot)",
-    "note": "DSSE/Ed25519 with two distinct verified identities is the DEFAULT PROPOSAL; it is not authoritative until this decision is authenticated by the owner.",
-    "signature_algorithm": "ed25519 (PROPOSED)",
+    "closure_anchor_mechanism": "protected annotated tag B00R_RECEIPT_ANCHOR plus externally pinned active no-update/no-delete/no-bypass tag ruleset",
+    "envelope": "triad.evidence_receipt.v3 canonical-json",
+    "note": "A bare canonical receipt-v3 with two distinct Ed25519 identities is proposed; it is not authoritative until this decision is authenticated by the owner. DSSE is not this profile.",
+    "signature_algorithm": "ed25519",
     "signer_roles": [
       "EVIDENCE_PRODUCER",
       "INDEPENDENT_COUNTERSIGNER"

@@ -1251,12 +1251,15 @@ def b00r_governance_evidence_walk() -> None:
     # 1 · source-hash inventory recomputes and the RC3 composition manifest is consistent.
     _run_tool("verify_source_hashes.py")
 
-    # 2 · PR-role classifier: a source path is SOURCE, an evidence path is RECEIPT, and mixing
-    #     source+evidence in one PR fails closed.
+    # 2 · PR-role classifier: only the canonical bare receipt path is RECEIPT; the formerly
+    #     advertised DSSE name is INVALID, and mixing source+evidence fails closed.
     assert gov.classify_changed_paths(["src/triad_origin/contracts.py"])[0] == "SOURCE"
-    assert gov.classify_changed_paths(["evidence/receipts/B00R.dsse.json"])[0] == "RECEIPT"
     assert gov.classify_changed_paths(
-        ["src/triad_origin/contracts.py", "evidence/receipts/B00R.dsse.json"])[0] == "MIXED"
+        ["evidence/receipts/B00R.receipt.v3.json"])[0] == "RECEIPT"
+    assert gov.classify_changed_paths(["evidence/receipts/B00R.dsse.json"])[0] == "INVALID"
+    assert gov.classify_changed_paths(
+        ["src/triad_origin/contracts.py",
+         "evidence/receipts/B00R.receipt.v3.json"])[0] == "MIXED"
     _run_tool("classify_milestone_pr.py", "src/triad_origin/contracts.py")
 
     # 3 · the five governance schemas validate their valid golden and reject their invalid golden.

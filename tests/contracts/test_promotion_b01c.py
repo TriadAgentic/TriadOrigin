@@ -31,10 +31,13 @@ def _projection() -> dict:
 def _trust() -> dict:
     return {
         "prod": {"key_id": "prod", "identity": "producer@triad", "role": "EVIDENCE_PRODUCER",
-                 "algorithm": "ed25519", "public_key_hex": "ab" * 32, "revoked": False},
+                 "algorithm": "ed25519", "public_key_hex": "ab" * 32, "revoked": False,
+                 "scope": "B00R..B07", "not_before_us": 1, "not_after_us": 5_000_000},
         "counter": {"key_id": "counter", "identity": "reviewer@triad",
                     "role": "INDEPENDENT_COUNTERSIGNER", "algorithm": "ed25519",
-                    "public_key_hex": "cd" * 32, "revoked": False},
+                    "public_key_hex": "cd" * 32, "revoked": False,
+                    "scope": "B00R..B07", "not_before_us": 1,
+                    "not_after_us": 5_000_000},
     }
 
 
@@ -42,7 +45,9 @@ def _pass_receipt(binding_digest: str) -> dict:
     receipt = json.loads(
         (GOLDEN / "triad.evidence_receipt.v3" / "valid.json").read_text(encoding="utf-8"))
     payload = receipt["payload"]
-    payload["evidence_sha256s"] = [binding_digest, "9" * 64]
+    # The valid golden has one evidence ID; preserve the receipt's closed parallel index while
+    # replacing that one preimage digest with the invariant projection being proved.
+    payload["evidence_sha256s"] = [binding_digest]
     payload["signatures"] = [
         {"key_id": "prod", "signature_hex": "1" * 128},
         {"key_id": "counter", "signature_hex": "2" * 128},

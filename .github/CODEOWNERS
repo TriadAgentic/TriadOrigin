@@ -28,7 +28,10 @@
 /tools/validate_b_receipt.py                @TriadAgentic/triad-origin-governance
 /tools/validate_authority_root.py           @TriadAgentic/triad-origin-governance
 /tools/validate_governance_snapshot.py      @TriadAgentic/triad-origin-governance
+/tools/validate_b00r_anchor.py               @TriadAgentic/triad-origin-governance
 /tools/verify_source_hashes.py              @TriadAgentic/triad-origin-governance
+/tools/verify_historical_evidence.py         @TriadAgentic/triad-origin-governance
+/tools/verify_codeowners.py                  @TriadAgentic/triad-origin-governance
 /tools/build_evidence_manifest.py           @TriadAgentic/triad-origin-governance
 /tools/classify_milestone_pr.py             @TriadAgentic/triad-origin-governance
 /tools/b00r_gate.py                         @TriadAgentic/triad-origin-governance

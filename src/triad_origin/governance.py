@@ -210,6 +210,42 @@ def validate_trust_registry(doc: dict) -> dict[str, dict]:
     return by_id
 
 
+def assert_usable_trust_registry(trust: dict[str, dict]) -> None:
+    """Reject placeholder or unusable public-key material in a closure trust registry.
+
+    The contract goldens intentionally exercise structural validation.  PASS-capable tools must
+    additionally call this function so a syntactically valid all-zero template can never become a
+    trust root merely by setting ``authenticated=true``.
+    """
+    if not trust:
+        raise GovernanceError("TRUST_REGISTRY_EMPTY")
+    public_keys: set[str] = set()
+    roles: set[str] = set()
+    for key_id, entry in trust.items():
+        public_key = entry.get("public_key_hex")
+        if not isinstance(public_key, str) or re.fullmatch(_HEX64, public_key) is None:
+            raise GovernanceError(f"TRUST_REGISTRY_BAD_PUBLIC_KEY:{key_id}")
+        if public_key == ZERO_DIGEST:
+            raise GovernanceError(f"TRUST_REGISTRY_PLACEHOLDER_PUBLIC_KEY:{key_id}")
+        if public_key in public_keys:
+            raise GovernanceError(f"TRUST_REGISTRY_DUPLICATE_PUBLIC_KEY:{key_id}")
+        public_keys.add(public_key)
+        if entry.get("revoked") is not True:
+            roles.add(entry.get("role"))
+        not_before = entry.get("not_before_us")
+        not_after = entry.get("not_after_us")
+        if (not isinstance(not_before, int) or isinstance(not_before, bool)
+                or not isinstance(not_after, int) or isinstance(not_after, bool)
+                or not_before < 0 or not_after <= not_before):
+            raise GovernanceError(f"TRUST_REGISTRY_BAD_VALIDITY_WINDOW:{key_id}")
+        scope = entry.get("scope")
+        if not isinstance(scope, str) or not scope.strip() or "*" in scope:
+            raise GovernanceError(f"TRUST_REGISTRY_BAD_SCOPE:{key_id}")
+    missing = set(SIGNER_ROLES) - roles
+    if missing:
+        raise GovernanceError(f"TRUST_REGISTRY_MISSING_ROLES:{sorted(missing)}")
+
+
 # --- signature threshold (crypto verifier INJECTED; unavailable => fail closed, never PASS) -------
 def verify_signatures(
     *,
@@ -218,6 +254,7 @@ def verify_signatures(
     trust: dict[str, dict],
     required_roles: tuple[str, ...],
     threshold: int,
+    required_scope: str | None = None,
     now_us: int | None = None,
     verify_fn=None,
 ) -> tuple[bool, str]:
@@ -230,6 +267,10 @@ def verify_signatures(
     (``NEG-008``/``NEG-009``). The Ed25519 byte verification is INJECTED as ``verify_fn`` by the
     tool layer, because the DARK boundary forbids a crypto import inside ``src/triad_origin``.
     """
+    if not isinstance(threshold, int) or isinstance(threshold, bool) or threshold < 1:
+        return False, "BAD_SIGNATURE_THRESHOLD"
+    if len(set(required_roles)) != len(required_roles):
+        return False, "DUPLICATE_REQUIRED_ROLE"
     if not isinstance(signatures, list) or not signatures:
         return False, "NO_EXTERNAL_SIGNATURES"
     # Pass 1 — structural: resolve each signer, reject unknown/revoked/duplicate/out-of-window,
@@ -237,16 +278,25 @@ def verify_signatures(
     seen_identities: set[str] = set()
     roles_met: set[str] = set()
     for sig in signatures:
+        if not isinstance(sig, dict):
+            return False, "BAD_SIGNATURE_RECORD"
         kid = sig.get("key_id")
         entry = trust.get(kid)
         if entry is None:
             return False, f"UNKNOWN_SIGNER:{kid}"
         if entry.get("revoked"):
             return False, f"REVOKED_SIGNER:{kid}"
+        if required_scope is not None and not _trust_scope_allows(entry.get("scope"), required_scope):
+            return False, f"SIGNER_SCOPE_DENIED:{kid}:{required_scope}"
+        signature_hex = sig.get("signature_hex")
+        if not isinstance(signature_hex, str) or re.fullmatch(r"[0-9a-f]{128}", signature_hex) is None:
+            return False, f"BAD_SIGNATURE_ENCODING:{kid}"
         identity = entry.get("identity")
         if identity in seen_identities:
             return False, f"DUPLICATE_SIGNER_IDENTITY:{identity}"
         if now_us is not None:
+            if not isinstance(now_us, int) or isinstance(now_us, bool) or now_us <= 0:
+                return False, "BAD_NOW_US"
             nb, na = entry.get("not_before_us"), entry.get("not_after_us")
             if isinstance(nb, int) and now_us < nb:
                 return False, f"SIGNER_NOT_YET_VALID:{kid}"
@@ -276,6 +326,29 @@ def verify_signatures(
     return True, "OK"
 
 
+_MILESTONE_SCOPE_ORDER = ("B00R", "B01C", "B02C", "B03C", "B04C", "B05C", "B06R", "B07")
+
+
+def _trust_scope_allows(scope: object, target: str) -> bool:
+    """Interpret a closed comma-list, plus the ratified ``B00R..B07`` milestone range."""
+    if not isinstance(scope, str):
+        return False
+    for token in (item.strip() for item in scope.split(",")):
+        if token == target:
+            return True
+        if ".." not in token:
+            continue
+        start, end = token.split("..", 1)
+        try:
+            target_i = _MILESTONE_SCOPE_ORDER.index(target)
+            if (_MILESTONE_SCOPE_ORDER.index(start) <= target_i
+                    <= _MILESTONE_SCOPE_ORDER.index(end)):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 # --- governance decision -------------------------------------------------------------------------
 def decision_is_authenticated(doc: dict) -> bool:
     """A decision is authenticated only if it structurally validates AND declares real signatures.
@@ -294,6 +367,113 @@ def decision_is_authenticated(doc: dict) -> bool:
     return isinstance(sigs, list) and len(sigs) >= 1
 
 
+def canonical_decision_signing_bytes(decision: dict) -> bytes:
+    """Canonical bytes signed for a governance decision.
+
+    The signed object includes ``authenticated=true`` and every subject/scope field, but excludes
+    only the signatures array.  This definition removes the old manual "sign what looks right"
+    ambiguity and is shared by payload rendering and verification tools.
+    """
+    unsigned = dict(decision)
+    unsigned.pop("signatures", None)
+    data = canonical_json(unsigned)
+    return data if isinstance(data, bytes) else data.encode("utf-8")
+
+
+def validate_authenticated_decision(
+    decision: dict,
+    *,
+    trust: dict[str, dict],
+    now_us: int,
+    verify_fn,
+) -> None:
+    """Cryptographically authenticate one ``DEC-*`` decision under an authority-owner key."""
+    if not isinstance(now_us, int) or isinstance(now_us, bool) or now_us <= 0:
+        raise GovernanceError("NOW_US_REQUIRED")
+    validate_structure(decision, "triad.governance_decision.v1")
+    assert_no_secret_material(decision)
+    if decision.get("authenticated") is not True:
+        raise GovernanceError("DECISION_UNAUTHENTICATED")
+    effective = decision.get("effective_at_us")
+    if not isinstance(effective, int) or isinstance(effective, bool) or effective <= 0:
+        raise GovernanceError("DECISION_BAD_EFFECTIVE_TIME")
+    if effective > now_us:
+        raise GovernanceError("DECISION_NOT_YET_EFFECTIVE")
+    expiry = decision.get("expiry_at_us")
+    if expiry is not None:
+        if not isinstance(expiry, int) or isinstance(expiry, bool) or expiry <= effective:
+            raise GovernanceError("DECISION_BAD_EXPIRY")
+        if now_us > expiry:
+            raise GovernanceError("DECISION_EXPIRED")
+    assert_closed_scope(decision.get("scope"), "decision.scope")
+    subjects = decision.get("subject_sha256s")
+    if not isinstance(subjects, dict) or not subjects:
+        raise GovernanceError("DECISION_EMPTY_SUBJECTS")
+    for name, digest in subjects.items():
+        if not isinstance(name, str) or not name.strip():
+            raise GovernanceError("DECISION_BAD_SUBJECT_NAME")
+        if not isinstance(digest, str) or not (
+                re.fullmatch(_HEX64, digest) or re.fullmatch(_HEX40, digest)):
+            raise GovernanceError(f"DECISION_BAD_SUBJECT_DIGEST:{name}")
+        if digest in ("0" * 40, ZERO_DIGEST):
+            raise GovernanceError(f"DECISION_PLACEHOLDER_SUBJECT:{name}")
+    ok, reason = verify_signatures(
+        signed_bytes=canonical_decision_signing_bytes(decision),
+        signatures=decision.get("signatures", []),
+        trust=trust,
+        required_roles=("AUTHORITY_OWNER",),
+        threshold=1,
+        required_scope=decision.get("decision_id"),
+        # Key validity covers the decision action, while ``now_us`` above covers whether the
+        # decision itself is currently effective/unexpired.
+        now_us=effective,
+        verify_fn=verify_fn,
+    )
+    if not ok:
+        raise GovernanceError(f"DECISION_SIGNATURE_INVALID:{reason}")
+    signer_ids = {sig.get("key_id") for sig in decision.get("signatures", [])}
+    signer_identities = {trust[kid].get("identity") for kid in signer_ids if kid in trust}
+    if decision.get("issuer") not in signer_identities:
+        raise GovernanceError("DECISION_ISSUER_NOT_SIGNER_IDENTITY")
+
+
+def receipt_profile_from_decision(decision: dict) -> tuple[int, tuple[str, ...], str]:
+    """Return the explicitly ratified receipt signature profile.
+
+    B00R v3 is canonical JSON with embedded Ed25519 signatures.  A decision selecting DSSE or a
+    different framing must be implemented as a separately versioned envelope; it cannot silently
+    pass through this validator.
+    """
+    scope = decision.get("scope", {})
+    threshold = scope.get("signer_threshold")
+    roles = scope.get("signer_roles")
+    algorithm = scope.get("signature_algorithm")
+    envelope = scope.get("envelope")
+    if scope.get("canonicalization") != \
+            "triad_origin.canonical.canonical_json (RFC8785-style sorted-key UTF-8)":
+        raise GovernanceError("RECEIPT_PROFILE_CANONICALIZATION_MISMATCH")
+    if scope.get("clock_law") != \
+            "observed_at_us > source_merge_time_us; emitted_at_us >= observed_at_us; zero future tolerance":
+        raise GovernanceError("RECEIPT_PROFILE_CLOCK_LAW_MISMATCH")
+    if scope.get("trust_registry") != \
+            "docs/governance/trust/receipt_trust_registry.v1.json":
+        raise GovernanceError("RECEIPT_PROFILE_TRUST_PATH_MISMATCH")
+    if scope.get("closure_anchor_mechanism") != \
+            ("protected annotated tag B00R_RECEIPT_ANCHOR plus externally pinned active "
+             "no-update/no-delete/no-bypass tag ruleset"):
+        raise GovernanceError("RECEIPT_PROFILE_CLOSURE_ANCHOR_MISMATCH")
+    if threshold != 2 or isinstance(threshold, bool):
+        raise GovernanceError("RECEIPT_PROFILE_BAD_THRESHOLD")
+    required_profile_roles = ["EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER"]
+    if roles != required_profile_roles:
+        raise GovernanceError("RECEIPT_PROFILE_BAD_ROLES")
+    if algorithm != "ed25519":
+        raise GovernanceError("RECEIPT_PROFILE_UNSUPPORTED_ALGORITHM")
+    if envelope != "triad.evidence_receipt.v3 canonical-json":
+        raise GovernanceError("RECEIPT_PROFILE_UNSUPPORTED_ENVELOPE")
+    return threshold, tuple(roles), algorithm
+
+
 # --- evidence manifest ---------------------------------------------------------------------------
 def _safe_relpath(path: str) -> bool:
     if not isinstance(path, str) or path == "":
@@ -304,18 +484,29 @@ def _safe_relpath(path: str) -> bool:
     return ".." not in parts and "" not in parts and "." not in parts
 
 
-def validate_evidence_manifest(manifest: dict, root) -> None:
+def validate_evidence_manifest(
+    manifest: dict,
+    root,
+    *,
+    expected_paths: set[str] | None = None,
+    tracked_paths: set[str] | None = None,
+) -> None:
     """Validate a closed evidence manifest against committed bytes.
 
     Rejects missing, extra, duplicate, symlink, path-escape, zero-size, placeholder-digest, and
     untracked entries, and a digest whose bytes do not match (``NEG-011``).
     """
     import pathlib
-    root = pathlib.Path(root)
+    root = pathlib.Path(root).resolve(strict=True)
     validate_structure(manifest, "triad.evidence_manifest.v1")
     entries = manifest.get("entries")
     if not isinstance(entries, list) or not entries:
         raise GovernanceError("EVIDENCE_MANIFEST_EMPTY")
+    if manifest.get("entry_count") != len(entries):
+        raise GovernanceError("EVIDENCE_ENTRY_COUNT_MISMATCH")
+    declared_order = [entry.get("path") for entry in entries]
+    if declared_order != sorted(declared_order):
+        raise GovernanceError("EVIDENCE_PATHS_NOT_CANONICAL_ORDER")
     seen_paths: set[str] = set()
     seen_roles: set[str] = set()
     for entry in entries:
@@ -325,12 +516,31 @@ def validate_evidence_manifest(manifest: dict, root) -> None:
         if rel in seen_paths:
             raise GovernanceError(f"EVIDENCE_DUPLICATE_PATH: {rel}")
         seen_paths.add(rel)
+        if tracked_paths is not None and rel not in tracked_paths:
+            raise GovernanceError(f"EVIDENCE_UNTRACKED_FILE: {rel}")
         role = entry.get("role")
         if role in seen_roles and entry.get("role_unique", True):
             raise GovernanceError(f"EVIDENCE_DUPLICATE_ROLE: {role}")
         seen_roles.add(role)
-        abspath = (root / rel)
-        if abspath.is_symlink():
+        abspath = root / rel
+        # Inspect exactly the candidate and its ancestors up to the evidence root.  Walking
+        # ``Path.parents`` unbounded would inspect unrelated ancestors above ``root`` and could
+        # reject a safe tree merely because (for example) /workspace itself is a symlink.
+        cursor = abspath
+        while True:
+            if cursor.is_symlink():
+                raise GovernanceError(f"EVIDENCE_SYMLINK: {rel}")
+            if cursor == root:
+                break
+            cursor = cursor.parent
+            if root not in (cursor, *cursor.parents):
+                raise GovernanceError(f"EVIDENCE_PATH_ESCAPE: {rel}")
+        try:
+            resolved = abspath.resolve(strict=True)
+            resolved.relative_to(root)
+        except (OSError, ValueError):
+            raise GovernanceError(f"EVIDENCE_PATH_ESCAPE: {rel}") from None
+        if resolved != abspath:
             raise GovernanceError(f"EVIDENCE_SYMLINK: {rel}")
         if not abspath.is_file():
             raise GovernanceError(f"EVIDENCE_MISSING_FILE: {rel}")
@@ -345,6 +555,13 @@ def validate_evidence_manifest(manifest: dict, root) -> None:
         if actual != digest:
             raise GovernanceError(f"EVIDENCE_DIGEST_MISMATCH: {rel} ({actual[:16]} != "
                                   f"{digest[:16]})")
+        expected_media = "application/json" if rel.endswith(".json") else "application/octet-stream"
+        if entry.get("media_type") != expected_media:
+            raise GovernanceError(f"EVIDENCE_MEDIA_TYPE_MISMATCH:{rel}")
+    if expected_paths is not None and seen_paths != expected_paths:
+        missing = sorted(expected_paths - seen_paths)
+        extra = sorted(seen_paths - expected_paths)
+        raise GovernanceError(f"EVIDENCE_CLOSED_SET_MISMATCH:missing={missing}:extra={extra}")
 
 
 def build_evidence_manifest(root, entries: list[dict]) -> dict:
@@ -421,6 +638,15 @@ def validate_receipt_v3(
         return "FAIL", f"RESULT_NOT_IN_ENUM:{result!r}"
     if payload.get("milestone") != milestone:
         return "FAIL", f"MILESTONE_MISMATCH:{payload.get('milestone')!r}!={milestone!r}"
+    if payload.get("repository") != "TriadAgentic/TriadOrigin":
+        return "FAIL", "REPOSITORY_IDENTITY_MISMATCH"
+    source_pr = payload.get("source_pr")
+    if not isinstance(source_pr, int) or isinstance(source_pr, bool) or source_pr <= 0:
+        return "FAIL", "SOURCE_PR_INVALID"
+    scope = payload.get("scope")
+    if (not isinstance(scope, dict) or scope.get("milestone") != milestone
+            or scope.get("repository") != payload.get("repository")):
+        return "FAIL", "SCOPE_IDENTITY_MISMATCH"
 
     # Safety posture is invariant.
     if payload.get("activation_result") != ACTIVATION_RESULT:
@@ -431,6 +657,8 @@ def validate_receipt_v3(
     # Root vs non-root variant.
     is_root = milestone == ROOT_MILESTONE
     if is_root:
+        if payload.get("repair_generation") != 1:
+            return "FAIL", "ROOT_REPAIR_GENERATION_MISMATCH"
         if payload.get("variant") != "ROOT":
             return "FAIL", "ROOT_MILESTONE_NOT_ROOT_VARIANT"
         if payload.get("predecessor"):
@@ -484,19 +712,46 @@ def validate_receipt_v3(
     observed = payload.get("observed_at_us")
     emitted = payload.get("emitted_at_us")
     merged = payload.get("source_merge_time_us")
+    expires = payload.get("expires_at_us")
     for label, v in (("observed_at_us", observed), ("emitted_at_us", emitted),
-                     ("source_merge_time_us", merged)):
+                     ("source_merge_time_us", merged), ("expires_at_us", expires)):
         if not isinstance(v, int) or isinstance(v, bool) or v <= 0:
             return "FAIL", f"CHRONOLOGY_BAD_TIME:{label}"
     if not (merged < observed <= emitted):
         return "FAIL", "CHRONOLOGY_ORDER: require source_merge < observed <= emitted"
+    if expires <= emitted:
+        return "FAIL", "CHRONOLOGY_EXPIRY_NOT_AFTER_EMISSION"
+    if result == RESULT_PASS and (not isinstance(now_us, int) or isinstance(now_us, bool)
+                                  or now_us <= 0):
+        return "BLOCKED", "NOW_US_REQUIRED"
     if now_us is not None and emitted > now_us:
         return "FAIL", "CHRONOLOGY_FUTURE_EVIDENCE"
+    if now_us is not None and now_us > expires:
+        return "FAIL", "RECEIPT_EXPIRED"
 
     # From here a PASS additionally needs authenticated external signatures under a pinned trust
     # registry. Absence of the trust registry is fail-closed BLOCKED, never PASS.
     if result != RESULT_PASS:
         return result, "NON_PASS_RESULT"
+
+    if threshold != 2 or required_roles != (
+            "EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER"):
+        return "FAIL", "RECEIPT_PROFILE_SEPARATION_MISMATCH"
+
+    evidence_ids = payload.get("evidence_ids")
+    evidence_sha256s = payload.get("evidence_sha256s")
+    if (not isinstance(evidence_ids, list) or not evidence_ids
+            or len(evidence_ids) != len(evidence_sha256s or [])):
+        return "FAIL", "EVIDENCE_INDEX_LENGTH_MISMATCH"
+    if evidence_ids != sorted(evidence_ids) or len(set(evidence_ids)) != len(evidence_ids):
+        return "FAIL", "EVIDENCE_IDS_NOT_CANONICAL_UNIQUE"
+    if any(not _safe_relpath(path) for path in evidence_ids):
+        return "FAIL", "EVIDENCE_ID_UNSAFE"
+    try:
+        for i, digest in enumerate(evidence_sha256s):
+            assert_hex64(digest, f"payload.evidence_sha256s[{i}]")
+    except GovernanceError as exc:
+        return "FAIL", str(exc)
 
     if trust is None:
         return "BLOCKED", "NO_TRUST_REGISTRY_PINNED"
@@ -506,7 +761,11 @@ def validate_receipt_v3(
         trust=trust,
         required_roles=required_roles,
         threshold=threshold,
-        now_us=now_us,
+        required_scope=milestone,
+        # A receipt signature must have been made inside the signer's validity window.  Current
+        # revocation remains fail-closed via the registry; ordinary key expiry does not rewrite a
+        # previously valid signature into the future.
+        now_us=emitted,
         verify_fn=verify_fn,
     )
     if not ok:
@@ -547,6 +806,7 @@ def parse_source_hashes(text: str) -> dict[str, str]:
 
 # --- PR role classification ----------------------------------------------------------------------
 RECEIPT_PATH_PREFIXES = ("evidence/",)
+_CANONICAL_RECEIPT_RE = r"evidence/receipts/(B00R|B01C|B02C|B03C|B04C|B05C|B06R|B07)\.receipt\.v3\.json"
 # A source PR may touch anything EXCEPT the evidence namespace; a receipt PR may touch ONLY the
 # evidence namespace. Mixed content fails regardless of test results (``NEG-017``).
 
@@ -560,12 +820,59 @@ def classify_changed_paths(paths: list[str]) -> tuple[str, str]:
     if receipt and source:
         return "MIXED", f"source+receipt in one PR: {source[:2]} & {receipt[:2]}"
     if receipt:
-        return "RECEIPT", f"{len(receipt)} evidence paths"
+        receipt_files = [p for p in receipt if p.startswith("evidence/receipts/")]
+        if len(receipt_files) != 1 or re.fullmatch(_CANONICAL_RECEIPT_RE, receipt_files[0]) is None:
+            return "INVALID", "receipt PR requires exactly one canonical *.receipt.v3.json"
+        match = re.fullmatch(_CANONICAL_RECEIPT_RE, receipt_files[0])
+        milestone = match.group(1)
+        allowed_prefix = f"evidence/{milestone}/"
+        bad = [p for p in receipt if p != receipt_files[0] and not p.startswith(allowed_prefix)]
+        if bad:
+            return "INVALID", f"cross-milestone or historical evidence paths: {bad[:2]}"
+        if any(p.endswith(".dsse.json") for p in receipt):
+            return "INVALID", "DSSE filename unsupported by receipt-v3 canonical JSON profile"
+        return "RECEIPT", f"milestone={milestone};receipt={receipt_files[0]}"
     return "SOURCE", f"{len(source)} source paths"
 
 
 # --- governance snapshot -------------------------------------------------------------------------
-def validate_governance_snapshot(doc: dict) -> tuple[str, str]:
+def _parse_provider_utc_us(value: object) -> int:
+    """Parse GitHub's UTC ISO-8601 timestamps without acquiring a runtime clock dependency."""
+    if not isinstance(value, str):
+        raise GovernanceError("GOVERNANCE_RAW_TIMESTAMP_NOT_STRING")
+    match = re.fullmatch(
+        r"([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})"
+        r"(?:\.([0-9]{1,6}))?Z", value)
+    if match is None:
+        raise GovernanceError("GOVERNANCE_RAW_TIMESTAMP_NOT_CANONICAL_UTC")
+    year, month, day, hour, minute, second = (int(match.group(i)) for i in range(1, 7))
+    if year < 1970 or month < 1 or month > 12 or hour > 23 or minute > 59 or second > 59:
+        raise GovernanceError("GOVERNANCE_RAW_TIMESTAMP_OUT_OF_RANGE")
+    leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+    month_days = (31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+    if day < 1 or day > month_days[month - 1]:
+        raise GovernanceError("GOVERNANCE_RAW_TIMESTAMP_OUT_OF_RANGE")
+    # Gregorian civil date -> days since 1970-01-01 (Howard Hinnant's integer algorithm).
+    adjusted_year = year - (1 if month <= 2 else 0)
+    era = adjusted_year // 400
+    year_of_era = adjusted_year - era * 400
+    shifted_month = month + (-3 if month > 2 else 9)
+    day_of_year = (153 * shifted_month + 2) // 5 + day - 1
+    day_of_era = year_of_era * 365 + year_of_era // 4 - year_of_era // 100 + day_of_year
+    days = era * 146097 + day_of_era - 719468
+    fraction = (match.group(7) or "").ljust(6, "0")
+    micros = int(fraction) if fraction else 0
+    return ((days * 86400 + hour * 3600 + minute * 60 + second) * 1_000_000 + micros)
+
+
+def validate_governance_snapshot(
+    doc: dict,
+    *,
+    provider_raw_bytes: bytes | None = None,
+    external_pin: str | None = None,
+    now_us: int | None = None,
+    source_merge_time_us: int | None = None,
+) -> tuple[str, str]:
     """Validate a provider governance snapshot. Return ``(result, reason)``.
 
     An unauthenticated template (``authenticated: false``) is fail-closed ``UNAVAILABLE``. A
@@ -577,6 +884,119 @@ def validate_governance_snapshot(doc: dict) -> tuple[str, str]:
         return "FAIL", str(exc)
     if doc.get("authenticated") is not True:
         return "UNAVAILABLE", "SNAPSHOT_UNAUTHENTICATED (owner/provider evidence absent)"
+    if provider_raw_bytes is None or external_pin is None:
+        return "UNAVAILABLE", "GOVERNANCE_PROVIDER_RAW_OR_EXTERNAL_PIN_ABSENT"
+    if not isinstance(now_us, int) or isinstance(now_us, bool) or now_us <= 0:
+        return "UNAVAILABLE", "GOVERNANCE_NOW_US_REQUIRED"
+    provider = doc.get("provider")
+    if not isinstance(provider, dict):
+        return "FAIL", "GOVERNANCE_PROVIDER_EVIDENCE_MISSING"
+    for key in ("name", "repository", "captured_at_us", "api_response_path",
+                "api_response_sha256"):
+        if key not in provider:
+            return "FAIL", f"GOVERNANCE_PROVIDER_FIELD_MISSING:{key}"
+    try:
+        declared_pin = assert_hex64(provider.get("api_response_sha256"),
+                                    "governance.provider.api_response_sha256")
+        assert_hex64(external_pin, "governance.external_provider_pin")
+    except GovernanceError as exc:
+        return "FAIL", str(exc)
+    actual_pin = sha256_hex(provider_raw_bytes)
+    if actual_pin != declared_pin or actual_pin != external_pin:
+        return "FAIL", "GOVERNANCE_PROVIDER_PIN_MISMATCH"
+    if provider.get("name") != "github" or provider.get("repository") != "TriadAgentic/TriadOrigin":
+        return "FAIL", "GOVERNANCE_PROVIDER_IDENTITY_MISMATCH"
+    captured = provider.get("captured_at_us")
+    effective = doc.get("effective_at_us")
+    if (not isinstance(captured, int) or isinstance(captured, bool) or captured <= 0
+            or captured > now_us):
+        return "FAIL", "GOVERNANCE_CAPTURE_TIME_INVALID"
+    if (not isinstance(effective, int) or isinstance(effective, bool) or effective <= 0
+            or effective > captured):
+        return "FAIL", "GOVERNANCE_EFFECTIVE_TIME_INVALID"
+    if source_merge_time_us is not None:
+        if (not isinstance(source_merge_time_us, int) or isinstance(source_merge_time_us, bool)
+                or source_merge_time_us <= captured):
+            return "FAIL", "GOVERNANCE_NOT_CAPTURED_BEFORE_SOURCE_MERGE"
+    import json
+    def _unique_object(pairs):
+        out = {}
+        for key, value in pairs:
+            if key in out:
+                raise GovernanceError(f"GOVERNANCE_PROVIDER_DUPLICATE_KEY:{key}")
+            out[key] = value
+        return out
+    try:
+        raw = json.loads(provider_raw_bytes, object_pairs_hook=_unique_object)
+    except GovernanceError as exc:
+        return "FAIL", str(exc)
+    except (UnicodeError, ValueError, TypeError):
+        return "FAIL", "GOVERNANCE_PROVIDER_RESPONSE_NOT_JSON"
+    if not isinstance(raw, dict):
+        return "FAIL", "GOVERNANCE_PROVIDER_RESPONSE_NOT_OBJECT"
+    try:
+        created_us = _parse_provider_utc_us(raw.get("created_at"))
+        updated_us = _parse_provider_utc_us(raw.get("updated_at"))
+    except GovernanceError as exc:
+        return "FAIL", str(exc)
+    if not (created_us <= updated_us == effective <= captured):
+        return "FAIL", "GOVERNANCE_EFFECTIVE_TIME_NOT_RAW_UPDATED_AT"
+
+    # Derive every security-relevant fact from the raw GitHub ruleset response.  The normalized
+    # snapshot is only an index; it may not authenticate itself by asserting booleans.
+    if raw.get("target") != "branch" or raw.get("enforcement") != "active":
+        return "FAIL", "GOVERNANCE_RAW_RULESET_NOT_ACTIVE_BRANCH"
+    source = raw.get("source")
+    if not isinstance(source, str) or source.lower() != "triadagentic/triadorigin":
+        return "FAIL", "GOVERNANCE_RAW_RULESET_SOURCE_MISMATCH"
+    if "bypass_actors" not in raw or raw.get("bypass_actors") != []:
+        return "FAIL", "GOVERNANCE_RAW_BYPASS_NOT_PROVEN_EMPTY"
+    conditions = raw.get("conditions")
+    if not isinstance(conditions, dict):
+        return "FAIL", "GOVERNANCE_RAW_CONDITIONS_MALFORMED"
+    ref = conditions.get("ref_name", {})
+    includes = ref.get("include") if isinstance(ref, dict) else None
+    excludes = ref.get("exclude") if isinstance(ref, dict) else None
+    main_tokens = {"refs/heads/main", "~DEFAULT_BRANCH"}
+    if (not isinstance(includes, list) or not main_tokens.intersection(includes)
+            or not isinstance(excludes, list) or main_tokens.intersection(excludes)):
+        return "FAIL", "GOVERNANCE_RAW_MAIN_TARGET_NOT_PROVEN"
+    raw_rules = raw.get("rules")
+    if not isinstance(raw_rules, list):
+        return "FAIL", "GOVERNANCE_RAW_RULES_MISSING"
+    by_type: dict[str, list[dict]] = {}
+    for rule in raw_rules:
+        if not isinstance(rule, dict) or not isinstance(rule.get("type"), str):
+            return "FAIL", "GOVERNANCE_RAW_RULE_MALFORMED"
+        by_type.setdefault(rule["type"], []).append(rule)
+    if len(by_type.get("pull_request", [])) != 1:
+        return "FAIL", "GOVERNANCE_RAW_PULL_REQUEST_RULE_MISSING"
+    pr = by_type["pull_request"][0].get("parameters", {})
+    if not isinstance(pr, dict):
+        return "FAIL", "GOVERNANCE_RAW_REVIEW_CONTROLS_MALFORMED"
+    raw_approvals = pr.get("required_approving_review_count")
+    if (not isinstance(raw_approvals, int) or isinstance(raw_approvals, bool)
+            or raw_approvals < 1
+            or pr.get("dismiss_stale_reviews_on_push") is not True
+            or pr.get("require_code_owner_review") is not True
+            or pr.get("require_last_push_approval") is not True
+            or pr.get("required_review_thread_resolution") is not True):
+        return "FAIL", "GOVERNANCE_RAW_REVIEW_CONTROLS_INCOMPLETE"
+    if len(by_type.get("required_status_checks", [])) != 1:
+        return "FAIL", "GOVERNANCE_RAW_STATUS_RULE_MISSING"
+    status = by_type["required_status_checks"][0].get("parameters", {})
+    if not isinstance(status, dict):
+        return "FAIL", "GOVERNANCE_RAW_STATUS_CONTROL_MALFORMED"
+    checks_raw = status.get("required_status_checks")
+    if (not isinstance(checks_raw, list) or len(checks_raw) != 1
+            or not isinstance(checks_raw[0], dict)):
+        return "FAIL", "GOVERNANCE_RAW_STATUS_CHECKS_MALFORMED"
+    contexts = [checks_raw[0].get("context")]
+    if (status.get("strict_required_status_checks_policy") is not True
+            or contexts != ["CI / test-and-verify"]):
+        return "FAIL", "GOVERNANCE_RAW_STATUS_CONTROL_MISMATCH"
+    if len(by_type.get("deletion", [])) != 1 or len(by_type.get("non_fast_forward", [])) != 1:
+        return "FAIL", "GOVERNANCE_RAW_HISTORY_CONTROLS_MISSING"
     ruleset = doc.get("ruleset", {})
     checks = (
         ("pull_request_required", ruleset.get("pull_request_required") is True),
@@ -593,6 +1013,9 @@ def validate_governance_snapshot(doc: dict) -> tuple[str, str]:
         ("no_bypass_actors", not ruleset.get("bypass_actors")),
         ("targets_main", ruleset.get("target") in ("refs/heads/main", "~DEFAULT_BRANCH")),
         ("effective_time", isinstance(doc.get("effective_at_us"), int)),
+        ("ruleset_id", str(raw.get("id")) == ruleset.get("ruleset_id")),
+        ("raw_approvals", ruleset.get("required_approvals") == raw_approvals),
+        ("raw_bypass", ruleset.get("bypass_actors") == raw.get("bypass_actors")),
     )
     failed = [name for name, ok in checks if not ok]
     if failed:
