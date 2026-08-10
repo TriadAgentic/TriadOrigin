@@ -1,6 +1,6 @@
 {
   "authenticated": true,
-  "effective_at_us": 1786352038201600,
+  "effective_at_us": 1786320000000000,
   "provider": {
     "api_response_path": "docs/governance/rulesets/main.ruleset.provider.raw.json",
     "api_response_sha256": "c74e5c2fcafb5cf0d30a558c3de35335006fe768033b93c02eaead3cc0cacac1",
