@@ -934,6 +934,37 @@ def validate_governance_snapshot(
         return "FAIL", "GOVERNANCE_PROVIDER_RESPONSE_NOT_JSON"
     if not isinstance(raw, dict):
         return "FAIL", "GOVERNANCE_PROVIDER_RESPONSE_NOT_OBJECT"
+
+    # A protected digest can authenticate bytes, but it cannot turn a hand-written template into
+    # a GitHub API response. Require the stable provider identity fields emitted by
+    # GET /repos/{owner}/{repo}/rulesets/{ruleset_id}, and reject local commentary explicitly.
+    # This blocks the prior false-green where id="DECLARATIVE" plus a note saying enforcement was
+    # pending was pinned and then accepted as an active no-bypass provider control.
+    if "note" in raw or "note" in provider:
+        return "FAIL", "GOVERNANCE_PROVIDER_SYNTHETIC_METADATA"
+    raw_id = raw.get("id")
+    if (not isinstance(raw_id, int) or isinstance(raw_id, bool) or raw_id <= 0):
+        return "FAIL", "GOVERNANCE_RAW_RULESET_ID_NOT_PROVIDER_INTEGER"
+    raw_name = raw.get("name")
+    if (not isinstance(raw_name, str) or not raw_name.strip()
+            or raw_name.strip().upper() in {"DECLARATIVE", "TEMPLATE", "PLACEHOLDER"}):
+        return "FAIL", "GOVERNANCE_RAW_RULESET_NAME_NOT_PROVIDER"
+    if raw.get("source_type") != "Repository":
+        return "FAIL", "GOVERNANCE_RAW_SOURCE_TYPE_MISMATCH"
+    node_id = raw.get("node_id")
+    if (not isinstance(node_id, str)
+            or re.fullmatch(r"RRS_[A-Za-z0-9_-]+", node_id) is None):
+        return "FAIL", "GOVERNANCE_RAW_NODE_ID_NOT_PROVIDER"
+    links = raw.get("_links")
+    self_link = links.get("self") if isinstance(links, dict) else None
+    html_link = links.get("html") if isinstance(links, dict) else None
+    expected_self = (
+        f"https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/{raw_id}"
+    )
+    expected_html = f"https://github.com/TriadAgentic/TriadOrigin/rules/{raw_id}"
+    if (not isinstance(self_link, dict) or self_link.get("href") != expected_self
+            or not isinstance(html_link, dict) or html_link.get("href") != expected_html):
+        return "FAIL", "GOVERNANCE_RAW_PROVIDER_LINKS_MISMATCH"
     try:
         created_us = _parse_provider_utc_us(raw.get("created_at"))
         updated_us = _parse_provider_utc_us(raw.get("updated_at"))
