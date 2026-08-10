@@ -1,0 +1,15 @@
+{
+  "capture": {
+    "actor": "josephvoxone",
+    "captured_at_us": 1786359700000000,
+    "method": "gh api --method POST /repos/TriadAgentic/TriadOrigin/rulesets -f name=b00r-receipt-anchor-protection -f target=tag -f enforcement=active (conditions ref_name include refs/tags/B00R_RECEIPT_ANCHOR; rules update+deletion)",
+    "org_plan": "free",
+    "purpose": "Part 7e negative canary: prove whether the provider enforces rulesets for this repository plan."
+  },
+  "consequence": "No provider-enforced tag ruleset exists on the free plan; the terminal anchor row of b00r_gate --mode receipt must fail closed until GitHub Pro or a public repository provides real ruleset objects.",
+  "provider_response": {
+    "documentation_url": "https://docs.github.com/rest/repos/rules#create-a-repository-ruleset",
+    "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+    "status": "403"
+  }
+}

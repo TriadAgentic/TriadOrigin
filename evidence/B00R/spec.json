@@ -1,0 +1,71 @@
+{
+  "entries": [
+    {
+      "path": "evidence/B00R/DEC-AUTHORITY-BUNDLE-001.json",
+      "role": "CONTRACT_MANIFEST"
+    },
+    {
+      "path": "evidence/B00R/DEC-B00-REPAIR-001.json",
+      "role": "ROLLBACK_PROOF"
+    },
+    {
+      "path": "evidence/B00R/DEC-RECEIPT-PROFILE-001.json",
+      "role": "CONFIG_BUNDLE"
+    },
+    {
+      "path": "evidence/B00R/logs/gates.log",
+      "role": "CLEAN_RUNNER_GATES_LOG"
+    },
+    {
+      "path": "evidence/B00R/logs/pytest_seed0.log",
+      "role": "CLEAN_RUNNER_PYTEST_SEED0"
+    },
+    {
+      "path": "evidence/B00R/logs/pytest_seed1.log",
+      "role": "CLEAN_RUNNER_PYTEST_SEED1"
+    },
+    {
+      "path": "evidence/B00R/main.ruleset.provider.json",
+      "role": "TEST_MANIFEST"
+    },
+    {
+      "path": "evidence/B00R/main.ruleset.provider.raw.json",
+      "role": "PROVIDER_RAW"
+    },
+    {
+      "path": "evidence/B00R/provider/canary_rejection.json",
+      "role": "PROVIDER_CANARY"
+    },
+    {
+      "path": "evidence/B00R/provider/tag_ruleset.provider.raw.json",
+      "role": "TAG_RULESET_RAW"
+    },
+    {
+      "path": "evidence/B00R/receipt_trust_registry.v1.json",
+      "role": "WORKFLOW"
+    },
+    {
+      "path": "evidence/B00R/results/clean_runner_summary.json",
+      "role": "CLEAN_RUNNER_SUMMARY"
+    },
+    {
+      "path": "evidence/B00R/results/test_ids_seed0.txt",
+      "role": "TEST_IDS_SEED0"
+    },
+    {
+      "path": "evidence/B00R/results/test_ids_seed1.txt",
+      "role": "TEST_IDS_SEED1"
+    },
+    {
+      "path": "evidence/B00R/spec.json",
+      "role": "BUILD_SPEC"
+    },
+    {
+      "path": "evidence/B00R/tag_ruleset.provider.json",
+      "role": "TAG_RULESET_PROVIDER"
+    }
+  ],
+  "milestone": "B00R",
+  "repair_generation": 1,
+  "variant": "ROOT"
+}

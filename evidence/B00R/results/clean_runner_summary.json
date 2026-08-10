@@ -1,0 +1,31 @@
+{
+  "runner": "Dell Proxmox VM triod@192.168.70.150",
+  "clone": "git clone --no-tags https://github.com/TriadAgentic/TriadOrigin (fresh, no warm caches)",
+  "repair_merge_sha": "03787b7cc800998be461a4df0312ef9c3ff6c1fb",
+  "python": "3.11 venv, pip install -e .[test] with PIP_CONSTRAINT=constraints/ci.txt",
+  "pytest_seed0_rc": 0,
+  "pytest_seed1_rc": 0,
+  "collected_test_ids": 1722,
+  "test_ids_identical_across_seeds": true,
+  "gates": {
+    "verify_manifest": "OK: 148 artifacts match manifest",
+    "verify_reproducible_build": "OK",
+    "test_wheel_install": "OK",
+    "verify_no_forbidden_capabilities": "OK: E02 runtime has no network, credential, or venue-order capability",
+    "e2e_audit": "all 24 stages passed",
+    "build_ledger_verify": "OK: build ledger current (1250 tasks; 1250 reviewed rows)",
+    "validate_combined_dag": "OK",
+    "verify_codeowners": "OK",
+    "verify_source_hashes": "OK",
+    "verify_historical_evidence": "OK",
+    "validate_contract_manifest": "OK",
+    "collect_test_ids": "OK"
+  },
+  "levers": {
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "activation_result": "DENIED_SAFE_HOLD"
+}
