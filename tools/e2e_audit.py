@@ -370,7 +370,13 @@ def lever_law_walk() -> None:
 
 @stage("receipt_walk", "B-series milestone receipts validate; forged receipt rejects")
 def receipt_walk() -> None:
-    receipts = sorted((ROOT / "evidence" / "receipts").glob("B*.json"))
+    # Canonical receipt-v3 files are authenticated only by the strict receipt-role gate, which
+    # carries the owner pins and the exact-head Git binding. This legacy v2 walk must not
+    # consume them: validating a v3 envelope against the v2 schema fails closed by design.
+    receipts = sorted(
+        path for path in (ROOT / "evidence" / "receipts").glob("B*.json")
+        if not path.name.endswith(".receipt.v3.json")
+    )
     if not receipts:
         raise AssertionError("no B-series receipts found")
     for receipt in receipts:
