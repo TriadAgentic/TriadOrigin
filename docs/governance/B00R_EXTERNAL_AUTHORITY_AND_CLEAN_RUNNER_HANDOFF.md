@@ -383,6 +383,11 @@ same proposed raw file is not an external pin.
 If the provider cannot express or prove the required no-bypass controls, return
 `BLOCKED_PROVIDER_CONTROL_UNAVAILABLE`; do not replace them with prose or a CI-authored JSON file.
 
+Every later `b00r_gate.py` invocation that is expected to pass its provider row requires
+`GITHUB_TOKEN` in the environment for the mandatory fixed-host live GET. Source/reproduction checks
+need read access; terminal receipt mode requires a short-lived token whose response exposes
+`bypass_actors`. Never put the token in argv, logs, evidence, or the repository.
+
 ### 6.4 Refreeze, run exact-head strict CI, independently review, and guarded-merge
 
 After every required public ceremony/provider artifact is materialized:
