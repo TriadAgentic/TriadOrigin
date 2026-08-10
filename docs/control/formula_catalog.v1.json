@@ -1,0 +1,421 @@
+{
+ "basis": "B09 estate formula catalog: F20 (E08 sizing) \u00b7 F21 (E09 maker) \u00b7 F22 (E09 emergency reduction-only IOC) \u00b7 F23 (E10 outcomes/P&L) are money-line, implementation OUT_OF_REPO; ORIGIN vendors the contract shape + golden vectors (GV-017..020) + the FORM-Fxx-01..07 boundary rows only. F20 carries one already-selected signed policy with no activation_mode/rollout branch (RC4 supersession F20 / LEV-0044 / LEV-V-0120). No F24 exists.",
+ "catalog_version": "FORMULA_CATALOG_V1",
+ "estate_catalog": {
+  "F20": {
+   "exec_class": "IN_REPO_CATALOG",
+   "f20_law": {
+    "activation_mode_removed": true,
+    "controlling_source": {
+     "fixture": "LEV-V-0120",
+     "old": "activation_mode selects CANARY or PRODUCTION budget",
+     "rc4_supersession_record": "F20",
+     "replacement": "Remove branch; pass one already selected signed risk-budget policy. Rollout metadata cannot reach sizing.",
+     "task": "LEV-0044"
+    },
+    "corrected_inputs": [
+     "one already-selected signed risk-budget policy",
+     "PAR-078 current account fee snapshot",
+     "PAR-079",
+     "linear contract multiplier revision",
+     "entry/stop prices",
+     "authorized exit liquidity classes",
+     "position/portfolio/exposure/leverage/concentration/venue capacities",
+     "min-notional and venue filters"
+    ],
+    "missing_policy_disposition": "DENY",
+    "raw_rc3_inputs": "activation_mode;selected budget only;PAR-078 current account fee snapshot;PAR-079;linear contract multiplier revision;entry/stop prices;authorized exit liquidity classes;position/portfolio/exposure/leverage/concentration/venue capacities;min-notional and venue filters",
+    "removed_branch_params": [
+     "PAR-069",
+     "PAR-070"
+    ],
+    "rollout_metadata_in_dependencies": [],
+    "rollout_reaches_sizing": false,
+    "selected_policy_source_contract": "triad.decision.v2"
+   },
+   "gate": "G6",
+   "golden_boundary_classes": [
+    "Equality",
+    "one-unit-short/over",
+    "invalid-input",
+    "prefix",
+    "restart",
+    "duplicate",
+    "directional-mirror"
+   ],
+   "golden_vectors": [
+    {
+     "area": "Canary sizing",
+     "boundary": "VALID_ISOLATED_COST_VECTOR",
+     "expected": "entry cost=.02; exit cost=.0198; unit_loss=1.0398 quote/qty; qty_raw=0.961723408...; floor_to_step=.961",
+     "id": "GV-017",
+     "inputs": "B=1 quote; E=100; S=99; m=1; r_entry=r_exit=0; b=2/10000 per side; step=.001",
+     "linked": "F20",
+     "operation": "Apply the corrected RC3 formula exactly.",
+     "rc2_source_vector": {
+      "area": "Canary sizing",
+      "boundary": "venue min quantity .981 -> DENY, never round up",
+      "expected": "unit_loss=1.02; raw=.980392...; qty=.980",
+      "id": "GV-017",
+      "inputs": "NAV=10000 USDT; B=min(1,10)=1; m=1; E=100; S=99; cost/unit=.02; step=.001",
+      "linked": "PAR-069;PAR-079;F20",
+      "operation": "F20"
+     }
+    }
+   ],
+   "id": "F20",
+   "implementation_is_out_of_repo": true,
+   "ledger_rows": [
+    "FORM-F20-01",
+    "FORM-F20-02",
+    "FORM-F20-03",
+    "FORM-F20-04",
+    "FORM-F20-05",
+    "FORM-F20-06",
+    "FORM-F20-07"
+   ],
+   "milestone": "B09",
+   "name": "Risk-budget sizing for linear USD-M",
+   "output_contract": {
+    "inputs": "activation_mode;selected budget only;PAR-078 current account fee snapshot;PAR-079;linear contract multiplier revision;entry/stop prices;authorized exit liquidity classes;position/portfolio/exposure/leverage/concentration/venue capacities;min-notional and venue filters",
+    "mirror_rule": "The source directional mirror is retained only where algebraically compatible with this complete RC3 formula; asymmetry requires a separately versioned rule.",
+    "output": "The RC2 output type is retained only where compatible; every RC3 semantic change emits the RC3 formula version and immutable input/parameter/source ranges.",
+    "parameters": "activation_mode;selected budget only;PAR-078 current account fee snapshot;PAR-079;linear contract multiplier revision;entry/stop prices;authorized exit liquidity classes;position/portfolio/exposure/leverage/concentration/venue capacities;min-notional and venue filters",
+    "refusal_law": "Any unmet dependency, invalid source state, ambiguous boundary or overflow returns the formula's named null/quarantine/refusal and keeps dependent gates in SAFE_HOLD.",
+    "units_rounding": "All money and rates use exact decimal/rational arithmetic on declared entry/exit notional bases; every capacity and final quantity rounds down to the venue step."
+   },
+   "owner_node": "E08",
+   "ownership": "ESTATE",
+   "phase": "P6",
+   "rc3_status": "RC3_DIMENSIONAL_AND_SCOPE_OVERRIDE",
+   "semantic_version": "triad.origin.v7.rc3.f20.v1"
+  },
+  "F21": {
+   "exec_class": "IN_REPO_CATALOG",
+   "gate": "G6",
+   "golden_boundary_classes": [
+    "Equality",
+    "one-unit-short/over",
+    "invalid-input",
+    "prefix",
+    "restart",
+    "duplicate",
+    "directional-mirror"
+   ],
+   "golden_vectors": [
+    {
+     "area": "Maker compile",
+     "boundary": "venue says would cross -> reject/no taker fallback",
+     "expected": "BUY limit=min(1005,1002)=1002 GTX",
+     "id": "GV-018",
+     "inputs": "BUY zone=[1000,1005]; best_bid=1002; tick grid",
+     "linked": "PAR-081;F21",
+     "operation": "F21"
+    }
+   ],
+   "id": "F21",
+   "implementation_is_out_of_repo": true,
+   "ledger_rows": [
+    "FORM-F21-01",
+    "FORM-F21-02",
+    "FORM-F21-03",
+    "FORM-F21-04",
+    "FORM-F21-05",
+    "FORM-F21-06",
+    "FORM-F21-07"
+   ],
+   "milestone": "B09",
+   "name": "Maker-first price compilation",
+   "output_contract": {
+    "inputs": "RC3-PAR-EXEC-001;valid current book;current authorization;frozen zone;reprice count;minimum interval;TTL;queue/departure policy",
+    "mirror_rule": "The source directional mirror is retained only where algebraically compatible with this complete RC3 formula; asymmetry requires a separately versioned rule.",
+    "output": "The RC2 output type is retained only where compatible; every RC3 semantic change emits the RC3 formula version and immutable input/parameter/source ranges.",
+    "parameters": "RC3-PAR-EXEC-001;valid current book;current authorization;frozen zone;reprice count;minimum interval;TTL;queue/departure policy",
+    "refusal_law": "Any unmet dependency, invalid source state, ambiguous boundary or overflow returns the formula's named null/quarantine/refusal and keeps dependent gates in SAFE_HOLD.",
+    "units_rounding": "Observed book-level ordinal is not a tick distance; select an existing integer-tick price and never synthesize an unobserved level."
+   },
+   "owner_node": "E09",
+   "ownership": "ESTATE",
+   "phase": "P6",
+   "rc3_status": "RATIFIED_RC3_OVERRIDE",
+   "semantic_version": "triad.origin.v7.rc3.f21.v1"
+  },
+  "F22": {
+   "exec_class": "IN_REPO_CATALOG",
+   "gate": "G6",
+   "golden_boundary_classes": [
+    "Equality",
+    "one-unit-short/over",
+    "invalid-input",
+    "prefix",
+    "restart",
+    "duplicate",
+    "directional-mirror"
+   ],
+   "golden_vectors": [
+    {
+     "area": "Emergency IOC",
+     "boundary": "command qty=2.501 or position sign flip -> reject",
+     "expected": "worst=floor(10000*9990/10000)=9990; SELL qty<=2.5",
+     "id": "GV-019",
+     "inputs": "long residual=2.5; best_bid=10000 ticks; s=10bps",
+     "linked": "PAR-090;PAR-093;F22",
+     "operation": "F22 exact floor"
+    }
+   ],
+   "id": "F22",
+   "implementation_is_out_of_repo": true,
+   "ledger_rows": [
+    "FORM-F22-01",
+    "FORM-F22-02",
+    "FORM-F22-03",
+    "FORM-F22-04",
+    "FORM-F22-05",
+    "FORM-F22-06",
+    "FORM-F22-07"
+   ],
+   "milestone": "B09",
+   "name": "Emergency position-reducing IOC bound",
+   "output_contract": {
+    "inputs": "fresh reconciled position/residual;valid best book;s_bps;emergency authorization;trigger/deadline;retry/tier budget;cooldown;mode-certified compiler",
+    "mirror_rule": "The source directional mirror is retained only where algebraically compatible with this complete RC3 formula; asymmetry requires a separately versioned rule.",
+    "output": "The RC2 output type is retained only where compatible; every RC3 semantic change emits the RC3 formula version and immutable input/parameter/source ranges.",
+    "parameters": "fresh reconciled position/residual;valid best book;s_bps;emergency authorization;trigger/deadline;retry/tier budget;cooldown;mode-certified compiler",
+    "refusal_law": "Any unmet dependency, invalid source state, ambiguous boundary or overflow returns the formula's named null/quarantine/refusal and keeps dependent gates in SAFE_HOLD.",
+    "units_rounding": "Worst-price bounds use exact rational math and outward tick rounding; residual quantity always steps down."
+   },
+   "owner_node": "E09",
+   "ownership": "ESTATE",
+   "phase": "P6",
+   "rc3_status": "RC3_PAYLOAD_INVARIANT_OVERRIDE",
+   "semantic_version": "triad.origin.v7.rc3.f22.v1"
+  },
+  "F23": {
+   "exec_class": "IN_REPO_CATALOG",
+   "gate": "G6",
+   "golden_boundary_classes": [
+    "Equality",
+    "one-unit-short/over",
+    "invalid-input",
+    "prefix",
+    "restart",
+    "duplicate",
+    "directional-mirror"
+   ],
+   "golden_vectors": [
+    {
+     "area": "PnL",
+     "boundary": "missing fee -> net=null/UNRESOLVED",
+     "expected": "gross=6; net=6-1+.2-.1=5.1",
+     "id": "GV-020",
+     "inputs": "LONG qty=2; m=1; entry=100; exit=103; fees=1; rebates=.2; funding=-.1",
+     "linked": "PAR-094;F23",
+     "operation": "F23"
+    }
+   ],
+   "id": "F23",
+   "implementation_is_out_of_repo": true,
+   "ledger_rows": [
+    "FORM-F23-01",
+    "FORM-F23-02",
+    "FORM-F23-03",
+    "FORM-F23-04",
+    "FORM-F23-05",
+    "FORM-F23-06",
+    "FORM-F23-07"
+   ],
+   "milestone": "B09",
+   "name": "Campaign PnL, costs, R and markout",
+   "output_contract": {
+    "inputs": "Strict fills, signed position effects, fees, rebates, funding cashflows, causal mid marks, initial risk",
+    "mirror_rule": "dir_sign and order_side_sign handle mirrors.",
+    "output": "Gross/net PnL, cost components, R, MFE/MAE and markout cohorts",
+    "parameters": "valuation horizons, fee conversion marks, campaign terminal rule, initial risk source",
+    "refusal_law": "Missing lineage cannot be inferred; emergency cohort remains separate.",
+    "units_rounding": "Exact decimal/rational; unresolved fee/mark/outcome stays null; campaign must quantity-reconcile."
+   },
+   "owner_node": "E10",
+   "ownership": "ESTATE",
+   "phase": "P6",
+   "rc3_status": "",
+   "semantic_version": "outcome.linear_usdm.v1"
+  }
+ },
+ "estate_formula_ids": [
+  "F20",
+  "F21",
+  "F22",
+  "F23"
+ ],
+ "f20_rollout_invariance_fixture": {
+  "area": "F20",
+  "expected": "Quantity bytes remain identical; rollout metadata is absent from formula dependencies.",
+  "fixture": "Change rollout metadata with identical signed budget and inputs",
+  "id": "LEV-V-0120",
+  "refusal": ""
+ },
+ "formula_registry": {
+  "f24_absent": true,
+  "formula_count": 24,
+  "formula_ids": [
+   "F00",
+   "F01",
+   "F02",
+   "F03",
+   "F04",
+   "F05",
+   "F06",
+   "F07",
+   "F08",
+   "F09",
+   "F10",
+   "F11",
+   "F12",
+   "F13",
+   "F14",
+   "F15",
+   "F16",
+   "F17",
+   "F18",
+   "F19",
+   "F20",
+   "F21",
+   "F22",
+   "F23"
+  ],
+  "rows": {
+   "F00": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "Contracts"
+   },
+   "F01": {
+    "exec_class": "ESTATE_FORMULA",
+    "milestone": "ESTATE",
+    "owner_node": "E01"
+   },
+   "F02": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F03": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F04": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F05": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F06": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F07": {
+    "exec_class": "ESTATE_FORMULA",
+    "milestone": "ESTATE",
+    "owner_node": "E01"
+   },
+   "F08": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F09": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F10": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F11": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F12": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F13": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F14": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F15": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F16": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F17": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F18": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F19": {
+    "exec_class": "IN_REPO_CODE",
+    "milestone": "in-repo",
+    "owner_node": "ORIGIN"
+   },
+   "F20": {
+    "exec_class": "IN_REPO_CATALOG",
+    "milestone": "B09",
+    "owner_node": "E08"
+   },
+   "F21": {
+    "exec_class": "IN_REPO_CATALOG",
+    "milestone": "B09",
+    "owner_node": "E09"
+   },
+   "F22": {
+    "exec_class": "IN_REPO_CATALOG",
+    "milestone": "B09",
+    "owner_node": "E09"
+   },
+   "F23": {
+    "exec_class": "IN_REPO_CATALOG",
+    "milestone": "B09",
+    "owner_node": "E10"
+   }
+  }
+ },
+ "generated_by": "claude-fable-5-build-session/B09",
+ "invariants": {
+  "estate_catalog_is_f20_to_f23": true,
+  "every_estate_formula_has_seven_boundary_rows": true,
+  "every_estate_formula_out_of_repo_catalog": true,
+  "every_estate_formula_vendors_its_golden_vector": true,
+  "f20_activation_mode_removed": true,
+  "f20_missing_policy_denies": true,
+  "f20_rollout_absent_from_sizing": true,
+  "no_f24": true
+ },
+ "schema": "triad.origin.formula_catalog.v1"
+}
