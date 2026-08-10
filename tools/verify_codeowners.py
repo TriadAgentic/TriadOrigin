@@ -18,6 +18,7 @@ KNOWN_PLACEHOLDERS = frozenset(
     value.lower()
     for value in {
         "@TriadAgentic/triad-origin-governance",
+        "@TriadAgentic/origin-governance-reviewers",
         "@OWNER",
         "@UNSET",
         "@placeholder",
