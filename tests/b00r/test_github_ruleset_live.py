@@ -163,7 +163,8 @@ def test_live_ruleset_rejects_missing_token_redirect_and_stale_date_without_leak
     }
     with pytest.raises(LiveRulesetMismatch, match="DATE_STALE") as caught:
         fetch_and_match_live_ruleset(
-            committed_raw, token="never-print-this", now_us=NOW_US,
+            committed_raw, token="never-print-this",
+            now_us=NOW_US + 6 * 60 * 1_000_000,
             opener=lambda *_args, **_kwargs: _Response(
                 _ruleset(), headers=stale_headers),
         )
