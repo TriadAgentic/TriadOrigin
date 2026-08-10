@@ -1,0 +1,120 @@
+{
+  "entries": [
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/DEC-AUTHORITY-BUNDLE-001.json",
+      "role": "CONTRACT_MANIFEST",
+      "sha256": "de14b1a23d8ed7e6d9e07ce49a01fe748fc88627d58e8eadb7e222b24d0fb241",
+      "size": 1630
+    },
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/DEC-B00-REPAIR-001.json",
+      "role": "ROLLBACK_PROOF",
+      "sha256": "3652539aade63ec808ad9010cb95dd48dd204235be62c65aba91ccfe4c4d92d4",
+      "size": 1185
+    },
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/DEC-RECEIPT-PROFILE-001.json",
+      "role": "CONFIG_BUNDLE",
+      "sha256": "b1a9c11525d5c56845c004b7737f94547ffebdc1a7fb8f152549a782c032abe7",
+      "size": 1945
+    },
+    {
+      "media_type": "application/octet-stream",
+      "path": "evidence/B00R/logs/gates.log",
+      "role": "CLEAN_RUNNER_GATES_LOG",
+      "sha256": "0e7e993b35ab75c79ab3ead47dfe8238370610c8110cee7c5dcdd3abb18b9df9",
+      "size": 190063
+    },
+    {
+      "media_type": "application/octet-stream",
+      "path": "evidence/B00R/logs/pytest_seed0.log",
+      "role": "CLEAN_RUNNER_PYTEST_SEED0",
+      "sha256": "3f9b357b95129985e65324c1bc8ef2b7abbc2aa21fcc88b8eddc6f3017969d7f",
+      "size": 1931
+    },
+    {
+      "media_type": "application/octet-stream",
+      "path": "evidence/B00R/logs/pytest_seed1.log",
+      "role": "CLEAN_RUNNER_PYTEST_SEED1",
+      "sha256": "a51aca8cf28a411b26f98a29f47e61710774833605492d0d310af1c940b7d598",
+      "size": 1931
+    },
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/main.ruleset.provider.json",
+      "role": "TEST_MANIFEST",
+      "sha256": "c057cf893c63a1b477a6297096a36a37bff89b7579f5256c988ae204e0288a17",
+      "size": 1674
+    },
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/main.ruleset.provider.raw.json",
+      "role": "PROVIDER_RAW",
+      "sha256": "d2a35fb67b5eb5dea0c06df1f4418047c4c7f9aa5c63cec70bc6508a17b18e61",
+      "size": 1203
+    },
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/provider/canary_rejection.json",
+      "role": "PROVIDER_CANARY",
+      "sha256": "e321ab4ae8775f14e0736f805d8305ead5c5cb0ca9fe4d7b749b6bf84c4a5e9f",
+      "size": 928
+    },
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/provider/tag_ruleset.provider.raw.json",
+      "role": "TAG_RULESET_RAW",
+      "sha256": "ad5394fcfdd8f53c1c0287df361923e1ee1ab62e4aaac7c475e9605597990bab",
+      "size": 658
+    },
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/receipt_trust_registry.v1.json",
+      "role": "WORKFLOW",
+      "sha256": "00fdc45beb51af19ce63f425e4955bd8dd0b97ca5eed22c4cfafa1a5732811a2",
+      "size": 1512
+    },
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/results/clean_runner_summary.json",
+      "role": "CLEAN_RUNNER_SUMMARY",
+      "sha256": "4ee240ee594686a8cfe2df70e52f214b9f1566e2f4c44bc477153cc67c46a346",
+      "size": 1180
+    },
+    {
+      "media_type": "application/octet-stream",
+      "path": "evidence/B00R/results/test_ids_seed0.txt",
+      "role": "TEST_IDS_SEED0",
+      "sha256": "467fdabf16703d8b9267d50d8c3571909fe96ac010c1367798f5633a7feec497",
+      "size": 185425
+    },
+    {
+      "media_type": "application/octet-stream",
+      "path": "evidence/B00R/results/test_ids_seed1.txt",
+      "role": "TEST_IDS_SEED1",
+      "sha256": "467fdabf16703d8b9267d50d8c3571909fe96ac010c1367798f5633a7feec497",
+      "size": 185425
+    },
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/spec.json",
+      "role": "BUILD_SPEC",
+      "sha256": "34afbb5a72dbb309aaff14dc4b4a205e12f63fe11e2757db9ace58f1ecd7df91",
+      "size": 1750
+    },
+    {
+      "media_type": "application/json",
+      "path": "evidence/B00R/tag_ruleset.provider.json",
+      "role": "TAG_RULESET_PROVIDER",
+      "sha256": "b65a0cc0cf226942c7d0aa62486007e91c88fd07c90c181201f4fc108b7d58e7",
+      "size": 756
+    }
+  ],
+  "entry_count": 16,
+  "manifest_kind": "EVIDENCE_MANIFEST",
+  "schema": "triad.evidence_manifest.v1",
+  "schema_version": "1.0.0"
+}
