@@ -3,7 +3,7 @@
   "effective_at_us": 1786320000000000,
   "provider": {
     "api_response_path": "docs/governance/rulesets/main.ruleset.provider.raw.json",
-    "api_response_sha256": "de28a0bacb4771948fe5ab96e1b54c9c5a4162f641c38cab0cea31f4ae2dbf2e",
+    "api_response_sha256": "f4e7d313593eb826d9067c088e73fdd3e1b7008f65e5298e23ebe361da81a456",
     "captured_at_us": 1786352038201600,
     "name": "github",
     "note": "Declarative snapshot. GitHub rulesets API requires GitHub Pro for private repos. Actual enforcement pending GitHub Pro upgrade or branch protection UI setup.",
