@@ -30,6 +30,12 @@ except ModuleNotFoundError:  # pragma: no cover - direct script fallback
     from validate_authority_root import (  # type: ignore  # noqa: E402
         AuthorityContext, AuthorityRootError, AuthorityRootUnavailable, ed25519_verify,
         load_authority_context, validate_git_bound_authority)
+try:  # importable both as `python tools/...` and as `from tools import ...`
+    from tools.github_ruleset_live import (  # type: ignore  # noqa: E402
+        LiveRulesetError, fetch_and_match_live_ruleset)
+except ModuleNotFoundError:  # pragma: no cover - direct script fallback
+    from github_ruleset_live import (  # type: ignore  # noqa: E402
+        LiveRulesetError, fetch_and_match_live_ruleset)
 
 
 class ReceiptBindingError(ValueError):
@@ -276,6 +282,19 @@ def _validate_governance_evidence(
         now_us=now_us, source_merge_time_us=source_merge_time_us)
     if result != "PASS":
         raise ReceiptBindingError(f"GOVERNANCE_SNAPSHOT_{result}:{reason}")
+    try:
+        fetch_and_match_live_ruleset(
+            raw_bytes, token=os.environ.get("GITHUB_TOKEN"))
+    except LiveRulesetError as exc:
+        detail = str(exc)
+        unavailable = (
+            detail == "GITHUB_TOKEN_ABSENT"
+            or detail.startswith("LIVE_RULESET_FETCH_FAILED:")
+            or detail.startswith("LIVE_RULESET_HTTP_STATUS:")
+        )
+        prefix = "UNAVAILABLE_" if unavailable else ""
+        raise ReceiptBindingError(
+            f"{prefix}LIVE_PROVIDER_REVALIDATION:{detail}") from exc
 
 
 def _strict(
