@@ -26,19 +26,19 @@
     {
       "type": "required_status_checks",
       "parameters": {
-        "strict_required_status_checks": true,
         "required_status_checks": [
           {
             "context": "CI / test-and-verify"
           }
-        ]
+        ],
+        "strict_required_status_checks_policy": true
       }
     },
     {
       "type": "non_fast_forward"
     },
     {
-      "type": "update"
+      "type": "deletion"
     }
   ],
   "bypass_actors": [],
