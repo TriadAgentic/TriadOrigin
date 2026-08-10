@@ -29,12 +29,21 @@ Input envelope shapes (market_state.v2-shaped, minimal and explicit):
        "payload": {"pivot_kind": "pivot_high" | "pivot_low", "level_ticks": int,
                    "atr14_ticks": int | None}}
 
-F03 within-bar order is not modeled: on one finalized bar the provisional-extreme freeze happens
-first (a strictly better extreme re-freezes level + delta + origin; an equal extreme does not
-re-freeze), then the reversal check runs against the frozen extreme. In the two-sided SEED phase
-a bar on which BOTH reversals confirm is an ambiguous boundary: it emits the named abstention
-``F03_AMBIGUOUS_SEED_REVERSAL`` and re-seeds from that bar — never a side-preferring guess,
-which would break the LONG/SHORT mirror law.
+F03 confirmation is a LATER-bar fact — formation and confirmation never collapse onto one bar
+(RC2 retained law ``confirm high when later L<=H_x-delta_x``; availability ``confirmation ... is
+the later reversal bar``; the RC3 errata scope is only "remove the undeclared reversal_bps/k_vol
+terms" and does not repeal "later"). In a leg the reversal is checked against the extreme frozen
+from PRIOR bars BEFORE this bar's own new extreme is admitted (check-then-freeze): a leg bar that
+sets a strictly better one-sided provisional extreme therefore holds and can never confirm on its
+own bar (``origin_event_id != confirmed_by_event_id`` always). In the two-sided SEED phase the
+freeze happens first (a strictly better extreme re-freezes level + delta + origin; an equal
+extreme does not re-freeze), then BOTH reversals are checked: a bar on which both confirm is an
+ambiguous boundary that emits the named abstention ``F03_AMBIGUOUS_SEED_REVERSAL`` and re-seeds
+from that bar — never a side-preferring guess, which would break the LONG/SHORT mirror law. The
+seed cannot collapse formation onto one bar either: a same-bar re-frozen extreme wide enough to
+reverse necessarily co-triggers the opposite reversal and abstains. (The within-bar order reading
+is a disposition-register item — see ``docs/plan/09_OPEN_QUESTIONS.md`` — not a silent code
+choice.)
 
 F04 publishes only when the second right bar finalizes (delayed benchmark, never early); a tie
 on either side rejects (strict unique extreme); an incomplete right window yields no pivot
@@ -45,7 +54,12 @@ F06 is fail-closed on RC3-PAR-STRUCT-001: while ``equal_level_max_span`` is the
 ``F06_UNAVAILABLE_MAX_SPAN_NOT_RATIFIED`` and no cluster state mutates (SAFE_HOLD). The anchor
 is the immutable first member — it never drifts, and transitive neighbor chaining is impossible
 because distance is always measured from the anchor. When several clusters accept, the winner is
-minimal anchor distance, then earliest cluster origin (RC2 tie rule).
+minimal anchor distance, then earliest cluster origin (RC2 tie rule). A cluster emits its
+equal-level atom EXACTLY ONCE, at the ``min_touches``-th member; a later accepted member refines
+the checkpointed member set (``member_levels``/``member_event_ids``) but emits no further event —
+in v1 a post-publication member-set revision is visible only via checkpoint state. Whether such a
+revision must also emit a TYPED_LEVEL is a pending RC3-PAR-STRUCT-001 emission disposition
+(``docs/plan/09_OPEN_QUESTIONS.md``), not a silent code choice.
 """
 
 from __future__ import annotations
@@ -181,19 +195,23 @@ class DirectionalChangeSwing:
 
     def _leg(self, state: State, event_id: str, high: int, low: int, delta: int
              ) -> TransitionResult:
+        # Check-then-freeze: the reversal is evaluated against the extreme frozen on PRIOR bars
+        # BEFORE this bar's own new extreme is admitted, so confirmation is always a later-bar
+        # fact (RC2 "confirm high when later L<=H_x-delta_x") and a leg bar that sets a new
+        # one-sided provisional extreme never confirms on its own bar.
         if state["mode"] == _UP:
             prov = state["prov_high"]
-            if high > prov["extreme_ticks"]:
-                prov = _frozen(high, delta, event_id)
             if prov["extreme_ticks"] - low >= prov["delta_ticks"]:
                 return self._confirm(SWING_HIGH, prov, event_id, low, delta)
+            if high > prov["extreme_ticks"]:
+                prov = _frozen(high, delta, event_id)
             return TransitionResult(state={
                 "last_event_id": event_id, "mode": _UP, "prov_high": prov, "prov_low": None})
         prov = state["prov_low"]
-        if low < prov["extreme_ticks"]:
-            prov = _frozen(low, delta, event_id)
         if high - prov["extreme_ticks"] >= prov["delta_ticks"]:
             return self._confirm(SWING_LOW, prov, event_id, high, delta)
+        if low < prov["extreme_ticks"]:
+            prov = _frozen(low, delta, event_id)
         return TransitionResult(state={
             "last_event_id": event_id, "mode": _DOWN, "prov_high": None, "prov_low": prov})
 
@@ -289,9 +307,11 @@ class EqualLevelCluster:
 
     Accept ``p`` iff ``|p - anchor| <= tolerance`` and ``span(members ∪ p) <= max_span`` (both
     inclusive); the anchor is the immutable first member. The cluster becomes an equal-level
-    atom at the ``min_touches``-th qualifying pivot. While ``equal_level_max_span`` is the
-    ``NOT_RATIFIED`` sentinel (RC3-PAR-STRUCT-001) every pivot yields the named abstention and
-    no cluster state mutates (SAFE_HOLD).
+    atom at the ``min_touches``-th qualifying pivot and publishes exactly once there; a later
+    accepted member refines the checkpointed member set without re-emitting (v1 publish-once —
+    revision emission is a pending RC3-PAR-STRUCT-001 disposition). While ``equal_level_max_span``
+    is the ``NOT_RATIFIED`` sentinel (RC3-PAR-STRUCT-001) every pivot yields the named abstention
+    and no cluster state mutates (SAFE_HOLD).
     """
 
     def initial_state(self) -> State:

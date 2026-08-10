@@ -182,6 +182,39 @@ class TestDirectionalChangeSwing:
         with pytest.raises(transition.MissingParameterError):
             machine.transition(machine.initial_state(), GV005_BARS[0], {}, {})
 
+    def test_leg_new_extreme_cannot_confirm_on_its_own_bar(self):
+        # RC2 retained law: 'confirm high when LATER L<=H_x-delta_x'; availability
+        # 'confirmation ... is the later reversal bar'. A leg bar that sets a NEW provisional
+        # extreme must not confirm the swing on that same bar. Freeze-then-check collapses
+        # formation and confirmation (origin_event_id == confirmed_by_event_id); check-then-
+        # freeze holds and waits for a genuinely later reversal bar.
+        machine = tlr.DirectionalChangeSwing()
+        bars = [
+            bar(0, 1000, 998, atr=20),   # seed
+            bar(1, 999, 995, atr=20),    # confirms SWING_HIGH @1000 (origin b0), flips DOWN
+            bar(2, 1002, 998, atr=20),   # rally confirms SWING_LOW @995 (origin b1), flips UP
+            bar(3, 1020, 1010, atr=20),  # sets a NEW high 1020 AND drops 10 on the same bar
+        ]
+        result = transition.run(machine, bars, F03_PARAMS)
+        levels = typed_levels(result)
+        # Exactly the two earlier swings confirm; b3 does NOT collapse into a third swing_high,
+        # and no confirmed swing is its own origin bar.
+        assert [event["kind"] for event in levels] == [tlr.SWING_HIGH, tlr.SWING_LOW]
+        assert all(
+            event["origin_event_id"] != event["confirmed_by_event_id"] for event in levels)
+        # b3's new provisional extreme is held (frozen), never confirmed on its own bar.
+        assert result.final_state["mode"] == "UP"
+        assert result.final_state["prov_high"] == {
+            "extreme_ticks": 1020, "delta_ticks": 5, "origin_event_id": "b3"}
+        # A genuinely LATER bar then reverses off the frozen 1020 extreme (origin b3, confirmed b4).
+        tail = transition.run(
+            machine, [bar(4, 1015, 1012, atr=20)], F03_PARAMS, initial=result.final_state)
+        (swing,) = typed_levels(tail)
+        assert swing["kind"] == tlr.SWING_HIGH
+        assert swing["level_ticks"] == 1020
+        assert swing["origin_event_id"] == "b3"
+        assert swing["confirmed_by_event_id"] == "b4"
+
     def test_ambiguous_seed_reversal_abstains_and_reseeds(self):
         machine = tlr.DirectionalChangeSwing()
         bars = [bar(0, 1000, 998, atr=20), bar(1, 1010, 990, atr=20)]
@@ -290,6 +323,61 @@ class TestEqualLevelCluster:
         clusters = result.final_state["clusters"]
         assert [cluster["anchor_ticks"] for cluster in clusters] == [1000, 1004]
         assert clusters[1]["member_levels"] == [1004]  # tolerance 3: distance 4 does not join
+
+    def test_two_clusters_accept_tie_break_min_distance_then_earliest(self):
+        # RC2 golden boundary 'two clusters accept' + tie rule 'choose min anchor distance, then
+        # earliest origin'. Every other vector has <=1 accepting cluster, so the min(accepting)
+        # path with len>1 is otherwise unexercised. Widen max_span so tolerance (5 at atr 50) is
+        # the sole gate and both clusters 1000/1008 can accept one pivot.
+        params = dict(F06_PARAMS, equal_level_max_span=20)
+        # (i) an EQUIDISTANT pivot (1004: distance 4 from both anchors) joins the EARLIEST
+        # cluster (anchor 1000, creation index 0) — the distance tie is broken by origin order.
+        equi = transition.run(
+            tlr.EqualLevelCluster(),
+            [pivot(0, 1000, atr=50), pivot(1, 1008, atr=50), pivot(2, 1004, atr=50)], params)
+        clusters = equi.final_state["clusters"]
+        assert [cluster["anchor_ticks"] for cluster in clusters] == [1000, 1008]
+        assert clusters[0]["member_levels"] == [1000, 1004]
+        assert clusters[1]["member_levels"] == [1008]
+        assert typed_levels(equi) == [{
+            "event_kind": tlr.TYPED_LEVEL, "formula": "F06", "kind": tlr.EQUAL_LEVEL_HIGH,
+            "anchor_ticks": 1000, "member_levels": [1000, 1004],
+            "member_event_ids": ["p0", "p2"], "confirmed_by_event_id": "p2"}]
+        # (ii) a STRICTLY CLOSER later cluster (anchor 1008, index 1: distance 3) beats the
+        # earlier farther one (anchor 1000, index 0: distance 5) — distance dominates index.
+        closer = transition.run(
+            tlr.EqualLevelCluster(),
+            [pivot(0, 1000, atr=50), pivot(1, 1008, atr=50), pivot(2, 1005, atr=50)], params)
+        clusters = closer.final_state["clusters"]
+        assert clusters[0]["member_levels"] == [1000]              # farther earlier cluster untouched
+        assert clusters[1]["member_levels"] == [1008, 1005]        # strictly closer wins over index
+        assert typed_levels(closer)[0]["anchor_ticks"] == 1008
+
+    def test_publish_once_then_post_publication_accession_refines_state_without_emitting(self):
+        # F06 v1 output law: a cluster publishes its equal-level atom EXACTLY ONCE, at the
+        # min_touches-th member. A later accepted member refines the checkpointed member set
+        # (member_levels/member_event_ids) but emits NO further event — a post-publication
+        # member-set revision is visible only via checkpoint state in v1. (Revision emission is a
+        # pending RC3-PAR-STRUCT-001 disposition; this pins the current behavior so any future
+        # change is deliberate rather than silent.)
+        machine = tlr.EqualLevelCluster()
+        pivots = [pivot(0, 1000), pivot(1, 1002), pivot(2, 1001)]  # tolerance 3, max_span 4
+        result = transition.run(machine, pivots, F06_PARAMS)
+        # Exactly one emission — the publication at the second touch.
+        assert typed_levels(result) == [{
+            "event_kind": tlr.TYPED_LEVEL, "formula": "F06", "kind": tlr.EQUAL_LEVEL_HIGH,
+            "anchor_ticks": 1000, "member_levels": [1000, 1002],
+            "member_event_ids": ["p0", "p1"], "confirmed_by_event_id": "p1"}]
+        # The third qualifying pivot refined the member set, visible only in checkpoint state.
+        (cluster,) = result.final_state["clusters"]
+        assert cluster["published"] is True
+        assert cluster["member_levels"] == [1000, 1002, 1001]
+        assert cluster["member_event_ids"] == ["p0", "p1", "p2"]
+        # And that accession emitted nothing at all — no second TYPED_LEVEL, no abstention.
+        published = transition.run(machine, pivots[:2], F06_PARAMS).final_state
+        tail = transition.run(machine, [pivot(2, 1001)], F06_PARAMS, initial=published)
+        assert tail.events == []
+        assert tail.final_state["clusters"][0]["member_levels"] == [1000, 1002, 1001]
 
     def test_span_law_inclusive_boundary_and_breach(self):
         # ATR 50 -> tolerance 5, so span is the only discriminator against max_span 4.
