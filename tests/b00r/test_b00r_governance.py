@@ -1,0 +1,365 @@
+"""B00R falsification matrix — governance/receipt/evidence law (repair plan §10).
+
+Each test is a focused mutation that must fail closed. The governance/provider-authenticated rows
+(GitHub rulesets, real signatures, provider evidence) are owner acts; the machinery here is proven
+to fail closed until those inputs exist — an unauthenticated template, a self-hash receipt, or an
+absent trust registry can never PASS.
+"""
+
+from __future__ import annotations
+
+import copy
+import json
+import pathlib
+import subprocess
+import sys
+
+import pytest
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+
+from triad_origin import governance as gov  # noqa: E402
+from triad_origin.canonical import sha256_hex  # noqa: E402
+
+PY = sys.executable
+
+
+def _run(*argv, cwd=ROOT):
+    return subprocess.run([PY, *argv], cwd=cwd, capture_output=True, text=True)
+
+
+def _golden(sid, which):
+    return json.loads((ROOT / f"contracts/golden/{sid}/{which}.json").read_text())
+
+
+# --- NEG-001 · unknown ledger task refuses (no B00 fallback) -------------------------------------
+def test_neg001_unknown_row_class_refuses_not_b00():
+    from tools import build_ledger as bl
+    with pytest.raises(bl.LedgerClassificationError):
+        bl.classify_rc3({"id": "X-999", "row_class": "MYSTERY", "node": "Nowhere",
+                         "gate": "", "phase": ""})
+    with pytest.raises(bl.LedgerClassificationError):
+        bl.classify_rc4({"id": "L-999", "gate": "L99", "instruction": "", "domain": ""})
+
+
+def test_neg001_gap_and_scope_rows_are_explicit_governance():
+    from tools import build_ledger as bl
+    assert bl.classify_rc3({"id": "GAP-1", "row_class": "GAP_CLOSURE", "node": "x",
+                            "gate": "G-1", "phase": "P-1"}) == (
+        "B00", "IN_REPO_GOVERNANCE", "R8_GOVERNANCE_CLOSURE")
+    assert bl.classify_rc3({"id": "SCP-1", "row_class": "RC1_SCOPE_CLOSURE", "node": "x",
+                            "gate": "G-1", "phase": "P-1"})[2] == "R8_GOVERNANCE_CLOSURE"
+
+
+# --- NEG-004 · same bundle id with changed bytes fails (immutability) -----------------------------
+def test_neg004_receipt_v3_immutable_schema_registered():
+    # The v3 schema is a NEW additive identity; the historical v2 is preserved untouched.
+    assert (ROOT / "contracts/schemas/triad.evidence_receipt.v2.schema.json").exists()
+    assert (ROOT / "contracts/schemas/triad.evidence_receipt.v3.schema.json").exists()
+
+
+# --- NEG-005 · nonhex/uppercase/zero/placeholder digest fails -------------------------------------
+@pytest.mark.parametrize("bad", ["", gov.ZERO_DIGEST, "A" * 64, "abc", "g" * 64,
+                                 "NOT_APPLICABLE", "0" + "a" * 63 + "Z"])
+def test_neg005_bad_digest_rejected(bad):
+    with pytest.raises(gov.GovernanceError):
+        gov.assert_hex64(bad, "field")
+
+
+def test_neg005_good_digest_accepted():
+    assert gov.assert_hex64("a" * 64, "field") == "a" * 64
+
+
+# --- NEG-006 · empty/null/whitespace/wildcard/nested-empty/unknown scope fails --------------------
+@pytest.mark.parametrize("bad", [{}, [], "", "   ", "a*b", "*", None, 1.5,
+                                 {"k": ""}, {"k": []}, {"k": {"j": None}}, [1, []]])
+def test_neg006_closed_scope_rejects(bad):
+    with pytest.raises(gov.GovernanceError):
+        gov.assert_closed_scope(bad)
+
+
+def test_neg006_closed_scope_accepts_wellformed():
+    gov.assert_closed_scope({"milestone": "B00R", "paths": ["a", "b"], "n": 3, "flag": True})
+
+
+# --- NEG-007 · source row_class/gate/node drift with equal milestone fails ------------------------
+def test_neg007_dag_detects_row_class_drift(tmp_path):
+    # Copy the repo control tree, corrupt one ledger row's row_class, and prove the DAG validator
+    # rejects the authority drift.
+    import shutil
+    tree = tmp_path / "repo"
+    (tree / "docs" / "control").mkdir(parents=True)
+    (tree / "tools").mkdir()
+    for name in ("rc3_effective_control_bundle.json", "rc4_control_bundle.json",
+                 "build_ledger.json"):
+        shutil.copy(ROOT / "docs/control" / name, tree / "docs/control" / name)
+    shutil.copy(ROOT / "tools/validate_combined_dag.py", tree / "tools/validate_combined_dag.py")
+    ledger = json.loads((tree / "docs/control/build_ledger.json").read_text())
+    # Find one RC3-sourced row and flip its row_class.
+    rc3 = {t["id"] for t in json.loads(
+        (tree / "docs/control/rc3_effective_control_bundle.json").read_text())["tasks"]}
+    for row in ledger["tasks"]:
+        if row["id"] in rc3 and row.get("row_class"):
+            row["row_class"] = "TAMPERED_ROW_CLASS"
+            break
+    (tree / "docs/control/build_ledger.json").write_text(json.dumps(ledger))
+    proc = subprocess.run([PY, "tools/validate_combined_dag.py"], cwd=tree,
+                          capture_output=True, text=True)
+    assert proc.returncode == 1
+    assert "row_class" in (proc.stdout + proc.stderr)
+
+
+# --- NEG-008 · self-hash-only / no external signature fails ---------------------------------------
+def test_neg008_no_external_signatures_is_blocked():
+    receipt = _golden("triad.evidence_receipt.v3", "valid")
+    trust = gov.validate_trust_registry(_golden("triad.receipt_trust_registry.v1", "valid"))
+    # A profile-required threshold with an empty signatures array can never PASS.
+    result, reason = gov.validate_receipt_v3(
+        receipt, milestone="B00R", trust=trust,
+        now_us=receipt["payload"]["emitted_at_us"])
+    assert result == "BLOCKED" and reason == "NO_EXTERNAL_SIGNATURES"
+
+
+def test_neg008_v2_self_hash_receipt_cannot_pass_strict():
+    proc = _run("tools/validate_b_receipt.py", "--strict", "--milestone", "B00",
+                "evidence/receipts/B00.json")
+    # Missing strict closure inputs are a CLI-usage refusal (2); a fully supplied v2 remains a
+    # validation refusal (1). Either way the historical self-hash can never return closure success.
+    assert proc.returncode != 0
+
+
+# --- NEG-009 · unknown/revoked/duplicate/wrong-role signer fails ----------------------------------
+def test_neg009_signer_threshold_rejections():
+    trust = {
+        "k1": {"key_id": "k1", "identity": "id1", "role": "EVIDENCE_PRODUCER",
+               "algorithm": "ed25519", "public_key_hex": "0" * 64, "revoked": False},
+        "k2": {"key_id": "k2", "identity": "id1", "role": "INDEPENDENT_COUNTERSIGNER",
+               "algorithm": "ed25519", "public_key_hex": "1" * 64, "revoked": False},
+        "k3": {"key_id": "k3", "identity": "id3", "role": "EVIDENCE_PRODUCER",
+               "algorithm": "ed25519", "public_key_hex": "2" * 64, "revoked": True},
+    }
+    body = b"payload"
+    # unknown signer
+    ok, reason = gov.verify_signatures(
+        signed_bytes=body, signatures=[{"key_id": "nope", "signature_hex": "0"}],
+        trust=trust, required_roles=("EVIDENCE_PRODUCER",), threshold=1)
+    assert not ok and reason.startswith("UNKNOWN_SIGNER")
+    # revoked signer
+    ok, reason = gov.verify_signatures(
+        signed_bytes=body, signatures=[{"key_id": "k3", "signature_hex": "0"}],
+        trust=trust, required_roles=("EVIDENCE_PRODUCER",), threshold=1)
+    assert not ok and reason.startswith("REVOKED_SIGNER")
+    # duplicate identity across two key ids
+    ok, reason = gov.verify_signatures(
+        signed_bytes=body,
+        signatures=[{"key_id": "k1", "signature_hex": "0" * 128},
+                    {"key_id": "k2", "signature_hex": "0" * 128}],
+        trust=trust, required_roles=(), threshold=2)
+    assert not ok and reason.startswith("DUPLICATE_SIGNER_IDENTITY")
+    # empty signatures
+    ok, reason = gov.verify_signatures(
+        signed_bytes=body, signatures=[], trust=trust, required_roles=(), threshold=1)
+    assert not ok and reason == "NO_EXTERNAL_SIGNATURES"
+
+
+# --- NEG-011 · missing/wrong/path-escaped/untracked/symlink evidence preimage fails ---------------
+def test_neg011_evidence_manifest_missing_and_mismatch(tmp_path):
+    (tmp_path / "evidence").mkdir()
+    good = tmp_path / "evidence" / "a.json"
+    good.write_text("{}")
+    manifest = {
+        "schema": "triad.evidence_manifest.v1", "schema_version": "1.0.0",
+        "manifest_kind": "EVIDENCE_MANIFEST", "entry_count": 1,
+        "entries": [{"path": "evidence/a.json", "role": "A", "media_type": "application/json",
+                     "size": 2, "sha256": sha256_hex(b"{}")}]}
+    gov.validate_evidence_manifest(manifest, tmp_path)  # baseline valid
+    # digest mismatch
+    bad = copy.deepcopy(manifest)
+    bad["entries"][0]["sha256"] = "b" * 64
+    with pytest.raises(gov.GovernanceError):
+        gov.validate_evidence_manifest(bad, tmp_path)
+    # path escape
+    esc = copy.deepcopy(manifest)
+    esc["entries"][0]["path"] = "../secret.json"
+    with pytest.raises(gov.GovernanceError):
+        gov.validate_evidence_manifest(esc, tmp_path)
+    # missing file
+    miss = copy.deepcopy(manifest)
+    miss["entries"][0]["path"] = "evidence/nope.json"
+    with pytest.raises(gov.GovernanceError):
+        gov.validate_evidence_manifest(miss, tmp_path)
+
+
+def test_neg011_evidence_manifest_rejects_symlink(tmp_path):
+    (tmp_path / "evidence").mkdir()
+    target = tmp_path / "evidence" / "real.json"
+    target.write_text("{}")
+    link = tmp_path / "evidence" / "link.json"
+    try:
+        link.symlink_to(target)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks unavailable")
+    manifest = {
+        "schema": "triad.evidence_manifest.v1", "schema_version": "1.0.0",
+        "manifest_kind": "EVIDENCE_MANIFEST", "entry_count": 1,
+        "entries": [{"path": "evidence/link.json", "role": "A", "media_type": "application/json",
+                     "size": 2, "sha256": sha256_hex(b"{}")}]}
+    with pytest.raises(gov.GovernanceError):
+        gov.validate_evidence_manifest(manifest, tmp_path)
+
+
+# --- NEG-012 · evidence before source merge / future-dated fails ----------------------------------
+def test_neg012_chronology_order_and_future():
+    receipt = _golden("triad.evidence_receipt.v3", "valid")
+    # observed before merge
+    bad = copy.deepcopy(receipt)
+    bad["payload"]["observed_at_us"] = bad["payload"]["source_merge_time_us"] - 1
+    result, reason = gov.validate_receipt_v3(bad, milestone="B00R")
+    assert result == "FAIL" and reason.startswith("CHRONOLOGY_ORDER")
+    # future-dated
+    fut = copy.deepcopy(receipt)
+    result, reason = gov.validate_receipt_v3(fut, milestone="B00R", now_us=fut["payload"]["emitted_at_us"] - 1)
+    assert result == "FAIL" and reason == "CHRONOLOGY_FUTURE_EVIDENCE"
+
+
+# --- NEG-017 · source PR touching receipt / receipt PR touching source fails ----------------------
+def test_neg017_pr_role_mixed_fails():
+    role, _ = gov.classify_changed_paths(
+        ["src/x.py", "evidence/receipts/B00R.receipt.v3.json"])
+    assert role == "MIXED"
+    proc = _run(
+        "tools/classify_milestone_pr.py",
+        "src/x.py",
+        "evidence/receipts/B00R.receipt.v3.json",
+    )
+    assert proc.returncode == 1
+
+
+def test_neg017_pure_roles_pass():
+    assert gov.classify_changed_paths(["src/x.py"])[0] == "SOURCE"
+    assert gov.classify_changed_paths(
+        ["evidence/receipts/B00R.receipt.v3.json"]
+    )[0] == "RECEIPT"
+
+
+# --- NEG-018 · B01C without exact B00R anchor is blocked (successor variant) ----------------------
+def test_neg018_successor_requires_predecessor_anchor():
+    receipt = _golden("triad.evidence_receipt.v3", "valid")
+    succ = copy.deepcopy(receipt)
+    succ["payload"]["milestone"] = "B01C"
+    succ["payload"]["scope"]["milestone"] = "B01C"
+    succ["payload"]["variant"] = "SUCCESSOR"
+    # no predecessor block -> FAIL
+    result, reason = gov.validate_receipt_v3(succ, milestone="B01C")
+    assert result == "FAIL" and "PREDECESSOR" in reason
+
+
+# --- NEG-021 · forbidden capability guard present -------------------------------------------------
+def test_neg021_dark_capability_scan_passes():
+    proc = _run("tools/verify_no_forbidden_capabilities.py")
+    assert proc.returncode == 0, proc.stderr
+
+
+# --- NEG-022 · OFF/OFF/OFF/LIVE drift fails -------------------------------------------------------
+def test_neg022_safety_posture_drift_fails():
+    receipt = _golden("triad.evidence_receipt.v3", "valid")
+    bad = copy.deepcopy(receipt)
+    bad["payload"]["levers"]["shadow_activation"] = "OFF"  # SHADOW must stay LIVE
+    result, reason = gov.validate_receipt_v3(bad, milestone="B00R")
+    assert result == "FAIL"
+
+
+def test_neg022_result_enum_closed():
+    receipt = _golden("triad.evidence_receipt.v3", "valid")
+    bad = copy.deepcopy(receipt)
+    bad["payload"]["result"] = "PASS"  # generic PASS is not a closure result
+    result, _ = gov.validate_receipt_v3(bad, milestone="B00R")
+    assert result == "FAIL"
+
+
+# --- authority root + governance snapshot fail-closed on templates -------------------------------
+def test_authority_root_unavailable_on_templates_strict():
+    proc = _run("tools/validate_authority_root.py", "--strict")
+    assert proc.returncode == 1
+    assert "UNAVAILABLE_AUTHORITY_ROOT" in (proc.stdout + proc.stderr)
+
+
+def test_governance_snapshot_unavailable_on_template_strict(capsys):
+    from tools import validate_governance_snapshot as snapshot
+    assert snapshot.main(["--strict"]) == 1
+    captured = capsys.readouterr()
+    assert "UNAVAILABLE" in (captured.out + captured.err)
+
+
+def test_absent_canonical_governance_snapshot_is_unavailable_not_fabricated_fail(capsys):
+    from tools import validate_governance_snapshot as snapshot
+    assert snapshot.main([
+        "--strict", "--snapshot", "docs/governance/rulesets/main.ruleset.provider.json",
+    ]) == 1
+    captured = capsys.readouterr()
+    assert "UNAVAILABLE" in (captured.out + captured.err)
+
+
+def test_empty_provider_expansion_does_not_become_a_malformed_authority_pin():
+    from tools import validate_authority_root as authority
+    empty_ci_environment = {meta[0]: "" for meta in authority.SUBJECTS.values()}
+    assert authority.load_external_pins(environ=empty_ci_environment) == {}
+
+
+def test_decision_templates_are_unauthenticated():
+    for name in ("DEC-AUTHORITY-BUNDLE-001", "DEC-RECEIPT-PROFILE-001", "DEC-B00-REPAIR-001"):
+        doc = json.loads(
+            (ROOT / f"docs/governance/decisions/{name}.template.json").read_text())
+        assert gov.decision_is_authenticated(doc) is False
+
+
+def test_invalidation_manifest_matches_committed_receipts():
+    inv = json.loads((ROOT / "docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json").read_text())
+    assert inv["entries"]
+    for entry in inv["entries"]:
+        data = (ROOT / entry["path"]).read_bytes()
+        assert sha256_hex(data) == entry["sha256"]
+        assert entry["disposition"] in inv["disposition_vocabulary"]
+
+
+def test_b00r_gate_owner_commands_are_strict_and_use_one_canonical_receipt():
+    from argparse import Namespace
+    from tools import b00r_gate
+
+    args = Namespace(
+        mode="receipt",
+        expected_head="a" * 40,
+        now_us=1_000_000,
+        pins=None,
+        receipt=b00r_gate.CANONICAL_RECEIPT,
+        manifest=b00r_gate.CANONICAL_MANIFEST,
+        governance_snapshot=b00r_gate.CANONICAL_GOVERNANCE_SNAPSHOT,
+        provider_raw=b00r_gate.CANONICAL_PROVIDER_RAW,
+        provider_pin=None,
+        anchor_ruleset=b00r_gate.CANONICAL_ANCHOR_RULESET,
+        anchor_ruleset_pin=None,
+    )
+    gates = b00r_gate._owner_gates(args)
+    commands = [gate.argv for gate in gates]
+    assert all(gate.owner_gated for gate in gates)
+    assert any(
+        "--strict" in command
+        and any(part.endswith("/validate_authority_root.py") for part in command)
+        for command in commands
+    )
+    for command in commands[:2]:
+        assert "--expected-head" in command
+        assert "--git-root" in command
+        assert "--now-us" in command
+    receipt_commands = [
+        command for command in commands
+        if any(part.endswith("/validate_b_receipt.py") for part in command)
+    ]
+    assert len(receipt_commands) == 1
+    assert receipt_commands[0][-1] == "evidence/receipts/B00R.receipt.v3.json"
+    for flag in ("--now-us", "--manifest", "--git-root", "--expected-head",
+                 "--governance-snapshot", "--provider-raw"):
+        assert flag in receipt_commands[0]
+    assert "--trust" not in receipt_commands[0]
+    assert not any("dsse" in part.lower() for command in commands for part in command)

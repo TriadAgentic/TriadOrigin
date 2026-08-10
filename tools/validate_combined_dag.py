@@ -162,7 +162,12 @@ def main() -> int:
         problems += 1
 
     # 4 · Source-authority preservation -------------------------------------------------------
+    # The ledger may add a milestone lane and an exec class; it may NOT rewrite a source task's
+    # authority fields. For RC3 rows the ledger preserves gate, node, row_class, and phase verbatim;
+    # for RC4 lever rows the scheduling convention stamps row_class="LEVER"/phase="" (the source
+    # lever carries neither), and the domain stands in for node (B00R-D10 / SRC-006).
     for row in ledger_rows:
+        from_rc3 = row["id"] in rc3_tasks
         source = rc3_tasks.get(row["id"]) or rc4_tasks.get(row["id"])
         if source is None:
             continue  # reported above
@@ -174,6 +179,22 @@ def main() -> int:
         if row.get("node", "") != source_node:
             fail(f"ledger rewrote node for {row['id']}: {row.get('node')!r} != {source_node!r}")
             problems += 1
+        if from_rc3:
+            source_row_class = source.get("row_class", "")
+            source_phase = source.get("phase", "")
+            if row.get("row_class", "") != source_row_class:
+                fail(f"ledger rewrote row_class for {row['id']}: "
+                     f"{row.get('row_class')!r} != {source_row_class!r}")
+                problems += 1
+            if row.get("phase", "") != source_phase:
+                fail(f"ledger rewrote phase for {row['id']}: "
+                     f"{row.get('phase')!r} != {source_phase!r}")
+                problems += 1
+        else:
+            if row.get("row_class", "") != "LEVER":
+                fail(f"RC4 lever row {row['id']} lost its LEVER row_class: "
+                     f"{row.get('row_class')!r}")
+                problems += 1
 
     # 5 · Milestone inversions accounted ------------------------------------------------------
     lane = {row["id"]: row["milestone"] for row in ledger_rows}

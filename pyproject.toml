@@ -9,8 +9,8 @@ description = "TRIAD ORIGIN V7 — Deterministic Causal Edge Core (E02 replaceme
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Proprietary — TRIAD estate internal" }
-# Runtime is stdlib-only. Signed-config parsing/verification remains blocked by B00 and must not
-# add a dependency or hidden trust policy before that control surface is ratified.
+# Runtime is stdlib-only. Ed25519 is confined to test/governance tooling and is never imported on
+# the DARK runtime or money path.
 dependencies = []
 classifiers = [
   "Operating System :: POSIX :: Linux",
@@ -19,6 +19,7 @@ classifiers = [
 [project.optional-dependencies]
 # Test/validation tooling only. Runtime code never imports these on the money path.
 test = [
+  "cryptography==50.0.0",
   "pytest>=8",
   "jsonschema>=4.20",
   "setuptools>=68",

@@ -1,0 +1,41 @@
+# CODEOWNERS — B00R governance (GOV-009)
+#
+# Independent ownership review is required for the critical governance/evidence surfaces below.
+# A new CODEOWNERS file cannot protect the merge that first introduces it, so the B00R SOURCE
+# merge is protected by the ruleset's unconditional independent-approval rule; CODEOWNERS becomes
+# effective from the B00R receipt PR onward.
+#
+# OWNER ACTION REQUIRED: replace @TriadAgentic/origin-governance-reviewers with a real team/handle the
+# account owner controls (the reviewers here MUST be independent of the implementation author).
+
+# Workflows and CI law
+/.github/                                   @TriadAgentic/origin-governance-reviewers
+/.github/workflows/                         @TriadAgentic/origin-governance-reviewers
+/.github/CODEOWNERS                         @TriadAgentic/origin-governance-reviewers
+
+# Contracts, schemas, manifests, registry
+/contracts/                                 @TriadAgentic/origin-governance-reviewers
+
+# Governance decisions, trust registry, rulesets, invalidation manifest
+/docs/governance/                           @TriadAgentic/origin-governance-reviewers
+
+# Machine control law and source-hash inventory
+/docs/control/b00r_policy.v1.json           @TriadAgentic/origin-governance-reviewers
+/docs/control/SOURCE_HASHES.sha256          @TriadAgentic/origin-governance-reviewers
+
+# Audit runner, receipt validator, and B00R governance/evidence tooling
+/tools/e2e_audit.py                         @TriadAgentic/origin-governance-reviewers
+/tools/validate_b_receipt.py                @TriadAgentic/origin-governance-reviewers
+/tools/validate_authority_root.py           @TriadAgentic/origin-governance-reviewers
+/tools/validate_governance_snapshot.py      @TriadAgentic/origin-governance-reviewers
+/tools/validate_b00r_anchor.py               @TriadAgentic/origin-governance-reviewers
+/tools/verify_source_hashes.py              @TriadAgentic/origin-governance-reviewers
+/tools/verify_historical_evidence.py         @TriadAgentic/origin-governance-reviewers
+/tools/verify_codeowners.py                  @TriadAgentic/origin-governance-reviewers
+/tools/build_evidence_manifest.py           @TriadAgentic/origin-governance-reviewers
+/tools/classify_milestone_pr.py             @TriadAgentic/origin-governance-reviewers
+/tools/b00r_gate.py                         @TriadAgentic/origin-governance-reviewers
+/src/triad_origin/governance.py             @TriadAgentic/origin-governance-reviewers
+
+# Evidence namespace (receipt PRs)
+/evidence/                                  @TriadAgentic/origin-governance-reviewers

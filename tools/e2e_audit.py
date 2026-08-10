@@ -67,9 +67,15 @@ def golden_vectors() -> None:
     from triad_origin import contracts
 
     golden_root = ROOT / "contracts" / "golden"
+    wire_contracts = set(contracts.known_contracts())
     checked = 0
     for schema_dir in sorted(golden_root.iterdir()):
         if not schema_dir.is_dir():
+            continue
+        # Wire-contract goldens only; the B00R governance schemas (evidence_receipt.v3, trust
+        # registry, decision, snapshot, evidence manifest) are NOT wire contracts and are
+        # validated by the b00r_governance_evidence stage via triad_origin.governance.
+        if schema_dir.name not in wire_contracts:
             continue
         valid = schema_dir / "valid.json"
         invalid = schema_dir / "invalid.json"
@@ -1233,6 +1239,136 @@ def b07_control_plane_walk() -> None:
     if degraded is Readiness.READY_NO_AUTHORITY:
         raise AssertionError("an unresolvable control-plane conjunct must never report "
                              "READY_NO_AUTHORITY")
+
+
+# ---------------------------------------------------------------- B00R stage
+@stage("b00r_governance_evidence",
+       "B00R governance/evidence root: source hashes, PR-role, receipt-v3 fail-closed, "
+       "closed-scope/digest law, invalidation manifest, owner-gated validators")
+def b00r_governance_evidence_walk() -> None:
+    from triad_origin import governance as gov
+
+    # 1 · source-hash inventory recomputes and the RC3 composition manifest is consistent.
+    _run_tool("verify_source_hashes.py")
+
+    # 2 · PR-role classifier: only the canonical bare receipt path is RECEIPT; the formerly
+    #     advertised DSSE name is INVALID, and mixing source+evidence fails closed.
+    assert gov.classify_changed_paths(["src/triad_origin/contracts.py"])[0] == "SOURCE"
+    assert gov.classify_changed_paths(
+        ["evidence/receipts/B00R.receipt.v3.json"])[0] == "RECEIPT"
+    assert gov.classify_changed_paths(["evidence/receipts/B00R.dsse.json"])[0] == "INVALID"
+    assert gov.classify_changed_paths(
+        ["src/triad_origin/contracts.py",
+         "evidence/receipts/B00R.receipt.v3.json"])[0] == "MIXED"
+    _run_tool("classify_milestone_pr.py", "src/triad_origin/contracts.py")
+
+    # 3 · the five governance schemas validate their valid golden and reject their invalid golden.
+    for sid in ("triad.evidence_receipt.v3", "triad.receipt_trust_registry.v1",
+                "triad.governance_decision.v1", "triad.governance_snapshot.v1",
+                "triad.evidence_manifest.v1"):
+        valid = json.loads((ROOT / f"contracts/golden/{sid}/valid.json").read_text())
+        invalid = json.loads((ROOT / f"contracts/golden/{sid}/invalid.json").read_text())
+        gov.validate_structure(valid, sid)
+        try:
+            gov.validate_structure(invalid, sid)
+            raise AssertionError(f"{sid} invalid golden passed structural validation")
+        except gov.GovernanceError:
+            pass
+
+    # 4 · receipt-v3 is fail-closed without an externally pinned trust registry (never PASS).
+    root_receipt = json.loads(
+        (ROOT / "contracts/golden/triad.evidence_receipt.v3/valid.json").read_text())
+    result, reason = gov.validate_receipt_v3(root_receipt, milestone="B00R")
+    assert result == "BLOCKED", (result, reason)
+
+    # 5 · closed-scope and digest laws recursively reject empty/wildcard/placeholder.
+    for bad in ({}, [], "", "  ", "a*b", None):
+        try:
+            gov.assert_closed_scope(bad)
+            raise AssertionError(f"closed-scope admitted {bad!r}")
+        except gov.GovernanceError:
+            pass
+    for bad in ("", gov.ZERO_DIGEST, "A" * 64, "NOT_APPLICABLE"):
+        try:
+            gov.assert_hex64(bad, "x")
+            raise AssertionError(f"assert_hex64 admitted {bad!r}")
+        except gov.GovernanceError:
+            pass
+
+    # 6 · the historical invalidation manifest resolves every entry digest to the committed,
+    #     byte-unchanged receipt (real evidence check).
+    inv = json.loads(
+        (ROOT / "docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json").read_text())
+    from triad_origin.canonical import sha256_hex
+    assert inv["entries"], "invalidation manifest empty"
+    for entry in inv["entries"]:
+        data = (ROOT / entry["path"]).read_bytes()
+        assert sha256_hex(data) == entry["sha256"], entry["path"]
+        assert entry["disposition"] in inv["disposition_vocabulary"]
+
+    # 7 · the decision/trust/ruleset templates are fail-closed (unauthenticated), never a PASS.
+    dec = json.loads(
+        (ROOT / "docs/governance/decisions/DEC-B00-REPAIR-001.template.json").read_text())
+    assert gov.decision_is_authenticated(dec) is False
+    _run_tool("validate_authority_root.py")        # non-strict: UNAVAILABLE reported, exit 0
+    _run_tool("validate_governance_snapshot.py")   # non-strict: UNAVAILABLE reported, exit 0
+
+    # 8 · safety posture is exactly OFF/OFF/OFF/LIVE / DENIED_SAFE_HOLD.
+    assert gov.SAFETY_POSTURE == {
+        "venue_environment": "OFF", "venue_activation": "OFF",
+        "paper_activation": "OFF", "shadow_activation": "LIVE"}
+    assert gov.ACTIVATION_RESULT == "DENIED_SAFE_HOLD"
+
+
+@stage("b01c_contract_binding_promotion",
+       "B01C offline-prep: schema-mutation corpus refuses every closure-required mutation; the "
+       "binding bundle authenticates + refuses six attacks; the acceptance profile is honest and "
+       "drift-locked; historical B receipts stay fail-closed negative fixtures")
+def b01c_contract_binding_promotion() -> None:
+    import json
+    from triad_origin import governance as gov
+    from triad_origin.canonical import canonical_json, sha256_hex
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import gen_acceptance_profile as gap
+    import run_contract_mutations as rcm
+    import verify_binding_bundle as vbb
+
+    # 1 · CON-03/06 — the authoritative validator refuses every closure-required mutation; the
+    #     CON-01/02 open-boundary surface is inventoried, never silently closed.
+    report = rcm.run_profile("B01C")  # in-proc run IS the proof (the CLI exit is proven by its test)
+    assert report["totals"]["closure_required_wrongly_passed"] == 0, report["wrongly_passed"]
+    assert report["totals"]["closure_required_refused"] > 1000
+    assert len(report["corpus_digest"]) == 64
+    assert report["totals"]["open_boundaries"] == len(report["open_boundary_inventory"])
+
+    # 2 · BIND-01/03/06 — a real capability authenticates and all six authenticity attacks are
+    #     refused; the packaged bundle inventories to 105 rows; no owner preimage => UNAVAILABLE.
+    st = vbb.selftest()
+    assert st["authenticated_ok"] and st["all_attacks_refused"], st["attacks"]
+    assert st["row_count"] == 105
+    _run_tool("verify_binding_bundle.py", "--selftest")
+
+    # 3 · WP-B01C-06 — the acceptance profile is content-addressed, honest, and drift-locked.
+    profile = gap.build_profile()
+    unsigned = {k: v for k, v in profile.items() if k != "profile_digest"}
+    assert profile["profile_digest"] == sha256_hex(canonical_json(unsigned))
+    assert profile["closure_claimed"] is False
+    assert profile["milestone_status"] == "OFFLINE_PREP_UNRECEIPTED"
+    assert profile["levers"] == gov.SAFETY_POSTURE
+    assert profile["activation_result"] == gov.ACTIVATION_RESULT
+    _run_tool("gen_acceptance_profile.py", "--check")
+
+    # 4 · EVD-01 — the historical B receipts stay byte-frozen negative fixtures (never a v3 PASS).
+    inv = json.loads(
+        (ROOT / "docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json").read_text())
+    by_ms = {e["milestone"]: e for e in inv["entries"]}
+    for milestone in ("B01", "B01R", "B02"):
+        entry = by_ms[milestone]
+        raw = (ROOT / entry["path"]).read_bytes()
+        assert sha256_hex(raw) == entry["sha256"], milestone
+        result, _reason = gov.validate_receipt_v3(json.loads(raw), milestone=milestone)
+        assert result == "FAIL", (milestone, result)
 
 
 def main(argv: list[str]) -> int:

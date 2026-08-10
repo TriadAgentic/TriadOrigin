@@ -111,9 +111,25 @@ import hashlib
 import json
 import pathlib
 import triad_origin
-from triad_origin import contracts
+from triad_origin import contracts, bindings
 assert len(contracts.known_contracts()) == 44
 assert contracts._CONTRACTS_DIR.name == '_contracts'
+
+# B01C-BIND-03: the binding bundle resolves to the packaged resource, never a repo-relative path.
+assert bindings._PACKAGED_REGISTRY.is_file(), bindings._PACKAGED_REGISTRY
+assert bindings.DEFAULT_REGISTRY_PATH == bindings._PACKAGED_REGISTRY
+assert not bindings._SOURCE_REGISTRY.exists(), 'installed wheel must not see docs/control'
+# B01C-CON-03 end to end: the loader validates every row with the full validator, which is absent
+# in this --no-deps wheel, so load_registry() fails closed (never a fallback PASS) even though the
+# packaged bundle bytes are present and readable.
+import json as _json
+assert _json.loads(bindings._PACKAGED_REGISTRY.read_text())['row_count'] == 105
+try:
+    bindings.load_registry()
+except contracts.SchemaValidatorUnavailable:
+    pass
+else:
+    raise AssertionError('binding loader validated rows without the full validator')
 root = contracts._CONTRACTS_DIR
 manifest_text = root / 'MANIFEST.sha256'
 legacy_manifest_json = root / 'manifest' / 'contract_bundle.manifest.v1.json'
@@ -140,7 +156,7 @@ for line in manifest_text.read_text(encoding='utf-8').splitlines():
         assert target.is_file(), name
         assert hashlib.sha256(target.read_bytes()).hexdigest() == digest, name
         entries.append(relative)
-assert len(entries) == 133
+assert len(entries) == 148
 actual = {{str(path.relative_to(root)) for path in root.rglob('*') if path.is_file()}}
 expected = set(entries) | {{
     'MANIFEST.sha256',
@@ -150,26 +166,38 @@ expected = set(entries) | {{
 }}
 assert actual == expected, (sorted(actual - expected), sorted(expected - actual))
 
+# B01C-CON-03: this isolated wheel has NO jsonschema (installed --no-deps), so the AUTHORITATIVE
+# path must fail closed (SCHEMA_VALIDATOR_UNAVAILABLE) for every golden — never a fallback PASS.
+# The packaged schema/golden bytes are proven intact via the non-authoritative diagnostic, which
+# still distinguishes valid from invalid.
 for schema_id in contracts.known_contracts():
     schema = contracts.load_schema(schema_id)
     assert schema['title'] == schema_id
     golden_dir = root / 'golden' / schema_id
     valid = json.loads((golden_dir / 'valid.json').read_text(encoding='utf-8'))
-    contracts.validate(valid, schema_id=schema_id)
     invalid = json.loads((golden_dir / 'invalid.json').read_text(encoding='utf-8'))
+    for vector in (valid, invalid):
+        try:
+            contracts.validate(vector, schema_id=schema_id)
+        except contracts.SchemaValidatorUnavailable:
+            pass
+        else:
+            raise AssertionError(f'authoritative validate passed without full validator for {{schema_id}}')
+    contracts.diagnostic_validate(schema_id, valid)
     try:
-        contracts.validate(invalid, schema_id=schema_id)
+        contracts.diagnostic_validate(schema_id, invalid)
     except contracts.ContractError:
         pass
     else:
-        raise AssertionError(f'fallback accepted invalid golden for {{schema_id}}')
+        raise AssertionError(f'diagnostic accepted invalid golden for {{schema_id}}')
 """
             _run([str(python), "-I", "-c", probe], cwd=tmp)
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"FAIL: isolated wheel smoke failed: {exc}", file=sys.stderr)
         return 1
     print(
-        "OK: sdist-built wheel byte-matches runtime, verifies 133 artifacts and all 44 goldens"
+        "OK: sdist-built wheel byte-matches runtime, verifies 148 artifacts, fails closed without "
+        "the full validator, and diagnoses all 44 goldens"
     )
     return 0
 

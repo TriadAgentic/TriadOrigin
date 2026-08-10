@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "triad.evidence_manifest.v1",
+  "title": "TRIAD evidence manifest v1 (closed content-addressed inventory)",
+  "description": "A closed inventory mapping each receipt digest to exactly one committed, tracked, non-escaping, non-symlink file with its media type, size, and sha256. Deep verification (bytes match, no symlink/escape/duplicate/untracked) lives in triad_origin.governance.validate_evidence_manifest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "manifest_kind", "entry_count", "entries"],
+  "properties": {
+    "schema": {"const": "triad.evidence_manifest.v1"},
+    "schema_version": {"const": "1.0.0"},
+    "manifest_kind": {"const": "EVIDENCE_MANIFEST"},
+    "entry_count": {"type": "integer"},
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "role", "media_type", "size", "sha256"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "role": {"type": "string", "minLength": 1},
+          "media_type": {"type": "string", "minLength": 1},
+          "size": {"type": "integer"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "role_unique": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "triad.evidence_receipt.v3",
+  "title": "TRIAD evidence receipt v3 (B00R authenticated closure receipt)",
+  "description": "The B00R forward-repair authenticated receipt. Structural gate only; the deep digest/scope/chronology/root-nonroot/signature laws live in triad_origin.governance.validate_receipt_v3. Only PASS_REPOSITORY_SAFE_HOLD closes a milestone, and only under profile-selected external signatures.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "receipt_kind", "payload"],
+  "properties": {
+    "schema": {"const": "triad.evidence_receipt.v3"},
+    "schema_version": {"const": "3.0.0"},
+    "receipt_kind": {"const": "EVIDENCE_RECEIPT_V3"},
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "milestone", "repair_generation", "variant", "result", "activation_result",
+        "levers", "scope", "repository", "source_pr", "final_source_head",
+        "source_merge_sha", "source_merge_tree", "source_merge_time_us",
+        "workflow_sha256", "contract_manifest_sha256", "test_manifest_sha256",
+        "evidence_manifest_sha256", "config_bundle_sha256", "rollback_proof_sha256",
+        "observed_at_us", "emitted_at_us", "expires_at_us",
+        "evidence_ids", "evidence_sha256s", "signatures"
+      ],
+      "properties": {
+        "milestone": {"type": "string", "pattern": "^B0[0-7][A-Z]?$"},
+        "repair_generation": {"type": "integer"},
+        "variant": {"enum": ["ROOT", "SUCCESSOR"]},
+        "result": {"enum": ["PASS_REPOSITORY_SAFE_HOLD", "FAIL", "BLOCKED", "UNAVAILABLE"]},
+        "activation_result": {"const": "DENIED_SAFE_HOLD"},
+        "levers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["venue_environment", "venue_activation", "paper_activation", "shadow_activation"],
+          "properties": {
+            "venue_environment": {"const": "OFF"},
+            "venue_activation": {"const": "OFF"},
+            "paper_activation": {"const": "OFF"},
+            "shadow_activation": {"const": "LIVE"}
+          }
+        },
+        "scope": {"type": "object"},
+        "repository": {"type": "string", "minLength": 1},
+        "source_pr": {"type": "integer"},
+        "final_source_head": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_merge_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_merge_tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_merge_time_us": {"type": "integer"},
+        "workflow_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "contract_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "test_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "evidence_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "config_bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "rollback_proof_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "repair_decision_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "invalidation_manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "audited_start_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "predecessor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["anchor_id", "receipt_sha256"],
+          "properties": {
+            "anchor_id": {"type": "string", "minLength": 1},
+            "receipt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            "receipt_merge_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}
+          }
+        },
+        "observed_at_us": {"type": "integer"},
+        "emitted_at_us": {"type": "integer"},
+        "expires_at_us": {"type": "integer"},
+        "evidence_ids": {"type": "array", "items": {"type": "string"}},
+        "evidence_sha256s": {"type": "array", "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+        "signatures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["key_id", "signature_hex"],
+            "properties": {
+              "key_id": {"type": "string", "minLength": 1},
+              "signature_hex": {"type": "string", "pattern": "^[0-9a-f]{128}$"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

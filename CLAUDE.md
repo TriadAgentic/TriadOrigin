@@ -22,6 +22,18 @@ policy (no environment/rollout input); no guessed ordinal↔semantic capsule map
 fail-closed data with named abstention. Decisions live in `docs/plan/09_OPEN_QUESTIONS.md` — a
 **disposition register** with per-row due-before milestones, never resolved silently in code.
 
+**Updated 2026-08-10 (B00R forward-repair).** No B00–B07 milestone is legitimately closed; the old
+chain is invalid at its root. Repair is **forward-only** from `B00R` (the governance/receipt/evidence
+root). Historical R00/B00/B00C/B01–B07 receipts are preserved byte-unchanged and additively
+dispositioned (`docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json`); they are never edited into a
+retroactive pass. The B00R engineering is built and green (receipt-v3 + governance schemas,
+`src/triad_origin/governance.py`, the `tools/*` governance validators, `tools/b00r_gate.py`, the
+fail-closed `docs/governance/` templates, and `tests/b00r/`); its closure is **owner-gated** and
+fail-closes to `BLOCKED`/`UNAVAILABLE` until the owner authenticates the three root decisions, pins the
+trust registry externally, installs the no-bypass `main` ruleset, and threshold-signs receipt-v3. The
+only permitted B00R result is `PASS_REPOSITORY_SAFE_HOLD`; B01C stays frozen until the exact
+`B00R_RECEIPT_ANCHOR` validates. Safety posture is invariant `DENIED_SAFE_HOLD`, OFF/OFF/OFF/LIVE.
+
 Authority order:
 
 1. Operator's authenticated, scoped decisions (incl. the 2026-08-09 build directive).

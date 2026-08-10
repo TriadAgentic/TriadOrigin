@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "triad.governance_snapshot.v1",
+  "title": "TRIAD governance snapshot v1 (provider-authenticated ruleset facts)",
+  "description": "Provider-sourced active-ruleset facts and effective time proving no-bypass branch controls on main. Authenticated only when authenticated=true AND provider evidence is externally verified; a template with authenticated=false is fail-closed UNAVAILABLE.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "snapshot_kind", "authenticated", "ruleset"],
+  "properties": {
+    "schema": {"const": "triad.governance_snapshot.v1"},
+    "schema_version": {"const": "1.0.0"},
+    "snapshot_kind": {"const": "GOVERNANCE_SNAPSHOT"},
+    "authenticated": {"type": "boolean"},
+    "effective_at_us": {"type": "integer"},
+    "provider": {"type": "object"},
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ruleset_id", "target", "pull_request_required", "required_status_check",
+        "strict_required_status", "required_approvals", "dismiss_stale_reviews",
+        "require_conversation_resolution", "block_force_push", "block_deletions", "bypass_actors"
+      ],
+      "properties": {
+        "ruleset_id": {"type": "string", "minLength": 1},
+        "target": {"enum": ["refs/heads/main", "~DEFAULT_BRANCH"]},
+        "pull_request_required": {"type": "boolean"},
+        "required_status_check": {"type": "string"},
+        "strict_required_status": {"type": "boolean"},
+        "required_approvals": {"type": "integer"},
+        "dismiss_stale_reviews": {"type": "boolean"},
+        "require_conversation_resolution": {"type": "boolean"},
+        "block_force_push": {"type": "boolean"},
+        "block_deletions": {"type": "boolean"},
+        "bypass_actors": {"type": "array", "items": {"type": "string"}},
+        "codeowners_required_paths": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "authenticated": false,
+  "keys": [
+    {
+      "algorithm": "ed25519",
+      "identity": "UNSET_OWNER_EVIDENCE_PRODUCER",
+      "key_id": "origin-evidence-producer-1",
+      "not_after_us": 9999999999999999,
+      "not_before_us": 0,
+      "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "revoked": false,
+      "role": "EVIDENCE_PRODUCER",
+      "scope": "B00R..B07"
+    }
+  ],
+  "registry_kind": "RECEIPT_TRUST_REGISTRY",
+  "schema": "triad.receipt_trust_registry.v1",
+  "schema_version": "1.0.0"
+}

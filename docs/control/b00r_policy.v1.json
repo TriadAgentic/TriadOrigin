@@ -1,0 +1,57 @@
+{
+  "schema": "triad.origin.b00r_policy.v1",
+  "schema_version": "1.0.0",
+  "milestone": "B00R",
+  "repair_generation": 1,
+  "audited_start_sha": "e1f76b845bc1251c156d37a662f87fc468397fb0",
+  "required_result": "PASS_REPOSITORY_SAFE_HOLD",
+  "activation_result": "DENIED_SAFE_HOLD",
+  "levers": {
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "predecessor": null,
+  "note": "B00R is the forward-repair root; B01C depends on the validated B00R receipt anchor, not merely a source merge. B00R never requires the trading/MCP host.",
+  "owner_gated_inputs": [
+    {"id": "DEC-AUTHORITY-BUNDLE-001", "template": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.template.json", "authenticated_path": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.json", "external_pin": "AUTHORITY_BUNDLE_DECISION_SHA256", "default_while_absent": "UNAVAILABLE_AUTHORITY_ROOT"},
+    {"id": "DEC-RECEIPT-PROFILE-001", "template": "docs/governance/decisions/DEC-RECEIPT-PROFILE-001.template.json", "authenticated_path": "docs/governance/decisions/DEC-RECEIPT-PROFILE-001.json", "external_pin": "RECEIPT_PROFILE_DECISION_SHA256", "default_while_absent": "NO_RECEIPT_MAY_RETURN_PASS"},
+    {"id": "DEC-B00-REPAIR-001", "template": "docs/governance/decisions/DEC-B00-REPAIR-001.template.json", "authenticated_path": "docs/governance/decisions/DEC-B00-REPAIR-001.json", "external_pin": "B00_REPAIR_DECISION_SHA256", "default_while_absent": "B01C_BLOCKED_NO_ROOT"},
+    {"id": "receipt_trust_registry", "template": "docs/governance/trust/receipt_trust_registry.v1.template.json", "authenticated_path": "docs/governance/trust/receipt_trust_registry.v1.json", "external_pin": "RECEIPT_TRUST_REGISTRY_SHA256", "default_while_absent": "NO_TRUST_REGISTRY_PINNED"},
+    {"id": "main_ruleset_evidence", "normalized_path": "docs/governance/rulesets/main.ruleset.provider.json", "raw_path": "docs/governance/rulesets/main.ruleset.provider.raw.json", "external_pin": "MAIN_RULESET_EVIDENCE_SHA256", "default_while_absent": "GOVERNANCE_UNAVAILABLE"},
+    {"id": "concrete_codeowners", "path": ".github/CODEOWNERS", "default_while_absent": "CODEOWNERS_PLACEHOLDER_IDENTITY"}
+  ],
+  "hard_gates": [
+    {"id": "baseline_containment", "command": "python tools/build_ledger.py --verify", "hard": true},
+    {"id": "source_hashes", "command": "python tools/verify_source_hashes.py", "hard": true},
+    {"id": "historical_evidence", "command": "python tools/verify_historical_evidence.py", "hard": true},
+    {"id": "contract_byte_manifest", "command": "python tools/verify_manifest.py", "hard": true},
+    {"id": "contract_manifest_schema", "command": "python tools/validate_contract_manifest.py", "hard": true},
+    {"id": "combined_dag", "command": "python tools/validate_combined_dag.py", "hard": true},
+    {"id": "reproducible_build", "command": "python tools/verify_reproducible_build.py", "hard": true},
+    {"id": "wheel_install", "command": "python tools/test_wheel_install.py", "hard": true},
+    {"id": "dark_capability", "command": "python tools/verify_no_forbidden_capabilities.py", "hard": true},
+    {"id": "e2e_audit_b00r_stage", "command": "python tools/e2e_audit.py", "hard": true},
+    {"id": "test_ids", "command": "python tools/collect_test_ids.py", "hard": true},
+    {"id": "tests_seed0", "command": "PYTHONHASHSEED=0 python -m pytest -p no:cacheprovider", "hard": true},
+    {"id": "tests_seed1", "command": "PYTHONHASHSEED=1 python -m pytest -p no:cacheprovider", "hard": true},
+    {"id": "codeowners_identity", "command": "python tools/verify_codeowners.py", "hard": true, "owner_gated": true},
+    {"id": "authority_root", "command_template": "python tools/validate_authority_root.py --strict --now-us <NOW_US> --expected-head <HEAD> --git-root .", "hard": true, "owner_gated": true},
+    {"id": "governance_snapshot", "command_template": "python tools/validate_governance_snapshot.py --strict --snapshot docs/governance/rulesets/main.ruleset.provider.json --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json --provider-pin <MAIN_RULESET_EVIDENCE_SHA256> --now-us <NOW_US> --expected-head <HEAD> --git-root .", "hard": true, "owner_gated": true},
+    {"id": "receipt_manifest", "command": "python tools/build_evidence_manifest.py --verify evidence/B00R/evidence_manifest.json --root . --closed-root evidence/B00R --require-tracked", "hard": true, "receipt_only": true},
+    {"id": "receipt_v3", "command_template": "python tools/validate_b_receipt.py --strict --milestone B00R --now-us <NOW_US> --manifest evidence/B00R/evidence_manifest.json --git-root . --expected-head <RECEIPT_HEAD> --governance-snapshot docs/governance/rulesets/main.ruleset.provider.json --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json --provider-pin <MAIN_RULESET_EVIDENCE_SHA256> evidence/receipts/B00R.receipt.v3.json", "hard": true, "owner_gated": true, "receipt_only": true}
+  ],
+  "pr_role_law": {
+    "source_pr": {"may_touch": "any path except evidence/**", "must_not_contain": "a receipt for its own source merge"},
+    "receipt_pr": {"may_add_only": ["evidence/B00R/**", "evidence/receipts/B00R.receipt.v3.json"], "must_add": ["evidence/B00R/evidence_manifest.json", "evidence/receipts/B00R.receipt.v3.json"], "historical_evidence": "IMMUTABLE", "mixed_content": "FAIL"}
+  },
+  "closure_anchor": {
+    "id": "B00R_RECEIPT_ANCHOR",
+    "mechanism": "protected annotated tag plus externally pinned active no-update/no-delete/no-bypass tag ruleset evidence",
+    "tag_signature_verified": false,
+    "tag_ruleset_path": "evidence/B00R/tag_ruleset.provider.json",
+    "tag_ruleset_external_pin": "B00R_TAG_RULESET_SHA256",
+    "b01c_base": "exact B00R receipt merge commit named by the validated anchor"
+  }
+}

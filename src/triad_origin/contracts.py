@@ -5,9 +5,11 @@ Unknown safety/economic data never defaults: it rejects (``ContractError``) or i
 raw evidence. Schema compatibility does not imply producer authority — a valid payload with a stale
 epoch is rejected by ``assert_epoch_ge`` at the consumer.
 
-Validation uses ``jsonschema`` when available; a stdlib fallback enforces the load-bearing checks
-(required fields, closed enums, ``const`` and forbidden keys) so the money path never hard-depends
-on a third-party library.
+**Authoritative validation requires the pinned full Draft 2020-12 validator (B01C-CON-03).** If
+that validator is absent, :func:`validate` / :func:`validate_payload` fail closed with
+``SCHEMA_VALIDATOR_UNAVAILABLE`` — never a fallback PASS. The stdlib :func:`diagnostic_validate`
+remains as a NON-authoritative diagnostic only (it covers a subset of the schema vocabulary — no
+arrays, bounds, ``$ref``, composition, or conditionals — so it may never gate a PASS).
 """
 
 from __future__ import annotations
@@ -19,7 +21,7 @@ import pathlib
 import re
 from typing import Any
 
-from .canonical import CanonicalError, canonical_json, str_to_tick
+from .canonical import CanonicalError, canonical_json, is_sha256_hex, str_to_tick
 from .control import lever_law
 
 _PACKAGE_CONTRACTS_DIR = pathlib.Path(__file__).resolve().parent / "_contracts"
@@ -39,6 +41,14 @@ class ContractError(ValueError):
 
 class StaleEpochError(ContractError):
     """A structurally valid payload carrying a lower producer epoch than already accepted."""
+
+
+class SchemaValidatorUnavailable(ContractError):
+    """The pinned full JSON Schema validator is absent. Authoritative validation fails closed.
+
+    B01C-CON-03: absence of the full validator is never a fallback PASS. The stdlib diagnostic
+    covers only a subset of the schema vocabulary and may never authorise consumption.
+    """
 
 
 @functools.lru_cache(maxsize=1)
@@ -110,8 +120,27 @@ def _validate_jsonschema(schema: dict, event: dict) -> None:
         raise ContractError(f"schema violation at {loc}: {e.message}")
 
 
+def diagnostic_validate(schema_id: str, value: dict) -> None:
+    """NON-authoritative stdlib diagnostic (B01C-CON-03). Never gates a PASS.
+
+    Covers only a subset of the schema vocabulary (required members, closed enums, ``const``,
+    ``type``, ``pattern``/``minLength``, forbidden keys) — it ignores arrays, numeric bounds,
+    ``$ref``, composition and conditionals, so a diagnostic PASS proves nothing structurally. It
+    does additionally run the deterministic cross-field semantic laws (pure Python, no dependency),
+    so it is a useful operator signal; but authoritative acceptance always runs the full validator
+    via :func:`validate` / :func:`validate_payload`.
+    """
+    sid = _checked_schema_id(schema_id)
+    _validate_fallback(_schema_for_validation(sid), value)
+    _post_schema_laws(sid, value)
+
+
 def _validate_fallback(schema: dict, event: dict) -> None:
-    """Minimal stdlib validator covering the safety-material subset of the schema vocabulary."""
+    """Minimal stdlib validator covering the safety-material subset of the schema vocabulary.
+
+    NON-authoritative — reachable only through :func:`diagnostic_validate`, never from the
+    authoritative :func:`_validate_against_schema` path (B01C-CON-03).
+    """
 
     def check(node_schema: Any, value: Any, path: str) -> None:
         if node_schema is False:
@@ -188,6 +217,15 @@ def validate(event: dict, *, schema_id: str | None = None) -> None:
         raise ContractError(f"schema mismatch: envelope says {declared!r}, expected {schema_id!r}")
     schema = _schema_for_validation(sid)
     _validate_against_schema(schema, event)
+    _post_schema_laws(sid, event)
+
+
+def _post_schema_laws(sid: str, event: dict) -> None:
+    """Deterministic cross-field laws that run after structural validation (pure Python).
+
+    These need no third-party validator, so they are shared identically by the authoritative
+    :func:`validate` and the non-authoritative :func:`diagnostic_validate`.
+    """
     if sid in {"triad.edge_candidate.v1", "triad.edge_candidate.v2"}:
         assert_no_forbidden_candidate_fields(event)
     semantic = SEMANTIC_VALIDATORS.get(sid)
@@ -303,8 +341,9 @@ def _semantic_gate_receipt_v2(event: dict) -> None:
     if not isinstance(observed, int) or not isinstance(expires, int) or expires <= observed:
         raise ContractError("GATE_PASS_INVALID_VALIDITY_WINDOW")
     digests = payload.get("producer_digests")
+    # B01C-CON-05: exact lowercase-hex grammar, not shape/length — and never an all-zero placeholder.
     if not isinstance(digests, dict) or not digests or any(
-            not isinstance(v, str) or len(v) != 64 or v == "0" * 64
+            not is_sha256_hex(v) or v == "0" * 64
             for v in digests.values()):
         raise ContractError("GATE_PASS_MISSING_OR_PLACEHOLDER_DIGESTS")
     if payload.get("approver") == event.get("producer_service"):
@@ -392,10 +431,15 @@ def _require_canonical_wire(value: dict, label: str) -> None:
 
 
 def _validate_against_schema(schema: dict, value: Any) -> None:
+    # B01C-CON-03: the authoritative path requires the pinned full validator. Its absence is a
+    # fail-closed SCHEMA_VALIDATOR_UNAVAILABLE, NEVER a stdlib fallback PASS. The diagnostic
+    # validator is reachable only via diagnostic_validate() and can authorise nothing.
     try:
         _validate_jsonschema(schema, value)
-    except ModuleNotFoundError:
-        _validate_fallback(schema, value)
+    except ModuleNotFoundError as exc:
+        raise SchemaValidatorUnavailable(
+            "SCHEMA_VALIDATOR_UNAVAILABLE: the pinned full JSON Schema validator is not installed; "
+            "authoritative validation fails closed (no fallback PASS)") from exc
 
 
 def is_valid(event: dict, *, schema_id: str | None = None) -> bool:

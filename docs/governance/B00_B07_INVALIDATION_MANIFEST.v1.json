@@ -1,0 +1,101 @@
+{
+  "activation_result": "DENIED_SAFE_HOLD",
+  "audited_start_sha": "e1f76b845bc1251c156d37a662f87fc468397fb0",
+  "disposition_vocabulary": [
+    "INVALIDATED",
+    "SUPERSEDED",
+    "BUILT_ON_INVALID_ANCESTRY",
+    "INVALID_SUBJECT_RECEIPT_ATTEMPT"
+  ],
+  "entries": [
+    {
+      "disposition": "INVALIDATED",
+      "milestone": "B00",
+      "path": "evidence/receipts/B00.json",
+      "sha256": "2b0518ea0f9540b63ff8d771a131597da34c2acb3452d171020cd70bbc386877",
+      "size": 1599
+    },
+    {
+      "disposition": "INVALIDATED",
+      "milestone": "B00C",
+      "path": "evidence/receipts/B00C.json",
+      "sha256": "b5f89dbf6cb27f90c9ab7a731baea91044abb2b21709607e9f29741fdc2abcf9",
+      "size": 1808
+    },
+    {
+      "disposition": "BUILT_ON_INVALID_ANCESTRY",
+      "milestone": "B01",
+      "path": "evidence/receipts/B01.json",
+      "sha256": "d456e673a82a12786a89bae1dc302f9e3a013f295962e0db8e80294241613cc6",
+      "size": 1661
+    },
+    {
+      "disposition": "BUILT_ON_INVALID_ANCESTRY",
+      "milestone": "B01R",
+      "path": "evidence/receipts/B01R.json",
+      "sha256": "510dc65d3c2e6586a7370e5db1629624796459b4335d960e2b20380584dce6ea",
+      "size": 1734
+    },
+    {
+      "disposition": "BUILT_ON_INVALID_ANCESTRY",
+      "milestone": "B02",
+      "path": "evidence/receipts/B02.json",
+      "sha256": "63df9ba2d52e2701af57adfbf9d46cdc64a87db0b411ea36885291373a3b7679",
+      "size": 1687
+    },
+    {
+      "disposition": "BUILT_ON_INVALID_ANCESTRY",
+      "milestone": "B03",
+      "path": "evidence/receipts/B03.json",
+      "sha256": "25486baaf425c281003ce1b7f40b6ffeb60f0f8dd8ce19cf9f76640561099fec",
+      "size": 1759
+    },
+    {
+      "disposition": "BUILT_ON_INVALID_ANCESTRY",
+      "milestone": "B04",
+      "path": "evidence/receipts/B04.json",
+      "sha256": "e235eeaf5739fb3b5a49be0abb24bf16c2a488b85a1c68948704b5f08c1f83c5",
+      "size": 1897
+    },
+    {
+      "disposition": "BUILT_ON_INVALID_ANCESTRY",
+      "milestone": "B05",
+      "path": "evidence/receipts/B05.json",
+      "sha256": "2ba214fdcf3971e9dd9cfd7bf51324c6fbcfd871071e89b8d19e8977a7aadbb0",
+      "size": 2050
+    },
+    {
+      "disposition": "BUILT_ON_INVALID_ANCESTRY",
+      "milestone": "B06",
+      "path": "evidence/receipts/B06.json",
+      "sha256": "2656ed5ce2a52fd6ff1230b2be7d5c0c233b16fe20fe7731d39fa5222261f928",
+      "size": 2240
+    },
+    {
+      "disposition": "BUILT_ON_INVALID_ANCESTRY",
+      "milestone": "B07",
+      "path": "evidence/receipts/B07.json",
+      "sha256": "5a8939f35d133f2965846eb03f4fd409ad7d33d030ee87312dbff7d9d4ae34e4",
+      "size": 2554
+    },
+    {
+      "disposition": "INVALIDATED",
+      "milestone": "R00",
+      "path": "evidence/receipts/R00.json",
+      "sha256": "b1ea0b353637070dcc0d1b56bd01d43e856b86d830a73ccbbd4141fb5330687f",
+      "size": 2171
+    }
+  ],
+  "entry_count": 11,
+  "levers": {
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE",
+    "venue_activation": "OFF",
+    "venue_environment": "OFF"
+  },
+  "manifest_kind": "B00_B07_INVALIDATION_MANIFEST",
+  "prepared": "2026-08-10",
+  "schema": "triad.origin.b00_b07_invalidation_manifest.v1",
+  "schema_version": "1.0.0",
+  "statement": "Historical R00/B00/B00C/B01-B07 milestone receipts are self-integrity-consistent v2 documents but are NOT authenticated closures under the ratified receipt-v3 profile. They are preserved byte-unchanged as immutable historical evidence and carry the dispositions below. Forward repair proceeds from B00R; no historical receipt is edited into a retroactive pass."
+}

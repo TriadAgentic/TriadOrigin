@@ -44,7 +44,23 @@ OVERRIDES = CONTROL / "build_ledger_overrides.json"
 REVIEW = CONTROL / "build_ledger_review.v1.json"
 LEDGER = CONTROL / "build_ledger.json"
 
-LEDGER_VERSION = "REVIEWED_V2"
+LEDGER_VERSION = "REVIEWED_V3"
+
+# Allowed override destinations (in-repo milestones + named non-repo lanes). An override may not
+# invent a lane outside this closed set (B00R-D05 / SRC-004).
+ALLOWED_OVERRIDE_MILESTONES = {f"B{i:02d}" for i in range(10)} | {
+    "ESTATE", "OPERATOR", "RESEARCH", "ACTIVATION",
+}
+
+
+class LedgerClassificationError(Exception):
+    """A source task matched no classification rule and no reviewed override (fail closed).
+
+    B00R-D05: the old ``R8_DEFAULT -> B00`` silently swept every unmatched row into governance.
+    Unknown work now refuses by a named error; a legitimately new/edge row is placed only by an
+    explicit, unique, source-bound, reviewed, reasoned override in
+    ``docs/control/build_ledger_overrides.json``.
+    """
 
 # Non-repo lanes.
 ESTATE = "ESTATE"          # owned by another Triad repo / the live estate
@@ -189,13 +205,33 @@ def classify_rc3(task: dict) -> tuple[str, str, str]:
     if phase in ("P6", "P7", "P8", "P9"):
         return OPERATOR, "LIVE_STAGE", "R7_LATE_PHASE"
 
-    return "B00", "IN_REPO_GOVERNANCE", "R8_DEFAULT"
+    # Program-wide governance/scope-closure/overlay-control rows are owned at the governance
+    # milestone. This is an EXPLICIT, enumerated named rule (not the old anonymous B00 default):
+    # each class below was reviewed to B00 at B00C; a truly unknown row_class now falls through to
+    # the fail-closed raise below rather than being swept into B00 (B00R-D05).
+    GOVERNANCE_CLOSURE_CLASSES = (
+        "GAP_CLOSURE",              # cross-cutting gap-closure controls
+        "RC1_SCOPE_CLOSURE",        # baseline scope-closure (SCP-*) controls
+        "ATOMIC_RC3_OVERLAY_CONTROL",  # e.g. the G0 reproducible-source-bundle overlay control
+    )
+    if row_class in GOVERNANCE_CLOSURE_CLASSES:
+        return "B00", "IN_REPO_GOVERNANCE", "R8_GOVERNANCE_CLOSURE"
+
+    raise LedgerClassificationError(
+        f"UNCLASSIFIED_TASK {task.get('id')!r}: row_class={row_class!r} node={node!r} "
+        f"gate={gate!r} phase={phase!r} — no rule matched and no reviewed override exists; "
+        "add an explicit reviewed source-bound override in "
+        "docs/control/build_ledger_overrides.json (no B00 fallback).")
 
 
 def classify_rc4(task: dict) -> tuple[str, str, str]:
     gate = task.get("gate", "")
     text = (str(task.get("instruction", "")) + " " + str(task.get("domain", ""))).lower()
-    target = RC4_GATE_MILESTONE.get(gate, "B05")
+    if gate not in RC4_GATE_MILESTONE:
+        raise LedgerClassificationError(
+            f"UNCLASSIFIED_LEVER {task.get('id')!r}: gate={gate!r} is not a known lever gate "
+            "(L0..L7); no B05 fallback — add the gate mapping or a reviewed override.")
+    target = RC4_GATE_MILESTONE[gate]
     if target not in (ESTATE, OPERATOR):
         if any(h.lower() in text for h in _ESTATE_HINTS):
             return ESTATE, "ESTATE_LEVER", "L2_ESTATE_HINT"
@@ -239,6 +275,24 @@ def build() -> dict:
             "rule": rule,
             "status": "NOT_STARTED",
         })
+
+    # Override validation (B00R SRC-004): every override must be explicit, unique, source-bound,
+    # reviewed, reasoned, and limited to an allowed destination. An override for an unknown task id
+    # fails closed rather than being silently ignored.
+    row_ids = {row["id"] for row in rows}
+    for oid, patch in overrides.items():
+        if oid not in row_ids:
+            raise LedgerClassificationError(
+                f"OVERRIDE_FOR_UNKNOWN_TASK {oid!r}: no source task with this id")
+        if not isinstance(patch, dict):
+            raise LedgerClassificationError(f"OVERRIDE_MALFORMED {oid!r}: not an object")
+        if not patch.get("reviewer") or not patch.get("reason"):
+            raise LedgerClassificationError(
+                f"OVERRIDE_UNREVIEWED {oid!r}: must carry a reviewer identity and a reason")
+        if "milestone" in patch and patch["milestone"] not in ALLOWED_OVERRIDE_MILESTONES:
+            raise LedgerClassificationError(
+                f"OVERRIDE_BAD_DESTINATION {oid!r}: milestone {patch['milestone']!r} "
+                f"is not an allowed lane")
 
     seen = set()
     for row in rows:

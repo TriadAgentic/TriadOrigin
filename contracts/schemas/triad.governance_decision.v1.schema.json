@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "triad.governance_decision.v1",
+  "title": "TRIAD governance decision v1 (owner-authenticated scoped decision)",
+  "description": "A closed-schema owner decision (DEC-*). It is authenticated ONLY when authenticated=true AND its signatures verify against the externally pinned trust registry (validate_authority_root). A template with authenticated=false is fail-closed data, never a ratification.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "schema_version", "decision_kind", "decision_id", "issuer",
+    "subject_sha256s", "scope", "decision", "effective_at_us", "authenticated", "signatures"
+  ],
+  "properties": {
+    "schema": {"const": "triad.governance_decision.v1"},
+    "schema_version": {"const": "1.0.0"},
+    "decision_kind": {"const": "GOVERNANCE_DECISION"},
+    "decision_id": {"type": "string", "pattern": "^DEC-[A-Z0-9-]+$"},
+    "issuer": {"type": "string", "minLength": 1},
+    "authority_registry": {"type": "string"},
+    "subject_sha256s": {"type": "object"},
+    "scope": {"type": "object"},
+    "decision": {"type": "string", "minLength": 1},
+    "effective_at_us": {"type": "integer"},
+    "expiry_at_us": {"type": "integer"},
+    "review_at_us": {"type": "integer"},
+    "supersedes": {"type": "array", "items": {"type": "string"}},
+    "failure_behavior": {"type": "string"},
+    "authenticated": {"type": "boolean"},
+    "signatures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["key_id", "signature_hex"],
+        "properties": {
+          "key_id": {"type": "string", "minLength": 1},
+          "signature_hex": {"type": "string", "pattern": "^[0-9a-f]{128}$"}
+        }
+      }
+    }
+  }
+}

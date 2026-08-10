@@ -4,6 +4,13 @@ _A box is checked only after the owning source PR is merged green and the item i
 milestone closes only when its separate post-merge receipt validates. Gate completion requires a
 separate gate receipt._
 
+> **B00R forward-repair (2026-08-10):** artifact presence is **not** closure. No B00–B07 milestone
+> is legitimately closed under the B00R chain; a checked box below records that a source artifact
+> exists, never that a milestone is authenticated. Legitimate closure requires the six B00R
+> dimensions (authority · implementation · repository · governance · evidence · chain) and the
+> validated `B00R_RECEIPT_ANCHOR`; until then B01C onward stays frozen. See `04_STATUS.md` §B00R and
+> `docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json`.
+
 ## Global controls
 
 - [ ] Controlling result displayed as `DENIED_SAFE_HOLD` in every status/readiness face
