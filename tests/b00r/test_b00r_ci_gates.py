@@ -404,15 +404,20 @@ def test_receipt_anchor_binds_merge_receipt_and_pinned_immutable_ruleset(tmp_pat
     assert receipt_sha == hashlib.sha256(receipt.read_bytes()).hexdigest()
 
 
-def test_receipt_anchor_terminal_verify_requires_live_provider_token(tmp_path):
+def test_receipt_anchor_terminal_verify_uses_bound_bytes_and_requires_live_token(
+    tmp_path, monkeypatch
+):
     repo = tmp_path / "repo"
-    head, receipt, ruleset, pin = _anchored_receipt_repo(repo)
+    head, _receipt, _ruleset, pin = _anchored_receipt_repo(repo)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    monkeypatch.chdir(outside)
     with pytest.raises(validate_b00r_anchor.LiveRulesetUnavailable, match="TOKEN_ABSENT"):
         validate_b00r_anchor.verify(
             root=repo,
             expected_head=head,
-            receipt_path=receipt,
-            ruleset_path=ruleset,
+            receipt_path=pathlib.Path(validate_b00r_anchor.RECEIPT_PATH),
+            ruleset_path=pathlib.Path(validate_b00r_anchor.DEFAULT_RULESET),
             ruleset_pin=pin,
             now_us=1,
             github_token=None,
