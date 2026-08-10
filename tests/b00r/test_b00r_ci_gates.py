@@ -43,6 +43,10 @@ def _init_repo(root: pathlib.Path) -> str:
 def test_exact_head_accepts_only_the_checked_out_canonical_sha(tmp_path):
     head = _init_repo(tmp_path / "repo")
     assert b00r_gate.verify_expected_head(head, tmp_path / "repo") == head
+    assert b00r_gate.verify_final_repository_state(head, tmp_path / "repo") == head
+    (tmp_path / "repo" / "untracked.txt").write_text("dirty\n")
+    with pytest.raises(b00r_gate.HeadIdentityError, match="WORKTREE_NOT_CLEAN"):
+        b00r_gate.verify_final_repository_state(head, tmp_path / "repo")
     with pytest.raises(b00r_gate.HeadIdentityError, match="NOT_CANONICAL_HEX40"):
         b00r_gate.verify_expected_head("HEAD", tmp_path / "repo")
     with pytest.raises(b00r_gate.HeadIdentityError, match="ALL_ZERO_UNAVAILABLE"):
@@ -339,6 +343,15 @@ def test_codeowners_concrete_critical_identity_passes(tmp_path):
     assert owners == {"@TriadAgentic/real-governance-team"}
 
 
+def test_codeowners_covers_package_and_rejects_github_size_limit(tmp_path):
+    assert "/src/triad_origin/" in verify_codeowners.CRITICAL_PATTERNS
+    assert "/src/triad_origin/governance.py" not in verify_codeowners.CRITICAL_PATTERNS
+    path = tmp_path / "CODEOWNERS"
+    path.write_bytes(b"x" * verify_codeowners.MAX_CODEOWNERS_BYTES)
+    with pytest.raises(verify_codeowners.CodeownersError, match="TOO_LARGE"):
+        verify_codeowners.verify(path)
+
+
 def test_codeowners_provider_identity_is_writable_individual_and_independent(monkeypatch):
     def permission(username, **_kwargs):
         return {"permission": "write", "user": {"login": username}}
@@ -549,6 +562,7 @@ def test_receipt_mode_terminal_gate_contains_anchor_validation():
 
     receipt = [gate for gate in gates if gate.gate_id == "receipt_v3_closure"]
     assert len(receipt) == 1
+    assert gates[-1].gate_id == "receipt_v3_closure"
     for required in (
         "--now-us", "--manifest", "--git-root", "--expected-head",
         "--governance-snapshot", "--provider-raw",
@@ -579,6 +593,49 @@ def test_source_owner_gates_are_strict_but_never_run_receipt_closure():
 def test_owner_provider_time_advances_by_monotonic_elapsed_time():
     assert b00r_gate._advanced_trusted_now_us(
         1_000_000, 5_000_000_000, 70_000_000_000) == 66_000_000
+    gate = b00r_gate.Gate(
+        "owner", ("python", "validator.py", "--now-us", "1"), owner_gated=True)
+    advanced = b00r_gate._with_trusted_now_us(gate, 66_000_000)
+    assert advanced.argv[-1] == "66000000"
+    assert advanced.owner_gated is True
+
+
+def test_each_owner_gate_gets_a_fresh_monotonic_advanced_time(monkeypatch):
+    expected_head = "a" * 40
+    monkeypatch.setattr(
+        b00r_gate, "verify_expected_head", lambda expected: expected_head)
+    monkeypatch.setattr(
+        b00r_gate, "COMMON_GATES", (b00r_gate.Gate("deterministic", ("noop",)),))
+    monkeypatch.setattr(
+        b00r_gate,
+        "_codeowners_gates",
+        lambda _args: (
+            b00r_gate.Gate(
+                "owner_one", ("python", "one.py", "--now-us", "1"), owner_gated=True),
+            b00r_gate.Gate(
+                "owner_two", ("python", "two.py", "--now-us", "1"), owner_gated=True),
+        ),
+    )
+    monkeypatch.setattr(b00r_gate, "_owner_gates", lambda _args: ())
+    instants = iter((1_000_000_000, 71_000_000_000, 141_000_000_000))
+    monkeypatch.setattr(b00r_gate.time, "monotonic_ns", lambda: next(instants))
+    observed: list[tuple[str, str | None]] = []
+
+    def fake_run(gate):
+        now = gate.argv[gate.argv.index("--now-us") + 1] if "--now-us" in gate.argv else None
+        observed.append((gate.gate_id, now))
+        return "PASS", "ok"
+
+    monkeypatch.setattr(b00r_gate, "_run", fake_run)
+    assert b00r_gate.main([
+        "--mode", "source", "--expected-head", expected_head,
+        "--now-us", "1000000",
+    ]) == 1
+    assert observed == [
+        ("deterministic", None),
+        ("owner_one", "71000000"),
+        ("owner_two", "141000000"),
+    ]
 
 
 def test_deterministic_failure_never_constructs_or_runs_owner_gates(monkeypatch):

@@ -114,87 +114,84 @@ jobs:
       - name: Mark deterministic engineering complete
         id: engineering_complete
         run: echo "deterministic engineering and role-specific evidence gates completed"
-      - name: Resolve trusted owner-validation time
-        id: owner_time
-        shell: bash
-        run: printf 'now_us=%s000000\n' "$(date -u +%s)" >> "$GITHUB_OUTPUT"
       # Owner checks come last so an expected ceremony block cannot hide deterministic evidence.
       - name: Concrete critical-path CODEOWNERS identity
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          NOW_US: ${{ steps.owner_time.outputs.now_us }}
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-        run: >-
-          python tools/verify_codeowners.py --now-us "$NOW_US"
-          --expected-head "$EXPECTED_HEAD"
-          --pr-author "$PR_AUTHOR"
-      # SOURCE cannot merge green until owner authority and the provider-enforced main ruleset are
-      # both present, externally pinned, current, and strict.  UNAVAILABLE is a non-zero block.
+        shell: bash
+        run: |
+          NOW_US="$(date -u +%s)000000"
+          python tools/verify_codeowners.py --now-us "$NOW_US" \
+            --expected-head "$EXPECTED_HEAD" \
+            --pr-author "$PR_AUTHOR"
+      # PR-head CI can revalidate only provider fields visible to its read token.  Visible-empty
+      # bypass proof remains a separate protected owner check outside PR-controlled execution.
       - name: Strict source authority control
         if: >-
           always() && steps.engineering_complete.outcome == 'success' &&
           steps.milestone_role.outputs.role == 'SOURCE'
         shell: bash
         env:
-          NOW_US: ${{ steps.owner_time.outputs.now_us }}
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
           AUTHORITY_BUNDLE_DECISION_SHA256: ${{ vars.AUTHORITY_BUNDLE_DECISION_SHA256 }}
           RECEIPT_PROFILE_DECISION_SHA256: ${{ vars.RECEIPT_PROFILE_DECISION_SHA256 }}
           B00_REPAIR_DECISION_SHA256: ${{ vars.B00_REPAIR_DECISION_SHA256 }}
           RECEIPT_TRUST_REGISTRY_SHA256: ${{ vars.RECEIPT_TRUST_REGISTRY_SHA256 }}
-        run: >-
-          python tools/validate_authority_root.py --strict --now-us "$NOW_US"
-          --expected-head "$EXPECTED_HEAD" --git-root .
-      - name: Strict source provider control
+        run: |
+          NOW_US="$(date -u +%s)000000"
+          python tools/validate_authority_root.py --strict --now-us "$NOW_US" \
+            --expected-head "$EXPECTED_HEAD" --git-root .
+      - name: Nonterminal source provider revalidation
         if: >-
           always() && steps.engineering_complete.outcome == 'success' &&
           steps.milestone_role.outputs.role == 'SOURCE'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          NOW_US: ${{ steps.owner_time.outputs.now_us }}
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
           MAIN_RULESET_EVIDENCE_SHA256: ${{ vars.MAIN_RULESET_EVIDENCE_SHA256 }}
-        run: >-
-          python tools/validate_governance_snapshot.py --strict
-          --snapshot docs/governance/rulesets/main.ruleset.provider.json
-          --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json
-          --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256"
-          --expected-head "$EXPECTED_HEAD" --git-root .
-          --now-us "$NOW_US"
+        run: |
+          NOW_US="$(date -u +%s)000000"
+          python tools/validate_governance_snapshot.py --strict \
+            --snapshot docs/governance/rulesets/main.ruleset.provider.json \
+            --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json \
+            --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" \
+            --expected-head "$EXPECTED_HEAD" --git-root . \
+            --now-us "$NOW_US"
       - name: Strict B00R authority control
         if: >-
           always() && steps.engineering_complete.outcome == 'success' &&
           steps.milestone_role.outputs.role == 'RECEIPT'
         shell: bash
         env:
-          NOW_US: ${{ steps.owner_time.outputs.now_us }}
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
           AUTHORITY_BUNDLE_DECISION_SHA256: ${{ vars.AUTHORITY_BUNDLE_DECISION_SHA256 }}
           RECEIPT_PROFILE_DECISION_SHA256: ${{ vars.RECEIPT_PROFILE_DECISION_SHA256 }}
           B00_REPAIR_DECISION_SHA256: ${{ vars.B00_REPAIR_DECISION_SHA256 }}
           RECEIPT_TRUST_REGISTRY_SHA256: ${{ vars.RECEIPT_TRUST_REGISTRY_SHA256 }}
-        run: >-
-          python tools/validate_authority_root.py --strict --now-us "$NOW_US"
-          --expected-head "$EXPECTED_HEAD" --git-root .
-      - name: Strict B00R provider control
+        run: |
+          NOW_US="$(date -u +%s)000000"
+          python tools/validate_authority_root.py --strict --now-us "$NOW_US" \
+            --expected-head "$EXPECTED_HEAD" --git-root .
+      - name: Nonterminal B00R provider revalidation
         if: >-
           always() && steps.engineering_complete.outcome == 'success' &&
           steps.milestone_role.outputs.role == 'RECEIPT'
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          NOW_US: ${{ steps.owner_time.outputs.now_us }}
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
           MAIN_RULESET_EVIDENCE_SHA256: ${{ vars.MAIN_RULESET_EVIDENCE_SHA256 }}
-        run: >-
-          python tools/validate_governance_snapshot.py --strict
-          --snapshot docs/governance/rulesets/main.ruleset.provider.json
-          --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json
-          --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256"
-          --expected-head "$EXPECTED_HEAD" --git-root .
-          --now-us "$NOW_US"
+        run: |
+          NOW_US="$(date -u +%s)000000"
+          python tools/validate_governance_snapshot.py --strict \
+            --snapshot docs/governance/rulesets/main.ruleset.provider.json \
+            --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json \
+            --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" \
+            --expected-head "$EXPECTED_HEAD" --git-root . \
+            --now-us "$NOW_US"
       - name: Authenticate exactly one B00R receipt
         if: >-
           always() && steps.engineering_complete.outcome == 'success' &&
@@ -202,7 +199,6 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          NOW_US: ${{ steps.owner_time.outputs.now_us }}
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
           RECEIPT_PATH: ${{ steps.milestone_role.outputs.receipt_path }}
           MANIFEST_PATH: ${{ steps.milestone_role.outputs.manifest_path }}
@@ -211,19 +207,20 @@ jobs:
           B00_REPAIR_DECISION_SHA256: ${{ vars.B00_REPAIR_DECISION_SHA256 }}
           RECEIPT_TRUST_REGISTRY_SHA256: ${{ vars.RECEIPT_TRUST_REGISTRY_SHA256 }}
           MAIN_RULESET_EVIDENCE_SHA256: ${{ vars.MAIN_RULESET_EVIDENCE_SHA256 }}
-        run: >-
-          python tools/validate_b_receipt.py
-          --strict
-          --milestone B00R
-          --now-us "$NOW_US"
-          --manifest "$MANIFEST_PATH"
-          --git-root .
-          --expected-head "$EXPECTED_HEAD"
-          --governance-snapshot docs/governance/rulesets/main.ruleset.provider.json
-          --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json
-          --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256"
-          --nonterminal-provider-proof
-          "$RECEIPT_PATH"
+        run: |
+          NOW_US="$(date -u +%s)000000"
+          python tools/validate_b_receipt.py \
+            --strict \
+            --milestone B00R \
+            --now-us "$NOW_US" \
+            --manifest "$MANIFEST_PATH" \
+            --git-root . \
+            --expected-head "$EXPECTED_HEAD" \
+            --governance-snapshot docs/governance/rulesets/main.ruleset.provider.json \
+            --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json \
+            --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" \
+            --nonterminal-provider-proof \
+            "$RECEIPT_PATH"
       # This job authenticates the exact receipt PR/main-push head. It does not claim terminal
       # closure: after the receipt merge, `b00r_gate --mode receipt --expected-head <merge>
       # --base-sha <source-merge> --now-us <trusted-us>` additionally requires the protected,

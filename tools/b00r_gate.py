@@ -94,6 +94,29 @@ def verify_expected_head(expected: str, root: pathlib.Path = ROOT) -> str:
     return actual
 
 
+def verify_final_repository_state(expected: str, root: pathlib.Path = ROOT) -> str:
+    """Recheck the immutable head and clean worktree immediately before terminal PASS."""
+    actual = verify_expected_head(expected, root)
+    env = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith("GIT_") or name == "GIT_CONFIG_NOSYSTEM"
+    }
+    env["GIT_NO_REPLACE_OBJECTS"] = "1"
+    proc = subprocess.run(
+        ["git", "-C", str(root), "status", "--porcelain=v1", "--untracked-files=all"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    if proc.returncode:
+        raise HeadIdentityError(f"GIT_STATUS_UNAVAILABLE: {proc.stderr.strip()}")
+    if proc.stdout.strip():
+        raise HeadIdentityError("GIT_WORKTREE_NOT_CLEAN_AT_TERMINAL_PASS")
+    return actual
+
+
 def _advanced_trusted_now_us(
     trusted_start_us: int,
     monotonic_start_ns: int,
@@ -108,6 +131,16 @@ def _advanced_trusted_now_us(
             or end_ns < monotonic_start_ns):
         raise HeadIdentityError("TRUSTED_TIME_MONOTONIC_ADVANCE_INVALID")
     return trusted_start_us + (end_ns - monotonic_start_ns) // 1_000
+
+
+def _with_trusted_now_us(gate: Gate, now_us: int) -> Gate:
+    """Return one owner gate with exactly one freshly advanced trusted-time argument."""
+    positions = [index for index, value in enumerate(gate.argv) if value == "--now-us"]
+    if len(positions) != 1 or positions[0] + 1 >= len(gate.argv):
+        raise HeadIdentityError(f"OWNER_GATE_NOW_US_ARGUMENT_INVALID:{gate.gate_id}")
+    argv = list(gate.argv)
+    argv[positions[0] + 1] = str(now_us)
+    return Gate(gate.gate_id, tuple(argv), owner_gated=gate.owner_gated, env=gate.env)
 
 
 def _run(gate: Gate) -> tuple[str, str]:
@@ -249,8 +282,9 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
         *_optional_pair("--ruleset-pin", args.anchor_ruleset_pin),
     )
     gates += (
-        Gate("receipt_v3_closure", receipt_command, owner_gated=True, env=github_env),
         Gate("receipt_anchor", anchor_command, owner_gated=True, env=github_env),
+        # Receipt expiry and chronology are evaluated last, at the freshest trusted instant.
+        Gate("receipt_v3_closure", receipt_command, owner_gated=True, env=github_env),
     )
     return gates
 
@@ -356,21 +390,33 @@ def main(argv: list[str]) -> int:
         # this keeps provider credentials out of validators on a head that is known unsafe.
         print("  [SKIPPED] owner_provider_gates: deterministic precondition failed")
     else:
-        # The caller's trusted time is captured before potentially long dual-seed/build gates.
-        # Advance it only by monotonic elapsed time so fresh provider Date headers are not falsely
-        # "in future".
-        owner_args = argparse.Namespace(**vars(args))
-        try:
-            owner_args.now_us = _advanced_trusted_now_us(args.now_us, monotonic_start_ns)
-        except HeadIdentityError as exc:
-            print(f"  [FAIL   ] trusted_time: {exc}", file=sys.stderr)
-            results["trusted_time"] = "FAIL"
-            owner_args.now_us = args.now_us
-        if results.get("trusted_time") != "FAIL":
-            for gate in _codeowners_gates(owner_args) + _owner_gates(owner_args):
+        # Each provider gate gets a new time derived from the same trusted start plus monotonic
+        # elapsed time.  A long preceding gate can never leave later expiry/freshness checks using
+        # a stale wall-clock snapshot.
+        owner_templates = _codeowners_gates(args) + _owner_gates(args)
+        for template in owner_templates:
+            try:
+                gate_now_us = _advanced_trusted_now_us(args.now_us, monotonic_start_ns)
+                gate = _with_trusted_now_us(template, gate_now_us)
+            except HeadIdentityError as exc:
+                print(f"  [FAIL   ] trusted_time: {exc}", file=sys.stderr)
+                results["trusted_time"] = "FAIL"
+                break
+            else:
                 status, tail = _run(gate)
                 results[gate.gate_id] = status
                 print(f"  [{status:7}] {gate.gate_id}: {tail[:160]}")
+
+    if (args.mode == "receipt" and results
+            and all(status == "PASS" for status in results.values())):
+        try:
+            final_head = verify_final_repository_state(args.expected_head)
+        except HeadIdentityError as exc:
+            print(f"  [FAIL   ] final_repository_state: {exc}", file=sys.stderr)
+            results["final_repository_state"] = "FAIL"
+        else:
+            results["final_repository_state"] = "PASS"
+            print(f"  [PASS   ] final_repository_state: {final_head}")
 
     overall = overall_result(args.mode, results)
     print(f"B00R result: {overall}")

@@ -36,7 +36,7 @@
 /tools/build_evidence_manifest.py           @TriadAgentic/origin-governance-reviewers
 /tools/classify_milestone_pr.py             @TriadAgentic/origin-governance-reviewers
 /tools/b00r_gate.py                         @TriadAgentic/origin-governance-reviewers
-/src/triad_origin/governance.py             @TriadAgentic/origin-governance-reviewers
+/src/triad_origin/                          @TriadAgentic/origin-governance-reviewers
 
 # Evidence namespace (receipt PRs)
 /evidence/                                  @TriadAgentic/origin-governance-reviewers

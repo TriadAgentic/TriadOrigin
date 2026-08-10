@@ -18,6 +18,7 @@ except ModuleNotFoundError:  # pragma: no cover - direct script fallback
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT = ROOT / ".github" / "CODEOWNERS"
+MAX_CODEOWNERS_BYTES = 3 * 1024 * 1024
 KNOWN_PLACEHOLDERS = frozenset(
     value.lower()
     for value in {
@@ -44,7 +45,7 @@ CRITICAL_PATTERNS = (
     "/tools/verify_historical_evidence.py",
     "/tools/verify_codeowners.py",
     "/tools/verify_source_hashes.py",
-    "/src/triad_origin/governance.py",
+    "/src/triad_origin/",
     "/evidence/",
 )
 OWNER_RE = re.compile(r"@[A-Za-z0-9](?:[A-Za-z0-9-]*)(?:/[A-Za-z0-9_.-]+)?")
@@ -56,9 +57,15 @@ class CodeownersError(ValueError):
 
 def verify(path: pathlib.Path) -> tuple[int, set[str]]:
     try:
-        text = path.read_text(encoding="utf-8")
+        raw = path.read_bytes()
     except OSError as exc:
         raise CodeownersError(f"CODEOWNERS_UNREADABLE: {exc}") from exc
+    if len(raw) >= MAX_CODEOWNERS_BYTES:
+        raise CodeownersError(f"CODEOWNERS_TOO_LARGE:{len(raw)}")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise CodeownersError("CODEOWNERS_NOT_UTF8") from exc
 
     mapping: dict[str, list[str]] = {}
     all_owners: set[str] = set()
