@@ -351,7 +351,7 @@ def _anchored_receipt_repo(root: pathlib.Path) -> tuple[str, pathlib.Path, pathl
         "target": "tag",
         "source_type": "Repository",
         "source": "TriadAgentic/TriadOrigin",
-        "current_user_can_bypass": False,
+        "current_user_can_bypass": "never",
         "enforcement": "active",
         "conditions": {
             "ref_name": {
@@ -433,8 +433,8 @@ def test_receipt_anchor_rejects_wrong_provider_source_or_current_user_bypass(tmp
     safe = json.loads(ruleset.read_text())
 
     unsafe = dict(safe)
-    unsafe["current_user_can_bypass"] = True
-    with pytest.raises(validate_b00r_anchor.AnchorError, match="CURRENT_USER_BYPASS_NOT_FALSE"):
+    unsafe["current_user_can_bypass"] = "always"
+    with pytest.raises(validate_b00r_anchor.AnchorError, match="CURRENT_USER_BYPASS_NOT_NEVER"):
         validate_b00r_anchor._validate_ruleset(unsafe)
 
     wrong_source = dict(safe)
