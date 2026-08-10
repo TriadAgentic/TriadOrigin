@@ -62,6 +62,7 @@ SAFETY_POSTURE = {
     "shadow_activation": "LIVE",
 }
 ACTIVATION_RESULT = "DENIED_SAFE_HOLD"
+GITHUB_ACTIONS_INTEGRATION_ID = 15368
 
 # Trust-registry / decision vocabulary.
 SIGNER_ROLES = ("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER", "AUTHORITY_OWNER")
@@ -437,7 +438,11 @@ def validate_authenticated_decision(
         raise GovernanceError("DECISION_ISSUER_NOT_SIGNER_IDENTITY")
 
 
-def receipt_profile_from_decision(decision: dict) -> tuple[int, tuple[str, ...], str]:
+def receipt_profile_from_decision(
+    decision: dict,
+    *,
+    repair_generation: int = 2,
+) -> tuple[int, tuple[str, ...], str]:
     """Return the explicitly ratified receipt signature profile.
 
     B00R v3 is canonical JSON with embedded Ed25519 signatures.  A decision selecting DSSE or a
@@ -458,10 +463,23 @@ def receipt_profile_from_decision(decision: dict) -> tuple[int, tuple[str, ...],
     if scope.get("trust_registry") != \
             "docs/governance/trust/receipt_trust_registry.v1.json":
         raise GovernanceError("RECEIPT_PROFILE_TRUST_PATH_MISMATCH")
+    anchors = {
+        1: "B00R_RECEIPT_ANCHOR",
+        2: "B00R_RECEIPT_ANCHOR_G2",
+    }
+    anchor = anchors.get(repair_generation)
+    if anchor is None:
+        raise GovernanceError("RECEIPT_PROFILE_REPAIR_GENERATION_UNSUPPORTED")
     if scope.get("closure_anchor_mechanism") != \
-            ("protected annotated tag B00R_RECEIPT_ANCHOR plus externally pinned active "
+            (f"protected annotated tag {anchor} plus externally pinned active "
              "no-update/no-delete/no-bypass tag ruleset"):
         raise GovernanceError("RECEIPT_PROFILE_CLOSURE_ANCHOR_MISMATCH")
+    if repair_generation == 2 and (
+        scope.get("repair_generation") != 2
+        or scope.get("receipt_path") != "evidence/receipts/B00R.g2.receipt.v3.json"
+        or scope.get("evidence_root") != "evidence/B00R_G2"
+    ):
+        raise GovernanceError("RECEIPT_PROFILE_GENERATION_2_SCOPE_MISMATCH")
     if threshold != 2 or isinstance(threshold, bool):
         raise GovernanceError("RECEIPT_PROFILE_BAD_THRESHOLD")
     required_profile_roles = ["EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER"]
@@ -619,6 +637,7 @@ def validate_receipt_v3(
     required_roles: tuple[str, ...] = ("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER"),
     now_us: int | None = None,
     verify_fn=None,
+    expected_root_generation: int = 2,
 ) -> tuple[str, str]:
     """Validate a receipt-v3 document. Return ``(result, reason)``.
 
@@ -657,7 +676,9 @@ def validate_receipt_v3(
     # Root vs non-root variant.
     is_root = milestone == ROOT_MILESTONE
     if is_root:
-        if payload.get("repair_generation") != 1:
+        if expected_root_generation not in (1, 2):
+            return "FAIL", "ROOT_REPAIR_GENERATION_UNSUPPORTED"
+        if payload.get("repair_generation") != expected_root_generation:
             return "FAIL", "ROOT_REPAIR_GENERATION_MISMATCH"
         if payload.get("variant") != "ROOT":
             return "FAIL", "ROOT_MILESTONE_NOT_ROOT_VARIANT"
@@ -806,7 +827,10 @@ def parse_source_hashes(text: str) -> dict[str, str]:
 
 # --- PR role classification ----------------------------------------------------------------------
 RECEIPT_PATH_PREFIXES = ("evidence/",)
-_CANONICAL_RECEIPT_RE = r"evidence/receipts/(B00R|B01C|B02C|B03C|B04C|B05C|B06R|B07)\.receipt\.v3\.json"
+_CANONICAL_RECEIPT_RE = (
+    r"evidence/receipts/(B00R\.g2|B01C|B02C|B03C|B04C|B05C|B06R|B07)"
+    r"\.receipt\.v3\.json"
+)
 # A source PR may touch anything EXCEPT the evidence namespace; a receipt PR may touch ONLY the
 # evidence namespace. Mixed content fails regardless of test results (``NEG-017``).
 
@@ -824,8 +848,9 @@ def classify_changed_paths(paths: list[str]) -> tuple[str, str]:
         if len(receipt_files) != 1 or re.fullmatch(_CANONICAL_RECEIPT_RE, receipt_files[0]) is None:
             return "INVALID", "receipt PR requires exactly one canonical *.receipt.v3.json"
         match = re.fullmatch(_CANONICAL_RECEIPT_RE, receipt_files[0])
-        milestone = match.group(1)
-        allowed_prefix = f"evidence/{milestone}/"
+        receipt_identity = match.group(1)
+        milestone = "B00R" if receipt_identity == "B00R.g2" else receipt_identity
+        allowed_prefix = "evidence/B00R_G2/" if milestone == "B00R" else f"evidence/{milestone}/"
         bad = [p for p in receipt if p != receipt_files[0] and not p.startswith(allowed_prefix)]
         if bad:
             return "INVALID", f"cross-milestone or historical evidence paths: {bad[:2]}"
@@ -934,6 +959,44 @@ def validate_governance_snapshot(
         return "FAIL", "GOVERNANCE_PROVIDER_RESPONSE_NOT_JSON"
     if not isinstance(raw, dict):
         return "FAIL", "GOVERNANCE_PROVIDER_RESPONSE_NOT_OBJECT"
+
+    # A protected digest can authenticate bytes, but it cannot turn a hand-written template into
+    # a GitHub API response. Require the stable provider identity fields emitted by
+    # GET /repos/{owner}/{repo}/rulesets/{ruleset_id}, and reject local commentary explicitly.
+    # This blocks the prior false-green where id="DECLARATIVE" plus a note saying enforcement was
+    # pending was pinned and then accepted as an active no-bypass provider control.
+    if "note" in raw or "note" in provider:
+        return "FAIL", "GOVERNANCE_PROVIDER_SYNTHETIC_METADATA"
+    raw_id = raw.get("id")
+    if (not isinstance(raw_id, int) or isinstance(raw_id, bool) or raw_id <= 0):
+        return "FAIL", "GOVERNANCE_RAW_RULESET_ID_NOT_PROVIDER_INTEGER"
+    raw_name = raw.get("name")
+    if (not isinstance(raw_name, str) or not raw_name.strip()
+            or raw_name.strip().upper() in {"DECLARATIVE", "TEMPLATE", "PLACEHOLDER"}):
+        return "FAIL", "GOVERNANCE_RAW_RULESET_NAME_NOT_PROVIDER"
+    if raw.get("source_type") != "Repository":
+        return "FAIL", "GOVERNANCE_RAW_SOURCE_TYPE_MISMATCH"
+    if raw.get("current_user_can_bypass") != "never":
+        return "FAIL", "GOVERNANCE_RAW_CURRENT_USER_BYPASS_NOT_NEVER"
+    # node_id/_links are useful corroboration but optional in GitHub's published REST schema.
+    # When present they must be provider-shaped and bind the same repository/ruleset identity.
+    node_id = raw.get("node_id")
+    if (node_id is not None
+            and (not isinstance(node_id, str)
+                 or re.fullmatch(r"RRS_[A-Za-z0-9_-]+", node_id) is None)):
+        return "FAIL", "GOVERNANCE_RAW_NODE_ID_NOT_PROVIDER"
+    links = raw.get("_links")
+    if links is not None:
+        self_link = links.get("self") if isinstance(links, dict) else None
+        html_link = links.get("html") if isinstance(links, dict) else None
+        expected_self = (
+            f"https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/{raw_id}"
+        )
+        expected_html = f"https://github.com/TriadAgentic/TriadOrigin/rules/{raw_id}"
+        html_href = html_link.get("href") if isinstance(html_link, dict) else None
+        if (not isinstance(self_link, dict) or self_link.get("href") != expected_self
+                or html_href not in (None, expected_html)):
+            return "FAIL", "GOVERNANCE_RAW_PROVIDER_LINKS_MISMATCH"
     try:
         created_us = _parse_provider_utc_us(raw.get("created_at"))
         updated_us = _parse_provider_utc_us(raw.get("updated_at"))
@@ -957,9 +1020,19 @@ def validate_governance_snapshot(
     ref = conditions.get("ref_name", {})
     includes = ref.get("include") if isinstance(ref, dict) else None
     excludes = ref.get("exclude") if isinstance(ref, dict) else None
-    main_tokens = {"refs/heads/main", "~DEFAULT_BRANCH"}
-    if (not isinstance(includes, list) or not main_tokens.intersection(includes)
-            or not isinstance(excludes, list) or main_tokens.intersection(excludes)):
+    canary_ref = "refs/heads/b00r-ruleset-canary"
+    allowed_include_sets = (
+        {"refs/heads/main", canary_ref},
+    )
+    # GitHub applies exclusions after inclusions.  Requiring an empty exclusion list prevents a
+    # wildcard such as refs/heads/* from silently excluding main.  An explicit main ref is required;
+    # ~DEFAULT_BRANCH could silently retarget if the repository default changes. The harmless canary
+    # target is mandatory before the corrective source merge so the provider rejection can predate
+    # that merge; it cannot be bolted on later without invalidating the closure chronology.
+    if (not isinstance(includes, list)
+            or not all(isinstance(item, str) for item in includes)
+            or len(includes) != len(set(includes))
+            or set(includes) not in allowed_include_sets or excludes != []):
         return "FAIL", "GOVERNANCE_RAW_MAIN_TARGET_NOT_PROVEN"
     raw_rules = raw.get("rules")
     if not isinstance(raw_rules, list):
@@ -980,7 +1053,8 @@ def validate_governance_snapshot(
             or pr.get("dismiss_stale_reviews_on_push") is not True
             or pr.get("require_code_owner_review") is not True
             or pr.get("require_last_push_approval") is not True
-            or pr.get("required_review_thread_resolution") is not True):
+            or pr.get("required_review_thread_resolution") is not True
+            or pr.get("allowed_merge_methods") != ["merge"]):
         return "FAIL", "GOVERNANCE_RAW_REVIEW_CONTROLS_INCOMPLETE"
     if len(by_type.get("required_status_checks", [])) != 1:
         return "FAIL", "GOVERNANCE_RAW_STATUS_RULE_MISSING"
@@ -992,8 +1066,10 @@ def validate_governance_snapshot(
             or not isinstance(checks_raw[0], dict)):
         return "FAIL", "GOVERNANCE_RAW_STATUS_CHECKS_MALFORMED"
     contexts = [checks_raw[0].get("context")]
+    integration_id = checks_raw[0].get("integration_id")
     if (status.get("strict_required_status_checks_policy") is not True
-            or contexts != ["CI / test-and-verify"]):
+            or contexts != ["CI / test-and-verify"]
+            or integration_id != GITHUB_ACTIONS_INTEGRATION_ID):
         return "FAIL", "GOVERNANCE_RAW_STATUS_CONTROL_MISMATCH"
     if len(by_type.get("deletion", [])) != 1 or len(by_type.get("non_fast_forward", [])) != 1:
         return "FAIL", "GOVERNANCE_RAW_HISTORY_CONTROLS_MISSING"

@@ -1261,11 +1261,13 @@ def b00r_governance_evidence_walk() -> None:
     #     advertised DSSE name is INVALID, and mixing source+evidence fails closed.
     assert gov.classify_changed_paths(["src/triad_origin/contracts.py"])[0] == "SOURCE"
     assert gov.classify_changed_paths(
-        ["evidence/receipts/B00R.receipt.v3.json"])[0] == "RECEIPT"
+        ["evidence/receipts/B00R.g2.receipt.v3.json"])[0] == "RECEIPT"
+    assert gov.classify_changed_paths(
+        ["evidence/receipts/B00R.receipt.v3.json"])[0] == "INVALID"
     assert gov.classify_changed_paths(["evidence/receipts/B00R.dsse.json"])[0] == "INVALID"
     assert gov.classify_changed_paths(
         ["src/triad_origin/contracts.py",
-         "evidence/receipts/B00R.receipt.v3.json"])[0] == "MIXED"
+         "evidence/receipts/B00R.g2.receipt.v3.json"])[0] == "MIXED"
     _run_tool("classify_milestone_pr.py", "src/triad_origin/contracts.py")
 
     # 3 · the five governance schemas validate their valid golden and reject their invalid golden.
@@ -1282,9 +1284,14 @@ def b00r_governance_evidence_walk() -> None:
             pass
 
     # 4 · receipt-v3 is fail-closed without an externally pinned trust registry (never PASS).
-    root_receipt = json.loads(
+    generation_one = json.loads(
         (ROOT / "contracts/golden/triad.evidence_receipt.v3/valid.json").read_text())
-    result, reason = gov.validate_receipt_v3(root_receipt, milestone="B00R")
+    result, reason = gov.validate_receipt_v3(
+        generation_one, milestone="B00R", expected_root_generation=1)
+    assert result == "BLOCKED", (result, reason)
+    generation_two = json.loads(json.dumps(generation_one))
+    generation_two["payload"]["repair_generation"] = 2
+    result, reason = gov.validate_receipt_v3(generation_two, milestone="B00R")
     assert result == "BLOCKED", (result, reason)
 
     # 5 · closed-scope and digest laws recursively reject empty/wildcard/placeholder.
@@ -1311,10 +1318,16 @@ def b00r_governance_evidence_walk() -> None:
         data = (ROOT / entry["path"]).read_bytes()
         assert sha256_hex(data) == entry["sha256"], entry["path"]
         assert entry["disposition"] in inv["disposition_vocabulary"]
+    generation_ledger = json.loads(
+        (ROOT / "docs/governance/B00R_GENERATION_LEDGER.v1.json").read_text())
+    generation_one = generation_ledger["generation_1"]
+    assert generation_one["disposition"] == "MERGED_UNVERIFIED"
+    old_receipt = ROOT / generation_one["receipt_path"]
+    assert sha256_hex(old_receipt.read_bytes()) == generation_one["receipt_sha256"]
 
     # 7 · the decision/trust/ruleset templates are fail-closed (unauthenticated), never a PASS.
     dec = json.loads(
-        (ROOT / "docs/governance/decisions/DEC-B00-REPAIR-001.template.json").read_text())
+        (ROOT / "docs/governance/decisions/DEC-B00-REPAIR-002.template.json").read_text())
     assert gov.decision_is_authenticated(dec) is False
     _run_tool("validate_authority_root.py")        # non-strict: UNAVAILABLE reported, exit 0
     _run_tool("validate_governance_snapshot.py")   # non-strict: UNAVAILABLE reported, exit 0

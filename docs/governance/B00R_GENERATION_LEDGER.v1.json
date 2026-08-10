@@ -1,0 +1,54 @@
+{
+  "schema": "triad.b00r_generation_ledger.v1",
+  "schema_version": "1.0.0",
+  "repository": "TriadAgentic/TriadOrigin",
+  "logical_milestone": "B00R",
+  "safety_posture": {
+    "activation_result": "DENIED_SAFE_HOLD",
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "generation_1": {
+    "disposition": "MERGED_UNVERIFIED",
+    "source_pr": 31,
+    "source_head": "6033e9e0812d3eb980cfbcb3928006226414c7e4",
+    "source_merge_sha": "5b2a0edc6db99934fe6fbe6bb0fa582bf689a7cc",
+    "source_merged_at": "2026-08-10T12:37:25Z",
+    "receipt_pr": 32,
+    "receipt_head": "462152e29d249ab3596f6025e1f4d568efab335c",
+    "receipt_merge_sha": "76b5e4857f80f22f99385810037c5c66289ebd5f",
+    "receipt_merged_at": "2026-08-10T13:05:54Z",
+    "receipt_path": "evidence/receipts/B00R.receipt.v3.json",
+    "receipt_sha256": "f1328ceb29a8730be93f4fd47d295ac96ef514a747385ab500256d6fa52a7cca",
+    "anchor_tag": "B00R_RECEIPT_ANCHOR",
+    "anchor_tag_object_sha": "0b2f0579a81e03988cca119ae7e4a0fbf888ad09",
+    "anchor_target_sha": "76b5e4857f80f22f99385810037c5c66289ebd5f",
+    "reason_codes": [
+      "SOURCE_PR_UNREVIEWED",
+      "RECEIPT_PR_UNREVIEWED",
+      "MAIN_RULESET_CREATED_AFTER_SOURCE_AND_RECEIPT_MERGES",
+      "DECLARATIVE_PROVIDER_STUB_SEALED_AS_EVIDENCE",
+      "RECEIPT_SOURCE_PR_MISMATCH"
+    ],
+    "immutability": "PRESERVE_BYTES_AND_TAG; NEVER_REPOINT_OR_RETRO_REVIEW_INTO_PASS"
+  },
+  "generation_2": {
+    "status": "CORRECTIVE_SOURCE_REQUIRED",
+    "audited_start_sha": "76b5e4857f80f22f99385810037c5c66289ebd5f",
+    "receipt_path": "evidence/receipts/B00R.g2.receipt.v3.json",
+    "evidence_root": "evidence/B00R_G2",
+    "anchor_tag": "B00R_RECEIPT_ANCHOR_G2",
+    "requirements": [
+      "PROVIDER_DERIVED_MAIN_RULESET_CAPTURE_BEFORE_SOURCE_MERGE",
+      "BASE_CODEOWNERS_BOOTSTRAPPED_BEFORE_SOURCE_PR_MERGE",
+      "REJECTED_DEDICATED_CANARY_BEFORE_SOURCE_MERGE",
+      "INDEPENDENT_EXACT_HEAD_REVIEW_BEFORE_SOURCE_MERGE",
+      "SOURCE_PR_NUMBER_HEAD_MERGE_AND_PROVIDER_TIME_EXACTLY_BOUND",
+      "SEPARATE_APPEND_ONLY_RECEIPT_PR",
+      "NEW_PROTECTED_ANNOTATED_ANCHOR"
+    ]
+  },
+  "statement": "Generation 1 is preserved as immutable false-green evidence. Generation 2 is a new root repair, not a rewrite or successor of a valid receipt. B01C remains frozen until the generation-2 physical anchor validates."
+}

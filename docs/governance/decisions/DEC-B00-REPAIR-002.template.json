@@ -1,0 +1,33 @@
+{
+  "authenticated": false,
+  "authority_registry": "docs/governance/trust/receipt_trust_registry.v1.json",
+  "decision": "AUTHORIZE_FORWARD_REPAIR_B00R_GENERATION_2; preserve generation 1 as MERGED_UNVERIFIED and create a new root receipt and anchor",
+  "decision_id": "DEC-B00-REPAIR-002",
+  "decision_kind": "GOVERNANCE_DECISION",
+  "effective_at_us": 0,
+  "failure_behavior": "B01C_BLOCKED_NO_GENERATION_2_ROOT",
+  "issuer": "UNSET_AUTHORITY_OWNER",
+  "schema": "triad.governance_decision.v1",
+  "schema_version": "1.0.0",
+  "scope": {
+    "audited_start": "main@76b5e4857f80f22f99385810037c5c66289ebd5f",
+    "generation_1_anchor": "B00R_RECEIPT_ANCHOR@76b5e4857f80f22f99385810037c5c66289ebd5f",
+    "generation_1_disposition": "MERGED_UNVERIFIED",
+    "generation_2_anchor": "B00R_RECEIPT_ANCHOR_G2",
+    "historical_treatment": "additive_disposition_only",
+    "milestone": "B00R",
+    "repair_generation": 2,
+    "root_variant": "B00R_GENERATION_2_ONLY"
+  },
+  "signatures": [],
+  "subject_sha256s": {
+    "audited_start_sha": "76b5e4857f80f22f99385810037c5c66289ebd5f",
+    "generation_1_anchor_object_sha": "0b2f0579a81e03988cca119ae7e4a0fbf888ad09",
+    "generation_1_receipt_sha256": "f1328ceb29a8730be93f4fd47d295ac96ef514a747385ab500256d6fa52a7cca",
+    "generation_ledger": "1c424260dcb7f11611ef52c8e3028c095b31d024e0d86b4a3c4490ddd7399a3c",
+    "policy_v2": "8748c1bae09acaccf97631ff0d79fed469a6f8fc5ce2e47684357939264c13c2"
+  },
+  "supersedes": [
+    "DEC-B00-REPAIR-001"
+  ]
+}

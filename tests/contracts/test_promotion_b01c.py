@@ -45,6 +45,8 @@ def _pass_receipt(binding_digest: str) -> dict:
     receipt = json.loads(
         (GOLDEN / "triad.evidence_receipt.v3" / "valid.json").read_text(encoding="utf-8"))
     payload = receipt["payload"]
+    # B01C may now be proved only from the additive generation-2 B00R root.
+    payload["repair_generation"] = 2
     # The valid golden has one evidence ID; preserve the receipt's closed parallel index while
     # replacing that one preimage digest with the invariant projection being proved.
     payload["evidence_sha256s"] = [binding_digest]

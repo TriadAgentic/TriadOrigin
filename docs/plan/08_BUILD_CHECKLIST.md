@@ -4,11 +4,13 @@ _A box is checked only after the owning source PR is merged green and the item i
 milestone closes only when its separate post-merge receipt validates. Gate completion requires a
 separate gate receipt._
 
-> **B00R forward-repair (2026-08-10):** artifact presence is **not** closure. No B00–B07 milestone
-> is legitimately closed under the B00R chain; a checked box below records that a source artifact
-> exists, never that a milestone is authenticated. Legitimate closure requires the six B00R
-> dimensions (authority · implementation · repository · governance · evidence · chain) and the
-> validated `B00R_RECEIPT_ANCHOR`; until then B01C onward stays frozen. See `04_STATUS.md` §B00R and
+> **B00R generation-2 correction (2026-08-11):** checked historical boxes prove only that artifacts
+> exist. PR #31 and PR #32 merged without submitted reviews and before the real main ruleset was
+> created; generation 1 is therefore `MERGED_UNVERIFIED` and immutable. PR #33 is open, unreviewed,
+> and post-hoc. Legitimate closure requires the additive G2 policy, exact provider chronology,
+> independent exact-head review, separate G2 receipt, and validated
+> `B00R_RECEIPT_ANCHOR_G2`. B01C onward stays frozen. See `04_STATUS.md`,
+> `docs/governance/B00R_GENERATION_LEDGER.v1.json`, and
 > `docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json`.
 
 ## Global controls
@@ -24,6 +26,46 @@ separate gate receipt._
 - [ ] No next milestone branch before the prior post-merge receipt passes
 - [ ] Every capability extends the end-to-end audit in the same source PR
 
+## B00R generation 1 · immutable disposition
+
+- [x] Preserve source PR #31 identities: head `6033e9e…`, merge `5b2a0ed…`, zero submitted reviews
+- [x] Preserve receipt PR #32 identities: head `462152e…`, merge `76b5e48…`, zero submitted reviews
+- [x] Preserve `evidence/receipts/B00R.receipt.v3.json`, digest `f1328ceb…`, and
+  `B00R_RECEIPT_ANCHOR` without edits or repointing
+- [x] Record `MERGED_UNVERIFIED` reason codes in `B00R_GENERATION_LEDGER.v1.json`
+- [x] Record that ruleset `20641102` and PR #33 evidence are post-hoc and cannot repair generation 1
+- [ ] **Forbidden forever:** retro-review generation 1 into PASS, replace its receipt/evidence bytes,
+  or move its anchor
+
+## B00R generation 2 · only open root correction
+
+- [x] Additive policy `docs/control/b00r_policy.v2.json` names audited start `76b5e48…`
+- [x] Distinct decisions and identities defined: `DEC-RECEIPT-PROFILE-002`,
+  `DEC-B00-REPAIR-002`, `evidence/B00R_G2/`, `B00R.g2.receipt.v3.json`, and
+  `B00R_RECEIPT_ANCHOR_G2`
+- [x] Generation-1 evidence guarded immutable; G2 receipt role rejects mixed content
+- [x] Source PR/review provider records require actual PR number, final head, merge SHA/time, positive
+  review id, exact-head `APPROVED`, independent author/reviewer, and pre-merge submission time
+- [ ] Bootstrap the exact `@djordi10` critical-path CODEOWNERS bytes onto `main` in a separate
+  independently reviewed change; refresh the correction so its merge first parent contains them
+- [ ] Owner-authenticate the `001` authority bundle and both `002` decisions; externally pin all
+  decision/trust bytes
+- [ ] Install/capture/pin an active provider rule targeting exactly `main` plus
+  `b00r-ruleset-canary`, with empty exclusions, no bypass, integration-bound strict CI, required
+  review controls, and `allowed_merge_methods=["merge"]`
+- [ ] Execute the canonical dedicated direct-push canary before source merge; close its transcript
+  and provider rule-suite response under `evidence/B00R_G2/`
+- [ ] Freeze corrective source head; exact-head CI green; sole independent CODEOWNER submits approval
+  on that head; every actionable thread resolved
+- [ ] Merge corrective source using the enforced ordinary two-parent merge method; prove its first
+  parent already had the exact CODEOWNERS bytes and capture exact PR/head/author/review chronology
+- [ ] Hermetically reproduce the exact source merge with identical seed-0/seed-1 test inventories
+- [ ] Open a separate append-only receipt PR containing only `evidence/B00R_G2/**` and
+  `evidence/receipts/B00R.g2.receipt.v3.json`
+- [ ] Merge the receipt under the same controls; publish the protected annotated
+  `B00R_RECEIPT_ANCHOR_G2`; run the terminal receipt gate at the exact receipt merge
+- [ ] Only after terminal `PASS_REPOSITORY_SAFE_HOLD`, branch B01C from that receipt merge
+
 ## B00 · Historical source import
 
 - [x] RC2/RC3/RC4 source/control package merged in PR #8
@@ -31,7 +73,7 @@ separate gate receipt._
 - [x] B00 post-merge receipt sealed and semantically valid — `evidence/receipts/B00.json` binds `1217297…` (sealed in-band under the superseded cadence; disposition A3)
 - [x] R00 receipt sealed or signed field-for-field v2 supersession recorded — `docs/governance/R00_SUPERSESSION.md` + `evidence/receipts/R00.json` (B00C; operator countersignature requested, register A3)
 
-## B00C · Corrective control closure — next milestone
+## B00C · Historical corrective-control artifacts
 
 - [x] Merge reconciled 00/01/04/08/09 documents and alignment audit — PR #12, merge `b641edc…`
 - [x] Correct all formula/owner references to F00–F23; remove F24 — registry-equality + no-affirmative-F24 tests
@@ -39,7 +81,11 @@ separate gate receipt._
 - [x] Combined RC3+RC4 referential/cycle/inversion/one-owner/source-authority validator — `tools/validate_combined_dag.py` (CI + e2e stage 16)
 - [x] `evidence_receipt.v2`, `task_status_event.v2`, `gate_receipt.v2` + semantic validator — landed B01, gate-receipt PASS law hardened at B00C
 - [x] Invalid receipt fixtures: stale/scope/digest/reviewer/blocker/rollback/composition failures — `tests/test_b00c_control_closure.py` refusal battery
-- [ ] Configure main ruleset from issue #5 or sign time-bounded equivalent waiver
+- [x] Issue #5 closed with post-hoc ruleset `20641102` and rejected administrative canaries — useful
+  historical evidence only; not generation-1 closure
+- [ ] Promote the future control to the stricter G2 profile: exact main+canary target, no exclusions,
+  no bypass, integration-bound `CI / test-and-verify`, independent CODEOWNER, and merge-only method;
+  recapture and pin it before the G2 source merge
 - [x] Seal R00 disposition and exact-current-main B00 receipt — `R00_SUPERSESSION.md` + `evidence/receipts/{R00,B00}.json`
 - [x] B00C source PR merged green — PR #12, CI `31296105920`
 - [x] B00C post-merge receipt passed; B01R may open — `evidence/receipts/B00C.json` binds `b641edc…` (this receipt PR)
@@ -266,4 +312,3 @@ separate gate receipt._
 - [ ] Economic proof uses disjoint populations and strict lineage
 - [ ] Production risk values signed only after G8
 - [ ] Progressive scope, stop/rollback, and estate-wide checkpoint passed
-

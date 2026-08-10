@@ -4,8 +4,9 @@
 CI classification is derived from two immutable Git commit SHAs, never a branch name or a
 best-effort fallback.  A SOURCE change may not touch ``evidence/**``.  A B00R RECEIPT change must
 be append-only, contain exactly the canonical bare receipt
-``evidence/receipts/B00R.receipt.v3.json``, and may otherwise add files only below
-``evidence/B00R/**``.  Historical receipts, deletions, renames, mixed source/evidence changes, and
+``evidence/receipts/B00R.g2.receipt.v3.json``, and may otherwise add files only below
+``evidence/B00R_G2/**``.  Generation-1/historical receipts, deletions, renames, mixed
+source/evidence changes, and
 the formerly advertised-but-unimplemented ``*.dsse.json`` envelope all fail closed.
 
 Legacy positional/``--paths-file`` input remains for local falsification tests.  CI must use
@@ -26,13 +27,16 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 HEX40_RE = re.compile(r"[0-9a-f]{40}")
 EXPECTED_MILESTONE = "B00R"
-EXPECTED_RECEIPT = "evidence/receipts/B00R.receipt.v3.json"
-EXPECTED_MANIFEST = "evidence/B00R/evidence_manifest.json"
-RECEIPT_EVIDENCE_PREFIX = "evidence/B00R/"
+EXPECTED_RECEIPT = "evidence/receipts/B00R.g2.receipt.v3.json"
+EXPECTED_MANIFEST = "evidence/B00R_G2/evidence_manifest.json"
+RECEIPT_EVIDENCE_PREFIX = "evidence/B00R_G2/"
 HISTORICAL_RECEIPTS = frozenset(
     f"evidence/receipts/{name}.json"
     for name in ("R00", "B00", "B00C", "B01", "B01R", "B02", "B03", "B04", "B05", "B06", "B07")
 )
+HISTORICAL_RECEIPTS = HISTORICAL_RECEIPTS | {
+    "evidence/receipts/B00R.receipt.v3.json",
+}
 ALLOWED_RECEIPT_STATUSES = frozenset({"A"})
 
 

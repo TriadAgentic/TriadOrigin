@@ -2,7 +2,7 @@
 
 **Milestone:** B01C (contract identity, binding capability, domain evidence)
 **Repository:** `TriadAgentic/TriadOrigin`
-**Predecessor (hard):** validated `B00R_RECEIPT_ANCHOR` — the receipt commit sealing the exact B00R
+**Predecessor (hard):** validated `B00R_RECEIPT_ANCHOR_G2` — the generation-2 receipt commit sealing the exact B00R
 source merge. **B01C may not become authoritative until that anchor validates.**
 **Posture (invariant):** `activation_result=DENIED_SAFE_HOLD`, OFF/OFF/OFF/LIVE.
 **Permitted result:** `PASS_REPOSITORY_SAFE_HOLD` only.
@@ -144,7 +144,7 @@ preimage.
 ## 7. Status
 
 - **Offline-prep produced:** this entry-gate + the WP-B01C-02..06 design/defect register.
-- **Blocked (owner-gated):** B01C cannot become authoritative until `B00R_RECEIPT_ANCHOR` validates.
+- **Blocked (owner-gated):** B01C cannot become authoritative until `B00R_RECEIPT_ANCHOR_G2` validates.
 - **Next engaged session:** implement WP-B01C-02 (schema closure) → WP-B01C-03 (fail-closed
   validator, with the test-lane migration) → WP-B01C-04 (sealed `ResolvedParameterBundle`) →
   WP-B01C-05 (projection verifier) → WP-B01C-06 (acceptance profile), each with its falsification

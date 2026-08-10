@@ -19,8 +19,11 @@ from triad_origin.canonical import canonical_json, sha256_hex  # noqa: E402
 from tools.validate_authority_root import (  # noqa: E402
     AuthorityContext, AuthorityRootError, CANONICAL_AUTHORITY_PATHS, SUBJECTS,
     load_authority_context, validate_git_bound_authority)
-from tools.validate_b_receipt import ReceiptBindingError, validate_receipt_bindings  # noqa: E402
+from tools.validate_b_receipt import (  # noqa: E402
+    ReceiptBindingError, _validate_provider_negative_canary,
+    _validate_source_pr_provider_record, validate_receipt_bindings)
 from tools.validate_governance_snapshot import _validate_git_binding  # noqa: E402
+from tools.verify_codeowners import CRITICAL_PATTERNS  # noqa: E402
 
 
 def _pub_hex(private_key) -> str:
@@ -101,7 +104,7 @@ def _signed_authority(tmp_path: pathlib.Path):
     _git(repo, "commit", "-m", "audited start")
     audited = _git(repo, "rev-parse", "HEAD")
     policy = repo / "docs/control/b00r_policy.v1.json"
-    policy.write_bytes(canonical_json({"audited_start_sha": audited}))
+    policy.write_bytes(canonical_json({"audited_start_sha": audited, "repair_generation": 1}))
     _git(repo, "add", policy.relative_to(repo).as_posix())
     _git(repo, "commit", "-m", "policy")
 
@@ -145,7 +148,8 @@ def _signed_authority(tmp_path: pathlib.Path):
 def test_authority_root_verifies_real_dec_signatures_and_external_pins(tmp_path):
     repo, paths, pins_path, pins = _signed_authority(tmp_path)
     context = load_authority_context(
-        now_us=100, pins_path=pins_path, subject_paths=paths, environ={}, repo_root=repo)
+        now_us=100, pins_path=pins_path, subject_paths=paths, environ={}, repo_root=repo,
+        repair_generation=1)
     assert context.receipt_threshold == 2
     assert context.receipt_roles == ("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER")
     validate_git_bound_authority(
@@ -161,13 +165,15 @@ def test_authority_root_verifies_real_dec_signatures_and_external_pins(tmp_path)
     _write(pins_path, pins)
     with pytest.raises(AuthorityRootError, match="DECISION_SIGNATURE_INVALID"):
         load_authority_context(
-            now_us=100, pins_path=pins_path, subject_paths=paths, environ={}, repo_root=repo)
+            now_us=100, pins_path=pins_path, subject_paths=paths, environ={}, repo_root=repo,
+            repair_generation=1)
 
 
 def test_pass_receipt_requires_trusted_now_us():
     receipt = json.loads(
         (ROOT / "contracts/golden/triad.evidence_receipt.v3/valid.json").read_text())
-    result, reason = gov.validate_receipt_v3(receipt, milestone="B00R", trust={})
+    result, reason = gov.validate_receipt_v3(
+        receipt, milestone="B00R", trust={}, expected_root_generation=1)
     assert (result, reason) == ("BLOCKED", "NOW_US_REQUIRED")
 
 
@@ -184,7 +190,8 @@ def test_receipt_identity_fields_are_semantically_bound(mutation, reason):
     receipt = json.loads(
         (ROOT / "contracts/golden/triad.evidence_receipt.v3/valid.json").read_text())
     mutation(receipt["payload"])
-    result, actual = gov.validate_receipt_v3(receipt, milestone="B00R", now_us=3_000_000)
+    result, actual = gov.validate_receipt_v3(
+        receipt, milestone="B00R", now_us=3_000_000, expected_root_generation=1)
     assert (result, actual) == ("FAIL", reason)
 
 
@@ -194,30 +201,39 @@ def test_receipt_profile_cannot_collapse_two_party_separation():
     profile["scope"]["signer_threshold"] = 1
     profile["scope"]["signer_roles"] = ["AUTHORITY_OWNER"]
     with pytest.raises(gov.GovernanceError, match="BAD_THRESHOLD"):
-        gov.receipt_profile_from_decision(profile)
+        gov.receipt_profile_from_decision(profile, repair_generation=1)
 
 
 def _raw_ruleset() -> dict:
     return {
-        "id": 42, "name": "main", "target": "branch", "source": "TriadAgentic/TriadOrigin",
-        "enforcement": "active", "bypass_actors": [],
+        "id": 42, "name": "main", "target": "branch", "source_type": "Repository",
+        "source": "TriadAgentic/TriadOrigin", "enforcement": "active", "bypass_actors": [],
+        "current_user_can_bypass": "never", "node_id": "RRS_provider42",
+        "_links": {
+            "self": {"href": "https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/42"},
+            "html": {"href": "https://github.com/TriadAgentic/TriadOrigin/rules/42"},
+        },
         "created_at": "1970-01-01T00:00:05Z",
         "updated_at": "1970-01-01T00:00:10Z",
-        "conditions": {"ref_name": {"include": ["refs/heads/main"], "exclude": []}},
+        "conditions": {"ref_name": {"include": [
+            "refs/heads/main", "refs/heads/b00r-ruleset-canary"
+        ], "exclude": []}},
         "rules": [
             {"type": "pull_request", "parameters": {
                 "required_approving_review_count": 1, "dismiss_stale_reviews_on_push": True,
                 "require_code_owner_review": True, "require_last_push_approval": True,
-                "required_review_thread_resolution": True}},
+                "required_review_thread_resolution": True,
+                "allowed_merge_methods": ["merge"]}},
             {"type": "required_status_checks", "parameters": {
                 "strict_required_status_checks_policy": True,
-                "required_status_checks": [{"context": "CI / test-and-verify"}]}},
+                "required_status_checks": [{
+                    "context": "CI / test-and-verify", "integration_id": 15368}]}},
             {"type": "deletion"}, {"type": "non_fast_forward"},
         ],
     }
 
 
-def test_governance_snapshot_is_derived_from_pinned_raw_provider_response():
+def test_governance_snapshot_semantics_are_derived_from_pinned_provider_shape():
     raw_bytes = canonical_json(_raw_ruleset())
     pin = sha256_hex(raw_bytes)
     doc = {
@@ -249,6 +265,331 @@ def test_governance_snapshot_is_derived_from_pinned_raw_provider_response():
     result, reason = gov.validate_governance_snapshot(
         changed, provider_raw_bytes=altered_bytes, external_pin=altered_pin, now_us=30_000_000)
     assert result == "FAIL" and "BYPASS" in reason
+
+
+def _snapshot_for_raw(raw: dict) -> tuple[dict, bytes, str]:
+    raw_bytes = canonical_json(raw)
+    pin = sha256_hex(raw_bytes)
+    doc = {
+        "schema": "triad.governance_snapshot.v1", "schema_version": "1.0.0",
+        "snapshot_kind": "GOVERNANCE_SNAPSHOT", "authenticated": True,
+        "effective_at_us": 10_000_000,
+        "provider": {"name": "github", "repository": "TriadAgentic/TriadOrigin",
+                     "captured_at_us": 20_000_000, "api_response_path": "evidence/raw.json",
+                     "api_response_sha256": pin},
+        "ruleset": {"ruleset_id": str(raw.get("id")), "target": "refs/heads/main",
+                    "pull_request_required": True,
+                    "required_status_check": "CI / test-and-verify",
+                    "strict_required_status": True, "required_approvals": 1,
+                    "dismiss_stale_reviews": True, "require_conversation_resolution": True,
+                    "block_force_push": True, "block_deletions": True, "bypass_actors": []},
+    }
+    return doc, raw_bytes, pin
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        (lambda raw: raw.__setitem__("id", "DECLARATIVE"), "RULESET_ID"),
+        (lambda raw: raw.__setitem__("name", "PLACEHOLDER"), "RULESET_NAME"),
+        (lambda raw: raw.__setitem__("note", "actual enforcement pending"), "SYNTHETIC"),
+        (lambda raw: raw.pop("source_type"), "SOURCE_TYPE"),
+        (
+            lambda raw: raw.__setitem__("current_user_can_bypass", "always"),
+            "CURRENT_USER_BYPASS",
+        ),
+        (
+            lambda raw: raw.__setitem__("current_user_can_bypass", "pull_requests_only"),
+            "CURRENT_USER_BYPASS",
+        ),
+        (
+            lambda raw: raw.__setitem__("current_user_can_bypass", "exempt"),
+            "CURRENT_USER_BYPASS",
+        ),
+        (
+            lambda raw: raw.__setitem__("current_user_can_bypass", False),
+            "CURRENT_USER_BYPASS",
+        ),
+        (
+            lambda raw: raw.__setitem__("current_user_can_bypass", True),
+            "CURRENT_USER_BYPASS",
+        ),
+        (lambda raw: raw.pop("current_user_can_bypass"), "CURRENT_USER_BYPASS"),
+        (lambda raw: raw.__setitem__("node_id", "not-a-provider-node"), "NODE_ID"),
+        (
+            lambda raw: raw["_links"]["self"].__setitem__(
+                "href", "https://example.invalid/forged"
+            ),
+            "PROVIDER_LINKS",
+        ),
+        (
+            lambda raw: raw["conditions"]["ref_name"].__setitem__(
+                "exclude", ["refs/heads/*"]
+            ),
+            "MAIN_TARGET",
+        ),
+        (
+            lambda raw: raw["conditions"]["ref_name"].__setitem__(
+                "include", ["refs/heads/main"]
+            ),
+            "MAIN_TARGET",
+        ),
+        (
+            lambda raw: raw["conditions"]["ref_name"].__setitem__(
+                "include", ["~DEFAULT_BRANCH", "refs/heads/b00r-ruleset-canary"]
+            ),
+            "MAIN_TARGET",
+        ),
+        (
+            lambda raw: raw["conditions"]["ref_name"].__setitem__(
+                "include", [{"malformed": True}]
+            ),
+            "MAIN_TARGET",
+        ),
+        (
+            lambda raw: raw["rules"][1]["parameters"]["required_status_checks"][0].pop(
+                "integration_id"
+            ),
+            "STATUS_CONTROL",
+        ),
+        (
+            lambda raw: raw["rules"][1]["parameters"]["required_status_checks"][0].__setitem__(
+                "integration_id", 42
+            ),
+            "STATUS_CONTROL",
+        ),
+    ],
+)
+def test_governance_snapshot_rejects_non_provider_ruleset_shapes(mutation, reason):
+    raw = _raw_ruleset()
+    mutation(raw)
+    doc, raw_bytes, pin = _snapshot_for_raw(raw)
+    result, actual = gov.validate_governance_snapshot(
+        doc, provider_raw_bytes=raw_bytes, external_pin=pin, now_us=30_000_000
+    )
+    assert result == "FAIL"
+    assert reason in actual
+
+
+def test_checked_in_declarative_ruleset_stub_cannot_pass_even_when_pinned():
+    doc = json.loads(
+        (ROOT / "docs/governance/rulesets/main.ruleset.provider.json").read_text()
+    )
+    raw_bytes = (
+        ROOT / "docs/governance/rulesets/main.ruleset.provider.raw.json"
+    ).read_bytes()
+    pin = sha256_hex(raw_bytes)
+    doc["authenticated"] = True
+    result, reason = gov.validate_governance_snapshot(
+        doc, provider_raw_bytes=raw_bytes, external_pin=pin,
+        now_us=doc["provider"]["captured_at_us"] + 1,
+    )
+    assert result == "FAIL"
+    assert "SYNTHETIC" in reason or "RULESET_ID" in reason
+
+
+def test_normalized_snapshot_commentary_cannot_authenticate_provider_bytes():
+    raw = _raw_ruleset()
+    doc, raw_bytes, pin = _snapshot_for_raw(raw)
+    doc["provider"]["note"] = "hand-authored declaration"
+    result, reason = gov.validate_governance_snapshot(
+        doc, provider_raw_bytes=raw_bytes, external_pin=pin, now_us=30_000_000
+    )
+    assert (result, reason) == ("FAIL", "GOVERNANCE_PROVIDER_SYNTHETIC_METADATA")
+
+
+def test_provider_negative_canary_is_mandatory_and_bound_to_ruleset(tmp_path):
+    raw_path = tmp_path / "raw.json"
+    raw_path.write_bytes(canonical_json({
+        "id": 42,
+        "name": "main",
+        "node_id": "RRS_provider42",
+        "updated_at": "1970-01-01T00:00:10Z",
+        "conditions": {"ref_name": {"include": [
+            "refs/heads/main", "refs/heads/b00r-ruleset-canary"
+        ], "exclude": []}},
+    }))
+    transcript_rel = "evidence/B00R_G2/provider_negative_canary.transcript.txt"
+    transcript = (
+        b"TRIAD_CANARY_REF=refs/heads/b00r-ruleset-canary\n"
+        b"TRIAD_CANARY_BEFORE_SHA=" + b"a" * 40 + b"\n"
+        b"TRIAD_CANARY_AFTER_SHA=" + b"b" * 40 + b"\n"
+        b"TRIAD_CANARY_ACTOR=canary-pusher\n"
+        b"TRIAD_CANARY_EXIT_CODE=1\n"
+        b"git push --porcelain origin " + b"b" * 40
+        + b":refs/heads/b00r-ruleset-canary\n"
+        b"remote: error: GH013: Repository rule violations found for "
+        b"refs/heads/b00r-ruleset-canary.\n"
+        b" ! [remote rejected] canary -> b00r-ruleset-canary "
+        b"(push declined due to repository rule violations)\n"
+    )
+    transcript_path = tmp_path / transcript_rel
+    transcript_path.parent.mkdir(parents=True)
+    transcript_path.write_bytes(transcript)
+    rule_suite_rel = "evidence/B00R_G2/provider_negative_canary.rule_suite.raw.json"
+    rule_suite = {
+        "id": 99,
+        "actor_id": 7,
+        "actor_name": "canary-pusher",
+        "before_sha": "a" * 40,
+        "after_sha": "b" * 40,
+        "ref": "refs/heads/b00r-ruleset-canary",
+        "repository_id": 1_327_825_324,
+        "repository_name": "TriadOrigin",
+        "pushed_at": "1970-01-01T00:00:15Z",
+        "result": "fail",
+        "evaluation_result": None,
+        "rule_evaluations": [{
+            "rule_source": {"type": "ruleset", "id": 42, "name": "main"},
+            "enforcement": "active",
+            "result": "fail",
+            "rule_type": "pull_request",
+            "details": "Changes must be made through a pull request.",
+        }],
+    }
+    rule_suite_path = tmp_path / rule_suite_rel
+    rule_suite_path.write_bytes(canonical_json(rule_suite))
+    canary = {
+        "profile": "TRIAD-B00R-PROVIDER-NEGATIVE-CANARY-V1",
+        "canary_kind": "PROVIDER_NEGATIVE_CANARY",
+        "provider": "github",
+        "repository": "TriadAgentic/TriadOrigin",
+        "repository_id": 1_327_825_324,
+        "ruleset_id": 42,
+        "ref": "refs/heads/b00r-ruleset-canary",
+        "operation": "DIRECT_PUSH",
+        "result": "REJECTED_BY_RULESET",
+        "exit_code": 1,
+        "attempted_at_us": 20_000_000,
+        "actor_id": 7,
+        "actor_name": "canary-pusher",
+        "before_sha": "a" * 40,
+        "after_sha": "b" * 40,
+        "rule_suite_id": 99,
+        "rule_suite_path": rule_suite_rel,
+        "rule_suite_sha256": sha256_hex(rule_suite_path.read_bytes()),
+        "transcript_path": transcript_rel,
+        "transcript_sha256": sha256_hex(transcript),
+    }
+    canary_path = tmp_path / "evidence/B00R_G2/provider_negative_canary.v1.json"
+    canary_path.write_bytes(canonical_json(canary))
+    entries = [
+        {"path": canary_path.relative_to(tmp_path).as_posix(),
+         "role": "PROVIDER_NEGATIVE_CANARY", "role_unique": True,
+         "sha256": sha256_hex(canary_path.read_bytes())},
+        {"path": transcript_rel, "role": "PROVIDER_NEGATIVE_CANARY_TRANSCRIPT",
+         "role_unique": True, "sha256": sha256_hex(transcript)},
+        {"path": rule_suite_rel, "role": "PROVIDER_NEGATIVE_CANARY_RULE_SUITE",
+         "role_unique": True, "sha256": sha256_hex(rule_suite_path.read_bytes())},
+    ]
+    _validate_provider_negative_canary(
+        entries=entries, root=tmp_path, provider_raw_path=raw_path,
+        provider_merge_time_us=30_000_000,
+    )
+    same_second_raw = json.loads(raw_path.read_bytes())
+    same_second_raw["updated_at"] = "1970-01-01T00:00:15Z"
+    raw_path.write_bytes(canonical_json(same_second_raw))
+    with pytest.raises(ReceiptBindingError, match="CHRONOLOGY_INVALID"):
+        _validate_provider_negative_canary(
+            entries=entries, root=tmp_path, provider_raw_path=raw_path,
+            provider_merge_time_us=30_000_000,
+        )
+    same_second_raw["updated_at"] = "1970-01-01T00:00:10Z"
+    raw_path.write_bytes(canonical_json(same_second_raw))
+    with pytest.raises(ReceiptBindingError, match="ROLE_COUNT"):
+        _validate_provider_negative_canary(
+            entries=entries[1:], root=tmp_path, provider_raw_path=raw_path,
+            provider_merge_time_us=30_000_000,
+        )
+    canary["ruleset_id"] = 99
+    canary_path.write_bytes(canonical_json(canary))
+    with pytest.raises(ReceiptBindingError, match="RULESET_IDENTITY"):
+        _validate_provider_negative_canary(
+            entries=entries, root=tmp_path, provider_raw_path=raw_path,
+            provider_merge_time_us=30_000_000,
+        )
+
+    def write_suite(document):
+        rule_suite_path.write_bytes(canonical_json(document))
+        digest = sha256_hex(rule_suite_path.read_bytes())
+        canary["rule_suite_sha256"] = digest
+        canary_path.write_bytes(canonical_json(canary))
+        entries[2]["sha256"] = digest
+
+    canary["ruleset_id"] = 42
+    rule_suite["result"] = "pass"
+    rule_suite["evaluation_result"] = "fail"
+    write_suite(rule_suite)
+    with pytest.raises(ReceiptBindingError, match="RULE_SUITE_IDENTITY"):
+        _validate_provider_negative_canary(
+            entries=entries, root=tmp_path, provider_raw_path=raw_path,
+            provider_merge_time_us=30_000_000,
+        )
+
+    rule_suite["result"] = "fail"
+    rule_suite["evaluation_result"] = None
+    rule_suite["rule_evaluations"][0]["rule_source"]["id"] = 999
+    write_suite(rule_suite)
+    with pytest.raises(ReceiptBindingError, match="ACTIVE_RULESET_FAILURE_ABSENT"):
+        _validate_provider_negative_canary(
+            entries=entries, root=tmp_path, provider_raw_path=raw_path,
+            provider_merge_time_us=30_000_000,
+        )
+
+    rule_suite["rule_evaluations"][0]["rule_source"]["id"] = 42
+    write_suite(rule_suite)
+    wrong_failure = transcript + b"fatal: Authentication failed for repository\n"
+    transcript_path.write_bytes(wrong_failure)
+    canary["transcript_sha256"] = sha256_hex(wrong_failure)
+    canary_path.write_bytes(canonical_json(canary))
+    entries[1]["sha256"] = sha256_hex(wrong_failure)
+    with pytest.raises(ReceiptBindingError, match="WRONG_FAILURE_CLASS"):
+        _validate_provider_negative_canary(
+            entries=entries, root=tmp_path, provider_raw_path=raw_path,
+            provider_merge_time_us=30_000_000,
+        )
+
+
+def test_source_pr_provider_record_binds_merge_time_before_receipt_observation(tmp_path):
+    rel = "evidence/B00R_G2/source_pr.provider.raw.json"
+    path = tmp_path / rel
+    path.parent.mkdir(parents=True)
+    payload = {
+        "source_pr": 28,
+        "source_merge_sha": "a" * 40,
+        "final_source_head": "b" * 40,
+        "observed_at_us": 30_000_000,
+        "emitted_at_us": 31_000_000,
+    }
+    record = {
+        "number": 28,
+        "state": "closed",
+        "merged": True,
+        "merged_at": "1970-01-01T00:00:20Z",
+        "merge_commit_sha": "a" * 40,
+        "base": {"ref": "main", "repo": {
+            "id": 1_327_825_324, "full_name": "TriadAgentic/TriadOrigin"}},
+        "head": {"sha": "b" * 40,
+                 "repo": {"full_name": "TriadAgentic/TriadOrigin"}},
+        "user": {"login": "source-author", "type": "User"},
+    }
+    path.write_bytes(canonical_json(record))
+    entries = [{
+        "path": rel, "role": "SOURCE_PR_PROVIDER_RECORD", "role_unique": True,
+        "sha256": sha256_hex(path.read_bytes()),
+    }]
+    assert _validate_source_pr_provider_record(
+        entries=entries, root=tmp_path, payload=payload, now_us=40_000_000,
+        github_token=None, require_live_provider=False,
+    ) == 20_000_000
+    record["merged_at"] = "1970-01-01T00:00:30Z"
+    path.write_bytes(canonical_json(record))
+    entries[0]["sha256"] = sha256_hex(path.read_bytes())
+    with pytest.raises(ReceiptBindingError, match="RECEIPT_CHRONOLOGY_INVALID"):
+        _validate_source_pr_provider_record(
+            entries=entries, root=tmp_path, payload=payload, now_us=40_000_000,
+            github_token=None, require_live_provider=False,
+        )
 
 
 def test_source_governance_evidence_is_exact_head_bound(tmp_path):
@@ -306,15 +647,34 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
     _git(repo, "init", "-b", "main")
     _git(repo, "config", "user.email", "test@example.invalid")
     _git(repo, "config", "user.name", "test")
+    codeowners = repo / ".github/CODEOWNERS"
+    codeowners.parent.mkdir(parents=True)
+    codeowners.write_text("\n".join(f"{pattern} @djordi10" for pattern in CRITICAL_PATTERNS))
+    (repo / "base.txt").write_text("base")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-m", "bootstrap codeowner")
+    audited_start = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "-b", "generation-2-source")
     (repo / "source.txt").write_text("source")
     governance_dir = repo / "docs/governance/rulesets"
     governance_dir.mkdir(parents=True)
     snapshot_path = governance_dir / "main.ruleset.provider.json"
     provider_raw_path = governance_dir / "main.ruleset.provider.raw.json"
     snapshot_path.write_bytes(b"source snapshot")
-    provider_raw_path.write_bytes(b"source raw")
+    provider_raw_path.write_bytes(canonical_json({
+        "id": 42,
+        "name": "main",
+        "node_id": "RRS_provider42",
+        "updated_at": "1970-01-01T00:00:10Z",
+        "conditions": {"ref_name": {"include": [
+            "refs/heads/main", "refs/heads/b00r-ruleset-canary"
+        ], "exclude": []}},
+    }))
     _git(repo, "add", ".")
-    _git(repo, "commit", "-m", "source")
+    _git(repo, "commit", "-m", "corrective source head")
+    final_source = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "main")
+    _git(repo, "merge", "--no-ff", "generation-2-source", "-m", "merge corrective source")
     source = _git(repo, "rev-parse", "HEAD")
     source_tree = _git(repo, "rev-parse", "HEAD^{tree}")
     source_time = int(_git(repo, "show", "-s", "--format=%ct", "HEAD")) * 1_000_000
@@ -323,27 +683,163 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
              "ROLLBACK_PROOF"]
     entries = []
     for i, role in enumerate(roles):
-        rel = f"evidence/B00R/{i}-{role.lower()}.json"
+        rel = f"evidence/B00R_G2/{i}-{role.lower()}.json"
         path = repo / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         data = canonical_json({"role": role})
         path.write_bytes(data)
         entries.append({"path": rel, "role": role, "media_type": "application/json",
                         "size": len(data), "sha256": sha256_hex(data)})
+    transcript_rel = "evidence/B00R_G2/provider_negative_canary.transcript.txt"
+    transcript = (
+        b"TRIAD_CANARY_REF=refs/heads/b00r-ruleset-canary\n"
+        b"TRIAD_CANARY_BEFORE_SHA=" + b"a" * 40 + b"\n"
+        b"TRIAD_CANARY_AFTER_SHA=" + b"b" * 40 + b"\n"
+        b"TRIAD_CANARY_ACTOR=canary-pusher\n"
+        b"TRIAD_CANARY_EXIT_CODE=1\n"
+        b"git push --porcelain origin " + b"b" * 40
+        + b":refs/heads/b00r-ruleset-canary\n"
+        b"remote: error: GH013: Repository rule violations found for "
+        b"refs/heads/b00r-ruleset-canary.\n"
+        b" ! [remote rejected] canary -> b00r-ruleset-canary "
+        b"(push declined due to repository rule violations)\n"
+    )
+    transcript_path = repo / transcript_rel
+    transcript_path.write_bytes(transcript)
+    entries.append({
+        "path": transcript_rel,
+        "role": "PROVIDER_NEGATIVE_CANARY_TRANSCRIPT",
+        "role_unique": True,
+        "media_type": "application/octet-stream",
+        "size": len(transcript),
+        "sha256": sha256_hex(transcript),
+    })
+    rule_suite_rel = "evidence/B00R_G2/provider_negative_canary.rule_suite.raw.json"
+    rule_suite = canonical_json({
+        "id": 99,
+        "actor_id": 7,
+        "actor_name": "canary-pusher",
+        "before_sha": "a" * 40,
+        "after_sha": "b" * 40,
+        "ref": "refs/heads/b00r-ruleset-canary",
+        "repository_id": 1_327_825_324,
+        "repository_name": "TriadOrigin",
+        "pushed_at": "1970-01-01T00:00:15Z",
+        "result": "fail",
+        "evaluation_result": None,
+        "rule_evaluations": [{
+            "rule_source": {"type": "ruleset", "id": 42, "name": "main"},
+            "enforcement": "active",
+            "result": "fail",
+            "rule_type": "pull_request",
+        }],
+    })
+    (repo / rule_suite_rel).write_bytes(rule_suite)
+    entries.append({
+        "path": rule_suite_rel,
+        "role": "PROVIDER_NEGATIVE_CANARY_RULE_SUITE",
+        "role_unique": True,
+        "media_type": "application/json",
+        "size": len(rule_suite),
+        "sha256": sha256_hex(rule_suite),
+    })
+    canary_rel = "evidence/B00R_G2/provider_negative_canary.v1.json"
+    canary = canonical_json({
+        "profile": "TRIAD-B00R-PROVIDER-NEGATIVE-CANARY-V1",
+        "canary_kind": "PROVIDER_NEGATIVE_CANARY",
+        "provider": "github",
+        "repository": "TriadAgentic/TriadOrigin",
+        "repository_id": 1_327_825_324,
+        "ruleset_id": 42,
+        "ref": "refs/heads/b00r-ruleset-canary",
+        "operation": "DIRECT_PUSH",
+        "result": "REJECTED_BY_RULESET",
+        "exit_code": 1,
+        "attempted_at_us": 20_000_000,
+        "actor_id": 7,
+        "actor_name": "canary-pusher",
+        "before_sha": "a" * 40,
+        "after_sha": "b" * 40,
+        "rule_suite_id": 99,
+        "rule_suite_path": rule_suite_rel,
+        "rule_suite_sha256": sha256_hex(rule_suite),
+        "transcript_path": transcript_rel,
+        "transcript_sha256": sha256_hex(transcript),
+    })
+    (repo / canary_rel).write_bytes(canary)
+    entries.append({
+        "path": canary_rel,
+        "role": "PROVIDER_NEGATIVE_CANARY",
+        "role_unique": True,
+        "media_type": "application/json",
+        "size": len(canary),
+        "sha256": sha256_hex(canary),
+    })
+    source_pr_rel = "evidence/B00R_G2/source_pr.provider.raw.json"
+    source_pr_record = canonical_json({
+        "number": 1,
+        "state": "closed",
+        "merged": True,
+        "merged_at": "1970-01-01T00:00:30Z",
+        "merge_commit_sha": source,
+        "base": {
+            "ref": "main",
+            "repo": {"id": 1_327_825_324,
+                     "full_name": "TriadAgentic/TriadOrigin"},
+        },
+        "head": {"sha": final_source,
+                 "repo": {"full_name": "TriadAgentic/TriadOrigin"}},
+        "user": {"login": "source-author", "type": "User"},
+    })
+    (repo / source_pr_rel).write_bytes(source_pr_record)
+    entries.append({
+        "path": source_pr_rel,
+        "role": "SOURCE_PR_PROVIDER_RECORD",
+        "role_unique": True,
+        "media_type": "application/json",
+        "size": len(source_pr_record),
+        "sha256": sha256_hex(source_pr_record),
+    })
+    review_rel = "evidence/B00R_G2/source_pr.approved_review.provider.raw.json"
+    review_record = canonical_json({
+        "source_pr": 1,
+        "source_head": final_source,
+        "review": {
+            "id": 2,
+            "state": "APPROVED",
+            "commit_id": final_source,
+            "submitted_at": "1970-01-01T00:00:25Z",
+            "user": {"login": "djordi10", "type": "User"},
+        },
+    })
+    (repo / review_rel).write_bytes(review_record)
+    entries.append({
+        "path": review_rel,
+        "role": "SOURCE_PR_APPROVED_REVIEW_PROVIDER_RECORD",
+        "role_unique": True,
+        "media_type": "application/json",
+        "size": len(review_record),
+        "sha256": sha256_hex(review_record),
+    })
     entries.sort(key=lambda item: item["path"])
     manifest = {"schema": "triad.evidence_manifest.v1", "schema_version": "1.0.0",
                 "manifest_kind": "EVIDENCE_MANIFEST", "entry_count": len(entries),
                 "entries": entries}
-    manifest_path = repo / "evidence/B00R/evidence_manifest.json"
+    manifest_path = repo / "evidence/B00R_G2/evidence_manifest.json"
     manifest_path.write_bytes(canonical_json(manifest))
     by_role = {entry["role"]: entry["sha256"] for entry in entries}
     receipt = json.loads(
         (ROOT / "contracts/golden/triad.evidence_receipt.v3/valid.json").read_text())
     payload = receipt["payload"]
     payload.update({
+        "source_pr": 1,
+        "repair_generation": 2,
+        "observed_at_us": 40_000_000,
+        "emitted_at_us": 50_000_000,
+        "expires_at_us": 60_000_000,
         "source_merge_sha": source, "source_merge_tree": source_tree,
-        "final_source_head": source, "source_merge_time_us": source_time,
-        "audited_start_sha": source, "repair_decision_sha256": "d" * 64,
+        "final_source_head": final_source, "source_merge_time_us": source_time,
+        "audited_start_sha": audited_start, "repair_decision_sha256": "d" * 64,
         "invalidation_manifest_sha256": "e" * 64,
         "evidence_manifest_sha256": sha256_hex(manifest_path.read_bytes()),
         "evidence_ids": [entry["path"] for entry in entries],
@@ -354,7 +850,7 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
         "config_bundle_sha256": by_role["CONFIG_BUNDLE"],
         "rollback_proof_sha256": by_role["ROLLBACK_PROOF"],
     })
-    receipt_path = repo / "evidence/receipts/B00R.receipt.v3.json"
+    receipt_path = repo / "evidence/receipts/B00R.g2.receipt.v3.json"
     receipt_path.parent.mkdir(parents=True)
     receipt_path.write_bytes(canonical_json(receipt))
     _git(repo, "add", "evidence")
@@ -362,16 +858,17 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
     head = _git(repo, "rev-parse", "HEAD")
     authority = AuthorityContext(
         trust={}, decisions={"b00_repair": {"effective_at_us": 1, "subject_sha256s": {
-            "invalidation_manifest": "e" * 64, "audited_start_sha": source}}},
+            "generation_ledger": "e" * 64, "audited_start_sha": audited_start}}},
         digests={"b00_repair": "d" * 64}, receipt_threshold=2,
         receipt_roles=("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER"),
         receipt_algorithm="ed25519")
     validate_receipt_bindings(
         receipt, receipt_path=receipt_path, manifest_path=manifest_path, git_root=repo,
         expected_head=head, authority=authority,
-        governance_evidence_paths=(snapshot_path, provider_raw_path))
+        governance_evidence_paths=(snapshot_path, provider_raw_path),
+        require_live_source_pr=False)
 
-    extra = repo / "evidence/B00R/unlisted.json"
+    extra = repo / "evidence/B00R_G2/unlisted.json"
     extra.write_text("{}")
     _git(repo, "add", extra.relative_to(repo).as_posix())
     _git(repo, "commit", "-m", "unlisted")
@@ -379,4 +876,5 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
         validate_receipt_bindings(
             receipt, receipt_path=receipt_path, manifest_path=manifest_path, git_root=repo,
             expected_head=_git(repo, "rev-parse", "HEAD"), authority=authority,
-            governance_evidence_paths=(snapshot_path, provider_raw_path))
+            governance_evidence_paths=(snapshot_path, provider_raw_path),
+            require_live_source_pr=False)

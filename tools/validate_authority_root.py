@@ -51,6 +51,12 @@ CANONICAL_AUTHORITY_PATHS = {
     "b00_repair": "docs/governance/decisions/DEC-B00-REPAIR-001.json",
     "trust_registry": "docs/governance/trust/receipt_trust_registry.v1.json",
 }
+GENERATION_2_AUTHORITY_PATHS = {
+    "authority_bundle": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.json",
+    "receipt_profile": "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json",
+    "b00_repair": "docs/governance/decisions/DEC-B00-REPAIR-002.json",
+    "trust_registry": "docs/governance/trust/receipt_trust_registry.v1.json",
+}
 CRYPTOGRAPHY_VERSION = "50.0.0"
 
 # name -> (external pin name, expected decision id or None, authenticated file, template)
@@ -72,6 +78,26 @@ SUBJECTS = {
         GOV / "trust" / "receipt_trust_registry.v1.json",
         GOV / "trust" / "receipt_trust_registry.v1.template.json"),
 }
+GENERATION_2_SUBJECTS = {
+    "authority_bundle": SUBJECTS["authority_bundle"],
+    "receipt_profile": (
+        "RECEIPT_PROFILE_G2_DECISION_SHA256", "DEC-RECEIPT-PROFILE-002",
+        GOV / "decisions" / "DEC-RECEIPT-PROFILE-002.json",
+        GOV / "decisions" / "DEC-RECEIPT-PROFILE-002.template.json"),
+    "b00_repair": (
+        "B00R_G2_REPAIR_DECISION_SHA256", "DEC-B00-REPAIR-002",
+        GOV / "decisions" / "DEC-B00-REPAIR-002.json",
+        GOV / "decisions" / "DEC-B00-REPAIR-002.template.json"),
+    "trust_registry": SUBJECTS["trust_registry"],
+}
+
+
+def _authority_profile(repair_generation: int):
+    if repair_generation == 1:
+        return SUBJECTS, CANONICAL_AUTHORITY_PATHS
+    if repair_generation == 2:
+        return GENERATION_2_SUBJECTS, GENERATION_2_AUTHORITY_PATHS
+    raise AuthorityRootError(f"REPAIR_GENERATION_UNSUPPORTED:{repair_generation}")
 
 
 class AuthorityRootError(ValueError):
@@ -90,6 +116,7 @@ class AuthorityContext:
     receipt_threshold: int
     receipt_roles: tuple[str, ...]
     receipt_algorithm: str
+    repair_generation: int = 2
     paths: dict[str, pathlib.Path] = field(default_factory=dict)
 
 
@@ -142,6 +169,7 @@ def validate_git_bound_authority(
     object_head: str | None = None,
 ) -> None:
     """Prove all four canonical authority files are clean tracked blobs at an exact Git head."""
+    _subjects, canonical_paths = _authority_profile(context.repair_generation)
     if re.fullmatch(r"[0-9a-f]{40}", expected_head or "") is None:
         raise AuthorityRootError("EXPECTED_HEAD_NOT_CANONICAL_SHA40")
     root = pathlib.Path(str(_git(git_root, "rev-parse", "--show-toplevel"))).resolve(strict=True)
@@ -151,7 +179,7 @@ def validate_git_bound_authority(
         raise AuthorityRootError("EXPECTED_HEAD_MISMATCH")
     if str(_git(root, "status", "--porcelain=v1", "--untracked-files=all")):
         raise AuthorityRootError("GIT_WORKTREE_NOT_CLEAN")
-    for name, rel in CANONICAL_AUTHORITY_PATHS.items():
+    for name, rel in canonical_paths.items():
         path = context.paths.get(name)
         if path is None:
             raise AuthorityRootError(f"AUTHORITY_PATH_MISSING:{name}")
@@ -168,8 +196,14 @@ def validate_git_bound_authority(
             raise AuthorityRootError(f"AUTHORITY_SOURCE_GIT_BLOB_MISMATCH:{name}")
     supporting_paths = set(AUTHORITY_SUBJECT_PATHS.values()) | set(PROFILE_SUBJECT_PATHS.values()) | {
         "docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json",
-        "docs/control/b00r_policy.v1.json",
     }
+    if context.repair_generation == 1:
+        supporting_paths.add("docs/control/b00r_policy.v1.json")
+    else:
+        supporting_paths.update({
+            "docs/control/b00r_policy.v2.json",
+            "docs/governance/B00R_GENERATION_LEDGER.v1.json",
+        })
     for rel in supporting_paths:
         disk = (root / rel).read_bytes()
         if _git(root, "show", f"{expected_head}:{rel}", text=False) != disk:
@@ -200,6 +234,7 @@ def load_external_pins(
     pins_path: pathlib.Path | None = None,
     environ: Mapping[str, str] | None = None,
     repo_root: pathlib.Path = ROOT,
+    repair_generation: int = 2,
 ) -> dict[str, str]:
     """Load and syntax-check pins, rejecting an in-repository pin file."""
     pins: dict[str, str] = {}
@@ -215,7 +250,8 @@ def load_external_pins(
             raise AuthorityRootError("EXTERNAL_PINS_MUST_BE_OUTSIDE_REPOSITORY")
         pins.update(_load_json(resolved))
     env = os.environ if environ is None else environ
-    allowed = {meta[0] for meta in SUBJECTS.values()}
+    subjects, _canonical = _authority_profile(repair_generation)
+    allowed = {meta[0] for meta in subjects.values()}
     unknown = set(pins) - allowed
     if unknown:
         raise AuthorityRootError(f"UNKNOWN_EXTERNAL_PIN_NAMES:{sorted(unknown)}")
@@ -234,7 +270,12 @@ def load_external_pins(
     return pins
 
 
-def _verify_subject_bindings(decisions: dict[str, dict], root: pathlib.Path) -> None:
+def _verify_subject_bindings(
+    decisions: dict[str, dict],
+    root: pathlib.Path,
+    *,
+    repair_generation: int,
+) -> None:
     """Cross-bind locally resolvable subjects named by the signed decisions."""
     authority_paths = AUTHORITY_SUBJECT_PATHS
     profile_paths = PROFILE_SUBJECT_PATHS
@@ -257,21 +298,45 @@ def _verify_subject_bindings(decisions: dict[str, dict], root: pathlib.Path) -> 
             raise AuthorityRootError(f"DECISION_SUBJECT_MISMATCH:{name}")
 
     repair = decisions["b00_repair"]
-    if set(repair.get("subject_sha256s", {})) != {"audited_start_sha", "invalidation_manifest"}:
-        raise AuthorityRootError("B00_REPAIR_SUBJECT_SET_MISMATCH")
-    invalidation = root / "docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json"
-    if not invalidation.is_file() or _sha256(invalidation) != \
-            repair.get("subject_sha256s", {}).get("invalidation_manifest"):
-        raise AuthorityRootError("DECISION_SUBJECT_MISMATCH:invalidation_manifest")
-    audited = repair.get("subject_sha256s", {}).get("audited_start_sha")
+    subjects = repair.get("subject_sha256s", {})
+    if repair_generation == 1:
+        if set(subjects) != {"audited_start_sha", "invalidation_manifest"}:
+            raise AuthorityRootError("B00_REPAIR_SUBJECT_SET_MISMATCH")
+        invalidation = root / "docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json"
+        if not invalidation.is_file() or _sha256(invalidation) != \
+                subjects.get("invalidation_manifest"):
+            raise AuthorityRootError("DECISION_SUBJECT_MISMATCH:invalidation_manifest")
+        policy_path = root / "docs/control/b00r_policy.v1.json"
+    else:
+        expected = {
+            "audited_start_sha", "generation_1_anchor_object_sha",
+            "generation_1_receipt_sha256", "generation_ledger", "policy_v2",
+        }
+        if set(subjects) != expected:
+            raise AuthorityRootError("B00R_G2_REPAIR_SUBJECT_SET_MISMATCH")
+        generation_ledger = root / "docs/governance/B00R_GENERATION_LEDGER.v1.json"
+        policy_path = root / "docs/control/b00r_policy.v2.json"
+        generation_one_receipt = root / "evidence/receipts/B00R.receipt.v3.json"
+        if _sha256(generation_ledger) != subjects.get("generation_ledger"):
+            raise AuthorityRootError("DECISION_SUBJECT_MISMATCH:generation_ledger")
+        if _sha256(policy_path) != subjects.get("policy_v2"):
+            raise AuthorityRootError("DECISION_SUBJECT_MISMATCH:policy_v2")
+        if _sha256(generation_one_receipt) != subjects.get("generation_1_receipt_sha256"):
+            raise AuthorityRootError("DECISION_SUBJECT_MISMATCH:generation_1_receipt")
+        anchor_object = str(_git(root, "rev-parse", "B00R_RECEIPT_ANCHOR"))
+        if anchor_object != subjects.get("generation_1_anchor_object_sha"):
+            raise AuthorityRootError("DECISION_SUBJECT_MISMATCH:generation_1_anchor")
+        if repair.get("supersedes") != ["DEC-B00-REPAIR-001"]:
+            raise AuthorityRootError("B00R_G2_REPAIR_SUPERSESSION_MISMATCH")
+    audited = subjects.get("audited_start_sha")
     if repair.get("scope", {}).get("audited_start") != f"main@{audited}":
         raise AuthorityRootError("B00_REPAIR_AUDITED_START_SCOPE_MISMATCH")
-    policy_path = root / "docs/control/b00r_policy.v1.json"
     try:
         policy = _load_json(policy_path)
     except AuthorityRootError as exc:
         raise AuthorityRootError(f"B00_REPAIR_POLICY_UNAVAILABLE:{exc}") from exc
-    if policy.get("audited_start_sha") != audited:
+    if policy.get("audited_start_sha") != audited \
+            or policy.get("repair_generation") != repair_generation:
         raise AuthorityRootError("B00_REPAIR_POLICY_AUDITED_START_MISMATCH")
     env = dict(os.environ)
     for name in tuple(env):
@@ -297,21 +362,28 @@ def load_authority_context(
     environ: Mapping[str, str] | None = None,
     subject_paths: Mapping[str, pathlib.Path] | None = None,
     repo_root: pathlib.Path = ROOT,
+    repair_generation: int = 2,
 ) -> AuthorityContext:
     """Load, externally pin, and cryptographically authenticate all four authority objects."""
     if not isinstance(now_us, int) or isinstance(now_us, bool) or now_us <= 0:
         raise AuthorityRootUnavailable("NOW_US_REQUIRED")
     require_pinned_crypto_backend()
-    pins = load_external_pins(pins_path=pins_path, environ=environ, repo_root=repo_root)
+    subjects, _canonical_paths = _authority_profile(repair_generation)
+    pins = load_external_pins(
+        pins_path=pins_path,
+        environ=environ,
+        repo_root=repo_root,
+        repair_generation=repair_generation,
+    )
     paths: dict[str, pathlib.Path] = {}
-    for name, (_pin, _did, authenticated, template) in SUBJECTS.items():
+    for name, (_pin, _did, authenticated, template) in subjects.items():
         override = subject_paths.get(name) if subject_paths else None
         path = pathlib.Path(override) if override is not None else (
             authenticated if authenticated.exists() else template)
         if not path.exists():
             raise AuthorityRootUnavailable(f"{name}:AUTHORITY_OBJECT_ABSENT")
         paths[name] = path
-    for name, (pin_name, _did, _authenticated, _template) in SUBJECTS.items():
+    for name, (pin_name, _did, _authenticated, _template) in subjects.items():
         expected = pins.get(pin_name)
         if expected is None:
             raise AuthorityRootUnavailable(f"{name}:EXTERNAL_PIN_ABSENT:{pin_name}")
@@ -331,7 +403,7 @@ def load_authority_context(
     decisions: dict[str, dict] = {}
     for name in ("authority_bundle", "receipt_profile", "b00_repair"):
         doc = _load_json(paths[name])
-        expected_id = SUBJECTS[name][1]
+        expected_id = subjects[name][1]
         if doc.get("decision_id") != expected_id:
             raise AuthorityRootError(f"{name}:DECISION_ID_MISMATCH")
         try:
@@ -342,10 +414,10 @@ def load_authority_context(
                 raise AuthorityRootUnavailable(f"{name}:{exc}") from exc
             raise AuthorityRootError(f"{name}:{exc}") from exc
         decisions[name] = doc
-    _verify_subject_bindings(decisions, repo_root)
+    _verify_subject_bindings(decisions, repo_root, repair_generation=repair_generation)
     try:
         threshold, roles, algorithm = governance.receipt_profile_from_decision(
-            decisions["receipt_profile"])
+            decisions["receipt_profile"], repair_generation=repair_generation)
     except governance.GovernanceError as exc:
         raise AuthorityRootError(str(exc)) from exc
     return AuthorityContext(
@@ -355,6 +427,7 @@ def load_authority_context(
         receipt_threshold=threshold,
         receipt_roles=roles,
         receipt_algorithm=algorithm,
+        repair_generation=repair_generation,
         paths=paths,
     )
 
@@ -369,9 +442,14 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--expected-head",
                         help="exact event head whose tracked authority bytes are validated")
     parser.add_argument("--git-root", type=pathlib.Path, default=ROOT)
+    parser.add_argument("--repair-generation", type=int, choices=(1, 2), default=2)
     args = parser.parse_args(argv)
     try:
-        context = load_authority_context(now_us=args.now_us, pins_path=args.pins)
+        context = load_authority_context(
+            now_us=args.now_us,
+            pins_path=args.pins,
+            repair_generation=args.repair_generation,
+        )
     except AuthorityRootUnavailable as exc:
         print(f"UNAVAILABLE_AUTHORITY_ROOT: {exc}")
         return 1 if args.strict else 0

@@ -1,0 +1,82 @@
+{
+  "schema": "triad.origin.b00r_policy.v2",
+  "schema_version": "2.0.0",
+  "milestone": "B00R",
+  "repair_generation": 2,
+  "audited_start_sha": "76b5e4857f80f22f99385810037c5c66289ebd5f",
+  "supersedes_policy": "docs/control/b00r_policy.v1.json",
+  "generation_ledger": "docs/governance/B00R_GENERATION_LEDGER.v1.json",
+  "required_result": "PASS_REPOSITORY_SAFE_HOLD",
+  "activation_result": "DENIED_SAFE_HOLD",
+  "levers": {
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "generation_1_disposition": "MERGED_UNVERIFIED",
+  "owner_gated_inputs": [
+    {
+      "id": "DEC-AUTHORITY-BUNDLE-001",
+      "authenticated_path": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.json",
+      "external_pin": "AUTHORITY_BUNDLE_DECISION_SHA256"
+    },
+    {
+      "id": "DEC-RECEIPT-PROFILE-002",
+      "template": "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.template.json",
+      "authenticated_path": "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json",
+      "external_pin": "RECEIPT_PROFILE_G2_DECISION_SHA256"
+    },
+    {
+      "id": "DEC-B00-REPAIR-002",
+      "template": "docs/governance/decisions/DEC-B00-REPAIR-002.template.json",
+      "authenticated_path": "docs/governance/decisions/DEC-B00-REPAIR-002.json",
+      "external_pin": "B00R_G2_REPAIR_DECISION_SHA256"
+    },
+    {
+      "id": "receipt_trust_registry",
+      "authenticated_path": "docs/governance/trust/receipt_trust_registry.v1.json",
+      "external_pin": "RECEIPT_TRUST_REGISTRY_SHA256"
+    },
+    {
+      "id": "main_ruleset_evidence",
+      "normalized_path": "docs/governance/rulesets/main.ruleset.provider.json",
+      "raw_path": "docs/governance/rulesets/main.ruleset.provider.raw.json",
+      "external_pin": "MAIN_RULESET_EVIDENCE_SHA256"
+    },
+    {
+      "id": "independent_codeowner",
+      "path": ".github/CODEOWNERS",
+      "required_owner": "@djordi10"
+    }
+  ],
+  "pr_role_law": {
+    "source_pr": {
+      "may_touch": "any path except evidence/**",
+      "must_not_contain": "generation-2 receipt or generation-2 receipt evidence",
+      "base_codeowners": "first parent must already contain the exact sole-owner CODEOWNERS bytes"
+    },
+    "receipt_pr": {
+      "may_add_only": [
+        "evidence/B00R_G2/**",
+        "evidence/receipts/B00R.g2.receipt.v3.json"
+      ],
+      "must_add": [
+        "evidence/B00R_G2/evidence_manifest.json",
+        "evidence/receipts/B00R.g2.receipt.v3.json"
+      ],
+      "generation_1_evidence": "IMMUTABLE",
+      "mixed_content": "FAIL"
+    }
+  },
+  "closure_anchor": {
+    "id": "B00R_RECEIPT_ANCHOR_G2",
+    "message_profile": "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1",
+    "receipt_path": "evidence/receipts/B00R.g2.receipt.v3.json",
+    "evidence_root": "evidence/B00R_G2",
+    "tag_ruleset_path": "evidence/B00R_G2/tag_ruleset.provider.json",
+    "tag_ruleset_external_pin": "B00R_G2_TAG_RULESET_SHA256",
+    "b01c_base": "exact generation-2 receipt merge commit named by the validated anchor"
+  },
+  "stop_condition": "B01C_FROZEN_UNTIL_GENERATION_2_ANCHOR_VALIDATES"
+}
