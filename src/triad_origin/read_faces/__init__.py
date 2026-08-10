@@ -26,3 +26,15 @@ from .faces import (
     get_four_plane_status,
     get_shadow_health,
 )
+from .views import (
+    VIEW_NAMES,
+    get_divergence_view,
+    get_funnel_view,
+    get_lineage_view,
+    get_offsets_view,
+    get_quality_view,
+    get_readiness_view,
+    get_receipt_view,
+    get_replay_view,
+    get_watermarks_view,
+)
