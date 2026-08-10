@@ -43,6 +43,10 @@ def _init_repo(root: pathlib.Path) -> str:
 def test_exact_head_accepts_only_the_checked_out_canonical_sha(tmp_path):
     head = _init_repo(tmp_path / "repo")
     assert b00r_gate.verify_expected_head(head, tmp_path / "repo") == head
+    assert b00r_gate.verify_final_repository_state(head, tmp_path / "repo") == head
+    (tmp_path / "repo" / "untracked.txt").write_text("dirty\n")
+    with pytest.raises(b00r_gate.HeadIdentityError, match="WORKTREE_NOT_CLEAN"):
+        b00r_gate.verify_final_repository_state(head, tmp_path / "repo")
     with pytest.raises(b00r_gate.HeadIdentityError, match="NOT_CANONICAL_HEX40"):
         b00r_gate.verify_expected_head("HEAD", tmp_path / "repo")
     with pytest.raises(b00r_gate.HeadIdentityError, match="ALL_ZERO_UNAVAILABLE"):
@@ -321,6 +325,9 @@ def test_codeowners_placeholder_or_missing_critical_identity_is_blocked(tmp_path
     path.write_text(_valid_codeowners("@triadagentic/TRIAD-ORIGIN-GOVERNANCE"))
     with pytest.raises(verify_codeowners.CodeownersError, match="PLACEHOLDER_IDENTITY"):
         verify_codeowners.verify(path)
+    path.write_text(_valid_codeowners("@TriadAgentic/origin-governance-reviewers"))
+    with pytest.raises(verify_codeowners.CodeownersError, match="PLACEHOLDER_IDENTITY"):
+        verify_codeowners.verify(path)
 
     lines = _valid_codeowners("@TriadAgentic/real-governance-team").splitlines()
     path.write_text("\n".join(lines[:-1]) + "\n")
@@ -336,6 +343,38 @@ def test_codeowners_concrete_critical_identity_passes(tmp_path):
     assert owners == {"@TriadAgentic/real-governance-team"}
 
 
+def test_codeowners_covers_package_and_rejects_github_size_limit(tmp_path):
+    assert "/src/triad_origin/" in verify_codeowners.CRITICAL_PATTERNS
+    assert "/src/triad_origin/governance.py" not in verify_codeowners.CRITICAL_PATTERNS
+    path = tmp_path / "CODEOWNERS"
+    path.write_bytes(b"x" * verify_codeowners.MAX_CODEOWNERS_BYTES)
+    with pytest.raises(verify_codeowners.CodeownersError, match="TOO_LARGE"):
+        verify_codeowners.verify(path)
+
+
+def test_codeowners_provider_identity_is_writable_individual_and_independent(monkeypatch):
+    def permission(username, **_kwargs):
+        return {"permission": "write", "user": {"login": username}}
+
+    monkeypatch.setattr(verify_codeowners, "fetch_repository_permission", permission)
+    monkeypatch.setattr(
+        verify_codeowners, "fetch_codeowners_errors", lambda *_args, **_kwargs: {"errors": []})
+    assert verify_codeowners.verify_provider(
+        {"@independent-reviewer"}, token="token", now_us=1,
+        expected_head="a" * 40,
+        pr_author="source-author",
+    ) == ("independent-reviewer", "write")
+    with pytest.raises(verify_codeowners.CodeownersError, match="TEAM_IDENTITY_UNSUPPORTED"):
+        verify_codeowners.verify_provider(
+            {"@TriadAgentic/real-governance-team"}, token="token", now_us=1,
+            expected_head="a" * 40)
+    with pytest.raises(verify_codeowners.CodeownersError, match="EQUALS_PR_AUTHOR"):
+        verify_codeowners.verify_provider(
+            {"@source-author"}, token="token", now_us=1,
+            expected_head="a" * 40,
+            pr_author="source-author")
+
+
 def _anchored_receipt_repo(root: pathlib.Path) -> tuple[str, pathlib.Path, pathlib.Path, str]:
     root.mkdir(parents=True)
     _git(root, "init", "-q")
@@ -348,11 +387,23 @@ def _anchored_receipt_repo(root: pathlib.Path) -> tuple[str, pathlib.Path, pathl
     ruleset.parent.mkdir(parents=True)
     ruleset.write_text(json.dumps({
         "id": 1001,
+        "name": "b00r-receipt-anchor",
         "target": "tag",
         "source_type": "Repository",
         "source": "TriadAgentic/TriadOrigin",
-        "current_user_can_bypass": False,
+        "current_user_can_bypass": "never",
         "enforcement": "active",
+        "node_id": "RRS_anchor1001",
+        "_links": {
+            "self": {
+                "href": "https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/1001"
+            },
+            "html": {
+                "href": "https://github.com/TriadAgentic/TriadOrigin/rules/1001"
+            },
+        },
+        "created_at": "2026-08-10T00:00:00Z",
+        "updated_at": "2026-08-10T00:00:01Z",
         "conditions": {
             "ref_name": {
                 "include": ["refs/tags/B00R_RECEIPT_ANCHOR"],
@@ -379,7 +430,7 @@ def _anchored_receipt_repo(root: pathlib.Path) -> tuple[str, pathlib.Path, pathl
 def test_receipt_anchor_binds_merge_receipt_and_pinned_immutable_ruleset(tmp_path):
     repo = tmp_path / "repo"
     head, receipt, ruleset, pin = _anchored_receipt_repo(repo)
-    receipt_sha = validate_b00r_anchor.verify(
+    receipt_sha = validate_b00r_anchor._verify_static(
         root=repo,
         expected_head=head,
         receipt_path=receipt,
@@ -389,11 +440,54 @@ def test_receipt_anchor_binds_merge_receipt_and_pinned_immutable_ruleset(tmp_pat
     assert receipt_sha == hashlib.sha256(receipt.read_bytes()).hexdigest()
 
 
+def test_receipt_anchor_terminal_verify_uses_bound_bytes_and_requires_live_token(
+    tmp_path, monkeypatch
+):
+    repo = tmp_path / "repo"
+    head, _receipt, _ruleset, pin = _anchored_receipt_repo(repo)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    monkeypatch.chdir(outside)
+    with pytest.raises(validate_b00r_anchor.LiveRulesetUnavailable, match="TOKEN_ABSENT"):
+        validate_b00r_anchor.verify(
+            root=repo,
+            expected_head=head,
+            receipt_path=pathlib.Path(validate_b00r_anchor.RECEIPT_PATH),
+            ruleset_path=pathlib.Path(validate_b00r_anchor.DEFAULT_RULESET),
+            ruleset_pin=pin,
+            now_us=1,
+            github_token=None,
+        )
+
+
+def test_receipt_anchor_terminal_verify_binds_live_annotated_tag_object(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    head, receipt, ruleset, pin = _anchored_receipt_repo(repo)
+    tag_object_sha = _git(repo, "rev-parse", f"refs/tags/{validate_b00r_anchor.TAG_NAME}")
+    monkeypatch.setattr(
+        validate_b00r_anchor, "fetch_and_match_live_ruleset", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(
+        validate_b00r_anchor, "fetch_anchor_tag_object_sha",
+        lambda **_kwargs: tag_object_sha)
+    assert validate_b00r_anchor.verify(
+        root=repo, expected_head=head, receipt_path=receipt, ruleset_path=ruleset,
+        ruleset_pin=pin, now_us=1, github_token="token",
+    ) == hashlib.sha256(receipt.read_bytes()).hexdigest()
+    monkeypatch.setattr(
+        validate_b00r_anchor, "fetch_anchor_tag_object_sha",
+        lambda **_kwargs: "0" * 40)
+    with pytest.raises(validate_b00r_anchor.AnchorError, match="TAG_OBJECT_MISMATCH"):
+        validate_b00r_anchor.verify(
+            root=repo, expected_head=head, receipt_path=receipt, ruleset_path=ruleset,
+            ruleset_pin=pin, now_us=1, github_token="token",
+        )
+
+
 def test_receipt_anchor_rejects_absent_pin_and_bypassable_ruleset(tmp_path):
     repo = tmp_path / "repo"
     head, receipt, ruleset, pin = _anchored_receipt_repo(repo)
     with pytest.raises(validate_b00r_anchor.AnchorError, match="EXTERNAL_TAG_RULESET_PIN_ABSENT"):
-        validate_b00r_anchor.verify(
+        validate_b00r_anchor._verify_static(
             root=repo,
             expected_head=head,
             receipt_path=receipt,
@@ -418,7 +512,7 @@ def test_receipt_anchor_rejects_absent_pin_and_bypassable_ruleset(tmp_path):
     _git(repo, "tag", "-a", validate_b00r_anchor.TAG_NAME, "-m", message, head)
     unsafe_pin = hashlib.sha256(ruleset.read_bytes()).hexdigest()
     with pytest.raises(validate_b00r_anchor.AnchorError, match="BYPASS_ACTORS_PRESENT"):
-        validate_b00r_anchor.verify(
+        validate_b00r_anchor._verify_static(
             root=repo,
             expected_head=head,
             receipt_path=receipt,
@@ -433,8 +527,8 @@ def test_receipt_anchor_rejects_wrong_provider_source_or_current_user_bypass(tmp
     safe = json.loads(ruleset.read_text())
 
     unsafe = dict(safe)
-    unsafe["current_user_can_bypass"] = True
-    with pytest.raises(validate_b00r_anchor.AnchorError, match="CURRENT_USER_BYPASS_NOT_FALSE"):
+    unsafe["current_user_can_bypass"] = "always"
+    with pytest.raises(validate_b00r_anchor.AnchorError, match="CURRENT_USER_BYPASS_NOT_NEVER"):
         validate_b00r_anchor._validate_ruleset(unsafe)
 
     wrong_source = dict(safe)
@@ -468,6 +562,7 @@ def test_receipt_mode_terminal_gate_contains_anchor_validation():
 
     receipt = [gate for gate in gates if gate.gate_id == "receipt_v3_closure"]
     assert len(receipt) == 1
+    assert gates[-1].gate_id == "receipt_v3_closure"
     for required in (
         "--now-us", "--manifest", "--git-root", "--expected-head",
         "--governance-snapshot", "--provider-raw",
@@ -493,3 +588,77 @@ def test_source_owner_gates_are_strict_but_never_run_receipt_closure():
     assert all("--now-us" in gate.argv for gate in gates)
     assert all("--expected-head" in gate.argv and "--git-root" in gate.argv for gate in gates)
     assert not any("validate_b_receipt.py" in gate.argv for gate in gates)
+
+
+def test_owner_provider_time_advances_by_monotonic_elapsed_time():
+    assert b00r_gate._advanced_trusted_now_us(
+        1_000_000, 5_000_000_000, 70_000_000_000) == 66_000_000
+    gate = b00r_gate.Gate(
+        "owner", ("python", "validator.py", "--now-us", "1"), owner_gated=True)
+    advanced = b00r_gate._with_trusted_now_us(gate, 66_000_000)
+    assert advanced.argv[-1] == "66000000"
+    assert advanced.owner_gated is True
+
+
+def test_each_owner_gate_gets_a_fresh_monotonic_advanced_time(monkeypatch):
+    expected_head = "a" * 40
+    monkeypatch.setattr(
+        b00r_gate, "verify_expected_head", lambda expected: expected_head)
+    monkeypatch.setattr(
+        b00r_gate, "COMMON_GATES", (b00r_gate.Gate("deterministic", ("noop",)),))
+    monkeypatch.setattr(
+        b00r_gate,
+        "_codeowners_gates",
+        lambda _args: (
+            b00r_gate.Gate(
+                "owner_one", ("python", "one.py", "--now-us", "1"), owner_gated=True),
+            b00r_gate.Gate(
+                "owner_two", ("python", "two.py", "--now-us", "1"), owner_gated=True),
+        ),
+    )
+    monkeypatch.setattr(b00r_gate, "_owner_gates", lambda _args: ())
+    instants = iter((1_000_000_000, 71_000_000_000, 141_000_000_000))
+    monkeypatch.setattr(b00r_gate.time, "monotonic_ns", lambda: next(instants))
+    observed: list[tuple[str, str | None]] = []
+
+    def fake_run(gate):
+        now = gate.argv[gate.argv.index("--now-us") + 1] if "--now-us" in gate.argv else None
+        observed.append((gate.gate_id, now))
+        return "PASS", "ok"
+
+    monkeypatch.setattr(b00r_gate, "_run", fake_run)
+    assert b00r_gate.main([
+        "--mode", "source", "--expected-head", expected_head,
+        "--now-us", "1000000",
+    ]) == 1
+    assert observed == [
+        ("deterministic", None),
+        ("owner_one", "71000000"),
+        ("owner_two", "141000000"),
+    ]
+
+
+def test_deterministic_failure_never_constructs_or_runs_owner_gates(monkeypatch):
+    expected_head = "a" * 40
+    monkeypatch.setattr(
+        b00r_gate, "verify_expected_head", lambda expected: expected_head)
+    monkeypatch.setattr(
+        b00r_gate, "COMMON_GATES", (b00r_gate.Gate("known_bad", ("noop",)),))
+    invoked: list[str] = []
+
+    def fake_run(gate):
+        invoked.append(gate.gate_id)
+        return "FAIL", "deterministic failure"
+
+    def owner_path_must_not_be_reached(_args):
+        raise AssertionError("provider-authenticated owner gate was constructed")
+
+    monkeypatch.setattr(b00r_gate, "_run", fake_run)
+    monkeypatch.setattr(b00r_gate, "_codeowners_gates", owner_path_must_not_be_reached)
+    monkeypatch.setattr(b00r_gate, "_owner_gates", owner_path_must_not_be_reached)
+
+    assert b00r_gate.main([
+        "--mode", "source", "--expected-head", expected_head,
+        "--now-us", "1000000",
+    ]) == 1
+    assert invoked == ["known_bad"]

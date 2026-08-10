@@ -285,17 +285,21 @@ external pins, and exact-head Git binding pass. Preserve raw output and exit sta
 
 ### 6.1 Install the `main` and anchor rulesets
 
-Before final strict CI/review/merge, the repository administrator installs an active ruleset targeting
-`refs/heads/main` with:
+Before final strict CI/review/merge, the repository administrator installs an active ruleset
+targeting `refs/heads/main` and the dedicated
+`refs/heads/b00r-ruleset-canary`, with an empty exclusion list and no wildcard target, with:
 
 - pull request required and direct push denied;
-- exact required context `<EXACT_REQUIRED_CONTEXT>` (expected `CI / test-and-verify`);
+- exact required context `CI / test-and-verify`, bound to the positive provider
+  `integration_id` for GitHub Actions so a same-named status from another actor cannot satisfy it;
 - required checks bound to current base;
 - independent exact-head approval;
 - two approvals for receipt PRs if the ratified profile requires it;
 - stale approvals dismissed on push and last-push approval where supported;
 - all review conversations resolved;
-- CODEOWNERS approval on critical paths;
+- CODEOWNERS approval on critical paths, after replacing the checked-in
+  `@TriadAgentic/origin-governance-reviewers` placeholder with a proven real independent
+  user/team that has repository access;
 - force-push and branch deletion denied;
 - no administrator, team, app, integration, or repository-role bypass; and
 - expected-head merge protection.
@@ -305,9 +309,11 @@ and deletion with no bypass. The main ruleset must be active before the repaired
 ruleset must be active early enough to capture and externally pin its canonical evidence before the
 receipt PR's final exact-head validation, and must remain active through anchor publication.
 
-The main branch ruleset may include a dedicated harmless branch canary for negative push/merge tests.
-The tag ruleset must target exactly `refs/tags/B00R_RECEIPT_ANCHOR`; do not widen it with a tag canary,
-and never mutation-test the real anchor.
+The main ruleset must include the existing dedicated harmless
+`refs/heads/b00r-ruleset-canary` branch for the required negative direct-push test. It must not
+include any other extra ref or any exclusion. The tag ruleset must target exactly
+`refs/tags/B00R_RECEIPT_ANCHOR`; do not widen it with a tag canary, and never mutation-test the real
+anchor.
 
 ### 6.2 Capture bypass proof outside PR CI
 
@@ -325,10 +331,14 @@ possess. A privileged owner, in a separate authenticated session **outside PR CI
      must equal the raw `updated_at` instant converted to Unix microseconds, while `captured_at_us`
      must be no later than trusted `NOW_US`;
 2. prove target, enforcement state, required context, review controls, and empty bypass list;
-3. attempt a noncompliant direct push/merge against the dedicated branch canary and preserve the
-   provider rejection, proving the same rule ID/conditions applied;
+3. attempt a noncompliant direct push against the existing
+   `refs/heads/b00r-ruleset-canary` and preserve the provider rejection, proving the same rule
+   ID/node/conditions applied; materialize the closed canonical record at
+   `evidence/B00R/provider_negative_canary.v1.json` with role
+   `PROVIDER_NEGATIVE_CANARY`, and its byte-bound transcript with role
+   `PROVIDER_NEGATIVE_CANARY_TRANSCRIPT`;
 4. capture the tag-ruleset provider object proving exact anchor scope, active enforcement,
-   `current_user_can_bypass:false`, an empty bypass list, and update/deletion restrictions; later
+   `current_user_can_bypass:"never"`, an empty bypass list, and update/deletion restrictions; later
    materialize it as `evidence/B00R/tag_ruleset.provider.json` in the receipt-only PR and externally
    pin those exact bytes as `B00R_TAG_RULESET_SHA256`; do not probe the real anchor;
 5. leave `main` and the real anchor untouched; if the branch canary mutation unexpectedly succeeds,
@@ -356,6 +366,7 @@ redacting the JSON body. Run the strict governance validator against the canonic
 exact head, and protected external pin:
 
 ```bash
+test -n "${GITHUB_TOKEN:?short-lived GitHub read token missing}"
 test -n "${MAIN_RULESET_EVIDENCE_SHA256:?protected provider pin missing}"
 python tools/validate_governance_snapshot.py --strict \
   --snapshot docs/governance/rulesets/main.ruleset.provider.json \
@@ -371,6 +382,11 @@ same proposed raw file is not an external pin.
 
 If the provider cannot express or prove the required no-bypass controls, return
 `BLOCKED_PROVIDER_CONTROL_UNAVAILABLE`; do not replace them with prose or a CI-authored JSON file.
+
+Every later `b00r_gate.py` invocation that is expected to pass its provider row requires
+`GITHUB_TOKEN` in the environment for the mandatory fixed-host live GET. Source/reproduction checks
+need read access; terminal receipt mode requires a short-lived token whose response exposes
+`bypass_actors`. Never put the token in argv, logs, evidence, or the repository.
 
 ### 6.4 Refreeze, run exact-head strict CI, independently review, and guarded-merge
 
@@ -522,6 +538,13 @@ SHA-256 must equal the corresponding receipt payload field:
 | `CONFIG_BUNDLE` | `config_bundle_sha256` |
 | `ROLLBACK_PROOF` | `rollback_proof_sha256` |
 
+The manifest must additionally contain exactly one canonical
+`PROVIDER_NEGATIVE_CANARY` entry at
+`evidence/B00R/provider_negative_canary.v1.json` and exactly one
+`PROVIDER_NEGATIVE_CANARY_TRANSCRIPT` entry whose path and digest the canary record binds. These
+roles are covered by the closed manifest, receipt evidence arrays, and threshold signatures; they
+do not add self-referential receipt fields.
+
 Every path named by `evidence_ids` must be under `evidence/B00R/`. The manifest file itself is
 excluded from `evidence_ids` to avoid self-reference; every other tracked file under that namespace
 must appear exactly once. A missing, duplicate, extra, or out-of-namespace member fails closure.
@@ -580,6 +603,7 @@ authority digests; it is not a substitute trust registry. The protected runner i
 provider pin:
 
 ```bash
+test -n "${GITHUB_TOKEN:?short-lived GitHub read token missing}"
 test -n "${MAIN_RULESET_EVIDENCE_SHA256:?protected provider pin missing}"
 python tools/validate_b_receipt.py --strict --milestone B00R \
   --pins <EXTERNAL_AUTHORITY_PINS_JSON_WITH_ALL_FOUR_PINS> \

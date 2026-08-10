@@ -15,6 +15,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PY = sys.executable
@@ -58,11 +59,6 @@ COMMON_GATES = (
     Gate("dark_capability", (PY, "tools/verify_no_forbidden_capabilities.py")),
     Gate("e2e_audit", (PY, "tools/e2e_audit.py")),
 )
-CODEOWNERS_GATES = (
-    Gate("codeowners_identity", (PY, "tools/verify_codeowners.py"), owner_gated=True),
-)
-
-
 class HeadIdentityError(ValueError):
     """The checked-out commit is not the exact event head requested by the caller."""
 
@@ -98,8 +94,58 @@ def verify_expected_head(expected: str, root: pathlib.Path = ROOT) -> str:
     return actual
 
 
+def verify_final_repository_state(expected: str, root: pathlib.Path = ROOT) -> str:
+    """Recheck the immutable head and clean worktree immediately before terminal PASS."""
+    actual = verify_expected_head(expected, root)
+    env = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith("GIT_") or name == "GIT_CONFIG_NOSYSTEM"
+    }
+    env["GIT_NO_REPLACE_OBJECTS"] = "1"
+    proc = subprocess.run(
+        ["git", "-C", str(root), "status", "--porcelain=v1", "--untracked-files=all"],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    if proc.returncode:
+        raise HeadIdentityError(f"GIT_STATUS_UNAVAILABLE: {proc.stderr.strip()}")
+    if proc.stdout.strip():
+        raise HeadIdentityError("GIT_WORKTREE_NOT_CLEAN_AT_TERMINAL_PASS")
+    return actual
+
+
+def _advanced_trusted_now_us(
+    trusted_start_us: int,
+    monotonic_start_ns: int,
+    monotonic_end_ns: int | None = None,
+) -> int:
+    """Advance a trusted start instant by local monotonic elapsed time for late provider checks."""
+    end_ns = time.monotonic_ns() if monotonic_end_ns is None else monotonic_end_ns
+    if (not isinstance(trusted_start_us, int) or isinstance(trusted_start_us, bool)
+            or trusted_start_us <= 0
+            or not isinstance(monotonic_start_ns, int) or isinstance(monotonic_start_ns, bool)
+            or not isinstance(end_ns, int) or isinstance(end_ns, bool)
+            or end_ns < monotonic_start_ns):
+        raise HeadIdentityError("TRUSTED_TIME_MONOTONIC_ADVANCE_INVALID")
+    return trusted_start_us + (end_ns - monotonic_start_ns) // 1_000
+
+
+def _with_trusted_now_us(gate: Gate, now_us: int) -> Gate:
+    """Return one owner gate with exactly one freshly advanced trusted-time argument."""
+    positions = [index for index, value in enumerate(gate.argv) if value == "--now-us"]
+    if len(positions) != 1 or positions[0] + 1 >= len(gate.argv):
+        raise HeadIdentityError(f"OWNER_GATE_NOW_US_ARGUMENT_INVALID:{gate.gate_id}")
+    argv = list(gate.argv)
+    argv[positions[0] + 1] = str(now_us)
+    return Gate(gate.gate_id, tuple(argv), owner_gated=gate.owner_gated, env=gate.env)
+
+
 def _run(gate: Gate) -> tuple[str, str]:
-    env = dict(os.environ)
+    # A provider token is never inherited by ordinary build, test, or audit subprocesses.
+    env = {name: value for name, value in os.environ.items() if name != "GITHUB_TOKEN"}
     env.update(gate.env)
     # This marker prevents a regression test from recursively launching a complete gate while the
     # gate's own dual-seed pytest runs are in progress.
@@ -161,6 +207,8 @@ def _optional_pair(flag: str, value: str | None) -> tuple[str, ...]:
 
 def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
     """Build strict owner gates without ever running receipt closure in SOURCE mode."""
+    github_token = os.environ.get("GITHUB_TOKEN")
+    github_env = {"GITHUB_TOKEN": github_token} if github_token else {}
     authority_command = (
         PY,
         "tools/validate_authority_root.py",
@@ -191,7 +239,8 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
     )
     gates: tuple[Gate, ...] = (
         Gate("authority_root", authority_command, owner_gated=True),
-        Gate("governance_snapshot", governance_command, owner_gated=True),
+        Gate(
+            "governance_snapshot", governance_command, owner_gated=True, env=github_env),
     )
     if args.mode == "source":
         return gates
@@ -214,6 +263,7 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
         args.governance_snapshot,
         "--provider-raw",
         args.provider_raw,
+        "--require-bypass-visibility",
         *_optional_pair("--pins", args.pins),
         *_optional_pair("--provider-pin", args.provider_pin),
         args.receipt,
@@ -223,6 +273,8 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
         "tools/validate_b00r_anchor.py",
         "--expected-head",
         args.expected_head,
+        "--now-us",
+        str(args.now_us),
         "--receipt",
         args.receipt,
         "--ruleset",
@@ -230,10 +282,25 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
         *_optional_pair("--ruleset-pin", args.anchor_ruleset_pin),
     )
     gates += (
-        Gate("receipt_v3_closure", receipt_command, owner_gated=True),
-        Gate("receipt_anchor", anchor_command, owner_gated=True),
+        Gate("receipt_anchor", anchor_command, owner_gated=True, env=github_env),
+        # Receipt expiry and chronology are evaluated last, at the freshest trusted instant.
+        Gate("receipt_v3_closure", receipt_command, owner_gated=True, env=github_env),
     )
     return gates
+
+
+def _codeowners_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
+    github_token = os.environ.get("GITHUB_TOKEN")
+    github_env = {"GITHUB_TOKEN": github_token} if github_token else {}
+    command = (
+        PY,
+        "tools/verify_codeowners.py",
+        "--now-us",
+        str(args.now_us),
+        "--expected-head",
+        args.expected_head,
+    )
+    return (Gate("codeowners_identity", command, owner_gated=True, env=github_env),)
 
 
 def overall_result(mode: str, results: dict[str, str]) -> str:
@@ -306,17 +373,50 @@ def main(argv: list[str]) -> int:
             return 1
         print(f"  [PASS   ] exact_head: {actual}")
 
-    gates: tuple[Gate, ...] = COMMON_GATES
+    monotonic_start_ns = time.monotonic_ns()
+    deterministic_gates: tuple[Gate, ...] = COMMON_GATES
     if args.mode == "receipt":
-        gates += _receipt_gates(args)
-    gates += CODEOWNERS_GATES
-    gates += _owner_gates(args)
+        deterministic_gates += _receipt_gates(args)
 
     results: dict[str, str] = {}
-    for gate in gates:
+    for gate in deterministic_gates:
         status, tail = _run(gate)
         results[gate.gate_id] = status
         print(f"  [{status:7}] {gate.gate_id}: {tail[:160]}")
+
+    if any(status != "PASS" for status in results.values()):
+        # Never construct or invoke a provider-authenticated command after repository-controlled
+        # deterministic code has already failed.  Besides avoiding a misleading mixed report,
+        # this keeps provider credentials out of validators on a head that is known unsafe.
+        print("  [SKIPPED] owner_provider_gates: deterministic precondition failed")
+    else:
+        # Each provider gate gets a new time derived from the same trusted start plus monotonic
+        # elapsed time.  A long preceding gate can never leave later expiry/freshness checks using
+        # a stale wall-clock snapshot.
+        owner_templates = _codeowners_gates(args) + _owner_gates(args)
+        for template in owner_templates:
+            try:
+                gate_now_us = _advanced_trusted_now_us(args.now_us, monotonic_start_ns)
+                gate = _with_trusted_now_us(template, gate_now_us)
+            except HeadIdentityError as exc:
+                print(f"  [FAIL   ] trusted_time: {exc}", file=sys.stderr)
+                results["trusted_time"] = "FAIL"
+                break
+            else:
+                status, tail = _run(gate)
+                results[gate.gate_id] = status
+                print(f"  [{status:7}] {gate.gate_id}: {tail[:160]}")
+
+    if (args.mode == "receipt" and results
+            and all(status == "PASS" for status in results.values())):
+        try:
+            final_head = verify_final_repository_state(args.expected_head)
+        except HeadIdentityError as exc:
+            print(f"  [FAIL   ] final_repository_state: {exc}", file=sys.stderr)
+            results["final_repository_state"] = "FAIL"
+        else:
+            results["final_repository_state"] = "PASS"
+            print(f"  [PASS   ] final_repository_state: {final_head}")
 
     overall = overall_result(args.mode, results)
     print(f"B00R result: {overall}")

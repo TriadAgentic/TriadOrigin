@@ -62,6 +62,7 @@ SAFETY_POSTURE = {
     "shadow_activation": "LIVE",
 }
 ACTIVATION_RESULT = "DENIED_SAFE_HOLD"
+GITHUB_ACTIONS_INTEGRATION_ID = 15368
 
 # Trust-registry / decision vocabulary.
 SIGNER_ROLES = ("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER", "AUTHORITY_OWNER")
@@ -934,6 +935,44 @@ def validate_governance_snapshot(
         return "FAIL", "GOVERNANCE_PROVIDER_RESPONSE_NOT_JSON"
     if not isinstance(raw, dict):
         return "FAIL", "GOVERNANCE_PROVIDER_RESPONSE_NOT_OBJECT"
+
+    # A protected digest can authenticate bytes, but it cannot turn a hand-written template into
+    # a GitHub API response. Require the stable provider identity fields emitted by
+    # GET /repos/{owner}/{repo}/rulesets/{ruleset_id}, and reject local commentary explicitly.
+    # This blocks the prior false-green where id="DECLARATIVE" plus a note saying enforcement was
+    # pending was pinned and then accepted as an active no-bypass provider control.
+    if "note" in raw or "note" in provider:
+        return "FAIL", "GOVERNANCE_PROVIDER_SYNTHETIC_METADATA"
+    raw_id = raw.get("id")
+    if (not isinstance(raw_id, int) or isinstance(raw_id, bool) or raw_id <= 0):
+        return "FAIL", "GOVERNANCE_RAW_RULESET_ID_NOT_PROVIDER_INTEGER"
+    raw_name = raw.get("name")
+    if (not isinstance(raw_name, str) or not raw_name.strip()
+            or raw_name.strip().upper() in {"DECLARATIVE", "TEMPLATE", "PLACEHOLDER"}):
+        return "FAIL", "GOVERNANCE_RAW_RULESET_NAME_NOT_PROVIDER"
+    if raw.get("source_type") != "Repository":
+        return "FAIL", "GOVERNANCE_RAW_SOURCE_TYPE_MISMATCH"
+    if raw.get("current_user_can_bypass") != "never":
+        return "FAIL", "GOVERNANCE_RAW_CURRENT_USER_BYPASS_NOT_NEVER"
+    # node_id/_links are useful corroboration but optional in GitHub's published REST schema.
+    # When present they must be provider-shaped and bind the same repository/ruleset identity.
+    node_id = raw.get("node_id")
+    if (node_id is not None
+            and (not isinstance(node_id, str)
+                 or re.fullmatch(r"RRS_[A-Za-z0-9_-]+", node_id) is None)):
+        return "FAIL", "GOVERNANCE_RAW_NODE_ID_NOT_PROVIDER"
+    links = raw.get("_links")
+    if links is not None:
+        self_link = links.get("self") if isinstance(links, dict) else None
+        html_link = links.get("html") if isinstance(links, dict) else None
+        expected_self = (
+            f"https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/{raw_id}"
+        )
+        expected_html = f"https://github.com/TriadAgentic/TriadOrigin/rules/{raw_id}"
+        html_href = html_link.get("href") if isinstance(html_link, dict) else None
+        if (not isinstance(self_link, dict) or self_link.get("href") != expected_self
+                or html_href not in (None, expected_html)):
+            return "FAIL", "GOVERNANCE_RAW_PROVIDER_LINKS_MISMATCH"
     try:
         created_us = _parse_provider_utc_us(raw.get("created_at"))
         updated_us = _parse_provider_utc_us(raw.get("updated_at"))
@@ -957,9 +996,19 @@ def validate_governance_snapshot(
     ref = conditions.get("ref_name", {})
     includes = ref.get("include") if isinstance(ref, dict) else None
     excludes = ref.get("exclude") if isinstance(ref, dict) else None
-    main_tokens = {"refs/heads/main", "~DEFAULT_BRANCH"}
-    if (not isinstance(includes, list) or not main_tokens.intersection(includes)
-            or not isinstance(excludes, list) or main_tokens.intersection(excludes)):
+    canary_ref = "refs/heads/b00r-ruleset-canary"
+    allowed_include_sets = (
+        {"refs/heads/main", canary_ref},
+    )
+    # GitHub applies exclusions after inclusions.  Requiring an empty exclusion list prevents a
+    # wildcard such as refs/heads/* from silently excluding main.  An explicit main ref is required;
+    # ~DEFAULT_BRANCH could silently retarget if the repository default changes. The harmless canary
+    # target is mandatory before the corrective source merge so the provider rejection can predate
+    # that merge; it cannot be bolted on later without invalidating the closure chronology.
+    if (not isinstance(includes, list)
+            or not all(isinstance(item, str) for item in includes)
+            or len(includes) != len(set(includes))
+            or set(includes) not in allowed_include_sets or excludes != []):
         return "FAIL", "GOVERNANCE_RAW_MAIN_TARGET_NOT_PROVEN"
     raw_rules = raw.get("rules")
     if not isinstance(raw_rules, list):
@@ -992,8 +1041,10 @@ def validate_governance_snapshot(
             or not isinstance(checks_raw[0], dict)):
         return "FAIL", "GOVERNANCE_RAW_STATUS_CHECKS_MALFORMED"
     contexts = [checks_raw[0].get("context")]
+    integration_id = checks_raw[0].get("integration_id")
     if (status.get("strict_required_status_checks_policy") is not True
-            or contexts != ["CI / test-and-verify"]):
+            or contexts != ["CI / test-and-verify"]
+            or integration_id != GITHUB_ACTIONS_INTEGRATION_ID):
         return "FAIL", "GOVERNANCE_RAW_STATUS_CONTROL_MISMATCH"
     if len(by_type.get("deletion", [])) != 1 or len(by_type.get("non_fast_forward", [])) != 1:
         return "FAIL", "GOVERNANCE_RAW_HISTORY_CONTROLS_MISSING"

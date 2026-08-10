@@ -30,10 +30,30 @@ except ModuleNotFoundError:  # pragma: no cover - direct script fallback
     from validate_authority_root import (  # type: ignore  # noqa: E402
         AuthorityContext, AuthorityRootError, AuthorityRootUnavailable, ed25519_verify,
         load_authority_context, validate_git_bound_authority)
+try:  # importable both as `python tools/...` and as `from tools import ...`
+    from tools.github_ruleset_live import (  # type: ignore  # noqa: E402
+        LiveRulesetError, fetch_and_match_live_ruleset, fetch_and_match_pull_request,
+        fetch_and_match_rule_suite, fetch_canary_ref_sha)
+except ModuleNotFoundError:  # pragma: no cover - direct script fallback
+    from github_ruleset_live import (  # type: ignore  # noqa: E402
+        LiveRulesetError, fetch_and_match_live_ruleset, fetch_and_match_pull_request,
+        fetch_and_match_rule_suite, fetch_canary_ref_sha)
 
 
 class ReceiptBindingError(ValueError):
     """Receipt bytes do not bind to the declared manifest or Git graph."""
+
+
+CANARY_PATH = "evidence/B00R/provider_negative_canary.v1.json"
+CANARY_TRANSCRIPT_ROLE = "PROVIDER_NEGATIVE_CANARY_TRANSCRIPT"
+CANARY_TRANSCRIPT_PATH = "evidence/B00R/provider_negative_canary.transcript.txt"
+CANARY_RULE_SUITE_ROLE = "PROVIDER_NEGATIVE_CANARY_RULE_SUITE"
+CANARY_RULE_SUITE_PATH = "evidence/B00R/provider_negative_canary.rule_suite.raw.json"
+CANARY_REF = "refs/heads/b00r-ruleset-canary"
+SOURCE_PR_ROLE = "SOURCE_PR_PROVIDER_RECORD"
+SOURCE_PR_PATH = "evidence/B00R/source_pr.provider.raw.json"
+REPOSITORY_ID = 1_327_825_324
+MAX_CANARY_TIME_SKEW_US = 5 * 60 * 1_000_000
 
 
 def _loads_unique_json(data: bytes | str, label: str) -> dict:
@@ -103,6 +123,254 @@ def _relative_inside(path: pathlib.Path, root: pathlib.Path, label: str) -> str:
         raise ReceiptBindingError(f"{label}_OUTSIDE_GIT_ROOT") from None
 
 
+def _validate_source_pr_provider_record(
+    *,
+    entries: list[dict],
+    root: pathlib.Path,
+    payload: dict,
+    now_us: int | None,
+    github_token: str | None,
+    require_live_provider: bool,
+) -> int:
+    """Return GitHub's authenticated merge time for the exact source PR/merge tuple."""
+    matches = [entry for entry in entries if entry.get("role") == SOURCE_PR_ROLE]
+    if (len(matches) != 1 or matches[0].get("path") != SOURCE_PR_PATH
+            or matches[0].get("role_unique") is not True):
+        raise ReceiptBindingError(f"SOURCE_PR_PROVIDER_ROLE_COUNT_OR_PATH:{len(matches)}")
+    entry = matches[0]
+    raw = (root / SOURCE_PR_PATH).read_bytes()
+    if sha256_hex(raw) != entry.get("sha256"):
+        raise ReceiptBindingError("SOURCE_PR_PROVIDER_DIGEST_MISMATCH")
+    document = _loads_unique_json(raw, "SOURCE_PR_PROVIDER")
+    source_pr = payload.get("source_pr")
+    base = document.get("base")
+    head = document.get("head")
+    base_repo = base.get("repo") if isinstance(base, dict) else None
+    if (not isinstance(source_pr, int) or isinstance(source_pr, bool) or source_pr <= 0
+            or document.get("number") != source_pr
+            or document.get("state") != "closed" or document.get("merged") is not True
+            or document.get("merge_commit_sha") != payload.get("source_merge_sha")
+            or not isinstance(base, dict) or base.get("ref") != "main"
+            or not isinstance(base_repo, dict)
+            or base_repo.get("full_name") != "TriadAgentic/TriadOrigin"
+            or not isinstance(head, dict)
+            or head.get("sha") != payload.get("final_source_head")):
+        raise ReceiptBindingError("SOURCE_PR_PROVIDER_IDENTITY_MISMATCH")
+    try:
+        merged_at_us = governance._parse_provider_utc_us(  # noqa: SLF001
+            document.get("merged_at"))
+    except governance.GovernanceError as exc:
+        raise ReceiptBindingError(f"SOURCE_PR_PROVIDER_MERGED_AT_INVALID:{exc}") from exc
+    observed_at_us = payload.get("observed_at_us")
+    emitted_at_us = payload.get("emitted_at_us")
+    if (not isinstance(observed_at_us, int) or isinstance(observed_at_us, bool)
+            or not isinstance(emitted_at_us, int) or isinstance(emitted_at_us, bool)
+            or not merged_at_us < observed_at_us <= emitted_at_us):
+        raise ReceiptBindingError("SOURCE_PR_PROVIDER_RECEIPT_CHRONOLOGY_INVALID")
+    if now_us is not None and merged_at_us > now_us:
+        raise ReceiptBindingError("SOURCE_PR_PROVIDER_MERGED_AT_IN_FUTURE")
+    if require_live_provider:
+        if now_us is None:
+            raise ReceiptBindingError("SOURCE_PR_PROVIDER_LIVE_NOW_ABSENT")
+        try:
+            fetch_and_match_pull_request(raw, token=github_token, now_us=now_us)
+        except LiveRulesetError as exc:
+            raise ReceiptBindingError(
+                f"UNAVAILABLE_SOURCE_PR_PROVIDER_LIVE_PROOF:{exc}") from exc
+    return merged_at_us
+
+
+def _validate_provider_negative_canary(
+    *,
+    entries: list[dict],
+    root: pathlib.Path,
+    provider_raw_path: pathlib.Path,
+    provider_merge_time_us: int,
+    now_us: int | None = None,
+    github_token: str | None = None,
+    require_live_rule_suite: bool = False,
+    require_live_ref: bool = False,
+) -> None:
+    canary_entries = [entry for entry in entries
+                      if entry.get("role") == "PROVIDER_NEGATIVE_CANARY"]
+    if len(canary_entries) != 1:
+        raise ReceiptBindingError(
+            f"PROVIDER_NEGATIVE_CANARY_ROLE_COUNT:{len(canary_entries)}")
+    entry = canary_entries[0]
+    if entry.get("path") != CANARY_PATH or entry.get("role_unique") is not True:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_PATH_OR_UNIQUENESS")
+    canary = _loads_unique_json((root / CANARY_PATH).read_bytes(), "PROVIDER_NEGATIVE_CANARY")
+    expected_fields = {
+        "profile", "canary_kind", "provider", "repository", "repository_id",
+        "ruleset_id", "ref", "operation", "result", "exit_code", "attempted_at_us",
+        "actor_id", "actor_name", "before_sha", "after_sha", "rule_suite_id",
+        "rule_suite_path", "rule_suite_sha256", "transcript_path", "transcript_sha256",
+    }
+    if set(canary) != expected_fields:
+        raise ReceiptBindingError(
+            f"PROVIDER_NEGATIVE_CANARY_FIELDS:{sorted(set(canary) ^ expected_fields)}")
+    expected_constants = {
+        "profile": "TRIAD-B00R-PROVIDER-NEGATIVE-CANARY-V1",
+        "canary_kind": "PROVIDER_NEGATIVE_CANARY",
+        "provider": "github",
+        "repository": "TriadAgentic/TriadOrigin",
+        "repository_id": REPOSITORY_ID,
+        "ref": CANARY_REF,
+        "operation": "DIRECT_PUSH",
+        "result": "REJECTED_BY_RULESET",
+    }
+    if any(canary.get(key) != value for key, value in expected_constants.items()):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_IDENTITY_MISMATCH")
+    exit_code = canary.get("exit_code")
+    if not isinstance(exit_code, int) or isinstance(exit_code, bool) or exit_code == 0:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_EXIT_CODE_NOT_REJECTED")
+    actor_id = canary.get("actor_id")
+    actor_name = canary.get("actor_name")
+    if (not isinstance(actor_id, int) or isinstance(actor_id, bool) or actor_id <= 0
+            or not isinstance(actor_name, str)
+            or re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?", actor_name)
+            is None):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_ACTOR_INVALID")
+    before_sha = canary.get("before_sha")
+    after_sha = canary.get("after_sha")
+    if (not isinstance(before_sha, str) or re.fullmatch(r"[0-9a-f]{40}", before_sha) is None
+            or not isinstance(after_sha, str) or re.fullmatch(r"[0-9a-f]{40}", after_sha) is None
+            or before_sha == "0" * 40 or after_sha == "0" * 40 or before_sha == after_sha):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_COMMIT_IDENTITY_INVALID")
+
+    raw = _loads_unique_json(provider_raw_path.read_bytes(), "MAIN_RULESET_RAW")
+    ruleset_id = raw.get("id")
+    if (not isinstance(ruleset_id, int) or isinstance(ruleset_id, bool) or ruleset_id <= 0
+            or canary.get("ruleset_id") != ruleset_id):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_RULESET_IDENTITY_MISMATCH")
+    ref_name = raw.get("conditions", {}).get("ref_name", {})
+    includes = ref_name.get("include") if isinstance(ref_name, dict) else None
+    if not isinstance(includes, list) or CANARY_REF not in includes:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_REF_NOT_RULESET_TARGET")
+    try:
+        ruleset_updated_us = governance._parse_provider_utc_us(raw.get("updated_at"))  # noqa: SLF001
+    except governance.GovernanceError as exc:
+        raise ReceiptBindingError(
+            f"PROVIDER_NEGATIVE_CANARY_RULESET_TIME_INVALID:{exc}") from exc
+
+    rule_suite_path = canary.get("rule_suite_path")
+    rule_suite_sha = canary.get("rule_suite_sha256")
+    if rule_suite_path != CANARY_RULE_SUITE_PATH:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_RULE_SUITE_PATH_NONCANONICAL")
+    try:
+        governance.assert_hex64(rule_suite_sha, "provider_negative_canary.rule_suite_sha256")
+    except governance.GovernanceError as exc:
+        raise ReceiptBindingError(str(exc)) from exc
+    rule_suite_entries = [
+        item for item in entries if item.get("role") == CANARY_RULE_SUITE_ROLE
+    ]
+    if (len(rule_suite_entries) != 1
+            or rule_suite_entries[0].get("path") != CANARY_RULE_SUITE_PATH
+            or rule_suite_entries[0].get("sha256") != rule_suite_sha
+            or rule_suite_entries[0].get("role_unique") is not True):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_RULE_SUITE_NOT_CLOSED")
+    rule_suite_bytes = (root / CANARY_RULE_SUITE_PATH).read_bytes()
+    if sha256_hex(rule_suite_bytes) != rule_suite_sha:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_RULE_SUITE_DIGEST_MISMATCH")
+    rule_suite = _loads_unique_json(rule_suite_bytes, "PROVIDER_NEGATIVE_CANARY_RULE_SUITE")
+    suite_id = canary.get("rule_suite_id")
+    if (not isinstance(suite_id, int) or isinstance(suite_id, bool) or suite_id <= 0
+            or rule_suite.get("id") != suite_id
+            or rule_suite.get("repository_id") != REPOSITORY_ID
+            or rule_suite.get("repository_name") != "TriadOrigin"
+            or rule_suite.get("ref") != CANARY_REF
+            or rule_suite.get("actor_id") != actor_id
+            or rule_suite.get("actor_name") != actor_name
+            or rule_suite.get("before_sha") != before_sha
+            or rule_suite.get("after_sha") != after_sha
+            or rule_suite.get("result") != "fail"):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_RULE_SUITE_IDENTITY_MISMATCH")
+    evaluations = rule_suite.get("rule_evaluations")
+    matching_failures = [] if not isinstance(evaluations, list) else [
+        evaluation for evaluation in evaluations
+        if isinstance(evaluation, dict)
+        and isinstance(evaluation.get("rule_source"), dict)
+        and evaluation["rule_source"].get("type") == "ruleset"
+        and evaluation["rule_source"].get("id") == ruleset_id
+        and evaluation["rule_source"].get("name") == raw.get("name")
+        and evaluation.get("enforcement") == "active"
+        and evaluation.get("result") == "fail"
+        and evaluation.get("rule_type") == "pull_request"
+    ]
+    if not matching_failures:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_ACTIVE_RULESET_FAILURE_ABSENT")
+    try:
+        suite_pushed_at_us = governance._parse_provider_utc_us(  # noqa: SLF001
+            rule_suite.get("pushed_at"))
+    except governance.GovernanceError as exc:
+        raise ReceiptBindingError(
+            f"PROVIDER_NEGATIVE_CANARY_RULE_SUITE_TIME_INVALID:{exc}") from exc
+    attempted_at_us = canary.get("attempted_at_us")
+    if (not isinstance(attempted_at_us, int) or isinstance(attempted_at_us, bool)
+            or not ruleset_updated_us < suite_pushed_at_us < provider_merge_time_us
+            or not ruleset_updated_us < attempted_at_us < provider_merge_time_us
+            or abs(attempted_at_us - suite_pushed_at_us) > MAX_CANARY_TIME_SKEW_US):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_CHRONOLOGY_INVALID")
+
+    transcript_path = canary.get("transcript_path")
+    transcript_sha = canary.get("transcript_sha256")
+    try:
+        governance.assert_hex64(
+            transcript_sha, "provider_negative_canary.transcript_sha256")
+    except governance.GovernanceError as exc:
+        raise ReceiptBindingError(str(exc)) from exc
+    transcript_entries = [item for item in entries
+                          if item.get("role") == CANARY_TRANSCRIPT_ROLE]
+    if (len(transcript_entries) != 1 or transcript_path != CANARY_TRANSCRIPT_PATH
+            or transcript_entries[0].get("path") != CANARY_TRANSCRIPT_PATH
+            or transcript_entries[0].get("sha256") != transcript_sha
+            or transcript_entries[0].get("role_unique") is not True):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_TRANSCRIPT_NOT_CLOSED")
+    transcript_bytes = (root / CANARY_TRANSCRIPT_PATH).read_bytes()
+    if sha256_hex(transcript_bytes) != transcript_sha or len(transcript_bytes) > 64 * 1024:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_TRANSCRIPT_DIGEST_OR_SIZE")
+    try:
+        transcript = transcript_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_TRANSCRIPT_NOT_UTF8") from exc
+    required_markers = (
+        f"TRIAD_CANARY_REF={CANARY_REF}",
+        f"TRIAD_CANARY_BEFORE_SHA={before_sha}",
+        f"TRIAD_CANARY_AFTER_SHA={after_sha}",
+        f"TRIAD_CANARY_ACTOR={actor_name}",
+        f"TRIAD_CANARY_EXIT_CODE={exit_code}",
+        f"git push --porcelain origin {after_sha}:{CANARY_REF}",
+        f"GH013: Repository rule violations found for {CANARY_REF}",
+        "[remote rejected]",
+        "push declined due to repository rule violations",
+    )
+    if any(marker not in transcript for marker in required_markers):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_TRANSCRIPT_RULESET_MARKERS_ABSENT")
+    forbidden_failures = (
+        "authentication failed", "could not resolve host", "repository not found",
+        "permission denied (publickey)", "non-fast-forward", "fetch first",
+    )
+    if any(marker in transcript.lower() for marker in forbidden_failures):
+        raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_TRANSCRIPT_WRONG_FAILURE_CLASS")
+
+    if require_live_rule_suite or require_live_ref:
+        if now_us is None:
+            raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_LIVE_NOW_ABSENT")
+        try:
+            if require_live_rule_suite:
+                fetch_and_match_rule_suite(
+                    rule_suite_bytes, token=github_token, now_us=now_us)
+            current_ref_sha = (
+                fetch_canary_ref_sha(token=github_token, now_us=now_us)
+                if require_live_ref else before_sha
+            )
+        except LiveRulesetError as exc:
+            raise ReceiptBindingError(
+                f"UNAVAILABLE_PROVIDER_NEGATIVE_CANARY_LIVE_PROOF:{exc}") from exc
+        if current_ref_sha != before_sha:
+            raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_REMOTE_REF_MOVED")
+
+
 def validate_receipt_bindings(
     receipt: dict,
     *,
@@ -112,7 +380,12 @@ def validate_receipt_bindings(
     expected_head: str,
     authority: AuthorityContext,
     governance_evidence_paths: tuple[pathlib.Path, pathlib.Path] | None = None,
-) -> None:
+    now_us: int | None = None,
+    github_token: str | None = None,
+    require_live_source_pr: bool = False,
+    require_live_rule_suite: bool = False,
+    require_live_canary_ref: bool = False,
+) -> int:
     """Cross-bind authority, receipt, manifest preimages, and immutable Git objects."""
     if re.fullmatch(r"[0-9a-f]{40}", expected_head or "") is None:
         raise ReceiptBindingError("EXPECTED_HEAD_NOT_CANONICAL_SHA40")
@@ -191,10 +464,27 @@ def validate_receipt_bindings(
 
     source_merge = payload["source_merge_sha"]
     source_merge_time_us = payload["source_merge_time_us"]
+    provider_merge_time_us = source_merge_time_us
+    if milestone == governance.ROOT_MILESTONE:
+        if governance_evidence_paths is None:
+            raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_GOVERNANCE_EVIDENCE_ABSENT")
+        provider_merge_time_us = _validate_source_pr_provider_record(
+            entries=entries, root=root, payload=payload, now_us=now_us,
+            github_token=github_token, require_live_provider=require_live_source_pr)
+        _validate_provider_negative_canary(
+            entries=entries,
+            root=root,
+            provider_raw_path=governance_evidence_paths[1],
+            provider_merge_time_us=provider_merge_time_us,
+            now_us=now_us,
+            github_token=github_token,
+            require_live_rule_suite=require_live_rule_suite,
+            require_live_ref=require_live_canary_ref,
+        )
     for name, decision in authority.decisions.items():
         effective_at_us = decision.get("effective_at_us")
         if (not isinstance(effective_at_us, int) or isinstance(effective_at_us, bool)
-                or effective_at_us <= 0 or effective_at_us > source_merge_time_us):
+                or effective_at_us <= 0 or effective_at_us > provider_merge_time_us):
             raise ReceiptBindingError(f"AUTHORITY_DECISION_NOT_EFFECTIVE_BEFORE_SOURCE_MERGE:{name}")
     if str(_git(root, "cat-file", "-t", source_merge)) != "commit":
         raise ReceiptBindingError("SOURCE_MERGE_NOT_COMMIT")
@@ -246,6 +536,7 @@ def validate_receipt_bindings(
                      if path != receipt_rel and not path.startswith(namespace_prefix))
     if escaped:
         raise ReceiptBindingError(f"POST_SOURCE_MERGE_SOURCE_DRIFT:{escaped}")
+    return provider_merge_time_us
 
 
 def _validate_governance_evidence(
@@ -256,6 +547,7 @@ def _validate_governance_evidence(
     git_root: pathlib.Path,
     now_us: int,
     source_merge_time_us: int,
+    require_bypass_visibility: bool,
 ) -> None:
     """Authenticate raw ruleset facts and prove the controls predate the source merge."""
     try:
@@ -276,6 +568,20 @@ def _validate_governance_evidence(
         now_us=now_us, source_merge_time_us=source_merge_time_us)
     if result != "PASS":
         raise ReceiptBindingError(f"GOVERNANCE_SNAPSHOT_{result}:{reason}")
+    try:
+        fetch_and_match_live_ruleset(
+            raw_bytes, token=os.environ.get("GITHUB_TOKEN"), now_us=now_us,
+            require_bypass_visibility=require_bypass_visibility)
+    except LiveRulesetError as exc:
+        detail = str(exc)
+        unavailable = (
+            detail == "GITHUB_TOKEN_ABSENT"
+            or detail.startswith("LIVE_RULESET_FETCH_FAILED:")
+            or detail.startswith("LIVE_RULESET_HTTP_STATUS:")
+        )
+        prefix = "UNAVAILABLE_" if unavailable else ""
+        raise ReceiptBindingError(
+            f"{prefix}LIVE_PROVIDER_REVALIDATION:{detail}") from exc
 
 
 def _strict(
@@ -290,6 +596,10 @@ def _strict(
     governance_snapshot_path: pathlib.Path,
     provider_raw_path: pathlib.Path,
     provider_pin: str | None,
+    require_bypass_visibility: bool,
+    require_live_rule_suite: bool,
+    require_live_canary_ref: bool,
+    nonterminal_provider_proof: bool,
 ) -> int:
     try:
         raw = path.read_bytes()
@@ -317,18 +627,33 @@ def _strict(
         print(f"{result}: {milestone} receipt-v3 not a closure PASS: {reason}", file=stream)
         return 1
     try:
+        provider_merge_time_us = validate_receipt_bindings(
+            receipt, receipt_path=path, manifest_path=manifest_path, git_root=git_root,
+            expected_head=expected_head, authority=authority,
+            governance_evidence_paths=(governance_snapshot_path, provider_raw_path),
+            now_us=now_us, github_token=os.environ.get("GITHUB_TOKEN"),
+            require_live_source_pr=True,
+            require_live_rule_suite=require_live_rule_suite,
+            require_live_canary_ref=require_live_canary_ref)
         _validate_governance_evidence(
             snapshot_path=governance_snapshot_path, provider_raw_path=provider_raw_path,
             provider_pin=provider_pin, git_root=git_root, now_us=now_us,
-            source_merge_time_us=receipt["payload"]["source_merge_time_us"])
-        validate_receipt_bindings(
-            receipt, receipt_path=path, manifest_path=manifest_path, git_root=git_root,
-            expected_head=expected_head, authority=authority,
-            governance_evidence_paths=(governance_snapshot_path, provider_raw_path))
+            source_merge_time_us=provider_merge_time_us,
+            require_bypass_visibility=require_bypass_visibility)
     except (OSError, ValueError, ReceiptBindingError) as exc:
         print(f"FAIL: RECEIPT_BINDING_INVALID:{exc}", file=sys.stderr)
         return 1
-    print(f"OK: {milestone} canonical receipt-v3 {result}; authority, manifest, and Git bound")
+    if nonterminal_provider_proof:
+        print(
+            f"OK_NONTERMINAL: {milestone} receipt-v3 {result}; static canary, authority, "
+            "manifest, and Git bound, but privileged rule-suite/ref/bypass proof was not run; "
+            "this cannot close B00R"
+        )
+    else:
+        print(
+            f"OK: {milestone} canonical receipt-v3 {result}; authority, manifest, Git, "
+            "live rule-suite, unchanged canary ref, and visible empty bypass state bound"
+        )
     return 0
 
 
@@ -347,6 +672,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--provider-raw", type=pathlib.Path)
     parser.add_argument("--provider-pin",
                         help="external SHA-256 pin (or protected MAIN_RULESET_EVIDENCE_SHA256)")
+    parser.add_argument(
+        "--require-bypass-visibility", action="store_true",
+        help="terminal mode: live token must expose the provider bypass_actors field")
+    parser.add_argument(
+        "--nonterminal-provider-proof", action="store_true",
+        help="CI-only: skip privileged rule-suite/ref/bypass reads and never claim closure")
     args = parser.parse_args(argv)
     if not args.strict:
         return _legacy(args.receipt)
@@ -368,11 +699,21 @@ def main(argv: list[str]) -> int:
         print("FAIL: --strict requires --provider-pin or MAIN_RULESET_EVIDENCE_SHA256",
               file=sys.stderr)
         return 2
+    if args.nonterminal_provider_proof and args.require_bypass_visibility:
+        print("FAIL: nonterminal provider mode conflicts with terminal bypass visibility",
+              file=sys.stderr)
+        return 2
+    terminal_provider_proof = not args.nonterminal_provider_proof
     return _strict(
         args.receipt, milestone=args.milestone, now_us=args.now_us, pins_path=args.pins,
         manifest_path=args.manifest, git_root=args.git_root, expected_head=args.expected_head,
         governance_snapshot_path=args.governance_snapshot,
-        provider_raw_path=args.provider_raw, provider_pin=provider_pin)
+        provider_raw_path=args.provider_raw, provider_pin=provider_pin,
+        require_bypass_visibility=(
+            args.require_bypass_visibility or terminal_provider_proof),
+        require_live_rule_suite=terminal_provider_proof,
+        require_live_canary_ref=terminal_provider_proof,
+        nonterminal_provider_proof=args.nonterminal_provider_proof)
 
 
 if __name__ == "__main__":
