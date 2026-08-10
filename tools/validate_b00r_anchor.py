@@ -209,7 +209,7 @@ def _canonical_file(
     return cursor
 
 
-def verify(
+def _verify_static(
     *,
     root: pathlib.Path,
     expected_head: str,
@@ -272,6 +272,32 @@ def verify(
     return receipt_sha
 
 
+def verify(
+    *,
+    root: pathlib.Path,
+    expected_head: str,
+    receipt_path: pathlib.Path,
+    ruleset_path: pathlib.Path,
+    ruleset_pin: str | None,
+    now_us: int,
+    github_token: str | None,
+) -> str:
+    """Run the complete terminal anchor gate, including a fresh authenticated provider GET."""
+    if not isinstance(now_us, int) or isinstance(now_us, bool) or now_us <= 0:
+        raise AnchorError("FAIL: NOW_US_INVALID")
+    receipt_sha = _verify_static(
+        root=root,
+        expected_head=expected_head,
+        receipt_path=receipt_path,
+        ruleset_path=ruleset_path,
+        ruleset_pin=ruleset_pin,
+    )
+    fetch_and_match_live_ruleset(
+        ruleset_path.read_bytes(), token=github_token, now_us=now_us,
+        require_bypass_visibility=True)
+    return receipt_sha
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--expected-head", required=True)
@@ -296,12 +322,9 @@ def main(argv: list[str]) -> int:
             receipt_path=receipt,
             ruleset_path=ruleset,
             ruleset_pin=pin,
+            now_us=args.now_us,
+            github_token=os.environ.get("GITHUB_TOKEN"),
         )
-        if args.now_us <= 0:
-            raise AnchorError("FAIL: NOW_US_INVALID")
-        fetch_and_match_live_ruleset(
-            ruleset.read_bytes(), token=os.environ.get("GITHUB_TOKEN"),
-            now_us=args.now_us, require_bypass_visibility=True)
     except LiveRulesetUnavailable as exc:
         print(f"BLOCKED: LIVE_TAG_PROVIDER_UNAVAILABLE:{exc}")
         return 1
