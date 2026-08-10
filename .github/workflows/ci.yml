@@ -144,6 +144,7 @@ jobs:
           steps.milestone_role.outputs.role == 'SOURCE'
         shell: bash
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           NOW_US: ${{ steps.owner_time.outputs.now_us }}
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
           MAIN_RULESET_EVIDENCE_SHA256: ${{ vars.MAIN_RULESET_EVIDENCE_SHA256 }}
