@@ -262,6 +262,7 @@ def _validate_governance_evidence(
     git_root: pathlib.Path,
     now_us: int,
     source_merge_time_us: int,
+    require_bypass_visibility: bool,
 ) -> None:
     """Authenticate raw ruleset facts and prove the controls predate the source merge."""
     try:
@@ -285,7 +286,7 @@ def _validate_governance_evidence(
     try:
         fetch_and_match_live_ruleset(
             raw_bytes, token=os.environ.get("GITHUB_TOKEN"), now_us=now_us,
-            require_bypass_visibility=True)
+            require_bypass_visibility=require_bypass_visibility)
     except LiveRulesetError as exc:
         detail = str(exc)
         unavailable = (
@@ -310,6 +311,7 @@ def _strict(
     governance_snapshot_path: pathlib.Path,
     provider_raw_path: pathlib.Path,
     provider_pin: str | None,
+    require_bypass_visibility: bool,
 ) -> int:
     try:
         raw = path.read_bytes()
@@ -340,7 +342,8 @@ def _strict(
         _validate_governance_evidence(
             snapshot_path=governance_snapshot_path, provider_raw_path=provider_raw_path,
             provider_pin=provider_pin, git_root=git_root, now_us=now_us,
-            source_merge_time_us=receipt["payload"]["source_merge_time_us"])
+            source_merge_time_us=receipt["payload"]["source_merge_time_us"],
+            require_bypass_visibility=require_bypass_visibility)
         validate_receipt_bindings(
             receipt, receipt_path=path, manifest_path=manifest_path, git_root=git_root,
             expected_head=expected_head, authority=authority,
@@ -367,6 +370,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--provider-raw", type=pathlib.Path)
     parser.add_argument("--provider-pin",
                         help="external SHA-256 pin (or protected MAIN_RULESET_EVIDENCE_SHA256)")
+    parser.add_argument(
+        "--require-bypass-visibility", action="store_true",
+        help="terminal mode: live token must expose the provider bypass_actors field")
     args = parser.parse_args(argv)
     if not args.strict:
         return _legacy(args.receipt)
@@ -392,7 +398,8 @@ def main(argv: list[str]) -> int:
         args.receipt, milestone=args.milestone, now_us=args.now_us, pins_path=args.pins,
         manifest_path=args.manifest, git_root=args.git_root, expected_head=args.expected_head,
         governance_snapshot_path=args.governance_snapshot,
-        provider_raw_path=args.provider_raw, provider_pin=provider_pin)
+        provider_raw_path=args.provider_raw, provider_pin=provider_pin,
+        require_bypass_visibility=args.require_bypass_visibility)
 
 
 if __name__ == "__main__":
