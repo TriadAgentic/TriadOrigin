@@ -328,7 +328,7 @@ possess. A privileged owner, in a separate authenticated session **outside PR CI
 3. attempt a noncompliant direct push/merge against the dedicated branch canary and preserve the
    provider rejection, proving the same rule ID/conditions applied;
 4. capture the tag-ruleset provider object proving exact anchor scope, active enforcement,
-   `current_user_can_bypass:false`, an empty bypass list, and update/deletion restrictions; later
+   `current_user_can_bypass:"never"`, an empty bypass list, and update/deletion restrictions; later
    materialize it as `evidence/B00R/tag_ruleset.provider.json` in the receipt-only PR and externally
    pin those exact bytes as `B00R_TAG_RULESET_SHA256`; do not probe the real anchor;
 5. leave `main` and the real anchor untouched; if the branch canary mutation unexpectedly succeeds,
