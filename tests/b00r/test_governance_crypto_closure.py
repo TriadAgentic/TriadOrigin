@@ -216,13 +216,14 @@ def _raw_ruleset() -> dict:
                 "required_review_thread_resolution": True}},
             {"type": "required_status_checks", "parameters": {
                 "strict_required_status_checks_policy": True,
-                "required_status_checks": [{"context": "CI / test-and-verify"}]}},
+                "required_status_checks": [{
+                    "context": "CI / test-and-verify", "integration_id": 15368}]}},
             {"type": "deletion"}, {"type": "non_fast_forward"},
         ],
     }
 
 
-def test_governance_snapshot_is_derived_from_pinned_raw_provider_response():
+def test_governance_snapshot_semantics_are_derived_from_pinned_provider_shape():
     raw_bytes = canonical_json(_raw_ruleset())
     pin = sha256_hex(raw_bytes)
     doc = {
@@ -304,13 +305,24 @@ def _snapshot_for_raw(raw: dict) -> tuple[dict, bytes, str]:
             "CURRENT_USER_BYPASS",
         ),
         (lambda raw: raw.pop("current_user_can_bypass"), "CURRENT_USER_BYPASS"),
-        (lambda raw: raw.pop("node_id"), "NODE_ID"),
-        (lambda raw: raw.pop("_links"), "PROVIDER_LINKS"),
+        (lambda raw: raw.__setitem__("node_id", "not-a-provider-node"), "NODE_ID"),
         (
             lambda raw: raw["_links"]["self"].__setitem__(
                 "href", "https://example.invalid/forged"
             ),
             "PROVIDER_LINKS",
+        ),
+        (
+            lambda raw: raw["conditions"]["ref_name"].__setitem__(
+                "exclude", ["refs/heads/*"]
+            ),
+            "MAIN_TARGET",
+        ),
+        (
+            lambda raw: raw["rules"][1]["parameters"]["required_status_checks"][0].pop(
+                "integration_id"
+            ),
+            "STATUS_CONTROL",
         ),
     ],
 )
