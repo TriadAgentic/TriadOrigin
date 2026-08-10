@@ -244,3 +244,82 @@ def test_missing_trigger_event_id_refuses():
 def test_unknown_requested_transition_refuses():
     with pytest.raises(StructureLawError):
         run([req("e1", "s1", "NOT_A_REAL_STATE", "t1")])
+
+
+# --- W05 transition identity (RC3 WIRE-W05 monotonic-state-machine law) --------------------------
+
+
+class TestTransitionIdentity:
+    """Every legal transition carries a per-structure monotonic ordinal, a deterministic
+    transition id derived from EXACTLY the wiring row's field list (structure id, from/to state,
+    trigger event, ordinal), and the previous transition id chaining the structure's history."""
+
+    def test_first_transition_is_ordinal_zero_with_an_empty_previous_id(self):
+        result = run([req("r0", "s1", lr.STATE_FORMED, "t0")])
+        (event,) = transitioned(result.events)
+        assert event["state_seq"] == "0"
+        assert event["previous_transition_id"] == ""
+        assert event["transition_id"] == lr._transition_id(
+            "s1", lr._UNSEEN, lr.STATE_FORMED, "t0", 0)
+        record = result.final_state["structures"]["s1"]
+        assert record["state_seq"] == 0
+        assert record["transition_id"] == event["transition_id"]
+
+    def test_ordinal_is_per_structure_monotonic_and_previous_chains(self):
+        inputs = [
+            req("r0", "s1", lr.STATE_FORMED, "t0"),
+            req("r1", "s1", lr.STATE_CONFIRMED, "t1"),
+            req("r2", "s1", lr.STATE_PARTIALLY_FILLED, "t2"),
+            req("r3", "s1", lr.STATE_FULLY_FILLED, "t3"),
+        ]
+        events = transitioned(run(inputs).events)
+        assert [e["state_seq"] for e in events] == ["0", "1", "2", "3"]
+        assert events[0]["previous_transition_id"] == ""
+        for prev, cur in zip(events, events[1:]):
+            assert cur["previous_transition_id"] == prev["transition_id"]
+        # Every id is derived from EXACTLY the wiring row's own five fields.
+        from_states = [lr._UNSEEN, lr.STATE_FORMED, lr.STATE_CONFIRMED, lr.STATE_PARTIALLY_FILLED]
+        to_states = [lr.STATE_FORMED, lr.STATE_CONFIRMED, lr.STATE_PARTIALLY_FILLED,
+                     lr.STATE_FULLY_FILLED]
+        for i, event in enumerate(events):
+            assert event["transition_id"] == lr._transition_id(
+                "s1", from_states[i], to_states[i], f"t{i}", i)
+
+    def test_transition_ids_are_unique_across_a_chain(self):
+        inputs = [
+            req("r0", "s1", lr.STATE_FORMED, "t0"),
+            req("r1", "s1", lr.STATE_CONFIRMED, "t1"),
+            req("r2", "s1", lr.STATE_BROKEN, "t2"),
+        ]
+        ids = [e["transition_id"] for e in transitioned(run(inputs).events)]
+        assert len(set(ids)) == len(ids)
+
+    def test_trigger_event_id_is_part_of_the_transition_identity(self):
+        # The wiring row names the trigger event an identity field: the SAME
+        # (structure, from, to, ordinal) under a different trigger is a different id.
+        assert (lr._transition_id("s1", lr._UNSEEN, lr.STATE_FORMED, "tA", 0)
+                != lr._transition_id("s1", lr._UNSEEN, lr.STATE_FORMED, "tB", 0))
+
+    def test_idempotent_noop_neither_advances_the_ordinal_nor_mints_an_id(self):
+        reach = [req("r0", "s1", lr.STATE_FORMED, "t0"),
+                 req("r1", "s1", lr.STATE_CONFIRMED, "t1")]
+        once = run(reach)
+        repeated = run(reach + [req("r2", "s1", lr.STATE_CONFIRMED, "t_DIFFERENT")])
+        assert repeated.final_state["structures"]["s1"] == once.final_state["structures"]["s1"]
+        assert len(transitioned(repeated.events)) == 2
+
+    def test_illegal_transition_neither_advances_the_ordinal_nor_mints_an_id(self):
+        reach = [req("r0", "s1", lr.STATE_FORMED, "t0")]
+        legal = run(reach)
+        result = run(reach + [req("r1", "s1", lr.STATE_PARTIALLY_FILLED, "t1")])  # illegal edge
+        assert result.final_state["structures"]["s1"] == legal.final_state["structures"]["s1"]
+        assert result.final_state["structures"]["s1"]["state_seq"] == 0
+
+    def test_restart_continues_the_same_ordinal_chain(self):
+        head = run([req("r0", "s1", lr.STATE_FORMED, "t0")])
+        tail = run([req("r1", "s1", lr.STATE_CONFIRMED, "t1")], initial=head.final_state)
+        (confirmed,) = transitioned(tail.events)
+        assert confirmed["state_seq"] == "1"
+        assert (confirmed["previous_transition_id"]
+                == head.final_state["structures"]["s1"]["transition_id"])
+        assert tail.final_state["structures"]["s1"]["state_seq"] == 1

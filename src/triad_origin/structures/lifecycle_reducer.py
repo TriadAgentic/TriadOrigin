@@ -52,6 +52,19 @@ for it. This is simpler than tracking a request/trigger history and gives the sa
 guarantee: replaying (or re-deriving) a transition the structure already completed never produces a
 second event and never re-applies anything.
 
+**Transition identity — the RC3 ``WIRE-W05`` monotonic-state-machine law.** Every legal transition
+this reducer applies is stamped with a deterministic ``transition_id`` derived from EXACTLY the
+wiring row's own field list — "State transition ID uses structure ID, from/to state, trigger event
+and ordinal" — plus a per-structure monotonic ``state_seq`` ordinal (the ``unseen -> FORMED`` first
+transition is ordinal 0) and the ``previous_transition_id`` chaining this structure's history (empty
+for the first transition). The ordinal and last id are recorded in each structure's state record
+(``{"state", "state_seq", "transition_id"}``) so a restart continues the same chain, and all three
+are stamped on the ``LIFECYCLE_TRANSITIONED`` event. This mirrors the B06 publisher's own
+transition-identity chain (:mod:`triad_origin.structures.candidate_publisher`): the same law, applied
+to the generic structure lifecycle rather than the candidate lifecycle. A no-op (idempotent) request
+and an illegal (rejected) request neither advance the ordinal nor mint an id — only a real
+state-advancing transition does.
+
 **Frozen original geometry — enforced structurally, not by a runtime check.** Once a structure
 reaches ``CONFIRMED`` its identity/geometry fields (whatever the OWNING formula captured at
 ``FORMED``, preserved verbatim by that formula's own machine) can never be altered by a later
@@ -67,6 +80,7 @@ does not apply to it (it is proven instead by prefix/restart/duplicate invarianc
 
 from __future__ import annotations
 
+from ..canonical import canonical_json, sha256_hex
 from ..transition import Envelope, Params, Quality, State, TransitionResult
 from . import common
 
@@ -101,6 +115,24 @@ _UNSEEN_SUCCESSORS = (STATE_FORMED,)
 
 LIFECYCLE_TRANSITIONED = "LIFECYCLE_TRANSITIONED"
 LIFECYCLE_ILLEGAL_TRANSITION = "LIFECYCLE_ILLEGAL_TRANSITION"
+
+
+def _transition_id(
+    structure_id: str, from_state: str, to_state: str, trigger_event_id: str, ordinal: int
+) -> str:
+    """The deterministic W05 state-transition id (RC3 ``WIRE-W05`` ordering/idempotency law).
+
+    Derived from EXACTLY the wiring row's own field list — "State transition ID uses structure ID,
+    from/to state, trigger event and ordinal" — so a replayed or re-derived transition always
+    yields the SAME id, and the per-structure monotonic ``ordinal`` distinguishes an otherwise
+    identical ``(structure_id, from_state, to_state, trigger_event_id)`` tuple that recurs later in
+    the same structure's chain. Mirrors the B06 publisher's own transition-identity chain
+    (:mod:`triad_origin.structures.candidate_publisher`), the same law on the candidate lifecycle.
+    """
+    return sha256_hex(canonical_json({
+        "structure_id": structure_id, "from_state": from_state, "to_state": to_state,
+        "trigger_event_id": trigger_event_id, "ordinal": ordinal,
+    }))
 
 
 def _event_identity(envelope: Envelope) -> str:
@@ -167,12 +199,26 @@ class LifecycleReducer:
                           "from_state": current_state or _UNSEEN, "requested_transition": requested,
                           "trigger_event_id": trigger_event_id}),))
 
+        # W05 transition identity (RC3 WIRE-W05 monotonic-state-machine law): a per-structure
+        # monotonic ordinal, a deterministic transition id from (structure_id, from/to state,
+        # trigger event, ordinal), and the previous transition id chaining this structure's history.
+        # The unseen -> FORMED first transition is ordinal 0 with an empty previous id (the B06
+        # publisher's own PUBLISHED-at-0 chain convention).
+        from_state = current_state or _UNSEEN
+        ordinal = record["state_seq"] + 1 if record is not None else 0
+        previous_transition_id = record["transition_id"] if record is not None else ""
+        transition_id = _transition_id(
+            structure_id, from_state, requested, trigger_event_id, ordinal)
+
         structures = {key: dict(value) for key, value in state["structures"].items()}
-        structures[structure_id] = {"state": requested}
+        structures[structure_id] = {
+            "state": requested, "state_seq": ordinal, "transition_id": transition_id}
         event = {
             "event_kind": LIFECYCLE_TRANSITIONED, "formula": FORMULA_W05,
-            "structure_id": structure_id, "from_state": current_state or _UNSEEN,
+            "structure_id": structure_id, "from_state": from_state,
             "to_state": requested, "trigger_event_id": trigger_event_id,
+            "transition_id": transition_id, "state_seq": str(ordinal),
+            "previous_transition_id": previous_transition_id,
         }
         return TransitionResult(
             state={"last_event_id": event_id, "structures": structures}, events=(event,))

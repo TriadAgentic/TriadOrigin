@@ -37,6 +37,7 @@ from triad_origin.structures.candidate_publisher import (  # noqa: E402
     STATE_WITHDRAWN,
     CandidatePublisher,
     CandidatePublisherError,
+    _derive_tradeability_flags,
 )
 
 CAPSULE_ID = "fvg_displacement_first_touch.v1"
@@ -238,6 +239,21 @@ class TestIdentityVerification:
         assert "semantically_valid" in refusal["failed_conjuncts"]
         assert result.final_state["candidates"] == {}
 
+    def test_unhashable_trial_id_is_untradeable_never_raises(self):
+        # A wire-shaped but UNHASHABLE trial_id (a JSON array/object) must never crash the
+        # transition BEFORE the mandatory SHADOW fork: resolve_trial's dict lookup would raise
+        # TypeError('unhashable type'), leaving NO published row AND no durable write (the severe
+        # E23(3) no-poison-envelope form). It must instead be the semantic FACT of an unresolvable
+        # trial — an untradeable shadow audit — exactly like an unknown (but hashable) trial_id.
+        for bad_trial_id in ([], {"nested": "object"}):
+            candidate = edge_candidate("C-UNHASH", trial_id=bad_trial_id)
+            result = run([publish_envelope(candidate, event_id="pub-unhash")])
+            refusal = result.events[0]
+            assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+            assert "semantically_valid" in refusal["failed_conjuncts"]
+            assert result.final_state["candidates"] == {}
+            assert len(result.final_state["shadow"]["audits"]) == 1
+
     def test_capsule_trial_mismatch_is_untradeable_never_published(self):
         # trial_id resolves, but the trial's OWN capsule differs from the candidate's declared
         # capsule -- attributing this candidate to that trial would corrupt its conjunct/ablation
@@ -277,6 +293,35 @@ class TestSemanticReVerification:
         assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
         assert "semantically_valid" in refusal["failed_conjuncts"]
         assert "schema_valid" not in refusal["failed_conjuncts"]  # shape is fine; geometry is not
+
+    def test_wrong_side_stop_for_short_is_untradeable(self):
+        # The SHORT mirror of the LONG case: a valid SHORT stop sits ABOVE entry, so a
+        # natural_invalidation_ticks at-or-below entry is directionally invalid — the publisher's
+        # own `stop <= entry` re-check, mirroring F18's ABSTAIN_INVALID_STOP_SIDE on the SHORT arm.
+        candidate = edge_candidate("C-SHORT-WRONGSIDE", direction="SHORT",
+                                   entry_reference_ticks="1000",
+                                   natural_invalidation_ticks="900",
+                                   targets=[{"target_ticks": "800"}])
+        result = run([publish_envelope(candidate, event_id="pub-short-wrongside")])
+        refusal = result.events[0]
+        assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+        assert "semantically_valid" in refusal["failed_conjuncts"]
+        assert "schema_valid" not in refusal["failed_conjuncts"]
+
+    @pytest.mark.parametrize("direction,target", [("LONG", "1200"), ("SHORT", "800")])
+    def test_stop_equal_to_entry_is_untradeable_on_both_sides(self, direction, target):
+        # The stop==entry equality boundary is a zero-risk stop, directionally invalid on BOTH arms
+        # (LONG requires stop<entry via `stop >= entry`, SHORT requires stop>entry via
+        # `stop <= entry`); neither side may admit it — the publisher's own re-check rejects both.
+        candidate = edge_candidate(f"C-EQ-{direction}", direction=direction,
+                                   entry_reference_ticks="1000",
+                                   natural_invalidation_ticks="1000",
+                                   targets=[{"target_ticks": target}])
+        result = run([publish_envelope(candidate, event_id=f"pub-eq-{direction}")])
+        refusal = result.events[0]
+        assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+        assert "semantically_valid" in refusal["failed_conjuncts"]
+        assert "schema_valid" not in refusal["failed_conjuncts"]
 
     def test_rr_below_floor_at_the_wire_is_untradeable(self):
         # Schema-valid rr_numerator/rr_denominator (both well-formed canonical ints) but below the
@@ -321,6 +366,22 @@ class TestSemanticReVerification:
         assert result.final_state["candidates"] == {}
         audit = next(iter(result.final_state["shadow"]["audits"].values()))
         assert audit["attempt_identity"]["hypothesis_id"] is None
+
+    def test_empty_hypothesis_id_is_untradeable_never_raises(self):
+        # hypothesis_id="" passes the bare {"type":"string"} schema (schema_valid stays True) and no
+        # other conjunct read it, so before the fix all 12 flags were True and shadow_ledger's
+        # _build_trade_row raised INSIDE the mandatory fork — no published row AND no durable write.
+        # stable_identity must now cover hypothesis_id too, routing an empty one to the audit path.
+        candidate = edge_candidate("C-EMPTYHYP", hypothesis_id="")
+        result = run([publish_envelope(candidate, event_id="pub-emptyhyp")])
+        refusal = result.events[0]
+        assert refusal["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+        assert "stable_identity" in refusal["failed_conjuncts"]
+        assert "schema_valid" not in refusal["failed_conjuncts"]  # the wire shape is fine
+        assert result.final_state["candidates"] == {}
+        audits = result.final_state["shadow"]["audits"]
+        assert len(audits) == 1
+        assert next(iter(audits.values()))["attempt_identity"]["hypothesis_id"] == ""
 
 
 class TestRedelivery:
@@ -434,6 +495,34 @@ class TestInvariance:
         run([publish_envelope(candidate, event_id="pub17", trial_registry_state=trial_state)])
         assert candidate == before_candidate
         assert trial_state == before_trial_state
+
+
+class TestConjunctEvidenceAccuracy:
+    """Each re-derived tradeability conjunct in the durable shadow_rejection_audit row states what
+    its RC4 name means — never a lax approximation that mis-attributes the recorded failure."""
+
+    def test_non_canonical_numeric_string_stamps_finite_numbers_false_in_the_audit(self):
+        # RC4 shadow_law.untradeable_input: a candidate failing finite-number validation must be
+        # RECORDED as failing it. A non-canonical numeric spelling the wire grammar (str_to_tick)
+        # rejects -- "--5"/"-0"/"007" -- must never stamp finite_numbers=True in the durable audit,
+        # as the old lstrip("-").isdigit() derivation did.
+        for bad in ("--5", "-0", "007"):
+            candidate = edge_candidate("C-NONCANON", entry_reference_ticks=bad)
+            result = run([publish_envelope(candidate, event_id="pub-noncanon")])
+            assert result.events[0]["event_kind"] == CANDIDATE_PUBLICATION_REFUSED
+            audit = next(iter(result.final_state["shadow"]["audits"].values()))
+            assert audit["raw_source_evidence"]["finite_numbers"] is False, bad
+
+    def test_string_conjuncts_require_a_string_not_mere_truthiness(self):
+        # bool(123) is True, but 123 is not a canonical wire string, so a non-string string-field
+        # must stamp its conjunct FALSE -- the durable flag states the field's type honestly.
+        trial_state = build_trial_registry_state()
+        int_horizon = dict(edge_candidate("C-INTHORIZON", horizon=100))
+        int_horizon["_market_watermark"] = {"watermark_us": 5}
+        assert _derive_tradeability_flags(int_horizon, True, trial_state)["horizon"] is False
+        ok = dict(edge_candidate("C-OK"))
+        ok["_market_watermark"] = {"watermark_us": 5}
+        assert _derive_tradeability_flags(ok, True, trial_state)["horizon"] is True
 
 
 class TestFailClosed:

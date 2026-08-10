@@ -107,16 +107,19 @@ ORIGIN_PUBLICATION_SENTINEL_REASON = (
 
 CANDIDATE_ALREADY_PUBLISHED_DISAGREEMENT = "CANDIDATE_ALREADY_PUBLISHED_DISAGREEMENT"
 
-# The twelve TRADEABILITY_REQUIREMENTS this module can itself re-derive from the already-validated
-# edge_candidate.v2 payload (RC4 shadow_law.tradeability_requirements, same order as
-# shadow_ledger.TRADEABILITY_REQUIREMENTS).
+# The single-string TRADEABILITY_REQUIREMENTS this module re-derives from the already-validated
+# edge_candidate.v2 payload (RC4 shadow_law.tradeability_requirements, same names as
+# shadow_ledger.TRADEABILITY_REQUIREMENTS). Each requires its wire field to be a NON-EMPTY string
+# — never mere truthiness, since an int/bool is not a canonical wire identity (``bool(123)`` must
+# never stamp a string conjunct true). ``stable_identity`` is derived SEPARATELY from BOTH identity
+# fields the SHADOW trade-row builder hard-requires (``candidate_id`` AND ``hypothesis_id``) — see
+# :func:`_derive_tradeability_flags`.
 _REQUIRED_STRING_FIELDS_FOR_FLAGS = {
     "resolved_instrument": "canonical_instrument_id",
     "side": "direction",
     "entry_policy": "entry_policy",
     "invalidation": "natural_invalidation_ticks",
     "horizon": "horizon",
-    "stable_identity": "candidate_id",
 }
 
 # The PAR-061 MIN_GEOMETRIC_RR floor (declared_value "2/1"), re-asserted here as the same exact
@@ -150,6 +153,17 @@ def _parse_tick(value: object) -> int | None:
         return None
 
 
+def _is_nonempty_str(value: object) -> bool:
+    """True iff ``value`` is a non-empty ``str``.
+
+    A string tradeability conjunct means "this candidate carries a usable canonical wire value in
+    that field", so it must test the TYPE, never mere truthiness — ``bool(123)`` is true but ``123``
+    is not a canonical wire string, and stamping a conjunct true for it would make the durable audit
+    lie about what the field actually held.
+    """
+    return isinstance(value, str) and value != ""
+
+
 def _semantically_valid(edge_candidate_payload: dict, trial_registry_state: dict) -> bool:
     """Re-derive semantic validity independently of mere JSON-schema shape.
 
@@ -177,6 +191,13 @@ def _semantically_valid(edge_candidate_payload: dict, trial_registry_state: dict
         return False
 
     trial_id = edge_candidate_payload.get("trial_id")
+    # Guard the TYPE before resolution: resolve_trial does a dict lookup on trial_id, so an
+    # UNHASHABLE trial_id (a JSON array/object) would raise TypeError('unhashable type') — a raise
+    # on untrusted CANDIDATE content, before the mandatory SHADOW fork, leaving NO durable evidence
+    # (the exact E23(3) no-poison-envelope failure). A non-string trial_id can never name a
+    # registered trial (trial_ids are strings), so it is the semantic FACT of an unresolvable trial.
+    if not isinstance(trial_id, str):
+        return False
     try:
         trial = trial_registry.resolve_trial(trial_registry_state, trial_id)
     except trial_registry.TrialUnavailableError:
@@ -231,14 +252,24 @@ def _derive_tradeability_flags(
         "semantically_valid": _semantically_valid(payload, trial_registry_state),
     }
     for flag_name, field_name in _REQUIRED_STRING_FIELDS_FOR_FLAGS.items():
-        value = payload.get(field_name)
-        flags[flag_name] = bool(value) if not isinstance(value, bool) else False
+        flags[flag_name] = _is_nonempty_str(payload.get(field_name))
+    # stable_identity covers BOTH identity fields shadow_ledger._build_trade_row hard-requires
+    # non-empty (candidate_id AND hypothesis_id): a candidate empty/wrong-typed on EITHER takes the
+    # untradeable audit path HERE, never reaching (and crashing inside) that builder — the schema
+    # declares hypothesis_id a bare {"type":"string"} (no minLength), so an empty hypothesis_id is
+    # schema_valid yet unbuildable, and no other conjunct reads it.
+    flags["stable_identity"] = (
+        _is_nonempty_str(payload.get("candidate_id"))
+        and _is_nonempty_str(payload.get("hypothesis_id")))
     flags["target_or_terminal_rule"] = bool(payload.get("targets"))
     finite_fields = ("entry_reference_ticks", "natural_invalidation_ticks", "rr_numerator",
                      "rr_denominator")
+    # finite_numbers means every numeric field parses under the SAME canonical tick grammar the
+    # semantic layer uses (str_to_tick, via _parse_tick) — never a lax lstrip("-").isdigit() that
+    # mis-stamps a non-canonical spelling ("--5"/"-0"/"007") the wire grammar itself rejects, which
+    # would make the durable audit assert numbers were finite when the actual defect is canonicality.
     flags["finite_numbers"] = all(
-        isinstance(payload.get(f), str) and payload.get(f).lstrip("-").isdigit()
-        for f in finite_fields)
+        _parse_tick(payload.get(f)) is not None for f in finite_fields)
     not_before_us = payload.get("not_before_us")
     ttl_us = payload.get("ttl_us")
     flags["monotonic_clocks"] = (
