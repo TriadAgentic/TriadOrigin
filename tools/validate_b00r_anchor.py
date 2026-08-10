@@ -209,14 +209,14 @@ def _canonical_file(
     return cursor
 
 
-def _verify_static(
+def _verify_static_bundle(
     *,
     root: pathlib.Path,
     expected_head: str,
     receipt_path: pathlib.Path,
     ruleset_path: pathlib.Path,
     ruleset_pin: str | None,
-) -> str:
+) -> tuple[str, bytes]:
     root = root.resolve()
     if HEX40_RE.fullmatch(expected_head or "") is None:
         raise AnchorError(f"FAIL: EXPECTED_HEAD_NOT_CANONICAL_HEX40: {expected_head!r}")
@@ -269,6 +269,25 @@ def _verify_static(
         raise AnchorError("FAIL: TAG_RULESET_EXTERNAL_PIN_MISMATCH")
     ruleset = _loads_unique_object(ruleset_bytes)
     _validate_ruleset(ruleset)
+    return receipt_sha, ruleset_bytes
+
+
+def _verify_static(
+    *,
+    root: pathlib.Path,
+    expected_head: str,
+    receipt_path: pathlib.Path,
+    ruleset_path: pathlib.Path,
+    ruleset_pin: str | None,
+) -> str:
+    """Run the static anchor checks and return the bound receipt digest for unit callers."""
+    receipt_sha, _ruleset_bytes = _verify_static_bundle(
+        root=root,
+        expected_head=expected_head,
+        receipt_path=receipt_path,
+        ruleset_path=ruleset_path,
+        ruleset_pin=ruleset_pin,
+    )
     return receipt_sha
 
 
@@ -285,7 +304,7 @@ def verify(
     """Run the complete terminal anchor gate, including a fresh authenticated provider GET."""
     if not isinstance(now_us, int) or isinstance(now_us, bool) or now_us <= 0:
         raise AnchorError("FAIL: NOW_US_INVALID")
-    receipt_sha = _verify_static(
+    receipt_sha, ruleset_bytes = _verify_static_bundle(
         root=root,
         expected_head=expected_head,
         receipt_path=receipt_path,
@@ -293,7 +312,7 @@ def verify(
         ruleset_pin=ruleset_pin,
     )
     fetch_and_match_live_ruleset(
-        ruleset_path.read_bytes(), token=github_token, now_us=now_us,
+        ruleset_bytes, token=github_token, now_us=now_us,
         require_bypass_visibility=True)
     return receipt_sha
 
