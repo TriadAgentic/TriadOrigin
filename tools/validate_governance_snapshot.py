@@ -135,7 +135,7 @@ def main(argv: list[str]) -> int:
                 return 1
             try:
                 fetch_and_match_live_ruleset(
-                    raw_bytes, token=os.environ.get("GITHUB_TOKEN"))
+                    raw_bytes, token=os.environ.get("GITHUB_TOKEN"), now_us=args.now_us)
             except LiveRulesetError as exc:
                 detail = str(exc)
                 unavailable = (
