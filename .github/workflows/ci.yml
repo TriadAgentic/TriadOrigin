@@ -97,13 +97,10 @@ jobs:
             shopt -s nullglob
             found=0
             for r in evidence/receipts/B0*.receipt.v3.json evidence/receipts/B0*.dsse.json; do
-              m="$(python - "$r" <<'PY'
-import json,sys
-d=json.load(open(sys.argv[1]))
-print(d.get("payload",{}).get("milestone",""))
-PY
-)"
-              [ -n "$m" ] && python tools/validate_b_receipt.py --strict --milestone "$m" "$r" && found=1
+              m="$(python -c 'import json,sys;print(json.load(open(sys.argv[1])).get("payload",{}).get("milestone",""))' "$r")"
+              if [ -n "$m" ]; then
+                python tools/validate_b_receipt.py --strict --milestone "$m" "$r" && found=1
+              fi
             done
             if [ "$found" != "1" ]; then
               echo "RECEIPT PR carries no authenticated receipt-v3 (owner-gated closure absent)" >&2
