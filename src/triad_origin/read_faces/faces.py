@@ -59,6 +59,12 @@ fact: this module owns no page-size number (PAR-132..138 are ``PROPOSED_RC2_MUST
 parameters), so ``limit=None`` returns the full, already-finite, caller-supplied collection rather
 than inventing a default.
 
+The three reading judgments this module makes — (a) ``venue_activation``/``paper_activation`` are
+``NOT_MEASURABLE`` from registry state, (b) the LEV-0088 coverage numerator/denominator sourcing, and
+(c) the seven-axis identity JOIN — are registered (never resolved silently in code) as
+``docs/plan/09_OPEN_QUESTIONS.md`` row **E38**; the shared envelope's not-a-vendored-contract judgment
+is row **E37**.
+
 Pure and side-effect-free: no clock, no network, no I/O, no randomness, no float, no control verb,
 no credential. Nothing here reads a system clock, opens a socket, or holds a credential (Doc 04
 §04.17 DARK posture).

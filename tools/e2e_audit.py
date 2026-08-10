@@ -1400,6 +1400,258 @@ def repair_tooling_walk() -> None:
             raise AssertionError("ed25519_verify must fail closed on an unsigned envelope")
 
 
+# ---------------------------------------------------------------- stage 24
+@stage("read_faces_walk",
+       "B08: six RC4 §L6 read faces (lever registry/attestation/history, SHADOW health, four-plane "
+       "status, inventory reconciliation) + the nine W25 evidence views over the real B05 substrate; "
+       "requested/effective/proof separate; SHADOW activation separate from health; honest "
+       "UNAVAILABLE/NOT_MEASURABLE; bounded/paginated cardinality; OFF/OFF/OFF/LIVE preserved; "
+       "READY_NO_AUTHORITY never widened")
+def read_faces_walk() -> None:
+    from triad_origin import transition
+    from triad_origin.control import comparator, lever_law
+    from triad_origin.control.lever_registry import LeverRegistry
+    from triad_origin.control.shadow_health import ShadowHealth
+    from triad_origin.read_faces import envelope as ev
+    from triad_origin.read_faces import faces, views
+
+    # A caller-frozen snapshot instant + a SEPARATE source watermark (UTC epoch microseconds). A face
+    # never reads a clock; every timestamp here is a literal fixture (LEV-V-0124: two timestamps).
+    as_of = 1_700_000_000_000_000
+    watermark = 1_699_999_999_000_000
+
+    def _manifest(rev: int, digest: str):
+        # Every manifest carries the required non-authoritative baseline: OFF/OFF/OFF/LIVE.
+        return {"event_id": f"reg_{rev}_{digest}", "kind": "REGISTER_MANIFEST", "payload": {
+            "venue_environment": "OFF", "venue_activation": "OFF", "paper_activation": "OFF",
+            "shadow_activation": "LIVE",
+            "activations": {"origin.a": "OFF", "origin.b": "OFF", "origin.c": "OFF"},
+            "manifest_digest_sha256": digest, "revision": rev}}
+
+    def _attest(digest: str, rev: int, age_ms: int):
+        return {"event_id": f"att_{rev}_{age_ms}", "kind": "ATTEST_RUNTIME", "payload": {
+            "engine_id": "origin.candidate", "accepted_manifest_digest_sha256": digest,
+            "accepted_revision": rev, "freshness_age_ms": age_ms}}
+
+    # Drive the REAL LeverRegistry and ShadowHealth machines so a face projects real machine output.
+    registry_state = transition.run(
+        LeverRegistry(), [_manifest(1, "d1"), _attest("d1", 1, 1000)], {}).final_state
+    # A revision bump leaves the rev-1 attestation stale-of-revision — the mismatch the face must flag.
+    bumped_state = transition.run(
+        LeverRegistry(),
+        [_manifest(1, "d1"), _attest("d1", 1, 1000), _manifest(2, "d2")], {}).final_state
+    health_state = transition.run(
+        ShadowHealth(), [{"event_id": "hb", "kind": "WRITER_HEARTBEAT", "payload": {"age_ms": 2000}}],
+        {}).final_state
+    shadow_ledger = {"trades": {"t0": {}, "t1": {}}, "audits": {"a0": {}}}  # 2 + 1 = 3 reconciled
+    paper_ledger = {"accounts": {"acct1": {"orders": {"o1": {}}, "fills": {"f1": {}}}},
+                    "trades": {"pt1": {}}}
+
+    # 1 · LEV-0110 registry: canonical venue_environment AVAILABLE=='OFF', shadow_activation 'LIVE'
+    #     (structural, never fabricated); venue_activation/paper_activation are NOT_MEASURABLE (the
+    #     registry persists neither); requested / effective / proof are carried SEPARATELY (LEV-0120).
+    e110 = faces.get_engine_lever_registry(
+        registry_state=registry_state, as_of_us=as_of, watermark_us=watermark,
+        requested_manifest=dict(lever_law.BASELINE_MANIFEST))
+    ev.validate(e110)
+    canonical = e110.value["effective"]["canonical"]
+    if canonical["venue_environment"] != {"status": "AVAILABLE", "value": "OFF", "reason": None}:
+        raise AssertionError(
+            f"LEV-0110 effective canonical venue_environment must be AVAILABLE 'OFF'; got "
+            f"{canonical['venue_environment']!r}")
+    if canonical["shadow_activation"]["value"] != "LIVE":
+        raise AssertionError("LEV-0110 canonical shadow_activation must be the structural 'LIVE'")
+    if canonical["venue_activation"]["status"] != ev.STATUS_NOT_MEASURABLE \
+            or canonical["paper_activation"]["status"] != ev.STATUS_NOT_MEASURABLE:
+        raise AssertionError(
+            "LEV-0110 venue_activation/paper_activation must be NOT_MEASURABLE (the registry persists "
+            "neither) — never a fabricated OFF")
+    if e110.value["requested"] != dict(lever_law.BASELINE_MANIFEST):
+        raise AssertionError("LEV-0110 requested manifest must be carried separately, verbatim")
+    if not (e110.value["requested"] is not e110.value["effective"]
+            is not e110.value["proof"]):
+        raise AssertionError("LEV-0110 requested / effective / proof must be three SEPARATE facets")
+    if e110.as_of_us != as_of or e110.watermark_us != watermark:
+        raise AssertionError("LEV-0110 as_of_us and watermark_us must be carried SEPARATELY (LEV-V-0124)")
+
+    # 2 · LEV-0111 attestation: after a revision bump the stored rev-1 attestation is flagged
+    #     RUNTIME_LEVER_ATTESTATION_MISMATCH — never silently reconciled.
+    e111 = faces.get_engine_lever_attestation(registry_state=bumped_state, as_of_us=as_of)
+    ev.validate(e111)
+    row = e111.value["attestations"][0]
+    if row["revision_matches_current"] is not False \
+            or row["mismatch"] != "RUNTIME_LEVER_ATTESTATION_MISMATCH":
+        raise AssertionError(
+            "LEV-0111 a stale-of-revision attestation must flag RUNTIME_LEVER_ATTESTATION_MISMATCH")
+    if row["lease"]["status"] != ev.STATUS_NOT_MEASURABLE:
+        raise AssertionError("LEV-0111 lease proof is wire-only → NOT_MEASURABLE (verify-only posture)")
+
+    # 3 · LEV-0112 history: an empty (present) stream is a MEASURED-EMPTY AVAILABLE (never inferred
+    #     OFF); an absent source is UNAVAILABLE — the two are distinct named states.
+    e112_empty = faces.get_engine_lever_history(transitions=[], as_of_us=as_of)
+    ev.validate(e112_empty)
+    e112_absent = faces.get_engine_lever_history(transitions=None, as_of_us=as_of)
+    ev.validate(e112_absent)
+    if e112_empty.status != ev.STATUS_AVAILABLE or e112_absent.status != ev.STATUS_UNAVAILABLE:
+        raise AssertionError(
+            "LEV-0112 empty history is AVAILABLE (measured empty); None is UNAVAILABLE (distinct)")
+
+    # 4 · LEV-0113 SHADOW health: activation (the always-LIVE lever) is shown SEPARATELY from health
+    #     (the gauges/counters) — LEV-0118; the LEV-0088 coverage is an EXACT integer pair (no float),
+    #     NOT_MEASURABLE without a presented total, UNAVAILABLE when the ledger itself is absent.
+    e113 = faces.get_shadow_health(
+        health_state=health_state, ledger_state=shadow_ledger, as_of_us=as_of,
+        rejected_inputs_presented=3)
+    ev.validate(e113)
+    if e113.value["shadow_activation"]["value"] != "LIVE" or "shadow_activation" not in e113.value \
+            or "health" not in e113.value:
+        raise AssertionError("LEV-0113 SHADOW activation must be shown SEPARATELY from SHADOW health")
+    cov = e113.value["coverage"]
+    if cov["status"] != ev.STATUS_AVAILABLE or cov["fully_reconciled"] is not True \
+            or not isinstance(cov["reconciled_total"], int) or isinstance(cov["reconciled_total"], bool):
+        raise AssertionError("LEV-0088 coverage must be an EXACT integer pair; 3 reconciled == 3 presented")
+    cov_nm = faces.get_shadow_health(
+        health_state=health_state, ledger_state=shadow_ledger, as_of_us=as_of).value["coverage"]
+    cov_un = faces.get_shadow_health(
+        health_state=health_state, ledger_state=None, as_of_us=as_of,
+        rejected_inputs_presented=3).value["coverage"]
+    if cov_nm["status"] != ev.STATUS_NOT_MEASURABLE or cov_un["status"] != ev.STATUS_UNAVAILABLE:
+        raise AssertionError(
+            "LEV-0088 an absent presented-total is NOT_MEASURABLE; an absent ledger is UNAVAILABLE "
+            "(the two absences are distinct)")
+
+    # 5 · LEV-0114 four-plane: TESTNET/LIVE hold no in-repo venue truth ⇒ honest UNAVAILABLE, never an
+    #     inferred OFF (LEV-V-0122); SHADOW activation is the always-LIVE lever; the requested baseline
+    #     is exactly OFF/OFF/OFF/LIVE.
+    e114 = faces.get_four_plane_status(
+        as_of_us=as_of, shadow_ledger_state=shadow_ledger, paper_ledger_state=paper_ledger,
+        registry_state=registry_state)
+    ev.validate(e114)
+    planes = e114.value["planes"]
+    if planes["TESTNET"]["status"] != ev.STATUS_UNAVAILABLE \
+            or planes["LIVE"]["status"] != ev.STATUS_UNAVAILABLE:
+        raise AssertionError("LEV-0114 TESTNET/LIVE must be UNAVAILABLE (no venue truth), never OFF")
+    if planes["SHADOW"]["activation"] != "LIVE":
+        raise AssertionError("LEV-0114 SHADOW plane activation must be the always-LIVE lever")
+    if e114.value["authority_evidence"]["requested_baseline_manifest"] != dict(lever_law.BASELINE_MANIFEST):
+        raise AssertionError("LEV-0114 requested baseline manifest must be exactly OFF/OFF/OFF/LIVE")
+
+    # 6 · LEV-0115 inventory reconciliation: a two-sided mismatch surfaces a NAMED contradiction; a
+    #     single-sided axis is NOT_MEASURABLE; an unobserved axis is UNAVAILABLE (never inferred).
+    e115 = faces.get_engine_inventory_reconciliation(
+        as_of_us=as_of,
+        identities={"registry": {"expected": "x", "observed": "y"}, "payload": {"expected": "z"}})
+    ev.validate(e115)
+    axes = {r["axis"]: r for r in e115.value["axes"]}
+    if axes["registry"]["status"] != ev.STATUS_AVAILABLE or axes["registry"]["contradiction"] is not True:
+        raise AssertionError("LEV-0115 a two-sided expected!=observed axis must be a NAMED contradiction")
+    if axes["payload"]["status"] != ev.STATUS_NOT_MEASURABLE:
+        raise AssertionError("LEV-0115 a single-sided axis is NOT_MEASURABLE (nothing to reconcile)")
+    if axes["relay"]["status"] != ev.STATUS_UNAVAILABLE:
+        raise AssertionError("LEV-0115 an unobserved axis is UNAVAILABLE, never an inferred match")
+    if e115.value["contradiction_axes"] != ["registry"] or e115.value["any_contradiction"] is not True:
+        raise AssertionError("LEV-0115 the contradiction roll-up must name the registry axis")
+
+    # 7 · Bounded cardinality (LEV-0122): a page smaller than the set is TRUNCATED and carries a
+    #     next-page cursor; the full page is COMPLETE and carries NONE (one source of truth).
+    first = faces.get_engine_lever_registry(registry_state=registry_state, as_of_us=as_of, limit=2)
+    ev.validate(first)
+    if first.completeness != ev.COMPLETENESS_TRUNCATED or first.cursor is None:
+        raise AssertionError("LEV-0122 a truncated page must be TRUNCATED and name a cursor")
+    nxt = faces.get_engine_lever_registry(
+        registry_state=registry_state, as_of_us=as_of, limit=2, after=first.cursor)
+    ev.validate(nxt)
+    if nxt.completeness != ev.COMPLETENESS_COMPLETE or nxt.cursor is not None:
+        raise AssertionError("LEV-0122 the final page must be COMPLETE and carry no cursor")
+
+    # 8 · The envelope contract itself: a fabricated zero (AVAILABLE with value None) is REFUSED, and a
+    #     non-AVAILABLE status carries no value / a named reason (no empty green).
+    try:
+        ev.available(face=faces.FACE_LEVER_REGISTRY, source="e2e", as_of_us=as_of, value=None)
+    except ev.ReadFaceEnvelopeError:
+        pass
+    else:
+        raise AssertionError("an AVAILABLE envelope with a None value (fabricated zero) must be REFUSED")
+    un = ev.unavailable(face=faces.FACE_SHADOW_HEALTH, source="e2e", as_of_us=as_of, reason="ABSENT")
+    ev.validate(un)
+    if un.value is not None or un.reason != "ABSENT":
+        raise AssertionError("an UNAVAILABLE envelope must carry no value and a named reason")
+
+    # 9 · The nine W25 evidence views: each AVAILABLE arm validates and names source + freshness; each
+    #     absent-source arm is a validating UNAVAILABLE carrying value=None (no empty green).
+    divergence_record = comparator.compare_engine_cohort(
+        None, {"candidate_id": "c1", "engine_cohort": "ORIGIN_CANDIDATE"},
+        input_offset=3, evaluated_at_us=as_of, divergence_id="d1")
+    view_available = [
+        views.get_offsets_view(
+            partitions={"p1": {"input_segment": "s", "input_offset": 4}}, as_of_us=as_of),
+        views.get_watermarks_view(
+            watermarks={"p1": {"completed_through_us": 500, "allowed_lateness_us": 1000}}, as_of_us=as_of),
+        views.get_quality_view(quality={"finalized": True}, as_of_us=as_of),
+        views.get_lineage_view(
+            structures_state={"last_event_id": "e", "structures": {"s1": {"state": "CONFIRMED"}}},
+            as_of_us=as_of),
+        views.get_funnel_view(
+            events=[{"event_kind": "CANDIDATE_PUBLISHED", "candidate_id": "c", "transition_id": "t"}],
+            as_of_us=as_of),
+        views.get_divergence_view(records=[divergence_record], as_of_us=as_of),
+        views.get_replay_view(
+            receipts=[{"receipt_id": "r1", "fidelity_class": "EXACT"}], as_of_us=as_of),
+        views.get_receipt_view(
+            receipt={"receipt_id": "B08", "result": "PASS", "builder": "a", "reviewer": "b",
+                     "observed_at_us": 10, "expires_at_us": 20}, as_of_us=as_of),
+        views.get_readiness_view(bootstrap_readiness="READY_NO_AUTHORITY", as_of_us=as_of),
+    ]
+    if len(view_available) != len(views.VIEW_NAMES):
+        raise AssertionError(
+            f"the walk must exercise all {len(views.VIEW_NAMES)} W25 views; drove {len(view_available)}")
+    for view in view_available:
+        ev.validate(view)
+        d = view.to_dict()
+        if d["status"] != ev.STATUS_AVAILABLE or not d["source"] or d["as_of_us"] != as_of:
+            raise AssertionError(f"W25 view {d['face']} must be AVAILABLE and name source + freshness")
+
+    view_absent = [
+        views.get_offsets_view(partitions=None, as_of_us=as_of),
+        views.get_watermarks_view(watermarks=None, as_of_us=as_of),
+        views.get_quality_view(quality=None, as_of_us=as_of),
+        views.get_lineage_view(structures_state=None, as_of_us=as_of),
+        views.get_funnel_view(events=None, as_of_us=as_of),
+        views.get_divergence_view(records=None, as_of_us=as_of),
+        views.get_replay_view(receipts=None, as_of_us=as_of),
+        views.get_receipt_view(receipt=None, as_of_us=as_of),
+        views.get_readiness_view(bootstrap_readiness=None, as_of_us=as_of),
+    ]
+    for view in view_absent:
+        ev.validate(view)
+        if view.status != ev.STATUS_UNAVAILABLE or view.value is not None:
+            raise AssertionError(
+                f"an absent-source W25 view ({view.face}) must be UNAVAILABLE with value=None")
+
+    # 10 · The divergence view rolls up the REAL comparator record by class (the EXTRA arm), with every
+    #      class a named zero.
+    div = views.get_divergence_view(records=[divergence_record], as_of_us=as_of)
+    if div.value["by_class"]["EXTRA"] != 1 \
+            or set(div.value["by_class"]) != set(comparator.DIVERGENCE_CLASSES):
+        raise AssertionError("the divergence view must roll up the real EXTRA record over named zeros")
+
+    # 11 · THE NARROWNESS LAW (CTRL-B08-001): the readiness view never claims more than
+    #      READY_NO_AUTHORITY — even with every evidence dimension supplied positively.
+    readiness = views.get_readiness_view(
+        bootstrap_readiness="READY_NO_AUTHORITY", as_of_us=as_of,
+        source_freshness={"age_ms": 1, "bound": "runtime_attestation_max_age_ms"},
+        coverage={"reconciled": 2, "presented": 2}, lease_validity={"ok": True},
+        estate_activation={"estate": "x"})
+    ev.validate(readiness)
+    if readiness.value["authority"] != "NONE" or readiness.value["ceiling"] != "READY_NO_AUTHORITY" \
+            or readiness.value["operational_readiness_claimed"] is not False:
+        raise AssertionError("CTRL-B08-001 the readiness view must never widen past READY_NO_AUTHORITY")
+    blob = json.dumps(readiness.to_dict())
+    for token in ("AUTHORIZED", "ARMED", "OPERATIONAL", "ACTIVATED"):
+        if token in blob:
+            raise AssertionError(f"a read face must never emit the authority token {token!r}")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")

@@ -188,18 +188,21 @@ separate gate receipt._
 
 ## B08 · Read faces and evidence
 
-- [ ] `get_engine_lever_registry`
-- [ ] `get_engine_lever_attestation`
-- [ ] `get_engine_lever_history`
-- [ ] `get_shadow_health`
-- [ ] `get_four_plane_status`
-- [ ] `get_engine_inventory_reconciliation`
-- [ ] Requested/effective/proof shown separately
-- [ ] SHADOW activation shown separately from SHADOW health
-- [ ] Offsets/watermarks/quality/lineage/funnel/divergence/replay/receipt/readiness views
-- [ ] Honest `UNAVAILABLE`/`NOT_MEASURABLE`; source/freshness/completeness always named
-- [ ] No secrets/control verbs; bounded queries/cardinality
-- [ ] End-to-end read-face stage
+- [x] `get_engine_lever_registry` — `src/triad_origin/read_faces/faces.py` (LEV-0110); `tests/read_faces/test_faces.py`
+- [x] `get_engine_lever_attestation` — `faces.py` (LEV-0111); mismatch flagged `RUNTIME_LEVER_ATTESTATION_MISMATCH`
+- [x] `get_engine_lever_history` — `faces.py` (LEV-0112); empty is measured-AVAILABLE, absent is UNAVAILABLE
+- [x] `get_shadow_health` — `faces.py` (LEV-0113) + the LEV-0088 exact-integer coverage compute
+- [x] `get_four_plane_status` — `faces.py` (LEV-0114); TESTNET/LIVE honest UNAVAILABLE, never inferred OFF
+- [x] `get_engine_inventory_reconciliation` — `faces.py` (LEV-0115); named contradiction / single-sided NOT_MEASURABLE
+- [x] Requested/effective/proof shown separately — LEV-0120, `faces.py` registry + four-plane authority evidence
+- [x] SHADOW activation shown separately from SHADOW health — LEV-0118, `get_shadow_health` value shape
+- [x] Offsets/watermarks/quality/lineage/funnel/divergence/replay/receipt/readiness views —
+  `src/triad_origin/read_faces/views.py` (nine W25 views); `tests/read_faces/test_views.py`
+- [x] Honest `UNAVAILABLE`/`NOT_MEASURABLE`; source/freshness/completeness always named — enforced by
+  `read_faces/envelope.py::validate` (the W25 failure law: no empty green, two timestamps carried separately)
+- [x] No secrets/control verbs; bounded queries/cardinality — no control-verb export (capability scan green);
+  bound is caller-supplied (owns no page-size default); TRUNCATED/cursor derived from one source of truth
+- [x] End-to-end read-face stage — `tools/e2e_audit.py::read_faces_walk` (stage 24; all six faces + nine views)
 - [ ] Source PR merged green
 - [ ] Post-merge B08 receipt passed
 
