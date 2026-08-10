@@ -11,7 +11,7 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
-from triad_origin import transition  # noqa: E402
+from triad_origin import canonical, transition  # noqa: E402
 from triad_origin.structures import common  # noqa: E402
 from triad_origin.structures.common import StructureLawError  # noqa: E402
 from triad_origin.structures.clustering import (  # noqa: E402
@@ -20,7 +20,9 @@ from triad_origin.structures.clustering import (  # noqa: E402
     CLUSTER_FORMED,
     CLUSTER_JOINED,
     F19_CANDIDATE_CONTENT_MISMATCH,
+    SEMANTIC_VERSION_F19,
     OpportunityClusterRegistry,
+    _cluster_params_digest,
     resolve_canonical_cluster_id,
 )
 
@@ -71,12 +73,66 @@ class TestGv016:
         assert cluster["root_candidate_id"] == "A"
         assert cluster["member_candidate_ids"] == ["A", "B"]
 
+    def test_zones_touch_one_tick_availability_delta_one_unit_short_of_window_same_cluster(self):
+        # window=30000ms=30_000_000us; delta ONE unit short of the bound (29_999_000us) is strictly
+        # inside the inclusive window -> same cluster. Completes the golden_boundary_tests
+        # "one-unit-short/over" pair (the equality and one-unit-over vectors are above/below).
+        a = occurrence("A", zone_low=0, zone_high=100, availability_us=0)
+        b = occurrence("B", zone_low=100, zone_high=200, availability_us=29_999_000)
+        result = run([a, b])
+        assert event_kinds(result) == [CLUSTER_FORMED, CLUSTER_JOINED]
+        assert len(result.final_state["clusters"]) == 1
+
     def test_boundary_one_ms_past_window_with_no_source_overlap_is_separate(self):
         a = occurrence("A", zone_low=0, zone_high=100, availability_us=0)
         b = occurrence("B", zone_low=100, zone_high=200, availability_us=30_001_000)
         result = run([a, b])
         assert event_kinds(result) == [CLUSTER_FORMED, CLUSTER_FORMED]
         assert len(result.final_state["clusters"]) == 2
+
+
+class TestClusterIdentityMaterial:
+    """F19-1: cluster_id = hash(version, params, instrument, side, root_candidate_id) is composed
+    from the F19 formula's OWN identity material -- the RC3 semantic version (``version``) and a
+    digest of the effective clustering parameter set (``params``: cluster_window + the frozen
+    overlap-predicate/arbitration-rule identities) -- NEVER from the root candidate's capsule
+    (``capsule_id`` / ``capsule_params_digest``). Each assertion below fails on the earlier
+    capsule-field binding."""
+
+    def test_cluster_id_binds_version_and_params_to_the_formula_not_the_capsule(self):
+        a = occurrence(
+            "A", instrument="BTCUSDT", side=common.LONG, zone_low=0, zone_high=10,
+            availability_us=0, capsule_id="cap-XYZ", capsule_params_digest="digest-XYZ")
+        result = run([a])
+        (cluster_id,) = result.final_state["clusters"].keys()
+        expected = canonical.sha256_hex(canonical.canonical_json({
+            "version": SEMANTIC_VERSION_F19,
+            "params": _cluster_params_digest(30000),  # PARAMS window, in ms
+            "instrument": "BTCUSDT",
+            "side": common.LONG,
+            "root_candidate_id": "A",
+        }))
+        assert cluster_id == expected
+
+    def test_cluster_id_is_invariant_to_the_root_candidate_capsule(self):
+        # Same root candidate_id/instrument/side/window, DIFFERENT capsule fields -> SAME cluster_id
+        # (the capsule is not part of cluster identity). The old binding leaked it and these differed.
+        one = run([occurrence("A", capsule_id="cap-1", capsule_params_digest="digest-1")])
+        two = run([occurrence("A", capsule_id="cap-2", capsule_params_digest="digest-2")])
+        (id_one,) = one.final_state["clusters"].keys()
+        (id_two,) = two.final_state["clusters"].keys()
+        assert id_one == id_two
+
+    def test_cluster_id_moves_with_a_clustering_parameter_change(self):
+        # A PAR-060 (cluster_window) change moves cluster identity -- the identity material's
+        # "parameter digest" law. The old binding was window-independent and these matched.
+        base = transition.run(
+            OpportunityClusterRegistry(), [occurrence("A")], {"cluster_window_ms": 30000})
+        widened = transition.run(
+            OpportunityClusterRegistry(), [occurrence("A")], {"cluster_window_ms": 40000})
+        (id_base,) = base.final_state["clusters"].keys()
+        (id_widened,) = widened.final_state["clusters"].keys()
+        assert id_base != id_widened
 
 
 class TestSourceOverlap:

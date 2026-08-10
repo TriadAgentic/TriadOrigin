@@ -39,13 +39,22 @@ closed on absence, never a code default), not as a ``common.NOT_RATIFIED``-senti
 way F06's ``equal_level_max_span`` is — that gating pattern is specific to the RC3-PAR-STRUCT-001
 row F06 cites and is not asked for, and is not invented, here.
 
-**``cluster_id`` field binding (reasoned, not guessed).** The formula's ``version`` and ``params``
-terms bind to the ONLY two candidate-occurrence fields that represent an identity/parameter-set
-concept: ``capsule_id`` (the semantic capsule identity that produced this candidate — "version") and
-``capsule_params_digest`` (the digest of the exact parameter set that capsule used — "params"). No
-other candidate field represents either concept, so the bind is by elimination as well as by name,
-mirroring :mod:`capsules`'s evidence-cited binding discipline. ``root_candidate_id`` is always the
-candidate_id of the occurrence that roots the cluster — see the connected-components law below.
+**``cluster_id`` field binding (authoritative — the identity material, not the candidate capsule).**
+The formula ``cluster_id=hash(version,params,instrument,side,root_candidate_id)`` composes its
+identity from the F19 formula's OWN identity material, never from the root candidate's capsule.
+RC3's ``identity_material`` — "F19 RC3 semantic version + ... instrument/parameter/policy digests" —
+and the "RC2 source preserved" ``identity_material`` — "sorted root candidate IDs + cluster
+formula/params" — say the same two things: ``version`` is the F19 (cluster-formula) semantic version
+(:data:`SEMANTIC_VERSION_F19`, the RC3 ``semantic_version``), and ``params`` is a digest of the
+effective CLUSTERING parameter set (:func:`_cluster_params_digest`: the PAR-060 ``cluster_window``
+plus the frozen ``overlap_predicate``/``arbitration_rule`` identities — the F19 ``parameters``
+"cluster_window,overlap_predicate,arbitration_rule"). The candidate's ``capsule_id`` /
+``capsule_params_digest`` appear in NO F19 identity clause, so they are NOT part of cluster identity:
+binding them here (the earlier revision's guess) both leaked a per-candidate term into a
+cluster-level identity AND froze the identity against a clustering-law/PAR-060 change the identity
+material says must move it. Those two fields remain on the stored row only for the redelivery/revision
+content-comparison law below. ``root_candidate_id`` is always the candidate_id of the occurrence that
+roots the cluster — see the connected-components law below.
 
 **Connected-components law (transitive, never root-only).** A new candidate_id is compared against
 EVERY existing same-instrument/same-side candidate row, and a match against ANY member of an
@@ -109,8 +118,8 @@ The candidate row this module stores extends the task's minimal shape
 (``instrument``/``side``/``source_structure_id``/``source_reaction_id``/``entry_zone_low_ticks``/
 ``entry_zone_high_ticks``/``availability_us``/``cluster_id``) with ``occurrence_version``,
 ``capsule_id`` and ``capsule_params_digest`` — required to implement the redelivery/revision law
-above and the ``cluster_id`` hash inputs; this is the semantic core the task describes, not a
-literal exhaustive key list.
+above (the content-comparison fields; they are NOT ``cluster_id`` hash inputs — see the field-binding
+note above); this is the semantic core the task describes, not a literal exhaustive key list.
 
 Input envelope shape (minimal, explicit)::
 
@@ -134,6 +143,26 @@ from . import common
 FORMULA_F19 = "F19"
 
 PARAM_CLUSTER_WINDOW_MS = "cluster_window_ms"
+
+# The F19 formula's own semantic version — the RC3 ``semantic_version`` (identity_material:
+# "F19 RC3 semantic version"). This is the ``version`` term of
+# ``cluster_id=hash(version,params,instrument,side,root_candidate_id)`` — the cluster-formula
+# generation, NOT the root candidate's capsule identity.
+SEMANTIC_VERSION_F19 = "triad.origin.v7.rc3.f19.v1"
+
+# The frozen clustering-rule identities — the F19 ``overlap_predicate`` and ``arbitration_rule``
+# parameters. They are fixed by the formula's own definition (they change only when the formula
+# version changes, at which point :data:`SEMANTIC_VERSION_F19` moves too), so they are represented
+# as stable identity strings: the honest "policy digest" that the identity material names alongside
+# the parameter digest. Neither is a runtime value, so neither introduces a non-deterministic input.
+_OVERLAP_PREDICATE_IDENTITY = (
+    "source_overlap OR (zones_intersect AND availability_distance<=cluster_window); "
+    "closed-interval zone intersection; inclusive availability bound (PAR-009)"
+)
+_ARBITRATION_RULE_IDENTITY = (
+    "root fixed at creation by min(availability_us,candidate_id); never re-root; "
+    "cross-cluster attachment chooses earliest root deterministically and records aliases"
+)
 
 _KIND_CANDIDATE_OCCURRENCE = "CANDIDATE_OCCURRENCE"
 
@@ -238,10 +267,26 @@ def _clusters_together(a: dict, b: dict, window_us: int) -> bool:
     return _zones_intersect(a, b) and _availability_within_window(a, b, window_us)
 
 
-def _cluster_id(parsed: dict) -> str:
+def _cluster_params_digest(cluster_window_ms: int) -> str:
+    """Digest of the effective F19 CLUSTERING parameter set — the ``params`` hash term.
+
+    Composed of the PAR-060 ``cluster_window`` (the one runtime clustering parameter — an exact
+    integer, so a PAR-060 change moves the identity, as the identity material requires) plus the
+    frozen ``overlap_predicate`` / ``arbitration_rule`` identities. This is the F19 formula's own
+    parameter set ("cluster_window,overlap_predicate,arbitration_rule"), never a candidate capsule.
+    """
     payload = {
-        "version": parsed["capsule_id"],
-        "params": parsed["capsule_params_digest"],
+        "cluster_window_ms": cluster_window_ms,
+        "overlap_predicate": _OVERLAP_PREDICATE_IDENTITY,
+        "arbitration_rule": _ARBITRATION_RULE_IDENTITY,
+    }
+    return canonical.sha256_hex(canonical.canonical_json(payload))
+
+
+def _cluster_id(parsed: dict, cluster_window_ms: int) -> str:
+    payload = {
+        "version": SEMANTIC_VERSION_F19,
+        "params": _cluster_params_digest(cluster_window_ms),
         "instrument": parsed["instrument"],
         "side": parsed["side"],
         "root_candidate_id": parsed["candidate_id"],
@@ -312,7 +357,7 @@ class OpportunityClusterRegistry:
         existing = state["candidates"].get(candidate_id)
         if existing is not None:
             return self._redeliver(state, existing, parsed, event_id)
-        return self._admit_new(state, parsed, event_id, window_us)
+        return self._admit_new(state, parsed, event_id, window_us, window_ms)
 
     def _redeliver(
         self, state: State, existing: dict, parsed: dict, event_id: str
@@ -356,7 +401,7 @@ class OpportunityClusterRegistry:
             events=(event,))
 
     def _admit_new(
-        self, state: State, parsed: dict, event_id: str, window_us: int
+        self, state: State, parsed: dict, event_id: str, window_us: int, window_ms: int
     ) -> TransitionResult:
         candidate_id = parsed["candidate_id"]
         cluster_aliases = state["cluster_aliases"]
@@ -420,7 +465,7 @@ class OpportunityClusterRegistry:
                 state={"candidates": candidates, "clusters": clusters, "cluster_aliases": aliases},
                 events=(event,))
 
-        cluster_id = _cluster_id(parsed)
+        cluster_id = _cluster_id(parsed, window_ms)
         clusters[cluster_id] = {
             "root_candidate_id": candidate_id, "member_candidate_ids": [candidate_id]}
         row["cluster_id"] = cluster_id
