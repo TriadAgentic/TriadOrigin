@@ -131,7 +131,7 @@ def _validate_provider_negative_canary(
         raise ReceiptBindingError("PROVIDER_NEGATIVE_CANARY_PATH_OR_UNIQUENESS")
     canary = _loads_unique_json((root / CANARY_PATH).read_bytes(), "PROVIDER_NEGATIVE_CANARY")
     expected_fields = {
-        "schema", "schema_version", "canary_kind", "provider", "repository",
+        "profile", "canary_kind", "provider", "repository",
         "ruleset_id", "ruleset_node_id", "ref", "operation", "result", "exit_code",
         "attempted_at_us", "provider_request_id", "transcript_path", "transcript_sha256",
     }
@@ -139,8 +139,7 @@ def _validate_provider_negative_canary(
         raise ReceiptBindingError(
             f"PROVIDER_NEGATIVE_CANARY_FIELDS:{sorted(set(canary) ^ expected_fields)}")
     expected_constants = {
-        "schema": "triad.provider_negative_canary.v1",
-        "schema_version": "1.0.0",
+        "profile": "TRIAD-B00R-PROVIDER-NEGATIVE-CANARY-V1",
         "canary_kind": "PROVIDER_NEGATIVE_CANARY",
         "provider": "github",
         "repository": "TriadAgentic/TriadOrigin",
