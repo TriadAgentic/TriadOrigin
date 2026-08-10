@@ -1005,7 +1005,9 @@ def validate_governance_snapshot(
     # GitHub applies exclusions after inclusions.  Requiring an empty exclusion list prevents a
     # wildcard such as refs/heads/* from silently excluding main.  The only permitted extra target
     # is the dedicated harmless branch used for the mandatory negative provider canary.
-    if (not isinstance(includes, list) or len(includes) != len(set(includes))
+    if (not isinstance(includes, list)
+            or not all(isinstance(item, str) for item in includes)
+            or len(includes) != len(set(includes))
             or set(includes) not in allowed_include_sets or excludes != []):
         return "FAIL", "GOVERNANCE_RAW_MAIN_TARGET_NOT_PROVEN"
     raw_rules = raw.get("rules")
