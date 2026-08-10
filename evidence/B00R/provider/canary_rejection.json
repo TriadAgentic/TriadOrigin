@@ -1,0 +1,15 @@
+{
+  "capture": {
+    "actor": "josephvoxone",
+    "captured_at_us": 1786359700000000,
+    "method": "gh api --method POST /repos/TriadAgentic/TriadOrigin/rulesets -f name=b00r-receipt-anchor-protection -f target=tag -f enforcement=active (conditions ref_name include refs/tags/B00R_RECEIPT_ANCHOR; rules update+deletion)",
+    "org_plan_at_capture": "free (private repository)",
+    "purpose": "Part 7e negative canary: probe provider ruleset enforcement under the plan active at capture time.",
+    "resolution": "repository made public (provider's free-plan path to ruleset objects); tag ruleset id 20636422 then created and captured as evidence/B00R/tag_ruleset.provider.json"
+  },
+  "provider_response": {
+    "documentation_url": "https://docs.github.com/rest/repos/rules#create-a-repository-ruleset",
+    "message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+    "status": "403"
+  }
+}

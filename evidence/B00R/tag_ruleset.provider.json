@@ -1,0 +1,28 @@
+{
+  "bypass_actors": [],
+  "captured_from": "GET /repos/TriadAgentic/TriadOrigin/rulesets/20636422 (provider API, 2026-08-10)",
+  "conditions": {
+    "ref_name": {
+      "exclude": [],
+      "include": [
+        "refs/tags/B00R_RECEIPT_ANCHOR"
+      ]
+    }
+  },
+  "current_user_can_bypass": false,
+  "enforcement": "active",
+  "id": 20636422,
+  "name": "b00r-receipt-anchor-protection",
+  "normalization_note": "current_user_can_bypass normalized from provider string 'never' to boolean false (no bypass capability); all other fields byte-faithful to the provider object.",
+  "rules": [
+    {
+      "type": "update"
+    },
+    {
+      "type": "deletion"
+    }
+  ],
+  "source": "TriadAgentic/TriadOrigin",
+  "source_type": "Repository",
+  "target": "tag"
+}

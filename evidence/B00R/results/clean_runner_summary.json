@@ -1,0 +1,32 @@
+{
+  "runner": "Dell Proxmox VM triod@192.168.70.150",
+  "clone": "git clone --no-tags https://github.com/TriadAgentic/TriadOrigin (hermetic, rebuilt on the post-source-repair merge)",
+  "repair_merge_sha": "5b2a0edc6db99934fe6fbe6bb0fa582bf689a7cc",
+  "final_source_head": "6033e9e0812d3eb980cfbcb3928006226414c7e4",
+  "python": "3.11 venv, pip install -e .[test] with PIP_CONSTRAINT=constraints/ci.txt",
+  "pytest_seed0_rc": 0,
+  "pytest_seed1_rc": 0,
+  "collected_test_ids": 1722,
+  "test_ids_identical_across_seeds": true,
+  "gates": {
+    "verify_manifest": "RC=0",
+    "verify_reproducible_build": "RC=0",
+    "test_wheel_install": "RC=0",
+    "verify_no_forbidden_capabilities": "RC=0",
+    "e2e_audit": "RC=0 (24 stages)",
+    "build_ledger_verify": "RC=0",
+    "validate_combined_dag": "RC=0",
+    "verify_codeowners": "RC=0",
+    "verify_source_hashes": "RC=0",
+    "verify_historical_evidence": "RC=0",
+    "validate_contract_manifest": "RC=0",
+    "collect_test_ids": "RC=0"
+  },
+  "levers": {
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "activation_result": "DENIED_SAFE_HOLD"
+}
