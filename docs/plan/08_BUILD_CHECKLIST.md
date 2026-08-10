@@ -208,16 +208,17 @@ separate gate receipt._
 
 ## B09 · Conformance, estate formula catalog, runbooks
 
-- [ ] Account for 408 inherited RC1 tests
-- [ ] Account for all 1,523 RC3 effective verifications
-- [ ] Account for all 125 RC4 fixtures
-- [ ] No blocked mandatory row counted green
-- [ ] F20 E08 selected-policy sizing contract/vectors; no environment or rollout branch
-- [ ] F21 E09 maker compilation contract/vectors
-- [ ] F22 E09 reduction-only emergency IOC contract/vectors
-- [ ] F23 E10 P&L/cost/R/markout contract/vectors
-- [ ] Assert no F24 exists
-- [ ] Migration/rollback/split-brain/SHADOW/PAPER/TESTNET/fill/reconciliation/DR runbooks
+- [x] Account for 408 inherited RC1 tests — `docs/control/conformance_matrix.v1.json` (`totals.rc1_408_preserved`, RC1 ⊂ RC3 subset, never conflated with the 407 scope-closure family); `tools/conformance_matrix.py`; `tests/tools/test_conformance_matrix.py`
+- [x] Account for all 1,523 RC3 effective verifications — matrix `totals.rc3_effective_verifications` = 1,523 rows (each exactly one status)
+- [x] Account for all 125 RC4 fixtures — matrix `totals.rc4_fixtures` = 125; `matrix_rows` = 1,523 + 125 = 1,648
+- [x] No blocked mandatory row counted green — the `no_blocked_row_covered` invariant (COVERED=0 today; an evidence link never greens a BLOCKED/OUT_OF_REPO row); the generator REFUSES a forged greened-blocked row (`_assert_invariants`)
+- [x] F20 E08 selected-policy sizing contract/vectors; no environment or rollout branch — `docs/control/formula_catalog.v1.json` F20 (GV-017), RC4-corrected `f20_law` (activation_mode/rollout removed, `rollout_reaches_sizing=false`, missing/invalid policy DENY); `tools/build_formula_catalog.py`; `tests/tools/test_build_formula_catalog.py`
+- [x] F21 E09 maker compilation contract/vectors — catalog F21 (GV-018: BUY min(zone_max,best_bid) GTX, no taker fallback)
+- [x] F22 E09 reduction-only emergency IOC contract/vectors — catalog F22 (GV-019: worst_price floor-to-tick, qty ≤ residual, sign-flip reject)
+- [x] F23 E10 P&L/cost/R/markout contract/vectors — catalog F23 (GV-020: gross/net, missing-fee UNRESOLVED)
+- [x] Assert no F24 exists — matrix + catalog `formula_registry.f24_absent`; the registry is exactly F00..F23 in both artifacts
+- [x] Migration/rollback/split-brain/SHADOW/PAPER/TESTNET/fill/reconciliation/DR runbooks — `docs/runbooks/` (**eleven** runbooks: the compressed nine + incident + protection); each carries the six sections + the DENIED_SAFE_HOLD / OFF·OFF·OFF·LIVE baseline; TESTNET is a refusal-to-operate boundary doc (ADR-005 / sibling-estate framing); `tests/docs/test_runbooks.py`
+- [x] End-to-end conformance/catalog/runbook stages — `tools/e2e_audit.py::{conformance_matrix_walk (stage 25), formula_catalog_walk (stage 26), runbooks_walk (stage 27)}` (E2E growth law)
 - [ ] Source PR merged green
 - [ ] Post-merge B09 receipt passed
 

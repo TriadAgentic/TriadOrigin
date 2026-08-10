@@ -1652,6 +1652,227 @@ def read_faces_walk() -> None:
             raise AssertionError(f"a read face must never emit the authority token {token!r}")
 
 
+def _load_tool_module(name: str):
+    """Load a tools/ module from its file path WITHOUT executing its ``__main__`` block.
+
+    ``tools/`` is not a package on ``sys.path``; the B09 catalog/matrix generators are pure
+    (stdlib-only, guarded by ``if __name__ == "__main__":``), so an isolated file-path import is
+    the same read-only load the falsification suite uses. No bytecode cache is written into the
+    read-only repository tree.
+    """
+    import importlib.util
+
+    path = ROOT / "tools" / f"{name}.py"
+    if 'if __name__ == "__main__":' not in path.read_text(encoding="utf-8"):
+        raise AssertionError(f"tools/{name}.py lacks a __main__ guard; importing it could run main")
+    spec = importlib.util.spec_from_file_location(f"_e2e_tool_{name}", path)
+    module = importlib.util.module_from_spec(spec)
+    prev = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.dont_write_bytecode = prev
+    return module
+
+
+# ---------------------------------------------------------------- stage 25
+@stage("conformance_matrix_walk",
+       "B09: the RC1(408)⊂RC3(1523)+RC4(125)=1648 conformance matrix regenerates byte-identical "
+       "(--verify); every row carries exactly one status from the closed vocabulary; totals + "
+       "population counts reconcile; the committed matrix greens NOTHING (COVERED=0); no COVERED "
+       "row carries a blocker; no BLOCKED/OUT_OF_REPO row is ever greened by an evidence link; the "
+       "registry is exactly F00..F23 (no F24); the generator REFUSES a matrix that greens a blocked "
+       "row")
+def conformance_matrix_walk() -> None:
+    # 1 · The committed artifact is byte-current (the build_ledger --verify coupling precedent).
+    _run_tool("conformance_matrix.py", "--verify")
+
+    cm = _load_tool_module("conformance_matrix")
+
+    # 2 · Regenerate to memory and re-assert the load-bearing 408⊂1523 + 125 = 1648 accounting.
+    matrix = cm.generate()
+    totals = matrix["totals"]
+    if (totals["rc1_408_preserved"], totals["rc3_effective_verifications"],
+            totals["rc4_fixtures"]) != (408, 1523, 125):
+        raise AssertionError(f"conformance matrix totals drifted from 408/1523/125: {totals}")
+    if totals["matrix_rows"] != 1648 or len(matrix["rows"]) != 1648:
+        raise AssertionError("the matrix must be exactly 1523+125=1648 rows (RC1 408 ⊂ RC3 1523)")
+
+    # 3 · Exactly one status per row from the closed vocabulary; the population counts reconcile.
+    counts = matrix["status_counts"]
+    if any(r.get("status") not in cm.STATUS_VOCABULARY for r in matrix["rows"]):
+        raise AssertionError("every row must carry a status from the closed vocabulary")
+    if sum(counts.values()) != len(matrix["rows"]):
+        raise AssertionError("status counts must sum to the row count")
+
+    # 4 · The committed matrix greens NOTHING today (no evidence-link file), and no COVERED row
+    #     ever carries a blocker (the no-fabricated-green law, honest fail-closed).
+    if counts[cm.STATUS_COVERED] != 0:
+        raise AssertionError("the committed matrix must green NOTHING today (COVERED=0)")
+    if any(r.get("status") == cm.STATUS_COVERED and r.get("blocked_by") is not None
+           for r in matrix["rows"]):
+        raise AssertionError("no COVERED row may carry a blocker")
+
+    # 5 · An evidence link NEVER greens a blocked or an out-of-repo row (it stays its status, with
+    #     no evidence_test_id) — proven against the real RC3/RC4 bundles the tool reads.
+    rc3 = cm.load_json(cm.RC3_BUNDLE, "RC3 effective control bundle")
+    rc4 = cm.load_json(cm.RC4_BUNDLE, "RC4 control bundle")
+    for status in (cm.STATUS_BLOCKED, cm.STATUS_OUT_OF_REPO):
+        target = next(r for r in matrix["rows"] if r.get("status") == status)
+        linked = cm.build_matrix(rc3, rc4, {target["id"]: "tests/x::fake"})
+        row = next(r for r in linked["rows"] if r["id"] == target["id"])
+        if row["status"] != status or row.get("evidence_test_id") is not None:
+            raise AssertionError(f"an evidence link greened a {status} row {target['id']!r}")
+        if linked["invariants"]["no_blocked_row_covered"] is not True:
+            raise AssertionError("the no_blocked_row_covered invariant must hold under linking")
+
+    # 6 · Assert no F24: the formula registry is exactly F00..F23.
+    reg = matrix["formula_registry"]
+    if not reg["f24_absent"] or reg["formula_ids"] != [f"F{i:02d}" for i in range(24)]:
+        raise AssertionError("Assert no F24 exists: the registry must be exactly F00..F23")
+
+    # 7 · The no-blocked-green invariant is ENFORCED, not decorative: a forged matrix that hand-forces
+    #     a still-blocked row to COVERED is refused loud by the generator's own invariant assertion.
+    poisoned = json.loads(cm.render(matrix))
+    forced = next(r for r in poisoned["rows"] if r["status"] == cm.STATUS_BLOCKED)
+    forced["status"] = cm.STATUS_COVERED  # keep blocked_by set — a fabricated green
+    poisoned["invariants"] = cm._compute_invariants(poisoned)
+    if poisoned["invariants"]["no_blocked_row_covered"] is not False:
+        raise AssertionError("forcing a blocked row to COVERED must flip no_blocked_row_covered")
+    try:
+        cm._assert_invariants(poisoned)
+    except cm.MatrixError:
+        pass
+    else:
+        raise AssertionError("the matrix generator must REFUSE a greened-blocked row")
+
+
+# ---------------------------------------------------------------- stage 26
+@stage("formula_catalog_walk",
+       "B09: the F00..F23 estate formula catalog regenerates byte-identical (--verify); the registry "
+       "is exactly F00..F23 with no F24; estate_catalog is exactly F20/F21/F22/F23 as IN_REPO_CATALOG "
+       "OUT_OF_REPO with owners E08/E09/E09/E10, each vendoring its GV-017..020 golden vector + the "
+       "seven FORM-Fxx-01..07 boundary rows; F20 is RC4-corrected (activation_mode/rollout removed — "
+       "rollout never reaches sizing, missing/invalid selected policy DENIES); the generator imports "
+       "only stdlib (no money line)")
+def formula_catalog_walk() -> None:
+    import ast
+
+    # 1 · The committed catalog is byte-current.
+    _run_tool("build_formula_catalog.py", "--verify")
+
+    fc = _load_tool_module("build_formula_catalog")
+    catalog = fc.generate()
+
+    # 2 · Assert no F24: the registry is exactly F00..F23.
+    reg = catalog["formula_registry"]
+    if not reg["f24_absent"] or reg["formula_ids"] != [f"F{i:02d}" for i in range(24)]:
+        raise AssertionError("Assert no F24 exists: the registry must be exactly F00..F23")
+
+    # 3 · estate_catalog is exactly the four money-line economics formulas F20..F23, each an
+    #     OUT_OF_REPO IN_REPO_CATALOG row owned by its estate node, vendoring its golden vector +
+    #     the seven FORM-Fxx-01..07 boundary rows.
+    estate = catalog["estate_catalog"]
+    if sorted(estate) != ["F20", "F21", "F22", "F23"]:
+        raise AssertionError(f"estate_catalog must be exactly F20..F23: {sorted(estate)}")
+    expected_owner = {"F20": "E08", "F21": "E09", "F22": "E09", "F23": "E10"}
+    expected_gv = {"F20": "GV-017", "F21": "GV-018", "F22": "GV-019", "F23": "GV-020"}
+    for fid, entry in estate.items():
+        if entry.get("exec_class") != "IN_REPO_CATALOG" or entry.get("ownership") != "ESTATE" \
+                or entry.get("implementation_is_out_of_repo") is not True:
+            raise AssertionError(f"{fid} must be an ESTATE IN_REPO_CATALOG OUT_OF_REPO row")
+        if entry.get("owner_node") != expected_owner[fid]:
+            raise AssertionError(f"{fid} owner_node must be {expected_owner[fid]}")
+        if entry["ledger_rows"] != [f"FORM-{fid}-{i:02d}" for i in range(1, 8)]:
+            raise AssertionError(f"{fid} must vendor its seven FORM-{fid}-01..07 boundary rows")
+        if entry["golden_vectors"][0]["id"] != expected_gv[fid]:
+            raise AssertionError(f"{fid} must vendor its golden vector {expected_gv[fid]}")
+
+    # 4 · F20 is RC4-corrected: no activation_mode / rollout branch — rollout metadata can NEVER
+    #     reach sizing, and a missing/unsigned/stale/invalid selected policy DENIES.
+    f20 = estate["F20"]["f20_law"]
+    if not f20.get("activation_mode_removed") or f20.get("rollout_reaches_sizing") is not False \
+            or f20.get("missing_policy_disposition") != "DENY":
+        raise AssertionError("F20 law must remove rollout from sizing and DENY a missing policy")
+    for policy, reason in ((None, "MISSING_SELECTED_POLICY"),
+                           ("POL-1", "INVALID_SELECTED_POLICY"),
+                           ({"policy_ref": "P"}, "UNSIGNED_SELECTED_POLICY"),
+                           ({"policy_ref": "P", "signed": True, "stale": True},
+                            "STALE_SELECTED_POLICY")):
+        if fc.f20_selected_policy_deny_reason(policy) != reason:
+            raise AssertionError(f"F20 must DENY policy {policy!r} with {reason}")
+    if fc.f20_selected_policy_deny_reason({"policy_ref": "P", "signed": True}) is not None:
+        raise AssertionError("F20 must ACCEPT one present, signed, current selected policy")
+    # A rollout/environment token is stripped from the corrected F20 inputs (never a sizing input).
+    corrected = fc.correct_f20_inputs(["one already-selected signed risk-budget policy",
+                                       "activation_mode", "rollout_stage", "canary"])
+    if any(fc._is_rollout_token(tok) for tok in corrected):
+        raise AssertionError("F20 corrected inputs must carry no rollout/environment token")
+
+    # 5 · Capability boundary — the generator imports only the stdlib allowlist (no money line).
+    allow = {"__future__", "argparse", "json", "pathlib", "sys"}
+    tree = ast.parse((ROOT / "tools" / "build_formula_catalog.py").read_text(encoding="utf-8"))
+    roots: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            roots.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            roots.add(node.module.split(".")[0])
+    if not roots <= allow:
+        raise AssertionError(f"formula catalog generator imports beyond stdlib: {sorted(roots - allow)}")
+
+
+# ---------------------------------------------------------------- stage 27
+@stage("runbooks_walk",
+       "B09: the eleven operational runbooks each carry the six required sections "
+       "(Owner/Trigger/Stop/Rollback/Evidence/Escalation) + a RUNBOOK id + the DENIED_SAFE_HOLD / "
+       "OFF·OFF·OFF·LIVE (shadow LIVE) baseline; the TESTNET runbook is a refusal-to-operate boundary "
+       "doc (never a how-to-enable) that cites the ADR-005 / sibling-estate framing")
+def runbooks_walk() -> None:
+    runbooks = ROOT / "docs" / "runbooks"
+    names = ("migration.md", "rollback.md", "split_brain.md", "shadow_degradation.md",
+             "paper_isolation.md", "testnet.md", "incident.md", "fill_lineage.md",
+             "reconciliation.md", "protection.md", "disaster_recovery.md")
+    if not runbooks.is_dir():
+        raise AssertionError("docs/runbooks/ is missing")
+    if len(names) != 11:
+        raise AssertionError("the runbook set must be exactly eleven")
+
+    required = ("Owner", "Trigger", "Stop", "Rollback", "Evidence", "Escalation")
+    baseline = ("venue_environment=off", "venue_activation=off",
+                "paper_activation=off", "shadow_activation=live")
+    for name in names:
+        path = runbooks / name
+        if not path.is_file():
+            raise AssertionError(f"runbook missing: docs/runbooks/{name}")
+        text = path.read_text(encoding="utf-8")
+        for section in required:
+            if f"## {section}" not in text:
+                raise AssertionError(f"docs/runbooks/{name} missing the '## {section}' section")
+        if "Runbook-ID:" not in text:
+            raise AssertionError(f"docs/runbooks/{name} lacks a Runbook-ID header")
+        lowered = text.lower()
+        if "activation posture:" not in lowered or "denied_safe_hold" not in lowered:
+            raise AssertionError(f"docs/runbooks/{name} must name the DENIED_SAFE_HOLD posture")
+        # The exact non-authoritative baseline manifest (shadow fixed LIVE), field=value form.
+        for lever in baseline:
+            if lever not in lowered:
+                raise AssertionError(
+                    f"docs/runbooks/{name} does not carry the baseline lever {lever.upper()!r}")
+
+    # The TESTNET runbook is a refusal-to-operate boundary doc — never a how-to-enable procedure.
+    testnet = (runbooks / "testnet.md").read_text(encoding="utf-8").lower()
+    if "origin never operates" not in testnet and "refuse" not in testnet and "refusal" not in testnet:
+        raise AssertionError("testnet.md must be a refusal-to-operate boundary doc")
+    for forbidden in ("how to enable testnet", "how to activate testnet", "steps to enable testnet",
+                      "turn on testnet", "enable testnet by"):
+        if forbidden in testnet:
+            raise AssertionError(f"testnet.md must not carry a how-to-enable imperative: {forbidden!r}")
+    if "adr-005" not in testnet or "sibling" not in testnet:
+        raise AssertionError("testnet.md must cite the ADR-005 / sibling-estate supersession framing")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")
