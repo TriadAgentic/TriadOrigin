@@ -288,7 +288,19 @@ def _snapshot_for_raw(raw: dict) -> tuple[dict, bytes, str]:
             "CURRENT_USER_BYPASS",
         ),
         (
+            lambda raw: raw.__setitem__("current_user_can_bypass", "pull_requests_only"),
+            "CURRENT_USER_BYPASS",
+        ),
+        (
+            lambda raw: raw.__setitem__("current_user_can_bypass", "exempt"),
+            "CURRENT_USER_BYPASS",
+        ),
+        (
             lambda raw: raw.__setitem__("current_user_can_bypass", False),
+            "CURRENT_USER_BYPASS",
+        ),
+        (
+            lambda raw: raw.__setitem__("current_user_can_bypass", True),
             "CURRENT_USER_BYPASS",
         ),
         (lambda raw: raw.pop("current_user_can_bypass"), "CURRENT_USER_BYPASS"),
