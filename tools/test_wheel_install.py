@@ -150,26 +150,38 @@ expected = set(entries) | {{
 }}
 assert actual == expected, (sorted(actual - expected), sorted(expected - actual))
 
+# B01C-CON-03: this isolated wheel has NO jsonschema (installed --no-deps), so the AUTHORITATIVE
+# path must fail closed (SCHEMA_VALIDATOR_UNAVAILABLE) for every golden — never a fallback PASS.
+# The packaged schema/golden bytes are proven intact via the non-authoritative diagnostic, which
+# still distinguishes valid from invalid.
 for schema_id in contracts.known_contracts():
     schema = contracts.load_schema(schema_id)
     assert schema['title'] == schema_id
     golden_dir = root / 'golden' / schema_id
     valid = json.loads((golden_dir / 'valid.json').read_text(encoding='utf-8'))
-    contracts.validate(valid, schema_id=schema_id)
     invalid = json.loads((golden_dir / 'invalid.json').read_text(encoding='utf-8'))
+    for vector in (valid, invalid):
+        try:
+            contracts.validate(vector, schema_id=schema_id)
+        except contracts.SchemaValidatorUnavailable:
+            pass
+        else:
+            raise AssertionError(f'authoritative validate passed without full validator for {{schema_id}}')
+    contracts.diagnostic_validate(schema_id, valid)
     try:
-        contracts.validate(invalid, schema_id=schema_id)
+        contracts.diagnostic_validate(schema_id, invalid)
     except contracts.ContractError:
         pass
     else:
-        raise AssertionError(f'fallback accepted invalid golden for {{schema_id}}')
+        raise AssertionError(f'diagnostic accepted invalid golden for {{schema_id}}')
 """
             _run([str(python), "-I", "-c", probe], cwd=tmp)
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"FAIL: isolated wheel smoke failed: {exc}", file=sys.stderr)
         return 1
     print(
-        "OK: sdist-built wheel byte-matches runtime, verifies 133 artifacts and all 44 goldens"
+        "OK: sdist-built wheel byte-matches runtime, verifies 148 artifacts, fails closed without "
+        "the full validator, and diagnoses all 44 goldens"
     )
     return 0
 

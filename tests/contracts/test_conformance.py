@@ -44,8 +44,9 @@ def test_invalid_golden_rejects(schema_id):
 
 
 @pytest.mark.parametrize("schema_id", CONTRACT_IDS)
-def test_fallback_validator_agrees(schema_id, monkeypatch):
-    # Force the ModuleNotFoundError path so the stdlib fallback is exercised.
+def test_absent_full_validator_refuses_authoritatively(schema_id, monkeypatch):
+    # B01C-CON-03: with the pinned full validator absent, the AUTHORITATIVE path fails closed for
+    # BOTH the valid and the invalid vector — never a fallback PASS.
     import builtins
 
     real_import = builtins.__import__
@@ -56,9 +57,22 @@ def test_fallback_validator_agrees(schema_id, monkeypatch):
         return real_import(name, *a, **k)
 
     monkeypatch.setattr(builtins, "__import__", fake_import)
-    contracts.validate(_load(schema_id, "valid"))
+    for kind in ("valid", "invalid"):
+        with pytest.raises(contracts.SchemaValidatorUnavailable, match="SCHEMA_VALIDATOR_UNAVAILABLE"):
+            contracts.validate(_load(schema_id, kind))
+    # validate_payload shares the authoritative path and also refuses.
+    payload = _load(schema_id, "valid").get("payload", {})
+    with pytest.raises(contracts.SchemaValidatorUnavailable):
+        contracts.validate_payload(schema_id, payload)
+
+
+@pytest.mark.parametrize("schema_id", CONTRACT_IDS)
+def test_diagnostic_validator_distinguishes_goldens(schema_id):
+    # The NON-authoritative diagnostic still loads the schema+golden bytes and rejects every
+    # invalid vector — a useful operator signal, but it can authorise nothing on its own.
+    contracts.diagnostic_validate(schema_id, _load(schema_id, "valid"))
     with pytest.raises(contracts.ContractError):
-        contracts.validate(_load(schema_id, "invalid"))
+        contracts.diagnostic_validate(schema_id, _load(schema_id, "invalid"))
 
 
 def test_unknown_schema_fails_closed():
