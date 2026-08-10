@@ -321,6 +321,9 @@ def test_codeowners_placeholder_or_missing_critical_identity_is_blocked(tmp_path
     path.write_text(_valid_codeowners("@triadagentic/TRIAD-ORIGIN-GOVERNANCE"))
     with pytest.raises(verify_codeowners.CodeownersError, match="PLACEHOLDER_IDENTITY"):
         verify_codeowners.verify(path)
+    path.write_text(_valid_codeowners("@TriadAgentic/origin-governance-reviewers"))
+    with pytest.raises(verify_codeowners.CodeownersError, match="PLACEHOLDER_IDENTITY"):
+        verify_codeowners.verify(path)
 
     lines = _valid_codeowners("@TriadAgentic/real-governance-team").splitlines()
     path.write_text("\n".join(lines[:-1]) + "\n")
