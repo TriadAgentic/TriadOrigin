@@ -83,7 +83,15 @@ python tools/verify_no_forbidden_capabilities.py
 python tools/e2e_audit.py
 python tools/build_ledger.py --verify
 python tools/validate_combined_dag.py
+python tools/validate_b_receipt.py --all --strict
+python tools/verify_spec_control_counts.py --strict
+python tools/scan_secrets.py --tracked --fail-on-hit
 ```
+
+These fourteen commands are the authoritative gate — the frozen audit runner's
+`REQUIRED_LOCAL_COMMANDS` and the `.github/workflows/ci.yml` source-PR steps enumerate the same
+fourteen. The prose above is the currency mirror; on any drift the frozen runner + CI are the
+source of truth (register row E46).
 
 **The E2E growth law:** every milestone that lands a capability extends `tools/e2e_audit.py`
 with a walk stage for it in the same PR; a capability with no walk stage is an incomplete
