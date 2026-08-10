@@ -381,8 +381,7 @@ def test_provider_negative_canary_is_mandatory_and_bound_to_ruleset(tmp_path):
     transcript_path.parent.mkdir(parents=True)
     transcript_path.write_bytes(transcript)
     canary = {
-        "schema": "triad.provider_negative_canary.v1",
-        "schema_version": "1.0.0",
+        "profile": "TRIAD-B00R-PROVIDER-NEGATIVE-CANARY-V1",
         "canary_kind": "PROVIDER_NEGATIVE_CANARY",
         "provider": "github",
         "repository": "TriadAgentic/TriadOrigin",
@@ -524,8 +523,7 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
     })
     canary_rel = "evidence/B00R/provider_negative_canary.v1.json"
     canary = canonical_json({
-        "schema": "triad.provider_negative_canary.v1",
-        "schema_version": "1.0.0",
+        "profile": "TRIAD-B00R-PROVIDER-NEGATIVE-CANARY-V1",
         "canary_kind": "PROVIDER_NEGATIVE_CANARY",
         "provider": "github",
         "repository": "TriadAgentic/TriadOrigin",
