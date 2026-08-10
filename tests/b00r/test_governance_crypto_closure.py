@@ -201,7 +201,7 @@ def _raw_ruleset() -> dict:
     return {
         "id": 42, "name": "main", "target": "branch", "source_type": "Repository",
         "source": "TriadAgentic/TriadOrigin", "enforcement": "active", "bypass_actors": [],
-        "current_user_can_bypass": False, "node_id": "RRS_provider42",
+        "current_user_can_bypass": "never", "node_id": "RRS_provider42",
         "_links": {
             "self": {"href": "https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/42"},
             "html": {"href": "https://github.com/TriadAgentic/TriadOrigin/rules/42"},
@@ -284,7 +284,11 @@ def _snapshot_for_raw(raw: dict) -> tuple[dict, bytes, str]:
         (lambda raw: raw.__setitem__("note", "actual enforcement pending"), "SYNTHETIC"),
         (lambda raw: raw.pop("source_type"), "SOURCE_TYPE"),
         (
-            lambda raw: raw.__setitem__("current_user_can_bypass", True),
+            lambda raw: raw.__setitem__("current_user_can_bypass", "always"),
+            "CURRENT_USER_BYPASS",
+        ),
+        (
+            lambda raw: raw.__setitem__("current_user_can_bypass", False),
             "CURRENT_USER_BYPASS",
         ),
         (lambda raw: raw.pop("current_user_can_bypass"), "CURRENT_USER_BYPASS"),
