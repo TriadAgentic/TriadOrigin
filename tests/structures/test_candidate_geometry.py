@@ -213,6 +213,57 @@ class TestRootIdTieBreak:
         assert result.selected_target_ticks == 104
 
 
+class TestSelectedTargetLevelIdentity:
+    """RC3 F18 identity_material: capsule occurrence + E/S/T level IDs + formula/params."""
+
+    def test_winning_target_root_id_survives_to_the_result(self):
+        # The T level ID (root_id) must be recoverable from the F18 result so the identity layer
+        # can bind it; the old (type, ticks) result discarded it.
+        result = evaluate(targets=[target("PROTECTED_SWING", 104, root_id="T-LEVEL-9")])
+        assert result.admitted is True
+        assert result.selected_target_root_id == "T-LEVEL-9"
+
+    def test_root_id_tiebreak_winner_is_the_one_reported(self):
+        # Two identical type+distance targets; the ascending-root_id winner is "aaa", and since the
+        # tie-break is ON root_id, only the returned root_id disambiguates the selected level.
+        result = evaluate(targets=[target("PROTECTED_SWING", 104, root_id="zzz"),
+                                   target("PROTECTED_SWING", 104, root_id="aaa")])
+        assert result.admitted is True
+        assert result.selected_target_root_id == "aaa"
+
+    def test_optional_entry_and_stop_level_ids_echo_when_supplied(self):
+        result = candidate_geometry.evaluate_candidate_geometry(
+            direction=common.LONG, entry_reference_ticks=100,
+            natural_invalidation_source_ticks=99, atr14_ticks=20,
+            capsule_semantic_id=CAPSULE_ID,
+            available_targets=[target("PROTECTED_SWING", 104)],
+            candidate_knowledge_time_us=1_000, params=PARAMS,
+            entry_reference_level_id="E-LVL", natural_invalidation_level_id="S-LVL")
+        assert result.entry_reference_level_id == "E-LVL"
+        assert result.natural_invalidation_level_id == "S-LVL"
+
+    def test_level_ids_are_honest_null_when_not_supplied(self):
+        result = evaluate(targets=[target("PROTECTED_SWING", 104)])
+        assert result.entry_reference_level_id is None
+        assert result.natural_invalidation_level_id is None
+
+    def test_supplied_level_id_must_be_nonempty(self):
+        with pytest.raises(StructureLawError):
+            candidate_geometry.evaluate_candidate_geometry(
+                direction=common.LONG, entry_reference_ticks=100,
+                natural_invalidation_source_ticks=99, atr14_ticks=20,
+                capsule_semantic_id=CAPSULE_ID,
+                available_targets=[target("PROTECTED_SWING", 104)],
+                candidate_knowledge_time_us=1_000, params=PARAMS,
+                entry_reference_level_id="")
+
+    def test_abstention_carries_selected_target_root_id_when_a_target_was_selected(self):
+        # Below-floor abstention still carries the winner's level identity (honest diagnostic).
+        result = evaluate(targets=[target("PROTECTED_SWING", 103, root_id="T-3")])
+        assert result.abstain_reason == candidate_geometry.ABSTAIN_GEOMETRY_BELOW_FLOOR
+        assert result.selected_target_root_id == "T-3"
+
+
 class TestUnreducedRrPair:
     def test_reward_6_risk_3_is_never_simplified_to_2_1(self):
         # entry=200, source=198, atr=20 -> buffer=1 -> stop=198-1=197 -> risk=3.

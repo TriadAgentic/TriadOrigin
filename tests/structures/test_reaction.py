@@ -171,6 +171,19 @@ class TestFailClosed:
         with pytest.raises(StructureLawError, match="ratified at exactly 1"):
             run([zone_registered("Z1", common.LONG, 105, 100)], params=bad)
 
+    def test_min_depart_events_not_exactly_one_refused(self):
+        # PAR-166 declared_value "1": any other value is a config defect, not a silent >=1 admit
+        # (mirrors the exact-declared-value pin the module applies to PAR-050/168/062).
+        bad = dict(PARAMS, min_depart_events=7)
+        with pytest.raises(StructureLawError, match="PAR-166"):
+            run([zone_registered("Z1", common.LONG, 105, 100)], params=bad)
+
+    def test_min_depart_time_not_exactly_60000_refused(self):
+        # PAR-167 declared_value "60000": a 0 (previously admitted under the >=0 range) is refused.
+        bad = dict(PARAMS, min_depart_time_ms=0)
+        with pytest.raises(StructureLawError, match="PAR-167"):
+            run([zone_registered("Z1", common.LONG, 105, 100)], params=bad)
+
     def test_undeclared_contact_price_source_param_refused(self):
         bad = dict(PARAMS, contact_price_source="mark_price")
         with pytest.raises(StructureLawError, match="undeclared contact_price_source"):
@@ -294,6 +307,53 @@ class TestMirror:
         assert (long_result.final_state["zones"]["Z1"]["reaction_state"]
                 == short_result.final_state["zones"]["Z1"]["reaction_state"]
                 == FIRST_TOUCH_CONSUMED)
+
+
+class TestSourceReactionIdentityMaterial:
+    """RC3 F14 identity_material: structure ID + departure event + first contact event + params."""
+
+    @staticmethod
+    def _first_touch_id(inputs):
+        result = run(inputs)
+        confirmed = [e for e in result.events if e["event_kind"] == "REACTION_CONFIRMED"]
+        assert len(confirmed) == 1
+        return confirmed[0]["source_reaction_id"]
+
+    def test_departure_event_is_bound_into_source_reaction_id(self):
+        # Same zone geometry and an IDENTICAL first-contact event; only the DEPARTURE event id
+        # differs. The old {zone_id, event_time_us, low, high} hash omitted the departure event, so
+        # the two ids collided; binding the departure event makes them distinct.
+        def inputs(dep_event_id):
+            return [
+                zone_registered("Z1", common.LONG, z_near=105, z_far=100),
+                departure("Z1", distance=5, event_id=dep_event_id),
+                contact("Z1", low=105, high=110, event_time=1000, event_id="c1"),
+            ]
+        id_a = self._first_touch_id(inputs("dep_A"))
+        id_b = self._first_touch_id(inputs("dep_B"))
+        assert id_a != id_b
+        assert id_a == self._first_touch_id(inputs("dep_A"))  # deterministic reproduction
+
+    def test_first_contact_event_is_bound_into_source_reaction_id(self):
+        # Same zone, same departure, same contact price/range/time; only the CONTACT event id
+        # differs -> distinct identity (the "first contact event" member).
+        def inputs(contact_event_id):
+            return [
+                zone_registered("Z1", common.LONG, z_near=105, z_far=100),
+                departure("Z1", distance=5, event_id="dep"),
+                contact("Z1", low=105, high=110, event_time=1000, event_id=contact_event_id),
+            ]
+        assert self._first_touch_id(inputs("c_A")) != self._first_touch_id(inputs("c_B"))
+
+    def test_source_reaction_id_stays_lowercase_hex_64(self):
+        inputs = [
+            zone_registered("Z1", common.LONG, z_near=105, z_far=100),
+            departure("Z1", distance=5),
+            contact("Z1", low=105, high=110),
+        ]
+        sid = self._first_touch_id(inputs)
+        assert len(sid) == 64
+        int(sid, 16)  # decodes cleanly as hex
 
 
 class TestInvariance:

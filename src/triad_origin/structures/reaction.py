@@ -22,10 +22,15 @@ one); the RC3 ``lifecycle_or_output`` arrow chain is the typical path, not an ex
   (:data:`triad_origin.structures.common.DECLARED_EQUAL_LEVEL_TOLERANCE`), so this module reuses
   the new alias :data:`triad_origin.structures.common.DECLARED_MIN_DEPARTURE` rather than
   re-declaring the ratio (the PAR-156 precedent).
-* ``depart_event_count >= MIN_DEPART_EVENTS`` (PAR-166, plain int, ``declared_value "1"`` —
-  "Formation bar excluded": at least one later finalized base bar past formation/confirmation).
-* ``elapsed_depart_time_ms >= MIN_DEPART_TIME`` (PAR-167, plain int ms, ``declared_value
-  "60000"`` — "Exactly 60000 ms passes after event-count rule also passes.").
+* ``depart_event_count >= MIN_DEPART_EVENTS`` (PAR-166, plain int) where ``MIN_DEPART_EVENTS`` is
+  admitted only at its exact ``declared_value "1"`` — "Formation bar excluded": at least one later
+  finalized base bar past formation/confirmation. Like PAR-050/168 (both also
+  ``PROPOSED_RC2_MUST_RATIFY``) and PAR-062, the parameter itself is byte-pinned to the exact
+  declared value — any other ``min_depart_events`` is a configuration defect, refused
+  (:class:`triad_origin.structures.common.StructureLawError`), never silently range-admitted.
+* ``elapsed_depart_time_ms >= MIN_DEPART_TIME`` (PAR-167, plain int ms) where ``MIN_DEPART_TIME``
+  is admitted only at its exact ``declared_value "60000"`` — "Exactly 60000 ms passes after
+  event-count rule also passes." Same exact-declared-value pin as PAR-166 above.
 
 The upstream caller (the owning structure's own bar-by-bar tracking) computes all three figures
 as of the candidate observation; this machine only compares them against the ratified floors — it
@@ -56,8 +61,34 @@ counts as a touch (PAR-062's own ``boundary_rule``, PAR-009 inclusive). A non-in
 observation on a ``DEPARTED`` zone is a silent no-op (still ``DEPARTED``, waiting for the real
 first touch). On intersection the zone moves ``DEPARTED`` -> ``FIRST_TOUCH_CONSUMED`` and emits a
 ``REACTION_CONFIRMED`` event carrying the raw contact fields plus a derived, stable
-``source_reaction_id`` — ``sha256_hex(canonical_json({zone_id, event_time_us,
-observed_low_ticks, observed_high_ticks}))`` — for a later F18/candidate-publisher consumer.
+``source_reaction_id`` for a later F18/candidate-publisher consumer.
+
+**``source_reaction_id`` binds the full RC3 F14 identity material** ("structure ID + departure
+event + first contact event + params"): the hash material is ``{formula, semantic_version,
+structure_id=zone_id, departure_event_id (the DEPARTURE_CANDIDATE that carried the zone into
+DEPARTED, stored on the row at that transition), first-contact event (its ``contact_event_id`` and
+the observed price/range), params_digest (the five declared F14 parameters + the semantic
+version)}``. Binding the departure event and the params closes two identity collisions the earlier
+``{zone_id, event_time_us, observed_low_ticks, observed_high_ticks}`` shape allowed: two zones that
+departed via different departure events but touched identically, and two runs under a different F14
+parameter generation with an identical touch, previously minted the SAME id.
+
+**Golden-boundary dispositions (RC3 F14 ``golden_boundary_tests``).** Of the six named boundaries,
+five are exercised by this module's battery — same-bar trap (``TestContactTiming`` /
+``TestGv012``), exact edge (``TestBoundaryIntersection``), duplicate contact (``TestGv012``'s
+second identical touch), invalidation precedence (``TestContactTiming``'s expiry/invalidation) and
+mirror (``TestMirror``). The sixth, **"maker pre-post distinction," is undefined in the
+authoritative sources** (it appears only in the F14 formula row and the REQ-F14-* acceptance rows
+that repeat the identical boundary list verbatim; RC3 master, errata and the golden vectors define
+no such boundary), so its disposition is DEFERRED to a ``09_OPEN_QUESTIONS`` register row rather
+than guessed at in code — a meaning fabricated here would be a silent invention, forbidden.
+
+**TTL disposition (RC3 F14 ``parameters`` names "TTL").** No F14 TTL parameter binding exists in
+the bundle (the only TTL bindings are the F15-F17 ``FLOW_ATOM_TTL`` and the F21 ``MAKER_ORDER_TTL``
+rows), so there is no declared value to materialize without fabrication. F14 externalizes zone
+expiry as caller-supplied ``ZONE_EXPIRED`` events delivered by the owning zone registry's own
+lifecycle (fvg/order-block/reclaim), which this machine consumes; the disposition is DEFERRED to a
+``09_OPEN_QUESTIONS`` register row (the E15 precedent for the byte-analogous F12 TTL situation).
 
 **Zone registration.** ``ZONE_REGISTERED`` freezes a structure zone's original geometry
 (``z_near_ticks``, ``z_far_ticks``, direction, registration knowledge time) and seeds
@@ -105,6 +136,10 @@ from .common import LONG, SHORT, StructureLawError, abstention  # noqa: F401  (r
 
 FORMULA_F14 = "F14"
 
+# The F14 formula's own semantic version (rc3 formula F14). Bound into ``source_reaction_id`` so a
+# future generation of the reaction formula never collides identities with this one.
+SEMANTIC_VERSION = "reaction.first_touch.v1"
+
 PARAM_MIN_DEPARTURE_RULE = "min_departure_rule"
 PARAM_MIN_DEPART_EVENTS = "min_depart_events"
 PARAM_MIN_DEPART_TIME_MS = "min_depart_time_ms"
@@ -114,6 +149,12 @@ PARAM_FIRST_TOUCH_ORDINAL = "first_touch_ordinal"
 # PAR-168's only lawful declared value — a plain enum string, not a rational-rule shape, so it
 # lives here rather than in common.py's rational-rule table.
 DECLARED_CONTACT_PRICE_SOURCE = "finalized_bar_closed_range_[low,high]"
+
+# PAR-166/PAR-167 exact declared values. Even though both are still PROPOSED_RC2_MUST_RATIFY (like
+# PAR-050 and PAR-168), the module admits ONLY the exact declared byte value, mirroring the
+# exact-declared-value discipline it already applies to PAR-050/168/062 — never a >=1/>=0 range.
+DECLARED_MIN_DEPART_EVENTS = 1  # PAR-166, declared_value "1"
+DECLARED_MIN_DEPART_TIME_MS = 60_000  # PAR-167, declared_value "60000"
 
 REACTION_STATE_CHANGED = "REACTION_STATE_CHANGED"
 REACTION_CONFIRMED = "REACTION_CONFIRMED"
@@ -173,10 +214,14 @@ class DepartureAndFirstTouch:
         if min_departure_rule != common.DECLARED_MIN_DEPARTURE:
             raise StructureLawError(
                 f"undeclared min_departure rule: {min_departure_rule!r} (PAR-050)")
-        if min_depart_events < 1:
-            raise StructureLawError("min_depart_events must be >= 1 (PAR-166)")
-        if min_depart_time_ms < 0:
-            raise StructureLawError("min_depart_time_ms must be >= 0 (PAR-167)")
+        if min_depart_events != DECLARED_MIN_DEPART_EVENTS:
+            raise StructureLawError(
+                "PAR-166 MIN_DEPART_EVENTS is declared at exactly "
+                f"{DECLARED_MIN_DEPART_EVENTS}, got {min_depart_events!r}")
+        if min_depart_time_ms != DECLARED_MIN_DEPART_TIME_MS:
+            raise StructureLawError(
+                "PAR-167 MIN_DEPART_TIME is declared at exactly "
+                f"{DECLARED_MIN_DEPART_TIME_MS} ms, got {min_depart_time_ms!r}")
         if contact_price_source != DECLARED_CONTACT_PRICE_SOURCE:
             raise StructureLawError(
                 f"undeclared contact_price_source: {contact_price_source!r} (PAR-168)")
@@ -232,7 +277,10 @@ class DepartureAndFirstTouch:
                 and elapsed_depart_time_ms >= min_depart_time_ms
             ):
                 return TransitionResult(state)  # one or more conjuncts unmet; still ELIGIBLE
-            zones[zone_id] = dict(row, reaction_state=DEPARTED)
+            # The departure event is F14 identity material — stamp it on the row so the later
+            # first-touch can fold it into source_reaction_id (RC3 F14 identity_material).
+            zones[zone_id] = dict(
+                row, reaction_state=DEPARTED, departure_event_id=_event_identity(envelope))
             event = _state_changed_event(zone_id, ELIGIBLE, DEPARTED, envelope)
             return TransitionResult({"zones": zones}, (event,))
 
@@ -256,15 +304,29 @@ class DepartureAndFirstTouch:
             zone_hi = max(row["z_near_ticks"], row["z_far_ticks"])
             if not (observed_low <= zone_hi and zone_lo <= observed_high):
                 return TransitionResult(state)  # no intersection; still DEPARTED, waiting
+            contact_event_id = _event_identity(envelope)
+            # The four declared identity-material members: structure ID (zone_id), departure event,
+            # first contact event, and params (a digest of the five declared F14 parameters, so a
+            # different parameter generation never collides with this one).
+            params_digest = canonical.sha256_hex(canonical.canonical_json({
+                "min_departure_rule": min_departure_rule,
+                "min_depart_events": min_depart_events,
+                "min_depart_time_ms": min_depart_time_ms,
+                "contact_price_source": contact_price_source,
+                "first_touch_ordinal": first_touch_ordinal,
+            }))
             source_reaction_id = canonical.sha256_hex(canonical.canonical_json({
-                "zone_id": zone_id, "event_time_us": event_time_us,
+                "formula": FORMULA_F14, "semantic_version": SEMANTIC_VERSION,
+                "structure_id": zone_id, "departure_event_id": row["departure_event_id"],
+                "contact_event_id": contact_event_id, "event_time_us": event_time_us,
                 "observed_low_ticks": observed_low, "observed_high_ticks": observed_high,
+                "params_digest": params_digest,
             }))
             zones[zone_id] = dict(row, reaction_state=FIRST_TOUCH_CONSUMED)
             event = {
                 "event_kind": REACTION_CONFIRMED, "formula": FORMULA_F14, "zone_id": zone_id,
                 "from_state": DEPARTED, "to_state": FIRST_TOUCH_CONSUMED,
-                "direction": row["direction"], "contact_event_id": _event_identity(envelope),
+                "direction": row["direction"], "contact_event_id": contact_event_id,
                 "observed_low_ticks": observed_low, "observed_high_ticks": observed_high,
                 "event_time_us": event_time_us, "source_reaction_id": source_reaction_id,
             }

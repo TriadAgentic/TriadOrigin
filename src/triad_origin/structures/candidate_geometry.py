@@ -45,6 +45,15 @@ magnitude — for a positive-reward target the reward IS the distance), tied fir
 ``F18_NO_TARGET``. An unknown ``target_type`` is a structural violation and raises, never silently
 excluded.
 
+**Level identity (RC3 F18 identity_material "capsule occurrence + E/S/T level IDs + formula/params").**
+The selected target's ``root_id`` (the T level ID) is returned on the result as
+``selected_target_root_id`` — because the tie-break is ON ``root_id``, the winner's level identity
+is NOT recoverable from ``(target_type, target_ticks)`` alone, so discarding it would leave the T
+level ID unbindable by the publisher/identity layer. The E and S level IDs are optional pass-through
+inputs (``entry_reference_level_id`` / ``natural_invalidation_level_id``, honest-null when the caller
+does not supply them — never fabricated) echoed onto the result so all three of the bundle-declared
+E/S/T level IDs can reach candidate identity.
+
 **Sequence, each a named abstention (never a silent null, never a fabricated value):** the capsule
 resolves (an unknown ``capsule_semantic_id`` raises
 :class:`triad_origin.structures.capsules.CapsuleUnavailableError`, never swallowed) -> the four
@@ -117,6 +126,9 @@ class GeometryResult:
     natural_invalidation_ticks: int | None
     selected_target_ticks: int | None
     selected_target_type: str | None
+    selected_target_root_id: str | None
+    entry_reference_level_id: str | None
+    natural_invalidation_level_id: str | None
     abstain_reason: str | None
     abstain_detail: str | None
 
@@ -143,6 +155,9 @@ def _abstain(reason_code: str, detail: str, refs: dict, **known: object) -> Geom
         "natural_invalidation_ticks": None,
         "selected_target_ticks": None,
         "selected_target_type": None,
+        "selected_target_root_id": None,
+        "entry_reference_level_id": None,
+        "natural_invalidation_level_id": None,
         "abstain_reason": event["reason_code"],
         "abstain_detail": event["detail"],
     }
@@ -156,8 +171,12 @@ def _select_target(
     targets: object,
     candidate_knowledge_time_us: int,
     selector_priority: tuple[str, ...],
-) -> tuple[str, int] | None:
-    """The PAR-064 + PAR-173 winner, or ``None`` if no target survives selection."""
+) -> tuple[str, int, str] | None:
+    """The PAR-064 + PAR-173 winner ``(target_type, target_ticks, root_id)``, or ``None``.
+
+    The winning ``root_id`` (the T level ID) is returned because the tie-break is ON ``root_id`` —
+    ``(target_type, target_ticks)`` alone does not disambiguate the selected level.
+    """
     if not isinstance(targets, list):
         raise common.StructureLawError("available_targets must be a list")
     dir_sign = _dir_sign(direction)
@@ -181,8 +200,8 @@ def _select_target(
     if not candidates:
         return None
     candidates.sort(key=lambda row: (row[0], row[1], row[2]))
-    _, _, _, target_type, target_ticks = candidates[0]
-    return target_type, target_ticks
+    _, _, root_id, target_type, target_ticks = candidates[0]
+    return target_type, target_ticks, root_id
 
 
 def evaluate_candidate_geometry(
@@ -195,8 +214,15 @@ def evaluate_candidate_geometry(
     available_targets: list[dict],
     candidate_knowledge_time_us: int,
     params: Params,
+    entry_reference_level_id: str | None = None,
+    natural_invalidation_level_id: str | None = None,
 ) -> GeometryResult:
-    """F18 — evaluate one candidate occurrence's geometry and geometric reward/risk (GV-015)."""
+    """F18 — evaluate one candidate occurrence's geometry and geometric reward/risk (GV-015).
+
+    ``entry_reference_level_id`` / ``natural_invalidation_level_id`` are the OPTIONAL E/S level IDs
+    (RC3 F18 identity_material) echoed onto the result — honest-null when the caller omits them,
+    never fabricated; a supplied value must be a non-empty string.
+    """
     capsules.resolve_capsule(capsule_semantic_id)  # fail closed; propagate CapsuleUnavailableError
 
     buffer_rule = require(params, capsules.PAR_NATURAL_INVALIDATION_BUFFER_RULE)
@@ -231,13 +257,19 @@ def evaluate_candidate_geometry(
         natural_invalidation_source_ticks, "natural_invalidation_source_ticks")
     knowledge_time = common.require_int(
         candidate_knowledge_time_us, "candidate_knowledge_time_us")
+    entry_level_id = (
+        None if entry_reference_level_id is None
+        else _require_nonempty_str(entry_reference_level_id, "entry_reference_level_id"))
+    natural_level_id = (
+        None if natural_invalidation_level_id is None
+        else _require_nonempty_str(natural_invalidation_level_id, "natural_invalidation_level_id"))
 
     refs = {"capsule_semantic_id": capsule_semantic_id, "direction": direction}
 
     if atr14_ticks is None:
         return _abstain(
             ABSTAIN_NO_ATR, "no causal ATR at candidate-geometry evaluation time", refs,
-            entry_reference_ticks=entry)
+            entry_reference_ticks=entry, entry_reference_level_id=entry_level_id)
 
     atr = common.require_int(atr14_ticks, "atr14_ticks")
     buffer_ticks = common.evaluate_declared_rational(buffer_rule, atr)
@@ -256,12 +288,16 @@ def evaluate_candidate_geometry(
         return _abstain(
             ABSTAIN_INVALID_STOP_SIDE,
             "the buffered LONG stop landed at or above entry — directionally invalid geometry",
-            refs, entry_reference_ticks=entry, natural_invalidation_ticks=stop)
+            refs, entry_reference_ticks=entry, natural_invalidation_ticks=stop,
+            entry_reference_level_id=entry_level_id,
+            natural_invalidation_level_id=natural_level_id)
     if direction == common.SHORT and stop < entry:
         return _abstain(
             ABSTAIN_INVALID_STOP_SIDE,
             "the buffered SHORT stop landed at or below entry — directionally invalid geometry",
-            refs, entry_reference_ticks=entry, natural_invalidation_ticks=stop)
+            refs, entry_reference_ticks=entry, natural_invalidation_ticks=stop,
+            entry_reference_level_id=entry_level_id,
+            natural_invalidation_level_id=natural_level_id)
 
     risk_ticks = abs(entry - stop)
 
@@ -269,15 +305,19 @@ def evaluate_candidate_geometry(
         return _abstain(
             ABSTAIN_ZERO_RISK,
             "entry reference and the buffered natural-invalidation stop coincide", refs,
-            entry_reference_ticks=entry, natural_invalidation_ticks=stop, risk_ticks=risk_ticks)
+            entry_reference_ticks=entry, natural_invalidation_ticks=stop, risk_ticks=risk_ticks,
+            entry_reference_level_id=entry_level_id,
+            natural_invalidation_level_id=natural_level_id)
 
     winner = _select_target(direction, entry, available_targets, knowledge_time, selector_priority)
     if winner is None:
         return _abstain(
             ABSTAIN_NO_TARGET,
             "no causally available, strictly-positive-reward target survives selection", refs,
-            entry_reference_ticks=entry, natural_invalidation_ticks=stop, risk_ticks=risk_ticks)
-    target_type, target_ticks = winner
+            entry_reference_ticks=entry, natural_invalidation_ticks=stop, risk_ticks=risk_ticks,
+            entry_reference_level_id=entry_level_id,
+            natural_invalidation_level_id=natural_level_id)
+    target_type, target_ticks, target_root_id = winner
 
     reward_ticks = dir_sign * (target_ticks - entry)
     if reward_ticks <= 0:
@@ -287,7 +327,9 @@ def evaluate_candidate_geometry(
             ABSTAIN_NONPOSITIVE_REWARD, "the selected target's recomputed reward is not positive",
             refs, entry_reference_ticks=entry, natural_invalidation_ticks=stop,
             risk_ticks=risk_ticks, reward_ticks=reward_ticks,
-            selected_target_ticks=target_ticks, selected_target_type=target_type)
+            selected_target_ticks=target_ticks, selected_target_type=target_type,
+            selected_target_root_id=target_root_id, entry_reference_level_id=entry_level_id,
+            natural_invalidation_level_id=natural_level_id)
 
     floor_num, floor_den = _MIN_GEOMETRIC_RR_FRACTION
     if reward_ticks * floor_den < risk_ticks * floor_num:
@@ -297,11 +339,15 @@ def evaluate_candidate_geometry(
             "PAR-061 floor",
             refs, entry_reference_ticks=entry, natural_invalidation_ticks=stop,
             risk_ticks=risk_ticks, reward_ticks=reward_ticks,
-            selected_target_ticks=target_ticks, selected_target_type=target_type)
+            selected_target_ticks=target_ticks, selected_target_type=target_type,
+            selected_target_root_id=target_root_id, entry_reference_level_id=entry_level_id,
+            natural_invalidation_level_id=natural_level_id)
 
     return GeometryResult(
         admitted=True, risk_ticks=risk_ticks, reward_ticks=reward_ticks,
         rr_numerator=reward_ticks, rr_denominator=risk_ticks,
         entry_reference_ticks=entry, natural_invalidation_ticks=stop,
         selected_target_ticks=target_ticks, selected_target_type=target_type,
+        selected_target_root_id=target_root_id, entry_reference_level_id=entry_level_id,
+        natural_invalidation_level_id=natural_level_id,
         abstain_reason=None, abstain_detail=None)
