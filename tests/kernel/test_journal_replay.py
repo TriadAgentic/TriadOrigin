@@ -32,6 +32,33 @@ class CounterMachine:
         return TransitionResult(state=new, events=({"n": new["count"]},))
 
 
+class RevisionSupersedingMachine:
+    """Keeps the latest applied revision per event root; a HIGHER revision for a known root
+    supersedes it with exactly one additional transition (GV-022 boundary). A same-revision
+    retransmission is absorbed by the transport's ``(event_id, revision)`` dedup before this
+    machine is ever called, so it re-applies nothing — a stale/equal revision that did reach the
+    machine is a no-op. Revisions are compared as exact integers (no floating semantic compare).
+    """
+
+    def initial_state(self) -> dict:
+        return {"applied": 0, "roots": {}}
+
+    def transition(self, state, envelope, params, quality) -> TransitionResult:
+        if envelope.get("kind") != "UPSERT":
+            return TransitionResult(state=state)  # irrelevant kind
+        root = envelope.get("event_id")
+        revision = envelope.get("revision")
+        prior = state["roots"].get(root)
+        if prior is not None and revision <= prior:
+            return TransitionResult(state=state)  # stale/equal revision: no supersession
+        roots = {**state["roots"], root: revision}
+        new = {"applied": state["applied"] + 1, "roots": roots}
+        return TransitionResult(
+            state=new,
+            events=({"root": root, "revision": revision, "supersession": prior is not None},),
+        )
+
+
 def _inputs(n: int) -> list[dict]:
     return [{"event_id": f"e{i}", "kind": "TICK"} for i in range(n)]
 
@@ -246,6 +273,41 @@ def test_same_event_revision_with_different_bytes_fails_closed():
     ]
     with pytest.raises(J.JournalError, match="conflicting canonical bytes"):
         J.replay(CounterMachine(), conflicting, {})
+
+
+def test_gv022_higher_revision_supersession_appends_exactly_one():
+    """GV-022 (Idempotency / consumer apply; linked PAR-010; W00-W25).
+
+    Main clause: the same ``event_id`` AND ``revision`` delivered twice yields one state
+    transition/output while the duplicate metric increments. Boundary: the same root at a HIGHER
+    revision appends exactly one supersession. Asserted identically for ``transition.run`` and
+    ``journal.replay`` (live == replay). This pins the transport dedup keying on
+    ``(event_id, canonical(revision))`` — a dedup keyed on ``event_id`` alone would absorb the
+    higher revision as a duplicate and append no supersession, and would miscount duplicates.
+    """
+    rev1 = {"event_id": "e0", "revision": 1, "kind": "UPSERT"}
+    rev2 = {"event_id": "e0", "revision": 2, "kind": "UPSERT"}
+
+    # Main clause: (e0, rev1) delivered twice -> one applied transition, one duplicate.
+    live_main = T.run(RevisionSupersedingMachine(), [rev1, rev1], {})
+    j_main, ev_main = J.replay(RevisionSupersedingMachine(), [rev1, rev1], {})
+    assert live_main.final_state == j_main.project() == {"applied": 1, "roots": {"e0": 1}}
+    assert live_main.events == ev_main == [{"root": "e0", "revision": 1, "supersession": False}]
+    assert live_main.duplicate_count == j_main.duplicate_count == 1
+    assert len(j_main.records()) == 1
+
+    # Boundary: (e0, rev2) delivered twice supersedes the root exactly once; the second delivery
+    # of each revision is absorbed as a duplicate before the machine (both redeliveries counted).
+    full = [rev1, rev1, rev2, rev2]
+    live_full = T.run(RevisionSupersedingMachine(), full, {})
+    j_full, ev_full = J.replay(RevisionSupersedingMachine(), full, {})
+    assert live_full.final_state == j_full.project() == {"applied": 2, "roots": {"e0": 2}}
+    assert live_full.duplicate_count == j_full.duplicate_count == 2
+    # Exactly ONE appended supersession for the higher revision (two records total minus the one
+    # from the revision-1 phase), and it is the higher-revision supersession event.
+    assert len(j_full.records()) - len(j_main.records()) == 1
+    assert ev_full[-1] == {"root": "e0", "revision": 2, "supersession": True}
+    assert live_full.events == ev_full  # live == replay across the boundary
 
 
 def test_semantic_noop_is_not_journaled():

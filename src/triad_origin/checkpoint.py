@@ -179,7 +179,7 @@ def load(path: str | pathlib.Path) -> Checkpoint:
 
 
 def validate_for_restore(cp: Checkpoint) -> None:
-    """Fail closed unless ``cp`` is a complete, sealed v2 restart identity."""
+    """Fail closed unless ``cp`` is a complete, sealed v3 restart identity."""
     _validate_fields(cp, loading=True)
     if cp.identity_schema_version != CHECKPOINT_IDENTITY_VERSION:
         raise CheckpointError(
