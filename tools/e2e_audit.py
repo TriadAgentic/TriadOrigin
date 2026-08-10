@@ -1320,6 +1320,58 @@ def b00r_governance_evidence_walk() -> None:
     assert gov.ACTIVATION_RESULT == "DENIED_SAFE_HOLD"
 
 
+@stage("b01c_contract_binding_promotion",
+       "B01C offline-prep: schema-mutation corpus refuses every closure-required mutation; the "
+       "binding bundle authenticates + refuses six attacks; the acceptance profile is honest and "
+       "drift-locked; historical B receipts stay fail-closed negative fixtures")
+def b01c_contract_binding_promotion() -> None:
+    import json
+    from triad_origin import governance as gov
+    from triad_origin.canonical import canonical_json, sha256_hex
+
+    sys.path.insert(0, str(ROOT / "tools"))
+    import gen_acceptance_profile as gap
+    import run_contract_mutations as rcm
+    import verify_binding_bundle as vbb
+
+    # 1 · CON-03/06 — the authoritative validator refuses every closure-required mutation; the
+    #     CON-01/02 open-boundary surface is inventoried, never silently closed.
+    report = rcm.run_profile("B01C")
+    assert report["totals"]["closure_required_wrongly_passed"] == 0, report["wrongly_passed"]
+    assert report["totals"]["closure_required_refused"] > 1000
+    assert len(report["corpus_digest"]) == 64
+    assert report["totals"]["open_boundaries"] == len(report["open_boundary_inventory"])
+    _run_tool("run_contract_mutations.py", "--profile", "B01C", "--require-all-refused")
+
+    # 2 · BIND-01/03/06 — a real capability authenticates and all six authenticity attacks are
+    #     refused; the packaged bundle inventories to 105 rows; no owner preimage => UNAVAILABLE.
+    st = vbb.selftest()
+    assert st["authenticated_ok"] and st["all_attacks_refused"], st["attacks"]
+    assert st["row_count"] == 105
+    _run_tool("verify_binding_bundle.py", "--selftest")
+
+    # 3 · WP-B01C-06 — the acceptance profile is content-addressed, honest, and drift-locked.
+    profile = gap.build_profile()
+    unsigned = {k: v for k, v in profile.items() if k != "profile_digest"}
+    assert profile["profile_digest"] == sha256_hex(canonical_json(unsigned))
+    assert profile["closure_claimed"] is False
+    assert profile["milestone_status"] == "OFFLINE_PREP_UNRECEIPTED"
+    assert profile["levers"] == gov.SAFETY_POSTURE
+    assert profile["activation_result"] == gov.ACTIVATION_RESULT
+    _run_tool("gen_acceptance_profile.py", "--check")
+
+    # 4 · EVD-01 — the historical B receipts stay byte-frozen negative fixtures (never a v3 PASS).
+    inv = json.loads(
+        (ROOT / "docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json").read_text())
+    by_ms = {e["milestone"]: e for e in inv["entries"]}
+    for milestone in ("B01", "B01R", "B02"):
+        entry = by_ms[milestone]
+        raw = (ROOT / entry["path"]).read_bytes()
+        assert sha256_hex(raw) == entry["sha256"], milestone
+        result, _reason = gov.validate_receipt_v3(json.loads(raw), milestone=milestone)
+        assert result == "FAIL", (milestone, result)
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")
