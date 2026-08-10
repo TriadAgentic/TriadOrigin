@@ -258,6 +258,22 @@ def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+_SHA256_HEX_CHARS = frozenset("0123456789abcdef")
+
+
+def is_sha256_hex(value: object) -> bool:
+    """True iff ``value`` is EXACTLY 64 lowercase hex characters (B01C-CON-05 digest grammar).
+
+    Shape/length alone is not a digest: an uppercase, non-hex, short, or padded 64-char string is
+    refused. Callers reject an all-zero placeholder separately where a real digest is required.
+    """
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and _SHA256_HEX_CHARS.issuperset(value)
+    )
+
+
 def canonical_digest(identity_schema_version: str, payload: Any) -> str:
     """Digest of an identity-schema version plus canonical payload bytes (Doc 03 §03.4)."""
     return digest_fields("identity_schema", identity_schema_version, canonical_json(payload))

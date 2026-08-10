@@ -12,7 +12,7 @@ from __future__ import annotations
 import pathlib
 from dataclasses import asdict, dataclass, field
 
-from .canonical import CanonicalError, canonical_json, loads_canonical, sha256_hex
+from .canonical import CanonicalError, canonical_json, is_sha256_hex, loads_canonical, sha256_hex
 
 
 class CheckpointError(RuntimeError):
@@ -269,8 +269,5 @@ def _validate_fields(cp: Checkpoint, *, loading: bool) -> None:
 
 
 def _is_sha256(value: object) -> bool:
-    return (
-        isinstance(value, str)
-        and len(value) == 64
-        and all(ch in "0123456789abcdef" for ch in value)
-    )
+    # B01C-CON-05: single strict lowercase-hex grammar, shared estate-wide via canonical.
+    return is_sha256_hex(value)

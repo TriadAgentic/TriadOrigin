@@ -21,7 +21,7 @@ import pathlib
 import re
 from typing import Any
 
-from .canonical import CanonicalError, canonical_json, str_to_tick
+from .canonical import CanonicalError, canonical_json, is_sha256_hex, str_to_tick
 from .control import lever_law
 
 _PACKAGE_CONTRACTS_DIR = pathlib.Path(__file__).resolve().parent / "_contracts"
@@ -341,8 +341,9 @@ def _semantic_gate_receipt_v2(event: dict) -> None:
     if not isinstance(observed, int) or not isinstance(expires, int) or expires <= observed:
         raise ContractError("GATE_PASS_INVALID_VALIDITY_WINDOW")
     digests = payload.get("producer_digests")
+    # B01C-CON-05: exact lowercase-hex grammar, not shape/length — and never an all-zero placeholder.
     if not isinstance(digests, dict) or not digests or any(
-            not isinstance(v, str) or len(v) != 64 or v == "0" * 64
+            not is_sha256_hex(v) or v == "0" * 64
             for v in digests.values()):
         raise ContractError("GATE_PASS_MISSING_OR_PLACEHOLDER_DIGESTS")
     if payload.get("approver") == event.get("producer_service"):

@@ -14,7 +14,7 @@ from __future__ import annotations
 from enum import Enum
 
 from . import ALLOW_MONEY_PUBLISH, SERVICE_ID, contracts
-from .canonical import canonical_json, loads_canonical
+from .canonical import canonical_json, is_sha256_hex, loads_canonical
 
 
 class Readiness(str, Enum):
@@ -108,8 +108,11 @@ def build_engine_attestation(
         "instrument_map_digest": instrument_map_digest,
         "universe_digest": universe_digest,
     }
-    if any(value == "0" * 64 for value in digests.values()):
-        raise contracts.ContractError("attestation payload refuses all-zero identity digests")
+    # B01C-CON-05: each identity digest must be exact lowercase-hex sha256, never a shape-only or
+    # all-zero placeholder (the schema pattern is authoritative; this is the builder-side guard).
+    if any(not is_sha256_hex(value) or value == "0" * 64 for value in digests.values()):
+        raise contracts.ContractError(
+            "attestation payload identity digests must be lowercase sha256 hex (not placeholder)")
     identities = {
         "build_commit": build_commit,
         "parameter_set_id": parameter_set_id,
