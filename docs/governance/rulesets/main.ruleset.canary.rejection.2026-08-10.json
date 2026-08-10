@@ -1,0 +1,29 @@
+{
+  "canary": "NEGATIVE_DIRECT_PUSH_MAIN",
+  "purpose": "Issue #5 closure evidence: prove the live main-branch ruleset enforces PR+status-check controls even against a repository administrator, and that no bypass actor exists.",
+  "attempted_at_utc": "2026-08-10T13:48:00Z",
+  "actor": "josephvoxone (repository admin, PR author identity)",
+  "method": "git push origin canary-direct-push-test:refs/heads/main (empty noncompliant commit, no PR, no status checks)",
+  "ruleset_under_test": {
+    "id": 20641102,
+    "name": "main-branch-protection",
+    "target": "branch",
+    "enforcement": "active",
+    "bypass_actors": []
+  },
+  "result": "REJECTED_BY_PROVIDER",
+  "provider_transcript": [
+    "remote: error: GH013: Repository rule violations found for refs/heads/main.",
+    "remote: Review all repository rules at https://github.com/TriadAgentic/TriadOrigin/rules?ref=refs%2Fheads%2Fmain",
+    "remote: ",
+    "remote: - Changes must be made through a pull request.",
+    "remote: ",
+    "remote: - Required status check \"CI / test-and-verify\" is expected.",
+    "remote: ",
+    "To https://github.com/TriadAgentic/TriadOrigin.git",
+    " ! [remote rejected] canary-direct-push-test -> main (push declined due to repository rule violations)",
+    "error: failed to push some refs to 'https://github.com/TriadAgentic/TriadOrigin.git'"
+  ],
+  "main_after_attempt": "76b5e4857f80f22f99385810037c5c66289ebd5f (unchanged)",
+  "note": "The canary branch was local-only and never reached any protected ref. The prior declarative stub is preserved as main.ruleset.provider.declarative.2026-08-10.raw.json; the B00R receipt itself remains sealed at anchor B00R_RECEIPT_ANCHOR against its pre-merge governance capture."
+}
