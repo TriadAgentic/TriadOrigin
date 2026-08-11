@@ -56,6 +56,21 @@
         "main_sha": {"$ref": "#/$defs/shaOrAbsent"},
         "source_pr": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
         "source_head_sha": {"$ref": "#/$defs/shaOrAbsent"},
+        "source_tree_sha": {"$ref": "#/$defs/shaOrAbsent"},
+        "source_path_count": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "source_pr_state": {"type": "string", "minLength": 1},
+        "source_pr_draft": {"oneOf": [{"type": "boolean"}, {"type": "null"}]},
+        "source_pr_body_updated": {"oneOf": [{"type": "boolean"}, {"type": "null"}]},
+        "source_review_count": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "source_review_thread_count": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "source_requested_reviewer_count": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "source_ci_run_id": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "source_ci_run_number": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "source_ci_job_id": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "source_ci_status": {"type": "string", "minLength": 1},
+        "source_ci_log_sha256": {"$ref": "#/$defs/digestOrNotCaptured"},
+        "source_ci_log_character_count": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "source_ci_log_utf8_byte_count": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
         "prior_source_head_sha": {"$ref": "#/$defs/shaOrAbsent"},
         "source_head_validation": {"type": "string", "minLength": 1},
         "coordination_parent_sha": {"$ref": "#/$defs/shaOrAbsent"},
@@ -76,7 +91,7 @@
           "subject_sha": {"$ref": "#/$defs/sha"},
           "command": {"type": "string", "minLength": 1},
           "environment": {"type": "string", "minLength": 1},
-          "result": {"enum": ["PASS", "FAIL", "BLOCKED", "UNAVAILABLE", "NOT_RUN"]},
+          "result": {"enum": ["PASS", "FAIL", "IN_PROGRESS", "BLOCKED", "UNAVAILABLE", "NOT_RUN"]},
           "actual": {"type": "string", "minLength": 1},
           "evidence_sha256": {"$ref": "#/$defs/digestOrNotCaptured"}
         }
@@ -98,6 +113,7 @@
       }
     },
     "blockers": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "open_blocker_count": {"type": "integer", "minimum": 0},
     "closed_claims": {"type": "array", "maxItems": 0},
     "next_gate": {"type": "string", "minLength": 1},
     "documents": {

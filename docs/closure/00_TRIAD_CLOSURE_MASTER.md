@@ -4,7 +4,7 @@
 **Program:** `TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11`  
 **Prepared:** 2026-08-11  
 **Execution authorized:** 2026-08-11 by owner confirmation of D-01 through D-09  
-**Current phase:** `C0_SEMANTIC_FALSE_GREEN_REVIEW + B00R_G2_RECONCILIATION`
+**Current phase:** `C0_SOURCE_ENGINEERING_GREEN_PROVIDER_BLOCKED + B00R_G2_SOURCE_TRAIN`
 **Permitted closure result:** `PASS_REPOSITORY_SAFE_HOLD`  
 **Activation posture:** `venue_environment=OFF`, `venue_activation=OFF`, `paper_activation=OFF`, `shadow_activation=LIVE`
 
@@ -73,9 +73,11 @@ A later observation may prove implementation drift. It cannot silently change au
 | `main` | `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd` | Reserved reviewed CODEOWNERS bootstrap base. Do not move it before the G2 source merge. |
 | `b00r-ruleset-canary` | `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd` | Correct before-state only; enforcement and rejected push are not proved. |
 | PR #34 prior diagnostic baseline | Draft; base `ba495ba…`; head `77a1ff3c7d31ba8b817be750976291c690c87b23`; 54 files; 9 commits; zero reviews | Exact baseline used for the recorded failure-first diagnostic only. |
-| PR #34 current provider head | `d2711b4c775864e43dd11ef8927a7a03355c638c`; 64 files; 10 commits; provider update observed `2026-08-11T13:13:41Z` | **Concurrent remote mutation hazard.** Its intermediate engineering checks ran, but its contents have not been semantically reconciled or accepted as final C0. Rebase/reconciliation is required before any source-head claim. |
+| PR #34 prior intermediate head | `d2711b4c775864e43dd11ef8927a7a03355c638c`; 64 files; 10 commits; provider update observed `2026-08-11T13:13:41Z` | Superseded by the forward corrective publication. Its intermediate checks remain diagnostic only. |
+| PR #34 published source head | Open draft; commit `76eb4db7f80580d5f451966d359e56ac3baa9179`; tree `7ab809a3c93ac07995168b7da9e935d3717ba5e7`; base `ba495ba…`; 66 classified SOURCE paths | Forward reconciliation published and PR body updated. Provider recheck shows zero submitted reviews, zero review threads, and zero requested reviewers. Exact-head GitHub review is absent. No closure. |
 | PR #34 CI | Run `31484607824` failed after deterministic engineering | 2,000 tests per seed and 24/24 E2E passed; authority/provider controls failed closed. |
 | PR #34 current intermediate CI | Run `31495102659` (#153) completed `FAILURE` on `d2711b4…` | Steps 1–20 and 23–24 passed, including 2,030 tests at seed 0 and 2,030 at seed 1, inventory, hashes/history/contracts, reproducible artifacts and installed wheel, DARK/forbidden-capability, E2E 24/24, 1,250 ledger/DAG, and CODEOWNERS. Step 25 failed `UNAVAILABLE_AUTHORITY_ROOT` because the protected pins remain absent; step 26 failed `UNAVAILABLE: SNAPSHOT_UNAUTHENTICATED` because owner/provider evidence remains absent. Engineering-green/provider-blocked is not final C0 validation. |
+| PR #34 exact-head CI | Run `31501456871` (#154), job `93812221250`, on `76eb4db…` | `COMPLETED / FAILURE`. Steps 1–20 and 23–24 succeeded. Step 25 failed on the absent authority-bundle pin; step 26 failed because the ruleset snapshot is unauthenticated. Receipt-only steps 21–22 and downstream steps 27–30 skipped. Outcome: `ENGINEERING_GREEN / C0_AND_B00R_BLOCKED`. |
 | PR #35 | Merged as `ba495ba…`; approved by `djordi10`; exact-head CI passed | Valid bootstrap prerequisite. Its review does not review PR #34. |
 | G2 receipt PR | Absent | Blocking. |
 | `B00R_RECEIPT_ANCHOR_G2` | Absent | Blocking. |
@@ -122,6 +124,39 @@ and documents `PIP_CONSTRAINT="$PWD/constraints/ci.txt"`. Focused checks passed 
 worktree, but the current remote head is not validated and no exact-head PASS is claimed. This
 defect is unrelated to formula correctness and does not explain the provider authority failures.
 
+### 4.4 Published source validation checkpoint
+
+The exact published source head is `76eb4db7f80580d5f451966d359e56ac3baa9179` with tree
+`7ab809a3c93ac07995168b7da9e935d3717ba5e7`. The forward diff classifies as SOURCE with 66 paths.
+The PR body now describes the corrected scope and blockers. Local validation on the matching final
+tree recorded:
+
+| Check | Result |
+|---|---|
+| Dual full pytest | 2,043 passed at `PYTHONHASHSEED=0`; 2,043 passed at seed 1. |
+| Collected-test identity | Seed inventories equal; canonical stream SHA-256 `cad0c3ce11db29fabbdb9b698f30a0d3bdd9e84a84fa20495bf6a077825d7f67`. |
+| Source pins | 67 pins verified; 50 required control/source artifacts present. |
+| Historical receipts | 11 immutable objects verified. |
+| Contract artifacts | 148 verified. |
+| Reproducible package | sdist `1af431060cc3a034ddd4168da0120f75c811ba9a86b4438f40d028284fa6feb8`; wheel `5f42caced44929c2a9b56fbe079ff9983acab7978f3d779dd3b9838950b2316d`. |
+| DARK / forbidden capability | PASS. |
+| End-to-end audit | 24/24 stages passed. |
+| Build ledger and DAG | 1,250 tasks, 1,250 review rows, 2,383 hard edges, acyclic. |
+| Independent semantic review | PASS for the published C0/B00R source-control semantics; this is not a submitted GitHub exact-head approval and cannot authenticate owner/provider evidence. |
+
+Run #154 confirmed the matching exact head: 2,043 tests passed at seed 0 in 202.08 seconds and 2,043
+at seed 1 in 197.70 seconds; steps 1–20, deterministic engineering step 23, and live CODEOWNERS step
+24 all succeeded. CODEOWNERS verified 17 critical patterns and `@djordi10` admin. The decoded UTF-8
+job log contains 347,194 characters / 347,206 bytes and has SHA-256
+`1ad0488e1ba7b20861762e5e08ef93c628623b269125ad9a34bc57afd261238a`.
+
+The run still failed closed. Step 25 emitted exactly
+`UNAVAILABLE_AUTHORITY_ROOT: authority_bundle:EXTERNAL_PIN_ABSENT:AUTHORITY_BUNDLE_G2_DECISION_SHA256`.
+Step 26 emitted exactly `UNAVAILABLE: SNAPSHOT_UNAUTHENTICATED (owner/provider evidence absent) (main.ruleset.provider.json)`. Receipt-only steps 21–22 and downstream steps 27–30 skipped. The
+generated status remains safe-hold with 103 open blockers and zero closed claims. Provider ruleset
+truth is `NOT_ATTESTED`, protected pins and exact-head GitHub approval are absent, and no closure is
+earned by the engineering-green result.
+
 ## 5. C0 controlling reconciliation
 
 The earlier closure audit instructed the team to repair capability and formulas before freezing PR
@@ -148,18 +183,19 @@ control, adapters, venues, deploy/ops, mutable closure-plan paths, and `evidence
 
 ### 5.1 C0 false-green review disposition
 
-The first C0 draft passed structural tests but could still project a false closure. All six review
-gaps remain `FIX_IN_PROGRESS` until the corrected bytes are published, tested on one exact head,
-and independently reviewed:
+The first C0 draft passed structural tests but could still project a false closure. Corrective bytes
+for all six gaps are now published at `76eb4db…`, and an independent semantic review passed. The
+findings remain gate-open until exact-head CI finishes, a qualified GitHub reviewer approves that
+same head, and owner authentication is present:
 
 | Finding | Severity | Required surgical correction |
 |---|---:|---|
-| `C0_LEGACY_CROSSWALK_INCOMPLETE` | P0 | Make the legacy disposition set total and explicit, including historical receipt/hash bindings and deferred expansion. The local correction is unpublished. |
-| `C0_TASK_BINDING_AND_B10_REGISTRY_ABSENT` | P0 | Bind all 1,250 ledger task IDs one-to-one to a canonical lane/profile and require nonzero B10 tasks, criteria, and verification rows. |
-| `C0_XC01_PREREQUISITE_LANE_ABSENT` | P0 | Insert `ESTATE_CROSS_REPO::XC01` between B07 and B08 with its own scope digest, profile, receipts, tests, and status. |
-| `C0_STATUS_PROJECTION_FALSE_GREEN` | P0 | Replace editable snapshot truth with append-only status events and a deterministic generated view that cannot claim PASS/CLOSED while a required event, receipt, anchor, review, or P0/P1 disposition is absent. |
-| `C0_PROFILE_MATRIX_CROSSCHECK_ABSENT` | P1 | Enforce bidirectional equality between each acceptance profile and its T0–T12 matrix row. The local correction is unpublished. |
-| `C0_REVIEWER_IDENTITY_INDEPENDENCE_UNBOUND` | P1 | Bind reviewer principal, role, provider identity, exact head, and controlling-entity disjointness; names or distinct strings alone do not prove independence. |
+| `C0_LEGACY_CROSSWALK_INCOMPLETE` | P0 | Total historical/current/future disposition and hash binding published; exact-head provider gates remain. |
+| `C0_TASK_BINDING_AND_B10_REGISTRY_ABSENT` | P0 | Total 1,250-row binding plus nonzero per-task B10 task/criterion/verification law published; exact-head provider gates remain. |
+| `C0_XC01_PREREQUISITE_LANE_ABSENT` | P0 | Canonical `ESTATE_CROSS_REPO::XC01` registry/profile/status lane published between B07 and B08; owner-repository receipts remain future blockers. |
+| `C0_STATUS_PROJECTION_FALSE_GREEN` | P0 | Append-only events and deterministic status projection published with 103 blockers and zero closure claims; exact-head provider gates remain. |
+| `C0_PROFILE_MATRIX_CROSSCHECK_ABSENT` | P1 | Bidirectional profile/T0–T12 equality published and semantically reviewed; exact-head provider gates remain. |
+| `C0_REVIEWER_IDENTITY_INDEPENDENCE_UNBOUND` | P1 | Principal/role/head/disjoint-control validation published; no qualified GitHub approval has yet satisfied it. |
 
 Task-binding and status law is exact. A sidecar must contain exactly one row for every one of the
 1,250 canonical ledger task IDs and no orphan, duplicate, or missing row. Each legacy row binds the
@@ -191,7 +227,7 @@ are descriptive. One unresolved P0/P1 controls the verdict.
 
 | Milestone | Current state | Immediate blocking result |
 |---|---|---|
-| C0 | `IN_PROGRESS_BLOCKED` | Six semantic false-green gaps are under correction; corrected bytes are not published or exact-head reviewed; owner decision is not cryptographically authenticated. No closure. |
+| C0 | `SOURCE_ENGINEERING_GREEN_PROVIDER_BLOCKED` | Corrective source, exact-head engineering, and independent semantic review passed; authority/provider CI failed closed, exact-head GitHub approval and cryptographic owner authentication are absent, and 103 blockers remain. No closure. |
 | B00R G2 | `BASELINED_FAIL` | Authority pins, real ruleset capture, negative canary, review, source merge, receipt, tag rule, anchor, terminal gate. |
 | B01C | `BLOCKED_PREDECESSOR` | G2 anchor plus RC5, contract/binding/capability correction. |
 | B02C–B04C | `BLOCKED_PREDECESSOR` | Correct ancestry, signed bindings, formula fixes and goldens. |
@@ -228,10 +264,10 @@ remain:
 The mutable plan never enters a receipt PR. Immutable C0 machine controls may enter PR #34 before
 its final freeze, which necessarily produces a new head and requires fresh exact-head CI/review.
 
-The observed move from `77a1ff3…` to unvalidated `d2711b4…` demonstrates why every checkpoint must
-re-query provider state. The latter contains intermediate false-green C0 bytes and two unwanted
-mutable closure-plan files under `docs/plan/closure/`; it is not final and must be reconciled without
-promoting either file into the B00R SOURCE allowlist.
+The observed move from `77a1ff3…` to intermediate `d2711b4…` demonstrated why every checkpoint must
+re-query provider state. Forward reconciliation published exact source head `76eb4db…` and tree
+`7ab809a…`, excluded the unwanted mutable closure-plan files, and preserved the positive B00R
+SOURCE law. Any further head movement invalidates CI/review and requires a new checkpoint.
 
 After each state transition or closure:
 
@@ -263,18 +299,15 @@ Stop the affected milestone on:
 
 ## 11. Next exact actions
 
-1. Reconcile the unexpected PR #34 move to `d2711b4…`; inspect its exact tree, remove the two
-   mutable `docs/plan/closure/` files, and do not reuse prior test results for that head.
-2. Finish all six C0 semantic false-green corrections, including the XC01 lane, task sidecar,
-   append-only status projection, profile/matrix crosscheck, and reviewer-disjointness validator.
-3. Verify the positive B00R SOURCE allowlist and the relative-constraint wheel regression.
-4. Freeze one new source head and rerun Python 3.11 dual-seed plus the complete deterministic chain.
-5. Obtain exact-head independent review of the corrected C0/B00R bytes; C0 remains blocked pending
-   real cryptographic owner authentication/pin.
-6. Materialize and owner-sign the three `002` decisions and G2 trust registry; externally pin all four.
-7. Install/capture/pin the real main+canary, empty-exclusion, no-bypass, merge-only ruleset.
-8. Execute the dedicated rejected canary and preserve provider rule-suite evidence.
-9. Only then freeze and merge the reviewed PR #34 source head and build the separate hermetic
-   evidence-only receipt train.
+1. Keep exact source head `76eb4db…` unchanged; run #154 already proves deterministic engineering
+   green and the authority/provider gates failed closed as designed.
+2. Obtain a qualified independent GitHub approval of exact head `76eb4db…`; the separate semantic
+   audit does not substitute for provider review.
+3. Materialize and owner-sign the three `002` decisions and G2 trust registry; externally pin all four.
+4. Install/capture/pin the real main+canary, empty-exclusion, no-bypass, merge-only ruleset.
+5. Execute the dedicated rejected canary and preserve provider rule-suite evidence.
+6. Rerun the exact-head external gates after real authority/provider inputs exist.
+7. Only after exact-head CI/review and authority/provider prerequisites pass may the source merge and
+   separate hermetic evidence-only receipt train proceed.
 
 No source or receipt closure is claimed by this document.
