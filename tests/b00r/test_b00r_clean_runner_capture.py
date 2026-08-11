@@ -409,6 +409,7 @@ def test_complete_canonical_collector_ids_pass_shared_secret_scanner():
         "tools/validate_b00r_tag_ruleset.py",
         "tools/validate_b_receipt.py",
         "tools/validate_governance_snapshot.py",
+        "tools/verify_b01c_entry.py",
         "tools/verify_codeowners.py",
     ],
 )

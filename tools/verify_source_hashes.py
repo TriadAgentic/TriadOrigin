@@ -61,6 +61,7 @@ REQUIRED_MEMBERSHIP = [
     "tools/validate_b00r_tag_ruleset.py",
     "tools/validate_combined_dag.py",
     "tools/validate_contract_manifest.py",
+    "tools/verify_b01c_entry.py",
     "tools/verify_manifest.py",
     "tools/verify_no_forbidden_capabilities.py",
     "tools/verify_reproducible_build.py",

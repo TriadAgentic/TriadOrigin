@@ -36,6 +36,25 @@ branch is authoritative: `b00r_receipt_anchor_id`, receipt merge commit/tree/tim
 trust-registry digests, ruleset id/digest/effective time + no-bypass proof, and the historical
 invalidation-manifest digest (`docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json`).
 
+The executable entry authorization is `tools/verify_b01c_entry.py`. Run it only from a clean,
+detached checkout of the exact generation-2 receipt merge:
+
+```bash
+python tools/verify_b01c_entry.py \
+  --expected-head "$RECEIPT_MERGE" \
+  --receipt-pr "$RECEIPT_PR" \
+  --now-us "$NOW_US" \
+  --pins "$PINS_JSON" \
+  --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" \
+  --anchor-ruleset-pin "$B00R_G2_TAG_RULESET_SHA256"
+```
+
+It derives the source merge from the canonical G2 receipt, reruns the complete terminal
+`b00r_gate.py --mode receipt`, requires the literal
+`B00R result: PASS_REPOSITORY_SAFE_HOLD`, and rechecks the exact clean HEAD afterward. Only
+`PASS_B01C_ENTRY_BASE:<RECEIPT_MERGE>` authorizes creating a B01C branch from that SHA. The tool does
+not create a branch and does not alter the OFF/OFF/OFF/LIVE safe-hold posture.
+
 ---
 
 ## 2. Historical B01/B01R disposition (additive, never edited)
@@ -117,7 +136,13 @@ capability; all fail closed.
 
 - `tools/verify_binding_bundle.py --bundle <packaged-bundle> --authority <pinned-authority-preimage>`
 - `tools/run_contract_mutations.py --profile B01C --require-all-refused`
-- `tools/validate_b_receipt.py --receipt evidence/receipts/B01C.json --require-provider-evidence`
+- Run the unchanged receipt-v3 validator with the canonical positional receipt path:
+
+  ```bash
+  tools/validate_b_receipt.py --strict --milestone B01C \
+    <required authority/provider flags> \
+    evidence/receipts/B01C.receipt.v3.json
+  ```
   (consumer of the **unchanged** B00R receipt-v3 profile — no in-place edit)
 
 ## 5. Falsification families (staged, from the pack §7)
