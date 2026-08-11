@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import pathlib
 import py_compile
+import stat
 import subprocess
 import sys
 
@@ -609,7 +610,15 @@ def test_strict_git_object_check_rejects_tampered_loose_commit(tmp_path):
     loose = repo / ".git/objects" / source[:2] / source[2:]
     corrupted = bytearray(loose.read_bytes())
     corrupted[-1] ^= 1
-    loose.write_bytes(corrupted)
+    # Git may create loose objects without owner-write permission.  This disposable attack
+    # fixture must make its target writable explicitly before corrupting it; the production
+    # verifier still receives the same malformed object bytes.
+    original_mode = stat.S_IMODE(loose.stat().st_mode)
+    loose.chmod(original_mode | stat.S_IWUSR)
+    try:
+        loose.write_bytes(corrupted)
+    finally:
+        loose.chmod(original_mode)
     with pytest.raises(capture.CleanRunnerCaptureError, match="GIT_COMMAND_FAILED:fsck"):
         capture._assert_git_objects_intact(repo)
 
