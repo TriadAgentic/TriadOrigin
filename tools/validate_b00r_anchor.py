@@ -14,6 +14,7 @@ exists, but ``b00r_gate --mode receipt`` cannot return ``PASS_REPOSITORY_SAFE_HO
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import hashlib
 import json
 import os
@@ -25,11 +26,11 @@ import sys
 try:  # importable both as `python tools/...` and as `from tools import ...`
     from tools.github_ruleset_live import (  # type: ignore
         LiveRulesetError, LiveRulesetUnavailable, fetch_anchor_tag_object_sha,
-        fetch_and_match_live_ruleset)
+        fetch_and_match_live_ruleset, fetch_and_verify_receipt_merge)
 except ModuleNotFoundError:  # pragma: no cover - direct script fallback
     from github_ruleset_live import (  # type: ignore
         LiveRulesetError, LiveRulesetUnavailable, fetch_anchor_tag_object_sha,
-        fetch_and_match_live_ruleset)
+        fetch_and_match_live_ruleset, fetch_and_verify_receipt_merge)
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TAG_NAME = "B00R_RECEIPT_ANCHOR_G2"
@@ -187,6 +188,18 @@ def _validate_ruleset(doc: dict) -> None:
         raise AnchorError(f"FAIL: TAG_RULESET_IMMUTABILITY_RULE_MISSING: {sorted(missing)}")
 
 
+def _ruleset_time_us(value: object, field: str) -> int:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise AnchorError(f"FAIL: TAG_RULESET_TIMESTAMP_INVALID:{field}")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+        if parsed.tzinfo is None:
+            raise ValueError("timezone absent")
+        return int(parsed.timestamp() * 1_000_000)
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise AnchorError(f"FAIL: TAG_RULESET_TIMESTAMP_INVALID:{field}") from exc
+
+
 def _canonical_file(
     root: pathlib.Path,
     path: pathlib.Path,
@@ -236,6 +249,20 @@ def _verify_static_bundle(
     committed_receipt = _git(root, "show", f"{expected_head}:{receipt_rel}")
     if committed_receipt != receipt_data:
         raise AnchorError("FAIL: RECEIPT_WORKTREE_DIFFERS_FROM_EXPECTED_HEAD")
+    try:
+        receipt_document = _loads_unique_object(receipt_data)
+        source_merge_sha = receipt_document["payload"]["source_merge_sha"]
+    except (KeyError, TypeError) as exc:
+        raise AnchorError("FAIL: RECEIPT_SOURCE_MERGE_IDENTITY_MALFORMED") from exc
+    if not isinstance(source_merge_sha, str) or HEX40_RE.fullmatch(source_merge_sha) is None:
+        raise AnchorError("FAIL: RECEIPT_SOURCE_MERGE_IDENTITY_MALFORMED")
+    parent_row = _git(root, "rev-list", "--parents", "-n", "1", expected_head).decode().split()
+    if (len(parent_row) != 3 or parent_row[0] != expected_head
+            or parent_row[1] != source_merge_sha):
+        raise AnchorError("FAIL: RECEIPT_MERGE_NOT_EXACT_TWO_PARENT_SOURCE_MERGE")
+    if _git(root, "rev-parse", f"{expected_head}^{{tree}}").strip() != _git(
+            root, "rev-parse", f"{parent_row[2]}^{{tree}}").strip():
+        raise AnchorError("FAIL: RECEIPT_MERGE_TREE_DIFFERS_FROM_PR_HEAD")
 
     ref = f"refs/tags/{TAG_NAME}"
     tag_object_sha = _git(
@@ -305,6 +332,7 @@ def verify(
     ruleset_pin: str | None,
     now_us: int,
     github_token: str | None,
+    receipt_pr: int,
 ) -> str:
     """Run the complete terminal anchor gate, including a fresh authenticated provider GET."""
     if not isinstance(now_us, int) or isinstance(now_us, bool) or now_us <= 0:
@@ -316,6 +344,28 @@ def verify(
         ruleset_path=ruleset_path,
         ruleset_pin=ruleset_pin,
     )
+    receipt_proof = fetch_and_verify_receipt_merge(
+        receipt_pr,
+        expected_merge_sha=expected_head,
+        expected_codeowner="djordi10",
+        token=github_token,
+        now_us=now_us,
+    )
+    parent_row = _git(root, "rev-list", "--parents", "-n", "1", expected_head).decode().split()
+    if (len(parent_row) != 3 or parent_row[0] != expected_head
+            or parent_row[2] != receipt_proof.head_sha):
+        raise AnchorError("FAIL: RECEIPT_MERGE_NOT_EXACT_TWO_PARENT_PR_MERGE")
+    # Static verification already proved the first parent is the receipt-declared source merge.
+    receipt_git_time_us = int(
+        _git(root, "show", "-s", "--format=%ct", expected_head).decode().strip()
+    ) * 1_000_000
+    if receipt_proof.merged_at_us != receipt_git_time_us:
+        raise AnchorError("FAIL: RECEIPT_PR_PROVIDER_GIT_TIME_MISMATCH")
+    ruleset_document = _loads_unique_object(ruleset_bytes)
+    created_at_us = _ruleset_time_us(ruleset_document.get("created_at"), "created_at")
+    updated_at_us = _ruleset_time_us(ruleset_document.get("updated_at"), "updated_at")
+    if not created_at_us <= updated_at_us < receipt_proof.merged_at_us:
+        raise AnchorError("FAIL: TAG_RULESET_NOT_EFFECTIVE_BEFORE_RECEIPT_MERGE")
     fetch_and_match_live_ruleset(
         ruleset_bytes, token=github_token, now_us=now_us,
         require_bypass_visibility=True)
@@ -334,6 +384,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--receipt", default=RECEIPT_PATH)
     parser.add_argument("--ruleset", default=DEFAULT_RULESET)
     parser.add_argument("--ruleset-pin")
+    parser.add_argument("--receipt-pr", required=True, type=int)
     args = parser.parse_args(argv)
     root = pathlib.Path(args.root)
     receipt = pathlib.Path(args.receipt)
@@ -352,6 +403,7 @@ def main(argv: list[str]) -> int:
             ruleset_pin=pin,
             now_us=args.now_us,
             github_token=os.environ.get("GITHUB_TOKEN"),
+            receipt_pr=args.receipt_pr,
         )
     except LiveRulesetUnavailable as exc:
         print(f"BLOCKED: LIVE_TAG_PROVIDER_UNAVAILABLE:{exc}")

@@ -49,8 +49,9 @@ That proves a provider control existed after generation 1; it cannot repair eith
 Its captured rule also is not the generation-2 canonical rule as written: it targets only
 `refs/heads/main` and permits `merge`, `squash`, and `rebase`. Generation 2 requires the exact main
 plus dedicated-canary target set and `allowed_merge_methods=["merge"]`. Treat PR #33 as a historical
-input to the correction, not as the corrective source or receipt PR. Issue #5 being closed does not
-override these facts.
+input to the correction, not as the corrective source or receipt PR. Issue #5 is open/reopened and
+must remain open until the generation-2 terminal gate passes; issue state cannot override these
+facts.
 
 ## 2. Generation-2 canonical identities
 
@@ -59,7 +60,7 @@ override these facts.
 | Policy | `docs/control/b00r_policy.v2.json` |
 | Generation ledger | `docs/governance/B00R_GENERATION_LEDGER.v1.json` |
 | Audited start | `76b5e4857f80f22f99385810037c5c66289ebd5f` |
-| Authority decision | `docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.json` |
+| Generation-2 authority decision | `docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json` |
 | Generation-2 receipt profile | `docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json` |
 | Generation-2 repair decision | `docs/governance/decisions/DEC-B00-REPAIR-002.json` |
 | G2 trust registry | `docs/governance/trust/receipt_trust_registry.g2.v1.json` |
@@ -73,7 +74,7 @@ override these facts.
 The required protected external pins are:
 
 ```text
-AUTHORITY_BUNDLE_DECISION_SHA256
+AUTHORITY_BUNDLE_G2_DECISION_SHA256
 RECEIPT_PROFILE_G2_DECISION_SHA256
 B00R_G2_REPAIR_DECISION_SHA256
 RECEIPT_G2_TRUST_REGISTRY_SHA256
@@ -90,7 +91,7 @@ an evidence pin. Never put it in argv, a file, a PR, a transcript, or a log.
 |---|---|---|
 | Implementation author | Produces the corrective source head | Approving their own PR |
 | Repository administrator | Installs provider rulesets and performs the harmless canary | Hand-writing a provider response |
-| Independent CODEOWNER | Reviews and approves the exact final source head | Review after merge, review of an earlier head, or comment-only review |
+| Independent CODEOWNER | Reviews and approves the exact bootstrap, source, and receipt heads, independently of each PR author | Review after merge, review of an earlier head, withdrawn approval, or comment-only review |
 | Evidence producer | Reproduces and signs the generation-2 receipt | Acting as the independent countersigner |
 | Independent countersigner | Independently checks and signs the same receipt preimage | Sharing the producer identity/key |
 | Anchor custodian | Publishes the protected annotated G2 tag | Moving or testing the generation-1 tag |
@@ -104,33 +105,42 @@ source PR author. CODEOWNERS text alone is not review evidence.
 GitHub evaluates CODEOWNERS from a pull request's base. The corrective PR cannot protect its own
 merge merely by changing `.github/CODEOWNERS` in its head. Before the final corrective source PR:
 
-1. make the existing base owner/team valid and use an independently reviewed bootstrap change to
-   put these exact `@djordi10` CODEOWNERS bytes on `main`;
+1. make the existing base owner/team valid so GitHub can enforce the bootstrap, and obtain
+   `@djordi10`'s independent exact-head approval on a CODEOWNERS-only PR that puts these exact bytes
+   on `main`;
 2. refresh the corrective branch from that bootstrap merge; and
 3. keep the bootstrap and correction separate—neither is a receipt or closure claim.
 
 The generation-2 receipt validator requires an ordinary two-parent source merge, requires its
 second parent to be the exact reviewed source head, and byte-compares CODEOWNERS at the first
-parent with the reviewed file. A same-PR or synthetic bootstrap fails.
+parent with the reviewed file. It also requires the receipt manifest to carry the bootstrap PR and
+approved-review provider records, proves the bootstrap changed only `.github/CODEOWNERS`, and
+matches the provider merge time to the local Git merge time. A direct commit, same-PR change,
+synthetic bootstrap, self-review, stale review, or post-merge review fails.
+
+After the bootstrap merge, reserve `main` exclusively for this ceremony. The source merge's first
+parent must equal that bootstrap merge—not merely contain equivalent bytes—and the receipt merge's
+first parent must equal the source merge. Any intervening `main` merge breaks the chain; stop and
+restart the corrective sequence from a fresh reviewed bootstrap rather than layering a repair PR.
 
 ## 4. Owner authority ceremony
 
 Start with the checked-in generation-2 templates. Publish authenticated decisions only at their
 canonical non-template paths:
 
-- `DEC-AUTHORITY-BUNDLE-001.json`;
+- `DEC-AUTHORITY-BUNDLE-002.json`;
 - `DEC-RECEIPT-PROFILE-002.json`; and
 - `DEC-B00-REPAIR-002.json`.
 
-The last two supersede their `001` counterparts only for generation 2. They do not mutate the
-generation-1 objects. Each decision must bind its declared subjects, be signed by a valid
+All three `002` decisions supersede their `001` counterparts only for generation 2. They do not
+mutate the generation-1 objects. Each decision must bind its declared subjects, be signed by a valid
 `AUTHORITY_OWNER` Ed25519 identity in the distinct externally pinned G2 trust registry, and carry a real
 effective time. Typing `authenticated:true` without a valid signature is a failure.
 
 The existing generation-1 registry scopes its owner key only to `-001` decisions and is therefore
 incapable of authenticating generation 2. Materialize
 `receipt_trust_registry.g2.v1.template.json` as `receipt_trust_registry.g2.v1.json`, with owner scope
-covering `DEC-AUTHORITY-BUNDLE-001,DEC-RECEIPT-PROFILE-002,DEC-B00-REPAIR-002`, then externally pin
+covering `DEC-AUTHORITY-BUNDLE-002,DEC-RECEIPT-PROFILE-002,DEC-B00-REPAIR-002`, then externally pin
 those exact bytes as `RECEIPT_G2_TRUST_REGISTRY_SHA256`.
 
 Validate the exact source head with generation 2 selected:
@@ -210,8 +220,8 @@ After every source-phase artifact is committed:
 5. obtain a submitted `APPROVED` review from the independent CODEOWNER on that exact head;
 6. resolve every actionable review thread;
 7. merge with GitHub's ordinary **merge** method under the active ruleset; and
-8. verify provider `main` contains the reported merge commit and that its tree binds the reviewed
-   source head.
+8. verify the source merge's first parent is the recorded bootstrap merge, its second parent is the
+   reviewed source head, its tree equals that head's tree, and provider `main` contains it.
 
 If the source head moves after approval, the approval and CI are stale. Repeat steps 1–6.
 
@@ -300,6 +310,15 @@ generation-1 evidence, or tag. Mixed content is a hard failure.
 
 Materialize the clean-runner results, provider source PR/review records, canary bundle, authority
 preimages, rollback proof, configuration proof, and tag-ruleset capture below `evidence/B00R_G2/`.
+The provider review bundle must include all four canonical PR records:
+
+```text
+evidence/B00R_G2/codeowners_bootstrap_pr.provider.raw.json
+evidence/B00R_G2/codeowners_bootstrap_pr.approved_review.provider.raw.json
+evidence/B00R_G2/source_pr.provider.raw.json
+evidence/B00R_G2/source_pr.approved_review.provider.raw.json
+```
+
 Build a closed manifest that names every regular file below that root except itself:
 
 ```bash
@@ -322,13 +341,25 @@ The bare canonical receipt must use:
 - two valid Ed25519 signatures from distinct `EVIDENCE_PRODUCER` and
   `INDEPENDENT_COUNTERSIGNER` identities over the same canonical preimage.
 
-The receipt PR must obtain current exact-head CI, required native review, and resolved threads, then
-merge by the sole permitted merge method under the live ruleset. The receipt cannot bind its own
-future merge SHA; the physical anchor supplies that final post-merge binding.
+Before freezing or signing the final receipt head, install, capture, and externally pin the G2 tag
+ruleset. The receipt PR must then obtain current exact-head CI, required native review, and resolved
+threads, and merge by the sole permitted merge method under the live ruleset. Its merge first
+parent must equal the source merge; its second parent and tree must equal the reviewed receipt head.
+No intervening `main` merge is permitted. The receipt cannot bind its own future merge SHA; the
+physical anchor supplies that final post-merge binding.
 
-Nonterminal receipt-PR CI may use `--nonterminal-provider-proof`. That result is explicitly not
-closure. Terminal validation after merge must omit that flag and must expose the live empty bypass
-set, rule suite, unchanged canary ref, exact source PR, and exact source review.
+Nonterminal receipt-PR CI may use `--nonterminal-provider-proof`. Its zero exit authenticates
+receipt content/head only: it skips privileged bypass/rule-suite/ref reads and every post-merge
+receipt-PR proof, so it is explicitly not closure and is insufficient by itself to authorize merge.
+Terminal validation after merge must omit that flag and must expose the live empty bypass
+set, rule suite, unchanged canary ref, exact source PR/review, and the receipt PR number. The
+terminal gate fetches that receipt PR, independently proves exact-head CODEOWNER approval and
+successful `CI / test-and-verify` before merge, and proves its two-parent merge is on live `main`.
+The receipt does not self-reference its future merge SHA; terminal provider/Git proof supplies that
+binding after merge.
+The terminal token must be able to read the ruleset bypass field, rule suite, canary and anchor refs,
+receipt reviews, workflow runs, and check runs; an ordinary restricted Actions token may be
+insufficient and must fail closed rather than downgrade proof.
 
 ## 10. Publish and validate the new physical anchor
 
@@ -355,6 +386,7 @@ Run the post-merge terminal gate from a clean checkout of the receipt merge:
 python tools/b00r_gate.py --mode receipt \
   --base-sha "$SOURCE_MERGE" \
   --expected-head "$RECEIPT_MERGE" \
+  --receipt-pr "$RECEIPT_PR" \
   --now-us "$NOW_US" \
   --pins "$PINS_JSON" \
   --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" \
@@ -372,7 +404,10 @@ Only this terminal sequence may return `PASS_REPOSITORY_SAFE_HOLD`.
 | Main ruleset permits squash/rebase or omits the dedicated canary target | `FAIL_RULESET_PROFILE` |
 | Source approval absent, self-authored, stale, or not exact-head | `BLOCKED_REVIEW_SAFE_HOLD` |
 | Source PR number/head/merge/provider time mismatch | `FAIL_SOURCE_PR_BINDING` |
+| CODEOWNERS bootstrap is direct, mixed-content, stale/self-reviewed, or time-mismatched | `FAIL_BOOTSTRAP_BINDING` |
 | Receipt PR contains mixed or historical content | `FAIL_RECEIPT_LAYOUT` |
+| Receipt merge lacks exact-head CI/review, ordinary merge shape, main ancestry, or matching provider/Git time | `FAIL_RECEIPT_PR_BINDING` |
+| Tag ruleset was installed or updated at/after the receipt merge | `FAIL_TAG_RULESET_CHRONOLOGY` |
 | G2 anchor absent, lightweight, mutable, or points elsewhere | `BLOCKED_ANCHOR_SAFE_HOLD` |
 | Any owner pin, live provider proof, or trusted time unavailable | `BLOCKED_EXTERNAL_AUTHORITY` |
 | All generation-2 authority, repository, review, evidence, receipt, and anchor checks pass | `PASS_REPOSITORY_SAFE_HOLD` |

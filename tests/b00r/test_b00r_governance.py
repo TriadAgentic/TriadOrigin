@@ -353,6 +353,7 @@ def test_b00r_gate_owner_commands_are_strict_and_use_one_canonical_receipt():
         provider_pin=None,
         anchor_ruleset=b00r_gate.CANONICAL_ANCHOR_RULESET,
         anchor_ruleset_pin=None,
+        receipt_pr=35,
     )
     gates = b00r_gate._owner_gates(args)
     commands = [gate.argv for gate in gates]
@@ -374,7 +375,8 @@ def test_b00r_gate_owner_commands_are_strict_and_use_one_canonical_receipt():
     assert receipt_commands[0][-1] == b00r_gate.CANONICAL_RECEIPT
     assert b00r_gate.CANONICAL_RECEIPT == "evidence/receipts/B00R.g2.receipt.v3.json"
     for flag in ("--now-us", "--manifest", "--git-root", "--expected-head",
-                 "--governance-snapshot", "--provider-raw"):
+                 "--governance-snapshot", "--provider-raw", "--receipt-pr"):
         assert flag in receipt_commands[0]
+    assert receipt_commands[0][receipt_commands[0].index("--receipt-pr") + 1] == "35"
     assert "--trust" not in receipt_commands[0]
     assert not any("dsse" in part.lower() for command in commands for part in command)

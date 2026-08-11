@@ -14,12 +14,15 @@ from tools.github_ruleset_live import (
     LiveRulesetUnavailable,
     anchor_tag_ref_url,
     canary_ref_url,
+    check_runs_for_head_url,
     codeowners_errors_url,
     collaborator_permission_url,
+    compare_receipt_merge_to_main_url,
     fetch_and_match_live_ruleset,
     fetch_and_match_pull_request,
     fetch_and_match_pull_request_review,
     fetch_and_match_rule_suite,
+    fetch_and_verify_receipt_merge,
     fetch_anchor_tag_object_sha,
     fetch_canary_ref_sha,
     fetch_codeowners_errors,
@@ -28,6 +31,7 @@ from tools.github_ruleset_live import (
     pull_request_reviews_url,
     rule_suite_url,
     ruleset_url,
+    workflow_runs_for_head_url,
 )
 
 
@@ -467,6 +471,20 @@ def test_live_source_pr_binds_provider_merge_identity_without_volatile_fields():
         )
 
 
+@pytest.mark.parametrize(("document", "side"), [("committed", "base"), ("live", "head")])
+def test_live_source_pr_binds_immutable_repository_id(document, side):
+    committed = _source_pr()
+    live = copy.deepcopy(committed)
+    target = committed if document == "committed" else live
+    target[side]["repo"]["id"] = 99
+    with pytest.raises(LiveRulesetMismatch, match="SOURCE_PR_REPOSITORY_MISMATCH"):
+        fetch_and_match_pull_request(
+            json.dumps(committed).encode(), token="token", now_us=NOW_US,
+            opener=lambda *_args, **_kwargs: _Response(
+                live, url=pull_request_url(SOURCE_PR)),
+        )
+
+
 def test_live_source_pr_review_uses_fixed_endpoint_and_accepts_exact_head_approval():
     committed = _source_pr_review()
     live_review = copy.deepcopy(committed["review"])
@@ -517,6 +535,19 @@ def test_live_source_pr_review_rejects_non_approved_state():
         )
 
 
+def test_live_source_pr_review_rejects_later_changes_requested_by_same_reviewer():
+    committed = _source_pr_review()
+    approval = copy.deepcopy(committed["review"])
+    withdrawal = copy.deepcopy(approval)
+    withdrawal.update(id=7002, state="CHANGES_REQUESTED")
+    with pytest.raises(LiveRulesetMismatch, match="APPROVAL_SUPERSEDED"):
+        fetch_and_match_pull_request_review(
+            json.dumps(committed).encode(), token="token", now_us=NOW_US,
+            opener=lambda *_args, **_kwargs: _Response(
+                [approval, withdrawal], url=pull_request_reviews_url(SOURCE_PR)),
+        )
+
+
 @pytest.mark.parametrize(
     ("reviews", "expected_count"),
     [
@@ -561,4 +592,157 @@ def test_live_anchor_ref_must_resolve_to_annotated_tag_object():
             token="token", now_us=NOW_US,
             opener=lambda *_args, **_kwargs: _Response(
                 document, url=anchor_tag_ref_url()),
+        )
+
+
+def _receipt_provider_documents() -> dict[str, object]:
+    receipt_pr = 35
+    merge_sha = "d" * 40
+    head_sha = "e" * 40
+    return {
+        pull_request_url(receipt_pr): {
+            "number": receipt_pr,
+            "state": "closed",
+            "merged": True,
+            "merged_at": "1970-01-01T00:00:20Z",
+            "merge_commit_sha": merge_sha,
+            "base": {
+                "ref": "main",
+                "repo": {"full_name": REPOSITORY, "id": REPOSITORY_ID},
+            },
+            "head": {
+                "sha": head_sha,
+                "repo": {"full_name": REPOSITORY, "id": REPOSITORY_ID},
+            },
+            "user": {"login": "receipt-author", "type": "User"},
+        },
+        pull_request_reviews_url(receipt_pr): [{
+            "id": 7001,
+            "state": "APPROVED",
+            "commit_id": head_sha,
+            "submitted_at": "1970-01-01T00:00:19Z",
+            "user": {"login": "djordi10", "type": "User"},
+        }],
+        collaborator_permission_url("djordi10"): {
+            "permission": "admin",
+            "role_name": "admin",
+            "user": {"login": "djordi10", "type": "User"},
+        },
+        workflow_runs_for_head_url(head_sha): {
+            "total_count": 1,
+            "workflow_runs": [{
+                "id": 9001,
+                "head_sha": head_sha,
+                "event": "pull_request",
+                "status": "completed",
+                "conclusion": "success",
+                "updated_at": "1970-01-01T00:00:18Z",
+                "path": ".github/workflows/ci.yml@main",
+                "check_suite_id": 8001,
+                "pull_requests": [{"number": receipt_pr}],
+                "repository": {"full_name": REPOSITORY, "id": REPOSITORY_ID},
+                "head_repository": {"full_name": REPOSITORY, "id": REPOSITORY_ID},
+            }],
+        },
+        check_runs_for_head_url(head_sha): {
+            "total_count": 1,
+            "check_runs": [{
+                "id": 8002,
+                "name": "test-and-verify",
+                "head_sha": head_sha,
+                "status": "completed",
+                "conclusion": "success",
+                "completed_at": "1970-01-01T00:00:18Z",
+                "app": {"id": 15368},
+                "check_suite": {"id": 8001},
+            }],
+        },
+        compare_receipt_merge_to_main_url(merge_sha): {
+            "status": "identical",
+            "ahead_by": 0,
+            "behind_by": 0,
+            "base_commit": {"sha": merge_sha},
+            "merge_base_commit": {"sha": merge_sha},
+        },
+    }
+
+
+def _provider_opener(documents: dict[str, object]):
+    def opener(request, *, timeout):
+        assert timeout == 20.0
+        return _Response(documents[request.full_url], url=request.full_url)
+    return opener
+
+
+def test_live_receipt_merge_binds_pr_review_actions_check_and_main_ancestry():
+    documents = _receipt_provider_documents()
+    proof = fetch_and_verify_receipt_merge(
+        35,
+        expected_merge_sha="d" * 40,
+        expected_codeowner="djordi10",
+        token="token",
+        now_us=NOW_US,
+        opener=_provider_opener(documents),
+    )
+    assert proof.pull_request == 35
+    assert proof.head_sha == "e" * 40
+    assert proof.merge_sha == "d" * 40
+    assert proof.merged_at_us == 20_000_000
+    assert proof.reviewer == "djordi10"
+    assert proof.workflow_run_id == 9001
+    assert proof.check_run_id == 8002
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        (lambda docs: docs[pull_request_url(35)]["base"].__setitem__("ref", "attack"),
+         "RECEIPT_PR_IDENTITY"),
+        (lambda docs: docs[pull_request_reviews_url(35)][0].__setitem__(
+            "commit_id", "c" * 40), "APPROVAL_COUNT:0"),
+        (lambda docs: docs[pull_request_url(35)]["user"].__setitem__(
+            "login", "djordi10"), "REVIEW_NOT_INDEPENDENT"),
+        (lambda docs: docs[pull_request_reviews_url(35)][0].__setitem__(
+            "submitted_at", "1970-01-01T00:00:20Z"), "REVIEW_NOT_BEFORE_MERGE"),
+        (lambda docs: docs[pull_request_reviews_url(35)].append({
+            **copy.deepcopy(docs[pull_request_reviews_url(35)][0]),
+            "id": 7002,
+            "state": "CHANGES_REQUESTED",
+        }), "APPROVAL_SUPERSEDED"),
+        (lambda docs: docs[workflow_runs_for_head_url("e" * 40)][
+            "workflow_runs"][0].__setitem__("path", ".github/workflows/ci.yml"),
+         "SUCCESS_WORKFLOW_COUNT:0"),
+        (lambda docs: docs[workflow_runs_for_head_url("e" * 40)].__setitem__(
+            "total_count", 2), "WORKFLOW_RUNS_MALFORMED"),
+        (lambda docs: docs[workflow_runs_for_head_url("e" * 40)][
+            "workflow_runs"][0].__setitem__("conclusion", "failure"),
+         "SUCCESS_WORKFLOW_COUNT:0"),
+        (lambda docs: docs[workflow_runs_for_head_url("e" * 40)][
+            "workflow_runs"][0].__setitem__(
+                "updated_at", "1970-01-01T00:00:20Z"),
+         "SUCCESS_WORKFLOW_COUNT:0"),
+        (lambda docs: docs[check_runs_for_head_url("e" * 40)][
+            "check_runs"][0]["app"].__setitem__("id", 1),
+         "REQUIRED_CHECK_COUNT:0"),
+        (lambda docs: docs[check_runs_for_head_url("e" * 40)][
+            "check_runs"][0].__setitem__(
+                "completed_at", "1970-01-01T00:00:20Z"),
+         "REQUIRED_CHECK_COUNT:0"),
+        (lambda docs: docs[check_runs_for_head_url("e" * 40)].__setitem__(
+            "total_count", 2), "CHECK_RUNS_MALFORMED"),
+        (lambda docs: docs[compare_receipt_merge_to_main_url("d" * 40)].__setitem__(
+            "status", "diverged"), "MERGE_NOT_ON_MAIN"),
+    ],
+)
+def test_live_receipt_merge_rejects_false_green_provider_paths(mutation, reason):
+    documents = _receipt_provider_documents()
+    mutation(documents)
+    with pytest.raises(LiveRulesetMismatch, match=reason):
+        fetch_and_verify_receipt_merge(
+            35,
+            expected_merge_sha="d" * 40,
+            expected_codeowner="djordi10",
+            token="token",
+            now_us=NOW_US,
+            opener=_provider_opener(documents),
         )

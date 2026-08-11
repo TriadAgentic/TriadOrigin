@@ -119,7 +119,7 @@ def test_ci_never_ignores_owner_validators_and_wires_external_pins():
     assert workflow.count("--git-root .") == 5
     assert workflow.count("--repair-generation 2") == 2
     for name in (
-        "AUTHORITY_BUNDLE_DECISION_SHA256",
+        "AUTHORITY_BUNDLE_G2_DECISION_SHA256",
         "RECEIPT_PROFILE_G2_DECISION_SHA256",
         "B00R_G2_REPAIR_DECISION_SHA256",
         "RECEIPT_G2_TRUST_REGISTRY_SHA256",

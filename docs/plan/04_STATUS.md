@@ -32,8 +32,8 @@ not bind the true source PR identity or require independent pre-merge review.
 
 ## Live ruleset and PR #33: useful, but post-hoc
 
-GitHub issue #5 is currently closed. Its closure records later provider evidence; it does not repair
-generation 1 and does not close generation 2.
+GitHub issue #5 is open/reopened. It must remain open until generation-2 terminal
+`PASS_REPOSITORY_SAFE_HOLD`; its state does not repair generation 1 or close generation 2.
 
 | Fact | Current judgment |
 |---|---|
@@ -55,36 +55,38 @@ The correction is additive and uses distinct identities:
 |---|---|---|
 | Policy | `docs/control/b00r_policy.v2.json` | Prepared on corrective source branch |
 | Generation ledger | `docs/governance/B00R_GENERATION_LEDGER.v1.json` | Prepared; preserves generation 1 |
+| Authority-bundle decision | `docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json` | Owner-authenticated object absent; template remains fail-closed |
 | Receipt-profile decision | `docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json` | Owner-authenticated object absent; template remains fail-closed |
 | Repair decision | `docs/governance/decisions/DEC-B00-REPAIR-002.json` | Owner-authenticated object absent; template remains fail-closed |
-| Independent CODEOWNER | `@djordi10` on critical paths | Source policy prepared; live permission and exact-head review still must be proven |
+| Independent CODEOWNER | `@djordi10` on critical paths | Live admin permission observed; base-CODEOWNER eligibility and exact-head bootstrap/source/receipt approvals remain unproven |
 | Evidence root | `evidence/B00R_G2/` | Must be added only in the separate receipt PR |
 | Receipt | `evidence/receipts/B00R.g2.receipt.v3.json` | Absent until after the corrective source merge and clean reproduction |
 | Physical anchor | `B00R_RECEIPT_ANCHOR_G2` | Absent until after the receipt merge |
 
 Required external pins are
-`AUTHORITY_BUNDLE_DECISION_SHA256`, `RECEIPT_PROFILE_G2_DECISION_SHA256`,
+`AUTHORITY_BUNDLE_G2_DECISION_SHA256`, `RECEIPT_PROFILE_G2_DECISION_SHA256`,
 `B00R_G2_REPAIR_DECISION_SHA256`, `RECEIPT_G2_TRUST_REGISTRY_SHA256`,
 `MAIN_RULESET_EVIDENCE_SHA256`, and `B00R_G2_TAG_RULESET_SHA256`.
 
 ## Required closure sequence
 
-1. Preserve every generation-1 byte and tag.
-2. Bootstrap the exact `@djordi10` CODEOWNERS bytes onto `main` in a separate reviewed change, then
-   refresh the corrective branch so its future merge first parent already contains those bytes.
-3. Authenticate the generation-2 owner decisions and externally pin the trust inputs.
-4. Install the exact merge-only main-plus-canary ruleset and capture/pin its provider bytes.
-5. Run the dedicated canary and obtain the provider rule-suite rejection before source merge.
-6. Freeze the final corrective source head; require exact-head CI, independent CODEOWNER approval,
-   and resolved threads.
-7. Merge the source PR through the enforced ordinary merge path.
-8. Reproduce the exact source merge on a clean runner.
-9. Create a separate append-only receipt PR containing only `evidence/B00R_G2/**` and
-   `evidence/receipts/B00R.g2.receipt.v3.json`.
-10. Merge the receipt under the same controls, publish the protected annotated
-   `B00R_RECEIPT_ANCHOR_G2`, and run the terminal receipt gate from the exact receipt merge.
+1. Close verifier/policy/documentation gaps, cascade policy/ledger decision hashes, and pass all
+   adversarial, dual-seed, distribution, and end-to-end gates.
+2. Update draft PR #34 and verify deterministic CI; owner/admin absence remains an explicit block.
+3. Merge a separately reviewed CODEOWNERS-only bootstrap, reserve `main` exclusively, and refresh
+   PR #34 so that bootstrap merge is the future source merge's literal first parent.
+4. Materialize, owner-sign, and externally pin the G2 registry and all three `002` decisions.
+5. Create the canary ref; install/capture/pin the exact main+canary merge-only rule; run and preserve
+   its rejected direct-push canary before source merge.
+6. Freeze PR #34; obtain exact-head CI and `@djordi10` approval; merge ordinarily with the bootstrap
+   as first parent and reviewed source head/tree as second parent/result.
+7. Reproduce the source merge cleanly; install/capture/pin the tag rule; build/sign the append-only
+   receipt; obtain exact-head CI and `@djordi10` approval; merge it ordinarily with the source merge
+   as literal first parent and no intervening `main` merge.
+8. Publish the protected annotated G2 anchor; run the privileged terminal gate with the receipt PR
+   number; only then close issue #5 and unfreeze B01C from that exact receipt merge.
 
-Until step 10 passes, the source-mode result remains deliberately non-closing and B01C remains
+Until step 8 passes, the source-mode result remains deliberately non-closing and B01C remains
 frozen.
 
 ## Historical build artifacts
@@ -117,7 +119,7 @@ this correction.
 
 ## Immediate next action
 
-Finish only the generation-2 corrective source: owner-authenticate the `002` decisions, install and
-capture the merge-only main-plus-canary ruleset, execute the canonical rejected canary, freeze the
-head, obtain exact-head CI and independent approval, and merge under that live rule. Then build a
-new G2 receipt from that merge. Do not reuse generation-1 evidence and do not open B01C.
+Finish verifier/docs/hash/test correction first and update draft PR #34. Then perform the separately
+reviewed CODEOWNERS-only bootstrap, reserve `main`, and refresh #34 from that exact merge. Do not
+start owner signatures, ruleset/canary, source merge, or receipt work out of sequence; do not reuse
+generation-1 evidence and do not open B01C.

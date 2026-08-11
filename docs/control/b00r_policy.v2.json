@@ -17,9 +17,10 @@
   "generation_1_disposition": "MERGED_UNVERIFIED",
   "owner_gated_inputs": [
     {
-      "id": "DEC-AUTHORITY-BUNDLE-001",
-      "authenticated_path": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.json",
-      "external_pin": "AUTHORITY_BUNDLE_DECISION_SHA256"
+      "id": "DEC-AUTHORITY-BUNDLE-002",
+      "template": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.template.json",
+      "authenticated_path": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json",
+      "external_pin": "AUTHORITY_BUNDLE_G2_DECISION_SHA256"
     },
     {
       "id": "DEC-RECEIPT-PROFILE-002",
@@ -48,14 +49,20 @@
     {
       "id": "independent_codeowner",
       "path": ".github/CODEOWNERS",
-      "required_owner": "@djordi10"
+      "required_owner": "@djordi10",
+      "bootstrap_provider_records": [
+        "evidence/B00R_G2/codeowners_bootstrap_pr.provider.raw.json",
+        "evidence/B00R_G2/codeowners_bootstrap_pr.approved_review.provider.raw.json"
+      ],
+      "bootstrap_law": "dedicated CODEOWNERS-only ordinary two-parent PR merge to main with independent djordi10 exact-head approval before merge; this bootstrap merge is the literal first parent of the source merge"
     }
   ],
   "pr_role_law": {
     "source_pr": {
       "may_touch": "any path except evidence/**",
       "must_not_contain": "generation-2 receipt or generation-2 receipt evidence",
-      "base_codeowners": "first parent must already contain the exact sole-owner CODEOWNERS bytes"
+      "base_codeowners": "first parent equals the recorded reviewed CODEOWNERS-bootstrap merge and contains the exact sole-owner CODEOWNERS bytes",
+      "merge_law": "ordinary two-parent merge; second parent and merge tree equal the exact reviewed and CI-passing source head"
     },
     "receipt_pr": {
       "may_add_only": [
@@ -66,10 +73,12 @@
         "evidence/B00R_G2/evidence_manifest.json",
         "evidence/receipts/B00R.g2.receipt.v3.json"
       ],
+      "terminal_provider_law": "ordinary two-parent PR merge to live main; first parent equals the receipt-declared source merge; second parent and merge tree equal the exact independently djordi10-reviewed and CI-passing receipt head; review, matching Actions workflow, and integration-bound check complete before merge; provider and Git merge times match",
       "generation_1_evidence": "IMMUTABLE",
       "mixed_content": "FAIL"
     }
   },
+  "main_sequence_law": "NO_INTERVENING_MAIN_MERGE: reviewed CODEOWNERS bootstrap merge -> reviewed corrective source merge -> reviewed append-only receipt merge",
   "closure_anchor": {
     "id": "B00R_RECEIPT_ANCHOR_G2",
     "message_profile": "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1",
@@ -77,6 +86,9 @@
     "evidence_root": "evidence/B00R_G2",
     "tag_ruleset_path": "evidence/B00R_G2/tag_ruleset.provider.json",
     "tag_ruleset_external_pin": "B00R_G2_TAG_RULESET_SHA256",
+    "tag_ruleset_chronology": "created_at <= updated_at < receipt provider merged_at",
+    "tag_ruleset_capture_phase": "install, capture, and externally pin before the final receipt head is signed, reviewed, or merged",
+    "terminal_receipt_pr": "required positive provider PR number, revalidated live",
     "b01c_base": "exact generation-2 receipt merge commit named by the validated anchor"
   },
   "stop_condition": "B01C_FROZEN_UNTIL_GENERATION_2_ANCHOR_VALIDATES"

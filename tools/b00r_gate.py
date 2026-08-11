@@ -94,6 +94,38 @@ def verify_expected_head(expected: str, root: pathlib.Path = ROOT) -> str:
     return actual
 
 
+def verify_receipt_merge_base(
+    expected_head: str,
+    expected_base: str,
+    root: pathlib.Path = ROOT,
+) -> tuple[str, str]:
+    """Bind the caller's receipt base to the two-parent merge object at ``expected_head``."""
+    if HEX40_RE.fullmatch(expected_base or "") is None or expected_base == "0" * 40:
+        raise HeadIdentityError("RECEIPT_BASE_NOT_CANONICAL_HEX40")
+    env = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith("GIT_") or name == "GIT_CONFIG_NOSYSTEM"
+    }
+    env["GIT_NO_REPLACE_OBJECTS"] = "1"
+    proc = subprocess.run(
+        ["git", "-C", str(root), "rev-list", "--parents", "-n", "1", expected_head],
+        capture_output=True,
+        text=True,
+        check=False,
+        env=env,
+    )
+    if proc.returncode:
+        raise HeadIdentityError(f"RECEIPT_MERGE_UNAVAILABLE:{proc.stderr.strip()}")
+    row = proc.stdout.split()
+    if len(row) != 3 or row[0] != expected_head:
+        raise HeadIdentityError("RECEIPT_HEAD_NOT_EXACT_TWO_PARENT_MERGE")
+    if row[1] != expected_base:
+        raise HeadIdentityError(
+            f"RECEIPT_BASE_MISMATCH:actual={row[1]} expected={expected_base}")
+    return row[1], row[2]
+
+
 def verify_final_repository_state(expected: str, root: pathlib.Path = ROOT) -> str:
     """Recheck the immutable head and clean worktree immediately before terminal PASS."""
     actual = verify_expected_head(expected, root)
@@ -265,6 +297,8 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
         args.governance_snapshot,
         "--provider-raw",
         args.provider_raw,
+        "--receipt-pr",
+        str(args.receipt_pr),
         "--require-bypass-visibility",
         *_optional_pair("--pins", args.pins),
         *_optional_pair("--provider-pin", args.provider_pin),
@@ -279,6 +313,8 @@ def _owner_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
         str(args.now_us),
         "--receipt",
         args.receipt,
+        "--receipt-pr",
+        str(args.receipt_pr),
         "--ruleset",
         args.anchor_ruleset,
         *_optional_pair("--ruleset-pin", args.anchor_ruleset_pin),
@@ -326,6 +362,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--pins",
                         help="optional out-of-repository JSON containing authority pins")
     parser.add_argument("--receipt", default=CANONICAL_RECEIPT)
+    parser.add_argument("--receipt-pr", type=int,
+                        help="GitHub receipt PR number (required in terminal receipt mode)")
     parser.add_argument("--manifest", default=CANONICAL_MANIFEST)
     parser.add_argument("--governance-snapshot", default=CANONICAL_GOVERNANCE_SNAPSHOT)
     parser.add_argument("--provider-raw", default=CANONICAL_PROVIDER_RAW)
@@ -340,8 +378,15 @@ def main(argv: list[str]) -> int:
         parser.error("both source and receipt modes require --expected-head")
     if args.mode == "receipt" and not args.base_sha:
         parser.error("receipt mode requires --base-sha")
+    if args.mode == "receipt" and (
+        not isinstance(args.receipt_pr, int) or isinstance(args.receipt_pr, bool)
+        or args.receipt_pr <= 0
+    ):
+        parser.error("receipt mode requires a positive --receipt-pr")
     if args.mode == "source" and args.base_sha:
         parser.error("source mode does not accept --base-sha")
+    if args.mode == "source" and args.receipt_pr is not None:
+        parser.error("source mode does not accept --receipt-pr")
     if args.mode == "receipt" and (
         HEX40_RE.fullmatch(args.base_sha or "") is None or args.base_sha == "0" * 40
     ):
@@ -374,6 +419,17 @@ def main(argv: list[str]) -> int:
             print("B00R result: FAIL")
             return 1
         print(f"  [PASS   ] exact_head: {actual}")
+        if args.mode == "receipt":
+            try:
+                base_parent, receipt_parent = verify_receipt_merge_base(
+                    args.expected_head, args.base_sha)
+            except HeadIdentityError as exc:
+                print(f"  [FAIL   ] receipt_merge: {exc}", file=sys.stderr)
+                print("B00R result: FAIL")
+                return 1
+            print(
+                f"  [PASS   ] receipt_merge: base={base_parent} receipt_head={receipt_parent}"
+            )
 
     monotonic_start_ns = time.monotonic_ns()
     deterministic_gates: tuple[Gate, ...] = COMMON_GATES

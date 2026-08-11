@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import copy
+from datetime import datetime, timezone
 import hashlib
 import json
 import pathlib
+import os
 import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -20,7 +23,7 @@ from tools.validate_authority_root import (  # noqa: E402
     AuthorityContext, AuthorityRootError, CANONICAL_AUTHORITY_PATHS, SUBJECTS,
     load_authority_context, validate_git_bound_authority)
 from tools.validate_b_receipt import (  # noqa: E402
-    ReceiptBindingError, _validate_provider_negative_canary,
+    ReceiptBindingError, _validate_codeowners_bootstrap, _validate_provider_negative_canary,
     _validate_source_pr_provider_record, validate_receipt_bindings)
 from tools.validate_governance_snapshot import _validate_git_binding  # noqa: E402
 from tools.verify_codeowners import CRITICAL_PATTERNS  # noqa: E402
@@ -167,6 +170,159 @@ def test_authority_root_verifies_real_dec_signatures_and_external_pins(tmp_path)
         load_authority_context(
             now_us=100, pins_path=pins_path, subject_paths=paths, environ={}, repo_root=repo,
             repair_generation=1)
+
+
+def test_generation_2_authority_uses_additive_002_under_one_g2_registry(tmp_path):
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    owner = Ed25519PrivateKey.generate()
+    producer = Ed25519PrivateKey.generate()
+    counter = Ed25519PrivateKey.generate()
+    owner_identity = "generation-2-owner@example.test"
+    registry = {
+        "schema": "triad.receipt_trust_registry.v1",
+        "schema_version": "1.0.0",
+        "registry_kind": "RECEIPT_TRUST_REGISTRY",
+        "registry_id": "test/generation-2/1",
+        "authenticated": True,
+        "keys": [
+            {
+                "key_id": "g2-owner", "identity": owner_identity,
+                "role": "AUTHORITY_OWNER", "algorithm": "ed25519",
+                "public_key_hex": _pub_hex(owner), "not_before_us": 1,
+                "not_after_us": 9_000_000_000_000_000_000,
+                "scope": (
+                    "DEC-AUTHORITY-BUNDLE-002,DEC-RECEIPT-PROFILE-002,"
+                    "DEC-B00-REPAIR-002"),
+                "revoked": False,
+            },
+            {
+                "key_id": "g2-producer", "identity": "producer@example.test",
+                "role": "EVIDENCE_PRODUCER", "algorithm": "ed25519",
+                "public_key_hex": _pub_hex(producer), "not_before_us": 1,
+                "not_after_us": 9_000_000_000_000_000_000,
+                "scope": "B00R..B07", "revoked": False,
+            },
+            {
+                "key_id": "g2-counter", "identity": "counter@example.test",
+                "role": "INDEPENDENT_COUNTERSIGNER", "algorithm": "ed25519",
+                "public_key_hex": _pub_hex(counter), "not_before_us": 1,
+                "not_after_us": 9_000_000_000_000_000_000,
+                "scope": "B00R..B07", "revoked": False,
+            },
+        ],
+    }
+    registry_path = tmp_path / "receipt_trust_registry.g2.v1.json"
+    _write(registry_path, registry)
+
+    templates = {
+        "authority_bundle": ROOT / (
+            "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.template.json"),
+        "receipt_profile": ROOT / (
+            "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.template.json"),
+        "b00_repair": ROOT / (
+            "docs/governance/decisions/DEC-B00-REPAIR-002.template.json"),
+    }
+    decisions: dict[str, pathlib.Path] = {}
+    for name, template in templates.items():
+        document = json.loads(template.read_text())
+        document["authenticated"] = True
+        document["effective_at_us"] = 1
+        document["issuer"] = owner_identity
+        document["signatures"] = []
+        signature = owner.sign(gov.canonical_decision_signing_bytes(document)).hex()
+        document["signatures"] = [{"key_id": "g2-owner", "signature_hex": signature}]
+        path = tmp_path / template.name.replace(".template", "")
+        _write(path, document)
+        decisions[name] = path
+
+    subject_paths = {**decisions, "trust_registry": registry_path}
+    environment = {
+        "AUTHORITY_BUNDLE_G2_DECISION_SHA256": sha256_hex(
+            decisions["authority_bundle"].read_bytes()),
+        "RECEIPT_PROFILE_G2_DECISION_SHA256": sha256_hex(
+            decisions["receipt_profile"].read_bytes()),
+        "B00R_G2_REPAIR_DECISION_SHA256": sha256_hex(
+            decisions["b00_repair"].read_bytes()),
+        "RECEIPT_G2_TRUST_REGISTRY_SHA256": sha256_hex(registry_path.read_bytes()),
+    }
+    context = load_authority_context(
+        now_us=2,
+        environ=environment,
+        subject_paths=subject_paths,
+        repo_root=ROOT,
+        repair_generation=2,
+    )
+    assert context.decisions["authority_bundle"]["decision_id"] == \
+        "DEC-AUTHORITY-BUNDLE-002"
+    assert context.paths["authority_bundle"] == decisions["authority_bundle"]
+    assert context.repair_generation == 2
+
+    original_registry = copy.deepcopy(registry)
+    restricted_registry = copy.deepcopy(registry)
+    restricted_registry["keys"][0]["scope"] = (
+        "DEC-AUTHORITY-BUNDLE-001,DEC-RECEIPT-PROFILE-001,DEC-B00-REPAIR-001")
+    _write(registry_path, restricted_registry)
+    environment["RECEIPT_G2_TRUST_REGISTRY_SHA256"] = sha256_hex(
+        registry_path.read_bytes())
+    with pytest.raises(AuthorityRootError):
+        load_authority_context(
+            now_us=2, environ=environment, subject_paths=subject_paths,
+            repo_root=ROOT, repair_generation=2)
+    _write(registry_path, original_registry)
+    environment["RECEIPT_G2_TRUST_REGISTRY_SHA256"] = sha256_hex(
+        registry_path.read_bytes())
+
+    def replace_signed_decision(name: str, mutation) -> None:
+        document = json.loads(templates[name].read_text())
+        document["authenticated"] = True
+        document["effective_at_us"] = 1
+        document["issuer"] = owner_identity
+        mutation(document)
+        document["signatures"] = []
+        document["signatures"] = [{
+            "key_id": "g2-owner",
+            "signature_hex": owner.sign(
+                gov.canonical_decision_signing_bytes(document)).hex(),
+        }]
+        _write(decisions[name], document)
+        environment[{  # exact protected pin for the selected G2 slot
+            "authority_bundle": "AUTHORITY_BUNDLE_G2_DECISION_SHA256",
+            "receipt_profile": "RECEIPT_PROFILE_G2_DECISION_SHA256",
+            "b00_repair": "B00R_G2_REPAIR_DECISION_SHA256",
+        }[name]] = sha256_hex(decisions[name].read_bytes())
+
+    replace_signed_decision(
+        "authority_bundle", lambda document: document.update(
+            decision_id="DEC-AUTHORITY-BUNDLE-001"))
+    with pytest.raises(AuthorityRootError, match="DECISION_ID_MISMATCH"):
+        load_authority_context(
+            now_us=2, environ=environment, subject_paths=subject_paths,
+            repo_root=ROOT, repair_generation=2)
+
+    replace_signed_decision(
+        "authority_bundle", lambda document: document.update(supersedes=[]))
+    with pytest.raises(AuthorityRootError, match="AUTHORITY_BUNDLE_G2_SUPERSESSION_MISMATCH"):
+        load_authority_context(
+            now_us=2, environ=environment, subject_paths=subject_paths,
+            repo_root=ROOT, repair_generation=2)
+
+    replace_signed_decision(
+        "authority_bundle", lambda document: document.update(
+            authority_registry="docs/governance/trust/receipt_trust_registry.v1.json"))
+    with pytest.raises(AuthorityRootError, match="DECISION_AUTHORITY_REGISTRY_MISMATCH"):
+        load_authority_context(
+            now_us=2, environ=environment, subject_paths=subject_paths,
+            repo_root=ROOT, repair_generation=2)
+
+    replace_signed_decision(
+        "authority_bundle", lambda _document: None)
+    replace_signed_decision(
+        "receipt_profile", lambda document: document.update(supersedes=[]))
+    with pytest.raises(AuthorityRootError, match="RECEIPT_PROFILE_G2_SUPERSESSION_MISMATCH"):
+        load_authority_context(
+            now_us=2, environ=environment, subject_paths=subject_paths,
+            repo_root=ROOT, repair_generation=2)
 
 
 def test_pass_receipt_requires_trusted_now_us():
@@ -557,6 +713,7 @@ def test_source_pr_provider_record_binds_merge_time_before_receipt_observation(t
     payload = {
         "source_pr": 28,
         "source_merge_sha": "a" * 40,
+        "source_merge_time_us": 20_000_000,
         "final_source_head": "b" * 40,
         "observed_at_us": 30_000_000,
         "emitted_at_us": 31_000_000,
@@ -570,7 +727,8 @@ def test_source_pr_provider_record_binds_merge_time_before_receipt_observation(t
         "base": {"ref": "main", "repo": {
             "id": 1_327_825_324, "full_name": "TriadAgentic/TriadOrigin"}},
         "head": {"sha": "b" * 40,
-                 "repo": {"full_name": "TriadAgentic/TriadOrigin"}},
+                 "repo": {"id": 1_327_825_324,
+                          "full_name": "TriadAgentic/TriadOrigin"}},
         "user": {"login": "source-author", "type": "User"},
     }
     path.write_bytes(canonical_json(record))
@@ -582,7 +740,25 @@ def test_source_pr_provider_record_binds_merge_time_before_receipt_observation(t
         entries=entries, root=tmp_path, payload=payload, now_us=40_000_000,
         github_token=None, require_live_provider=False,
     ) == 20_000_000
+    record["head"]["repo"]["id"] = 99
+    path.write_bytes(canonical_json(record))
+    entries[0]["sha256"] = sha256_hex(path.read_bytes())
+    with pytest.raises(ReceiptBindingError, match="PROVIDER_IDENTITY_MISMATCH"):
+        _validate_source_pr_provider_record(
+            entries=entries, root=tmp_path, payload=payload, now_us=40_000_000,
+            github_token=None, require_live_provider=False,
+        )
+    record["head"]["repo"]["id"] = 1_327_825_324
+    record["merged_at"] = "1970-01-01T00:00:21Z"
+    path.write_bytes(canonical_json(record))
+    entries[0]["sha256"] = sha256_hex(path.read_bytes())
+    with pytest.raises(ReceiptBindingError, match="PROVIDER_PAYLOAD_TIME_MISMATCH"):
+        _validate_source_pr_provider_record(
+            entries=entries, root=tmp_path, payload=payload, now_us=40_000_000,
+            github_token=None, require_live_provider=False,
+        )
     record["merged_at"] = "1970-01-01T00:00:30Z"
+    payload["source_merge_time_us"] = 30_000_000
     path.write_bytes(canonical_json(record))
     entries[0]["sha256"] = sha256_hex(path.read_bytes())
     with pytest.raises(ReceiptBindingError, match="RECEIPT_CHRONOLOGY_INVALID"):
@@ -641,7 +817,22 @@ def _git(root: pathlib.Path, *args: str) -> str:
     return proc.stdout.strip()
 
 
-def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
+def _git_at(root: pathlib.Path, instant: str, *args: str) -> str:
+    env = dict(os.environ)
+    env["GIT_AUTHOR_DATE"] = instant
+    env["GIT_COMMITTER_DATE"] = instant
+    proc = subprocess.run(
+        ["git", "-C", str(root), *args], check=True,
+        capture_output=True, text=True, env=env)
+    return proc.stdout.strip()
+
+
+def _provider_time(root: pathlib.Path, commit: str) -> str:
+    seconds = int(_git(root, "show", "-s", "--format=%ct", commit))
+    return datetime.fromtimestamp(seconds, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
     _git(repo, "init", "-b", "main")
@@ -649,11 +840,24 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
     _git(repo, "config", "user.name", "test")
     codeowners = repo / ".github/CODEOWNERS"
     codeowners.parent.mkdir(parents=True)
-    codeowners.write_text("\n".join(f"{pattern} @djordi10" for pattern in CRITICAL_PATTERNS))
+    codeowners.write_text("\n".join(
+        f"{pattern} @TriadAgentic/origin-governance-reviewers"
+        for pattern in CRITICAL_PATTERNS))
     (repo / "base.txt").write_text("base")
     _git(repo, "add", ".")
-    _git(repo, "commit", "-m", "bootstrap codeowner")
+    _git_at(repo, "1970-01-01T00:00:01Z", "commit", "-m", "audited start")
     audited_start = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "-b", "codeowners-bootstrap")
+    codeowners.write_text("\n".join(
+        f"{pattern} @djordi10" for pattern in CRITICAL_PATTERNS))
+    _git(repo, "add", ".github/CODEOWNERS")
+    _git_at(repo, "1970-01-01T00:00:05Z", "commit", "-m", "bootstrap codeowner")
+    bootstrap_head = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "main")
+    _git_at(
+        repo, "1970-01-01T00:00:10Z", "merge", "--no-ff", "codeowners-bootstrap",
+        "-m", "merge codeowners bootstrap")
+    bootstrap_merge = _git(repo, "rev-parse", "HEAD")
     _git(repo, "checkout", "-b", "generation-2-source")
     (repo / "source.txt").write_text("source")
     governance_dir = repo / "docs/governance/rulesets"
@@ -671,10 +875,12 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
         ], "exclude": []}},
     }))
     _git(repo, "add", ".")
-    _git(repo, "commit", "-m", "corrective source head")
+    _git_at(repo, "1970-01-01T00:00:25Z", "commit", "-m", "corrective source head")
     final_source = _git(repo, "rev-parse", "HEAD")
     _git(repo, "checkout", "main")
-    _git(repo, "merge", "--no-ff", "generation-2-source", "-m", "merge corrective source")
+    _git_at(
+        repo, "1970-01-01T00:00:30Z", "merge", "--no-ff", "generation-2-source",
+        "-m", "merge corrective source")
     source = _git(repo, "rev-parse", "HEAD")
     source_tree = _git(repo, "rev-parse", "HEAD^{tree}")
     source_time = int(_git(repo, "show", "-s", "--format=%ct", "HEAD")) * 1_000_000
@@ -780,15 +986,16 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
         "number": 1,
         "state": "closed",
         "merged": True,
-        "merged_at": "1970-01-01T00:00:30Z",
+        "merged_at": _provider_time(repo, source),
         "merge_commit_sha": source,
         "base": {
             "ref": "main",
             "repo": {"id": 1_327_825_324,
                      "full_name": "TriadAgentic/TriadOrigin"},
-        },
-        "head": {"sha": final_source,
-                 "repo": {"full_name": "TriadAgentic/TriadOrigin"}},
+            },
+            "head": {"sha": final_source,
+                     "repo": {"id": 1_327_825_324,
+                              "full_name": "TriadAgentic/TriadOrigin"}},
         "user": {"login": "source-author", "type": "User"},
     })
     (repo / source_pr_rel).write_bytes(source_pr_record)
@@ -820,6 +1027,56 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
         "media_type": "application/json",
         "size": len(review_record),
         "sha256": sha256_hex(review_record),
+    })
+    bootstrap_pr_rel = "evidence/B00R_G2/codeowners_bootstrap_pr.provider.raw.json"
+    bootstrap_pr_record = canonical_json({
+        "number": 10,
+        "state": "closed",
+        "merged": True,
+        "merged_at": _provider_time(repo, bootstrap_merge),
+        "merge_commit_sha": bootstrap_merge,
+        "base": {
+            "ref": "main",
+            "repo": {"id": 1_327_825_324,
+                     "full_name": "TriadAgentic/TriadOrigin"},
+        },
+        "head": {
+            "sha": bootstrap_head,
+            "repo": {"id": 1_327_825_324,
+                     "full_name": "TriadAgentic/TriadOrigin"},
+        },
+        "user": {"login": "bootstrap-author", "type": "User"},
+    })
+    (repo / bootstrap_pr_rel).write_bytes(bootstrap_pr_record)
+    entries.append({
+        "path": bootstrap_pr_rel,
+        "role": "CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD",
+        "role_unique": True,
+        "media_type": "application/json",
+        "size": len(bootstrap_pr_record),
+        "sha256": sha256_hex(bootstrap_pr_record),
+    })
+    bootstrap_review_rel = (
+        "evidence/B00R_G2/codeowners_bootstrap_pr.approved_review.provider.raw.json")
+    bootstrap_review_record = canonical_json({
+        "source_pr": 10,
+        "source_head": bootstrap_head,
+        "review": {
+            "id": 11,
+            "state": "APPROVED",
+            "commit_id": bootstrap_head,
+            "submitted_at": "1970-01-01T00:00:09Z",
+            "user": {"login": "djordi10", "type": "User"},
+        },
+    })
+    (repo / bootstrap_review_rel).write_bytes(bootstrap_review_record)
+    entries.append({
+        "path": bootstrap_review_rel,
+        "role": "CODEOWNERS_BOOTSTRAP_APPROVED_REVIEW_PROVIDER_RECORD",
+        "role_unique": True,
+        "media_type": "application/json",
+        "size": len(bootstrap_review_record),
+        "sha256": sha256_hex(bootstrap_review_record),
     })
     entries.sort(key=lambda item: item["path"])
     manifest = {"schema": "triad.evidence_manifest.v1", "schema_version": "1.0.0",
@@ -853,8 +1110,14 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
     receipt_path = repo / "evidence/receipts/B00R.g2.receipt.v3.json"
     receipt_path.parent.mkdir(parents=True)
     receipt_path.write_bytes(canonical_json(receipt))
+    _git(repo, "checkout", "-b", "generation-2-receipt")
     _git(repo, "add", "evidence")
-    _git(repo, "commit", "-m", "receipt")
+    _git_at(repo, "1970-01-01T00:00:40Z", "commit", "-m", "receipt")
+    receipt_head = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "main")
+    _git_at(
+        repo, "1970-01-01T00:00:50Z", "merge", "--no-ff", "generation-2-receipt",
+        "-m", "merge receipt")
     head = _git(repo, "rev-parse", "HEAD")
     authority = AuthorityContext(
         trust={}, decisions={"b00_repair": {"effective_at_us": 1, "subject_sha256s": {
@@ -867,6 +1130,161 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path):
         expected_head=head, authority=authority,
         governance_evidence_paths=(snapshot_path, provider_raw_path),
         require_live_source_pr=False)
+
+    monkeypatch.setattr(
+        "tools.validate_b_receipt.fetch_and_verify_receipt_merge",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            head_sha=receipt_head, merged_at_us=50_000_000))
+    validate_receipt_bindings(
+        receipt, receipt_path=receipt_path, manifest_path=manifest_path, git_root=repo,
+        expected_head=head, authority=authority,
+        governance_evidence_paths=(snapshot_path, provider_raw_path),
+        now_us=60_000_000, github_token="token",
+        require_live_source_pr=False, receipt_pr=35, require_live_receipt_pr=True)
+
+    monkeypatch.setattr(
+        "tools.validate_b_receipt.fetch_and_verify_receipt_merge",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            head_sha=source, merged_at_us=50_000_000))
+    with pytest.raises(ReceiptBindingError, match="RECEIPT_MERGE_NOT_EXACT_TWO_PARENT"):
+        validate_receipt_bindings(
+            receipt, receipt_path=receipt_path, manifest_path=manifest_path, git_root=repo,
+            expected_head=head, authority=authority,
+            governance_evidence_paths=(snapshot_path, provider_raw_path),
+            now_us=60_000_000, github_token="token",
+            require_live_source_pr=False, receipt_pr=35,
+            require_live_receipt_pr=True)
+
+    original_bootstrap_pr = bootstrap_pr_record
+    original_bootstrap_review = bootstrap_review_record
+
+    def replace_entry(path: str, role: str, data: bytes) -> None:
+        (repo / path).write_bytes(data)
+        entry = next(item for item in entries if item["role"] == role)
+        entry["sha256"] = sha256_hex(data)
+        entry["size"] = len(data)
+
+    direct_commit_pr = json.loads(original_bootstrap_pr)
+    direct_commit_pr["merge_commit_sha"] = bootstrap_head
+    direct_commit_pr["merged_at"] = _provider_time(repo, bootstrap_head)
+    direct_commit_pr_bytes = canonical_json(direct_commit_pr)
+    replace_entry(
+        bootstrap_pr_rel, "CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD",
+        direct_commit_pr_bytes)
+    with pytest.raises(ReceiptBindingError, match="NOT_EXACT_TWO_PARENT_PR_MERGE"):
+        _validate_codeowners_bootstrap(
+            entries=entries, root=repo, payload=payload,
+            source_base_parent=bootstrap_head,
+            source_provider_merge_time_us=source_time,
+            now_us=None, github_token=None, require_live_provider=False)
+    replace_entry(
+        bootstrap_pr_rel, "CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD",
+        original_bootstrap_pr)
+
+    _git(repo, "checkout", "-b", "bootstrap-extra-head", audited_start)
+    codeowners.write_text("\n".join(
+        f"{pattern} @djordi10" for pattern in CRITICAL_PATTERNS))
+    (repo / "extra.txt").write_text("scope expansion\n")
+    _git(repo, "add", ".")
+    _git_at(repo, "1970-01-01T00:00:06Z", "commit", "-m", "unsafe bootstrap head")
+    extra_head = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "-b", "bootstrap-extra-base", audited_start)
+    _git_at(
+        repo, "1970-01-01T00:00:12Z", "merge", "--no-ff", "bootstrap-extra-head",
+        "-m", "merge unsafe bootstrap")
+    extra_merge = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "main")
+    extra_pr = json.loads(original_bootstrap_pr)
+    extra_pr.update({
+        "number": 12,
+        "merged_at": _provider_time(repo, extra_merge),
+        "merge_commit_sha": extra_merge,
+    })
+    extra_pr["head"]["sha"] = extra_head
+    extra_review = json.loads(original_bootstrap_review)
+    extra_review.update({"source_pr": 12, "source_head": extra_head})
+    extra_review["review"].update({
+        "commit_id": extra_head,
+        "submitted_at": "1970-01-01T00:00:11Z",
+    })
+    replace_entry(
+        bootstrap_pr_rel, "CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD",
+        canonical_json(extra_pr))
+    replace_entry(
+        bootstrap_review_rel, "CODEOWNERS_BOOTSTRAP_APPROVED_REVIEW_PROVIDER_RECORD",
+        canonical_json(extra_review))
+    with pytest.raises(ReceiptBindingError, match="DIFF_NOT_EXACT"):
+        _validate_codeowners_bootstrap(
+            entries=entries, root=repo, payload=payload,
+            source_base_parent=extra_merge,
+            source_provider_merge_time_us=source_time,
+            now_us=None, github_token=None, require_live_provider=False)
+    replace_entry(
+        bootstrap_pr_rel, "CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD",
+        original_bootstrap_pr)
+    replace_entry(
+        bootstrap_review_rel, "CODEOWNERS_BOOTSTRAP_APPROVED_REVIEW_PROVIDER_RECORD",
+        original_bootstrap_review)
+
+    stale_review = json.loads(original_bootstrap_review)
+    stale_review["review"]["commit_id"] = audited_start
+    replace_entry(
+        bootstrap_review_rel, "CODEOWNERS_BOOTSTRAP_APPROVED_REVIEW_PROVIDER_RECORD",
+        canonical_json(stale_review))
+    with pytest.raises(ReceiptBindingError, match="REVIEW_IDENTITY_MISMATCH"):
+        _validate_codeowners_bootstrap(
+            entries=entries, root=repo, payload=payload,
+            source_base_parent=bootstrap_merge,
+            source_provider_merge_time_us=source_time,
+            now_us=None, github_token=None, require_live_provider=False)
+    replace_entry(
+        bootstrap_review_rel, "CODEOWNERS_BOOTSTRAP_APPROVED_REVIEW_PROVIDER_RECORD",
+        original_bootstrap_review)
+
+    self_review_pr = json.loads(original_bootstrap_pr)
+    self_review_pr["user"]["login"] = "djordi10"
+    replace_entry(
+        bootstrap_pr_rel, "CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD",
+        canonical_json(self_review_pr))
+    with pytest.raises(ReceiptBindingError, match="REVIEW_NOT_INDEPENDENT"):
+        _validate_codeowners_bootstrap(
+            entries=entries, root=repo, payload=payload,
+            source_base_parent=bootstrap_merge,
+            source_provider_merge_time_us=source_time,
+            now_us=None, github_token=None, require_live_provider=False)
+    replace_entry(
+        bootstrap_pr_rel, "CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD",
+        original_bootstrap_pr)
+
+    post_merge_review = json.loads(original_bootstrap_review)
+    post_merge_review["review"]["submitted_at"] = _provider_time(repo, bootstrap_merge)
+    replace_entry(
+        bootstrap_review_rel, "CODEOWNERS_BOOTSTRAP_APPROVED_REVIEW_PROVIDER_RECORD",
+        canonical_json(post_merge_review))
+    with pytest.raises(ReceiptBindingError, match="REVIEW_NOT_BEFORE_MERGE"):
+        _validate_codeowners_bootstrap(
+            entries=entries, root=repo, payload=payload,
+            source_base_parent=bootstrap_merge,
+            source_provider_merge_time_us=source_time,
+            now_us=None, github_token=None, require_live_provider=False)
+    replace_entry(
+        bootstrap_review_rel, "CODEOWNERS_BOOTSTRAP_APPROVED_REVIEW_PROVIDER_RECORD",
+        original_bootstrap_review)
+
+    drifted_time = json.loads(original_bootstrap_pr)
+    drifted_time["merged_at"] = "1970-01-01T00:00:11Z"
+    replace_entry(
+        bootstrap_pr_rel, "CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD",
+        canonical_json(drifted_time))
+    with pytest.raises(ReceiptBindingError, match="PROVIDER_GIT_TIME_MISMATCH"):
+        _validate_codeowners_bootstrap(
+            entries=entries, root=repo, payload=payload,
+            source_base_parent=bootstrap_merge,
+            source_provider_merge_time_us=source_time,
+            now_us=None, github_token=None, require_live_provider=False)
+    replace_entry(
+        bootstrap_pr_rel, "CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD",
+        original_bootstrap_pr)
 
     alternate_manifest = repo / "evidence/B00R_G2/alternate_manifest.json"
     alternate_manifest.write_bytes(manifest_path.read_bytes())

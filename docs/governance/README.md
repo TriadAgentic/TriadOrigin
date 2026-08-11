@@ -28,7 +28,7 @@ Engineering artifacts fail closed until the owner/provider acts below are authen
 
 | Required object | Canonical repository path | Protected external pin / proof |
 |---|---|---|
-| Authority-bundle decision | `decisions/DEC-AUTHORITY-BUNDLE-001.json` | `AUTHORITY_BUNDLE_DECISION_SHA256` |
+| G2 authority-bundle decision | `decisions/DEC-AUTHORITY-BUNDLE-002.json` | `AUTHORITY_BUNDLE_G2_DECISION_SHA256` |
 | G2 receipt-profile decision | `decisions/DEC-RECEIPT-PROFILE-002.json` | `RECEIPT_PROFILE_G2_DECISION_SHA256` |
 | G2 forward-repair decision | `decisions/DEC-B00-REPAIR-002.json` | `B00R_G2_REPAIR_DECISION_SHA256` |
 | G2 public trust registry | `trust/receipt_trust_registry.g2.v1.json` | `RECEIPT_G2_TRUST_REGISTRY_SHA256` |
@@ -41,6 +41,8 @@ The `002` decisions and G2 trust-registry template are deliberately unauthentica
 publish and externally pin a distinct G2 registry whose owner key explicitly scopes all three
 required decisions; the generation-1 registry is preserved and cannot authorize `-002`. A flag,
 same-PR digest, or arbitrary signature string is not authentication.
+The generation-1 `DEC-AUTHORITY-BUNDLE-001` and its pin remain historical-only and cannot occupy
+the generation-2 authority slot.
 
 The main ruleset must be active before the corrective source merge, target exactly
 `refs/heads/main` plus `refs/heads/b00r-ruleset-canary` with no exclusions, expose no bypass, require
@@ -52,8 +54,9 @@ GitHub reads CODEOWNERS from the PR base, not from the proposed head. Therefore 
 first be made the exact critical-path owner on `main` through a separate, independently reviewed
 bootstrap (or the existing base team must be made real and then perform that bootstrap). The
 corrective source must be refreshed from that main commit. The receipt validator requires an
-ordinary two-parent merge and byte-compares the first parent's CODEOWNERS to the reviewed source;
-the corrective PR cannot self-bootstrap this control.
+ordinary two-parent merge whose literal first parent is the recorded bootstrap merge; it
+byte-compares that parent's CODEOWNERS and requires the second parent/tree to equal the reviewed
+source head. Reserve `main`: no merge may intervene from bootstrap through source and receipt.
 
 ## Generation-2 canonical receipt layout
 
@@ -65,6 +68,10 @@ B00R generation 2 uses one bare canonical JSON receipt:
 - source PR provider record: `evidence/B00R_G2/source_pr.provider.raw.json`;
 - approved-review provider record:
   `evidence/B00R_G2/source_pr.approved_review.provider.raw.json`;
+- CODEOWNERS-bootstrap PR provider record:
+  `evidence/B00R_G2/codeowners_bootstrap_pr.provider.raw.json`;
+- CODEOWNERS-bootstrap exact-head approval:
+  `evidence/B00R_G2/codeowners_bootstrap_pr.approved_review.provider.raw.json`;
 - negative canary: `evidence/B00R_G2/provider_negative_canary.v1.json` plus its transcript and
   provider rule-suite response; and
 - tag-ruleset capture: `evidence/B00R_G2/tag_ruleset.provider.json`.
@@ -74,9 +81,13 @@ The receipt PR is separate and append-only. It may add only `evidence/B00R_G2/**
 source-phase captures, historical evidence, or generation-1 identities.
 
 `tools/validate_b_receipt.py --strict` binds the actual G2 source PR number, final reviewed head,
-merge SHA/tree/time, independent approval, provider ruleset/canary chronology, authority bytes,
-closed manifest, audited start, and exact receipt head. CI's nonterminal provider mode is not
-closure.
+merge SHA/tree/time, independent approval, separately reviewed CODEOWNERS bootstrap, provider
+ruleset/canary chronology, authority bytes, closed manifest, audited start, and exact receipt head.
+Terminal mode additionally derives the receipt PR's two-parent merge, exact-head CODEOWNER review,
+successful GitHub Actions check, and live-main ancestry from fixed provider endpoints. CI's
+nonterminal provider mode is not closure.
+The terminal proof requires both the matching successful workflow run and its integration-bound
+`test-and-verify` check to complete before the receipt merge.
 
 ## Physical closure anchor
 
@@ -88,7 +99,9 @@ B00R_RECEIPT_ANCHOR_G2
 
 Its message profile is `TRIAD-B00R-RECEIPT-ANCHOR-G2-V1` and binds the G2 receipt path and SHA-256.
 The tag must point to the exact receipt merge. Its active exact-ref update/deletion/no-bypass
-ruleset is committed below `evidence/B00R_G2/`, externally pinned, and freshly revalidated.
+ruleset is installed, captured, and externally pinned before the final receipt head is signed or
+reviewed. Its `created_at <= updated_at < receipt merged_at` chronology is strict. Terminal
+validation requires a positive receipt PR number and freshly revalidates the rule and anchor.
 
 The generation-1 anchor is never moved and does not satisfy this requirement. The terminal gate may
 return only `PASS_REPOSITORY_SAFE_HOLD`; it does not authorize a venue or deployed runtime.

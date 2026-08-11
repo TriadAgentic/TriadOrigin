@@ -26,6 +26,7 @@ POLICY_V2 = "docs/control/b00r_policy.v2.json"
 PROFILE_1 = "docs/governance/decisions/DEC-RECEIPT-PROFILE-001.template.json"
 PROFILE_2 = "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.template.json"
 REPAIR_2 = "docs/governance/decisions/DEC-B00-REPAIR-002.template.json"
+AUTHORITY_2 = "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.template.json"
 TRUST_2_TEMPLATE = "docs/governance/trust/receipt_trust_registry.g2.v1.template.json"
 
 
@@ -114,6 +115,12 @@ def test_generation_2_profile_has_exact_receipt_root_and_anchor():
 def test_generation_2_authority_profile_selects_generation_2_decisions_and_pins():
     subjects, canonical_paths = authority._authority_profile(2)  # noqa: SLF001
 
+    assert subjects["authority_bundle"][:2] == (
+        "AUTHORITY_BUNDLE_G2_DECISION_SHA256",
+        "DEC-AUTHORITY-BUNDLE-002",
+    )
+    assert subjects["authority_bundle"][3] == ROOT / AUTHORITY_2
+
     assert subjects["receipt_profile"][:2] == (
         "RECEIPT_PROFILE_G2_DECISION_SHA256",
         "DEC-RECEIPT-PROFILE-002",
@@ -130,8 +137,17 @@ def test_generation_2_authority_profile_selects_generation_2_decisions_and_pins(
     assert canonical_paths["b00_repair"] == (
         "docs/governance/decisions/DEC-B00-REPAIR-002.json"
     )
+    assert canonical_paths["authority_bundle"] == (
+        "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json"
+    )
+    assert subjects["authority_bundle"][0] != authority.SUBJECTS["authority_bundle"][0]
     assert subjects["receipt_profile"][0] != authority.SUBJECTS["receipt_profile"][0]
     assert subjects["b00_repair"][0] != authority.SUBJECTS["b00_repair"][0]
+    g2_trust = _json(TRUST_2_TEMPLATE)
+    owner = next(key for key in g2_trust["keys"] if key["role"] == "AUTHORITY_OWNER")
+    assert owner["scope"] == (
+        "DEC-AUTHORITY-BUNDLE-002,DEC-RECEIPT-PROFILE-002,DEC-B00-REPAIR-002"
+    )
 
 
 def test_policy_ledger_and_generation_1_immutable_bindings_are_consistent():

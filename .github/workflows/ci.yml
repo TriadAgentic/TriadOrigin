@@ -135,7 +135,7 @@ jobs:
         shell: bash
         env:
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
-          AUTHORITY_BUNDLE_DECISION_SHA256: ${{ vars.AUTHORITY_BUNDLE_DECISION_SHA256 }}
+          AUTHORITY_BUNDLE_G2_DECISION_SHA256: ${{ vars.AUTHORITY_BUNDLE_G2_DECISION_SHA256 }}
           RECEIPT_PROFILE_G2_DECISION_SHA256: ${{ vars.RECEIPT_PROFILE_G2_DECISION_SHA256 }}
           B00R_G2_REPAIR_DECISION_SHA256: ${{ vars.B00R_G2_REPAIR_DECISION_SHA256 }}
           RECEIPT_G2_TRUST_REGISTRY_SHA256: ${{ vars.RECEIPT_G2_TRUST_REGISTRY_SHA256 }}
@@ -167,7 +167,7 @@ jobs:
         shell: bash
         env:
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
-          AUTHORITY_BUNDLE_DECISION_SHA256: ${{ vars.AUTHORITY_BUNDLE_DECISION_SHA256 }}
+          AUTHORITY_BUNDLE_G2_DECISION_SHA256: ${{ vars.AUTHORITY_BUNDLE_G2_DECISION_SHA256 }}
           RECEIPT_PROFILE_G2_DECISION_SHA256: ${{ vars.RECEIPT_PROFILE_G2_DECISION_SHA256 }}
           B00R_G2_REPAIR_DECISION_SHA256: ${{ vars.B00R_G2_REPAIR_DECISION_SHA256 }}
           RECEIPT_G2_TRUST_REGISTRY_SHA256: ${{ vars.RECEIPT_G2_TRUST_REGISTRY_SHA256 }}
@@ -202,7 +202,7 @@ jobs:
           EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
           RECEIPT_PATH: ${{ steps.milestone_role.outputs.receipt_path }}
           MANIFEST_PATH: ${{ steps.milestone_role.outputs.manifest_path }}
-          AUTHORITY_BUNDLE_DECISION_SHA256: ${{ vars.AUTHORITY_BUNDLE_DECISION_SHA256 }}
+          AUTHORITY_BUNDLE_G2_DECISION_SHA256: ${{ vars.AUTHORITY_BUNDLE_G2_DECISION_SHA256 }}
           RECEIPT_PROFILE_G2_DECISION_SHA256: ${{ vars.RECEIPT_PROFILE_G2_DECISION_SHA256 }}
           B00R_G2_REPAIR_DECISION_SHA256: ${{ vars.B00R_G2_REPAIR_DECISION_SHA256 }}
           RECEIPT_G2_TRUST_REGISTRY_SHA256: ${{ vars.RECEIPT_G2_TRUST_REGISTRY_SHA256 }}
@@ -221,7 +221,12 @@ jobs:
             --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" \
             --nonterminal-provider-proof \
             "$RECEIPT_PATH"
-      # This job authenticates the exact receipt PR/main-push head. It does not claim terminal
-      # closure: after the receipt merge, `b00r_gate --mode receipt --expected-head <merge>
-      # --base-sha <source-merge> --now-us <trusted-us>` additionally requires the protected,
-      # annotated (not signature-verified) B00R_RECEIPT_ANCHOR_G2.
+      # This job authenticates receipt content at the PR head only and does not claim terminal
+      # closure. Nonterminal provider mode
+      # deliberately skips privileged bypass/rule-suite/ref reads and every post-merge receipt-PR
+      # proof. Before merge, the G2 tag rule must already be installed, captured, and externally
+      # pinned. After merge, `b00r_gate --mode receipt --expected-head <receipt-merge>
+      # --base-sha <source-merge> --receipt-pr <number> --provider-pin <main-pin>
+      # --anchor-ruleset-pin <tag-pin> --now-us <trusted-us>` requires privileged live proof of the
+      # independently reviewed/CI-passing receipt merge on main and the protected annotated
+      # B00R_RECEIPT_ANCHOR_G2.

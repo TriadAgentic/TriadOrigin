@@ -5,7 +5,9 @@ from __future__ import annotations
 import hashlib
 import json
 import pathlib
+import os
 import subprocess
+from types import SimpleNamespace
 
 import pytest
 
@@ -24,6 +26,17 @@ def _git(root: pathlib.Path, *args: str) -> str:
         text=True,
         check=False,
     )
+    assert proc.returncode == 0, proc.stderr
+    return proc.stdout.strip()
+
+
+def _git_at(root: pathlib.Path, instant: str, *args: str) -> str:
+    env = dict(os.environ)
+    env["GIT_AUTHOR_DATE"] = instant
+    env["GIT_COMMITTER_DATE"] = instant
+    proc = subprocess.run(
+        ["git", "-C", str(root), *args], capture_output=True, text=True,
+        check=False, env=env)
     assert proc.returncode == 0, proc.stderr
     return proc.stdout.strip()
 
@@ -55,23 +68,52 @@ def test_exact_head_accepts_only_the_checked_out_canonical_sha(tmp_path):
         b00r_gate.verify_expected_head("f" * 40, tmp_path / "repo")
 
 
+def test_terminal_receipt_base_is_derived_from_two_parent_merge(tmp_path):
+    repo = tmp_path / "repo"
+    base = _init_repo(repo)
+    main_branch = _git(repo, "branch", "--show-current")
+    _git(repo, "checkout", "-qb", "receipt")
+    (repo / "receipt.txt").write_text("receipt\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "receipt head")
+    receipt_head = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "checkout", "-q", main_branch)
+    _git(repo, "merge", "--no-ff", "-qm", "receipt merge", "receipt")
+    merge = _git(repo, "rev-parse", "HEAD")
+    assert b00r_gate.verify_receipt_merge_base(merge, base, repo) == (base, receipt_head)
+    with pytest.raises(b00r_gate.HeadIdentityError, match="RECEIPT_BASE_MISMATCH"):
+        b00r_gate.verify_receipt_merge_base(merge, receipt_head, repo)
+    with pytest.raises(
+        b00r_gate.HeadIdentityError, match="RECEIPT_HEAD_NOT_EXACT_TWO_PARENT_MERGE"
+    ):
+        b00r_gate.verify_receipt_merge_base(receipt_head, base, repo)
+
+
 def test_receipt_mode_requires_expected_head_and_base_sha():
     with pytest.raises(SystemExit) as missing_head:
         b00r_gate.main([
-            "--mode", "receipt", "--base-sha", "a" * 40, "--now-us", "1000000",
+            "--mode", "receipt", "--base-sha", "a" * 40, "--receipt-pr", "35",
+            "--now-us", "1000000",
         ])
     assert missing_head.value.code == 2
     with pytest.raises(SystemExit) as missing_base:
         b00r_gate.main([
-            "--mode", "receipt", "--expected-head", "a" * 40, "--now-us", "1000000",
+            "--mode", "receipt", "--expected-head", "a" * 40, "--receipt-pr", "35",
+            "--now-us", "1000000",
         ])
     assert missing_base.value.code == 2
     with pytest.raises(SystemExit) as zero_base:
         b00r_gate.main([
             "--mode", "receipt", "--expected-head", "a" * 40,
-            "--base-sha", "0" * 40, "--now-us", "1000000",
+            "--base-sha", "0" * 40, "--receipt-pr", "35", "--now-us", "1000000",
         ])
     assert zero_base.value.code == 2
+    with pytest.raises(SystemExit) as missing_receipt_pr:
+        b00r_gate.main([
+            "--mode", "receipt", "--expected-head", "a" * 40,
+            "--base-sha", "b" * 40, "--now-us", "1000000",
+        ])
+    assert missing_receipt_pr.value.code == 2
     with pytest.raises(SystemExit) as source_missing_head:
         b00r_gate.main(["--mode", "source", "--now-us", "1000000"])
     assert source_missing_head.value.code == 2
@@ -377,14 +419,30 @@ def test_codeowners_provider_identity_is_writable_individual_and_independent(mon
             pr_author="source-author")
 
 
-def _anchored_receipt_repo(root: pathlib.Path) -> tuple[str, pathlib.Path, pathlib.Path, str]:
+def _anchored_receipt_repo(
+    root: pathlib.Path,
+    *,
+    bypass_actors: list[dict] | None = None,
+    ruleset_created_at: str = "1970-01-01T00:00:01Z",
+    ruleset_updated_at: str = "1970-01-01T00:00:02Z",
+    receipt_merge_instant: str | None = None,
+) -> tuple[str, pathlib.Path, pathlib.Path, str]:
     root.mkdir(parents=True)
     _git(root, "init", "-q")
     _git(root, "config", "user.email", "anchor-test@example.invalid")
     _git(root, "config", "user.name", "Anchor Test")
+    (root / "source.txt").write_text("source\n", encoding="utf-8")
+    _git(root, "add", ".")
+    _git(root, "commit", "-qm", "source merge")
+    source_merge = _git(root, "rev-parse", "HEAD")
+    main_branch = _git(root, "branch", "--show-current")
+    _git(root, "checkout", "-qb", "receipt-work")
     receipt = root / validate_b00r_anchor.RECEIPT_PATH
     receipt.parent.mkdir(parents=True)
-    receipt.write_text('{"receipt":"b00r"}\n', encoding="utf-8")
+    receipt.write_text(json.dumps({
+        "payload": {"source_merge_sha": source_merge},
+        "receipt": "b00r",
+    }, sort_keys=True), encoding="utf-8")
     ruleset = root / validate_b00r_anchor.DEFAULT_RULESET
     ruleset.parent.mkdir(parents=True)
     ruleset.write_text(json.dumps({
@@ -404,19 +462,25 @@ def _anchored_receipt_repo(root: pathlib.Path) -> tuple[str, pathlib.Path, pathl
                 "href": "https://github.com/TriadAgentic/TriadOrigin/rules/1001"
             },
         },
-        "created_at": "2026-08-10T00:00:00Z",
-        "updated_at": "2026-08-10T00:00:01Z",
+        "created_at": ruleset_created_at,
+        "updated_at": ruleset_updated_at,
         "conditions": {
             "ref_name": {
                 "include": [f"refs/tags/{validate_b00r_anchor.TAG_NAME}"],
                 "exclude": [],
             }
         },
-        "bypass_actors": [],
+        "bypass_actors": [] if bypass_actors is None else bypass_actors,
         "rules": [{"type": "update"}, {"type": "deletion"}],
     }, sort_keys=True), encoding="utf-8")
     _git(root, "add", ".")
-    _git(root, "commit", "-qm", "receipt merge")
+    _git(root, "commit", "-qm", "receipt head")
+    _git(root, "checkout", "-q", main_branch)
+    merge_command = ("merge", "--no-ff", "-qm", "receipt merge", "receipt-work")
+    if receipt_merge_instant is None:
+        _git(root, *merge_command)
+    else:
+        _git_at(root, receipt_merge_instant, *merge_command)
     head = _git(root, "rev-parse", "HEAD")
     receipt_sha = hashlib.sha256(receipt.read_bytes()).hexdigest()
     message = (
@@ -442,6 +506,29 @@ def test_receipt_anchor_binds_merge_receipt_and_pinned_immutable_ruleset(tmp_pat
     assert receipt_sha == hashlib.sha256(receipt.read_bytes()).hexdigest()
 
 
+def test_receipt_anchor_rejects_tagged_single_parent_evidence_commit(tmp_path):
+    repo = tmp_path / "repo"
+    _head, receipt, ruleset, pin = _anchored_receipt_repo(repo)
+    _git(repo, "tag", "-d", validate_b00r_anchor.TAG_NAME)
+    (repo / "evidence" / "B00R_G2" / "attack.txt").write_text("unreviewed\n")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "unreviewed evidence commit")
+    attack_head = _git(repo, "rev-parse", "HEAD")
+    message = (
+        "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1\n"
+        f"receipt_path={validate_b00r_anchor.RECEIPT_PATH}\n"
+        f"receipt_sha256={hashlib.sha256(receipt.read_bytes()).hexdigest()}\n"
+    )
+    _git(repo, "tag", "-a", validate_b00r_anchor.TAG_NAME, "-m", message, attack_head)
+    with pytest.raises(
+        validate_b00r_anchor.AnchorError,
+        match="RECEIPT_MERGE_NOT_EXACT_TWO_PARENT_SOURCE_MERGE",
+    ):
+        validate_b00r_anchor._verify_static(
+            root=repo, expected_head=attack_head, receipt_path=receipt,
+            ruleset_path=ruleset, ruleset_pin=pin)
+
+
 def test_receipt_anchor_terminal_verify_uses_bound_bytes_and_requires_live_token(
     tmp_path, monkeypatch
 ):
@@ -459,6 +546,7 @@ def test_receipt_anchor_terminal_verify_uses_bound_bytes_and_requires_live_token
             ruleset_pin=pin,
             now_us=1,
             github_token=None,
+            receipt_pr=35,
         )
 
 
@@ -468,12 +556,18 @@ def test_receipt_anchor_terminal_verify_binds_live_annotated_tag_object(tmp_path
     tag_object_sha = _git(repo, "rev-parse", f"refs/tags/{validate_b00r_anchor.TAG_NAME}")
     monkeypatch.setattr(
         validate_b00r_anchor, "fetch_and_match_live_ruleset", lambda *_args, **_kwargs: object())
+    receipt_head = _git(repo, "rev-parse", f"{head}^2")
+    merge_time_us = int(_git(repo, "show", "-s", "--format=%ct", head)) * 1_000_000
+    monkeypatch.setattr(
+        validate_b00r_anchor, "fetch_and_verify_receipt_merge",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            head_sha=receipt_head, merged_at_us=merge_time_us))
     monkeypatch.setattr(
         validate_b00r_anchor, "fetch_anchor_tag_object_sha",
         lambda **_kwargs: tag_object_sha)
     assert validate_b00r_anchor.verify(
         root=repo, expected_head=head, receipt_path=receipt, ruleset_path=ruleset,
-        ruleset_pin=pin, now_us=1, github_token="token",
+        ruleset_pin=pin, now_us=1, github_token="token", receipt_pr=35,
     ) == hashlib.sha256(receipt.read_bytes()).hexdigest()
     monkeypatch.setattr(
         validate_b00r_anchor, "fetch_anchor_tag_object_sha",
@@ -481,8 +575,114 @@ def test_receipt_anchor_terminal_verify_binds_live_annotated_tag_object(tmp_path
     with pytest.raises(validate_b00r_anchor.AnchorError, match="TAG_OBJECT_MISMATCH"):
         validate_b00r_anchor.verify(
             root=repo, expected_head=head, receipt_path=receipt, ruleset_path=ruleset,
-            ruleset_pin=pin, now_us=1, github_token="token",
+            ruleset_pin=pin, now_us=1, github_token="token", receipt_pr=35,
         )
+
+
+def test_receipt_anchor_rejects_tag_ruleset_installed_after_receipt_merge(
+    tmp_path, monkeypatch
+):
+    repo = tmp_path / "repo"
+    head, receipt, ruleset, pin = _anchored_receipt_repo(
+        repo, ruleset_updated_at="2999-01-01T00:00:00Z")
+    receipt_head = _git(repo, "rev-parse", f"{head}^2")
+    merge_time_us = int(_git(repo, "show", "-s", "--format=%ct", head)) * 1_000_000
+    monkeypatch.setattr(
+        validate_b00r_anchor, "fetch_and_verify_receipt_merge",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            head_sha=receipt_head, merged_at_us=merge_time_us))
+    with pytest.raises(
+        validate_b00r_anchor.AnchorError,
+        match="TAG_RULESET_NOT_EFFECTIVE_BEFORE_RECEIPT_MERGE",
+    ):
+        validate_b00r_anchor.verify(
+            root=repo, expected_head=head, receipt_path=receipt, ruleset_path=ruleset,
+            ruleset_pin=pin, now_us=1, github_token="token", receipt_pr=35)
+
+
+def test_receipt_anchor_rejects_tag_ruleset_created_after_its_update(
+    tmp_path, monkeypatch
+):
+    repo = tmp_path / "repo"
+    head, receipt, ruleset, pin = _anchored_receipt_repo(
+        repo,
+        ruleset_created_at="1970-01-01T00:00:03Z",
+        ruleset_updated_at="1970-01-01T00:00:02Z",
+    )
+    receipt_head = _git(repo, "rev-parse", f"{head}^2")
+    merge_time_us = int(_git(repo, "show", "-s", "--format=%ct", head)) * 1_000_000
+    monkeypatch.setattr(
+        validate_b00r_anchor, "fetch_and_verify_receipt_merge",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            head_sha=receipt_head, merged_at_us=merge_time_us))
+    with pytest.raises(
+        validate_b00r_anchor.AnchorError,
+        match="TAG_RULESET_NOT_EFFECTIVE_BEFORE_RECEIPT_MERGE",
+    ):
+        validate_b00r_anchor.verify(
+            root=repo, expected_head=head, receipt_path=receipt, ruleset_path=ruleset,
+            ruleset_pin=pin, now_us=1, github_token="token", receipt_pr=35)
+
+
+@pytest.mark.parametrize("fractional_before", [False, True])
+def test_receipt_anchor_tag_ruleset_strict_merge_time_boundary(
+    tmp_path, monkeypatch, fractional_before
+):
+    repo = tmp_path / "repo"
+    updated_at = (
+        "2030-01-01T23:59:59.999999Z"
+        if fractional_before else "2030-01-02T00:00:00Z"
+    )
+    head, receipt, ruleset, pin = _anchored_receipt_repo(
+        repo,
+        ruleset_updated_at=updated_at,
+        receipt_merge_instant="2030-01-02T00:00:00Z",
+    )
+    receipt_head = _git(repo, "rev-parse", f"{head}^2")
+    merge_time_s = int(_git(repo, "show", "-s", "--format=%ct", head))
+    merge_time_us = merge_time_s * 1_000_000
+    tag_object_sha = _git(repo, "rev-parse", f"refs/tags/{validate_b00r_anchor.TAG_NAME}")
+    monkeypatch.setattr(
+        validate_b00r_anchor, "fetch_and_verify_receipt_merge",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            head_sha=receipt_head, merged_at_us=merge_time_us))
+    monkeypatch.setattr(
+        validate_b00r_anchor, "fetch_and_match_live_ruleset",
+        lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(
+        validate_b00r_anchor, "fetch_anchor_tag_object_sha",
+        lambda **_kwargs: tag_object_sha)
+    if fractional_before:
+        assert validate_b00r_anchor.verify(
+            root=repo, expected_head=head, receipt_path=receipt, ruleset_path=ruleset,
+            ruleset_pin=pin, now_us=1, github_token="token", receipt_pr=35,
+        ) == hashlib.sha256(receipt.read_bytes()).hexdigest()
+    else:
+        with pytest.raises(
+            validate_b00r_anchor.AnchorError,
+            match="TAG_RULESET_NOT_EFFECTIVE_BEFORE_RECEIPT_MERGE",
+        ):
+            validate_b00r_anchor.verify(
+                root=repo, expected_head=head, receipt_path=receipt, ruleset_path=ruleset,
+                ruleset_pin=pin, now_us=1, github_token="token", receipt_pr=35)
+
+
+def test_receipt_anchor_rejects_provider_and_git_merge_time_drift(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    head, receipt, ruleset, pin = _anchored_receipt_repo(repo)
+    receipt_head = _git(repo, "rev-parse", f"{head}^2")
+    merge_time_us = int(_git(repo, "show", "-s", "--format=%ct", head)) * 1_000_000
+    monkeypatch.setattr(
+        validate_b00r_anchor, "fetch_and_verify_receipt_merge",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            head_sha=receipt_head, merged_at_us=merge_time_us + 1_000_000))
+    with pytest.raises(
+        validate_b00r_anchor.AnchorError,
+        match="RECEIPT_PR_PROVIDER_GIT_TIME_MISMATCH",
+    ):
+        validate_b00r_anchor.verify(
+            root=repo, expected_head=head, receipt_path=receipt, ruleset_path=ruleset,
+            ruleset_pin=pin, now_us=1, github_token="token", receipt_pr=35)
 
 
 def test_receipt_anchor_rejects_absent_pin_and_bypassable_ruleset(tmp_path):
@@ -497,25 +697,14 @@ def test_receipt_anchor_rejects_absent_pin_and_bypassable_ruleset(tmp_path):
             ruleset_pin=None,
         )
 
-    # Rebuild the exact commit/tag with a provider capture that contains a bypass actor.  A newly
-    # computed external pin cannot make unsafe rules pass semantic validation.
-    _git(repo, "tag", "-d", validate_b00r_anchor.TAG_NAME)
-    doc = json.loads(ruleset.read_text())
-    doc["bypass_actors"] = [{"actor_id": 1, "actor_type": "OrganizationAdmin"}]
-    ruleset.write_text(json.dumps(doc, sort_keys=True), encoding="utf-8")
-    _git(repo, "add", ".")
-    _git(repo, "commit", "-qm", "unsafe ruleset")
-    head = _git(repo, "rev-parse", "HEAD")
-    message = (
-        "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1\n"
-        f"receipt_path={validate_b00r_anchor.RECEIPT_PATH}\n"
-        f"receipt_sha256={hashlib.sha256(receipt.read_bytes()).hexdigest()}\n"
+    unsafe_repo = tmp_path / "unsafe-repo"
+    head, receipt, ruleset, unsafe_pin = _anchored_receipt_repo(
+        unsafe_repo,
+        bypass_actors=[{"actor_id": 1, "actor_type": "OrganizationAdmin"}],
     )
-    _git(repo, "tag", "-a", validate_b00r_anchor.TAG_NAME, "-m", message, head)
-    unsafe_pin = hashlib.sha256(ruleset.read_bytes()).hexdigest()
     with pytest.raises(validate_b00r_anchor.AnchorError, match="BYPASS_ACTORS_PRESENT"):
         validate_b00r_anchor._verify_static(
-            root=repo,
+            root=unsafe_repo,
             expected_head=head,
             receipt_path=receipt,
             ruleset_path=ruleset,
@@ -554,6 +743,7 @@ def test_receipt_mode_terminal_gate_contains_anchor_validation():
         provider_pin=None,
         anchor_ruleset=b00r_gate.CANONICAL_ANCHOR_RULESET,
         anchor_ruleset_pin=None,
+        receipt_pr=35,
     )
     gates = b00r_gate._owner_gates(args)
     anchor = [gate for gate in gates if gate.gate_id == "receipt_anchor"]
@@ -561,9 +751,11 @@ def test_receipt_mode_terminal_gate_contains_anchor_validation():
     assert anchor[0].owner_gated is True
     assert "tools/validate_b00r_anchor.py" in anchor[0].argv
     assert "--expected-head" in anchor[0].argv
+    assert anchor[0].argv[anchor[0].argv.index("--receipt-pr") + 1] == "35"
 
     receipt = [gate for gate in gates if gate.gate_id == "receipt_v3_closure"]
     assert len(receipt) == 1
+    assert receipt[0].argv[receipt[0].argv.index("--receipt-pr") + 1] == "35"
     assert gates[-1].gate_id == "receipt_v3_closure"
     for required in (
         "--now-us", "--manifest", "--git-root", "--expected-head",

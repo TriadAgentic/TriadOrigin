@@ -40,16 +40,18 @@ separate gate receipt._
 ## B00R generation 2 · only open root correction
 
 - [x] Additive policy `docs/control/b00r_policy.v2.json` names audited start `76b5e48…`
-- [x] Distinct decisions and identities defined: `DEC-RECEIPT-PROFILE-002`,
-  `DEC-B00-REPAIR-002`, `evidence/B00R_G2/`, `B00R.g2.receipt.v3.json`, and
+- [x] Distinct decisions and identities defined: `DEC-AUTHORITY-BUNDLE-002`,
+  `DEC-RECEIPT-PROFILE-002`, `DEC-B00-REPAIR-002`, `evidence/B00R_G2/`,
+  `B00R.g2.receipt.v3.json`, and
   `B00R_RECEIPT_ANCHOR_G2`
 - [x] Generation-1 evidence guarded immutable; G2 receipt role rejects mixed content
 - [x] Source PR/review provider records require actual PR number, final head, merge SHA/time, positive
   review id, exact-head `APPROVED`, independent author/reviewer, and pre-merge submission time
 - [ ] Bootstrap the exact `@djordi10` critical-path CODEOWNERS bytes onto `main` in a separate
-  independently reviewed change; refresh the correction so its merge first parent contains them
-- [ ] Owner-authenticate the `001` authority bundle and both `002` decisions; externally pin all
-  decision/trust bytes
+  independently reviewed change; reserve `main` and require that bootstrap merge to be the source
+  merge's literal first parent
+- [ ] Owner-authenticate all three G2 `002` decisions under the G2 registry; externally pin all four
+  decision/trust objects
 - [ ] Install/capture/pin an active provider rule targeting exactly `main` plus
   `b00r-ruleset-canary`, with empty exclusions, no bypass, integration-bound strict CI, required
   review controls, and `allowed_merge_methods=["merge"]`
@@ -58,12 +60,16 @@ separate gate receipt._
 - [ ] Freeze corrective source head; exact-head CI green; sole independent CODEOWNER submits approval
   on that head; every actionable thread resolved
 - [ ] Merge corrective source using the enforced ordinary two-parent merge method; prove its first
-  parent already had the exact CODEOWNERS bytes and capture exact PR/head/author/review chronology
+  parent equals the bootstrap merge, its second parent/tree equals the reviewed head, and capture
+  exact PR/head/author/review/provider=Git chronology
 - [ ] Hermetically reproduce the exact source merge with identical seed-0/seed-1 test inventories
 - [ ] Open a separate append-only receipt PR containing only `evidence/B00R_G2/**` and
   `evidence/receipts/B00R.g2.receipt.v3.json`
-- [ ] Merge the receipt under the same controls; publish the protected annotated
-  `B00R_RECEIPT_ANCHOR_G2`; run the terminal receipt gate at the exact receipt merge
+- [ ] Before final receipt signing/review, install/capture/pin the no-bypass G2 tag rule
+- [ ] Require receipt exact-head CI and independent approval; merge with source as literal first
+  parent and reviewed receipt head/tree as second parent/result; permit no intervening main merge
+- [ ] Publish the protected annotated `B00R_RECEIPT_ANCHOR_G2`; run the privileged terminal receipt
+  gate with the positive receipt PR number at the exact receipt merge
 - [ ] Only after terminal `PASS_REPOSITORY_SAFE_HOLD`, branch B01C from that receipt merge
 
 ## B00 · Historical source import
@@ -81,8 +87,8 @@ separate gate receipt._
 - [x] Combined RC3+RC4 referential/cycle/inversion/one-owner/source-authority validator — `tools/validate_combined_dag.py` (CI + e2e stage 16)
 - [x] `evidence_receipt.v2`, `task_status_event.v2`, `gate_receipt.v2` + semantic validator — landed B01, gate-receipt PASS law hardened at B00C
 - [x] Invalid receipt fixtures: stale/scope/digest/reviewer/blocker/rollback/composition failures — `tests/test_b00c_control_closure.py` refusal battery
-- [x] Issue #5 closed with post-hoc ruleset `20641102` and rejected administrative canaries — useful
-  historical evidence only; not generation-1 closure
+- [ ] Issue #5 is open/reopened; post-hoc ruleset `20641102` and rejected administrative canaries are
+  useful historical evidence only. Close it only after G2 terminal PASS.
 - [ ] Promote the future control to the stricter G2 profile: exact main+canary target, no exclusions,
   no bypass, integration-bound `CI / test-and-verify`, independent CODEOWNER, and merge-only method;
   recapture and pin it before the G2 source merge

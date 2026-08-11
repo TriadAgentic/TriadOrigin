@@ -53,7 +53,7 @@ CANONICAL_AUTHORITY_PATHS = {
     "trust_registry": "docs/governance/trust/receipt_trust_registry.v1.json",
 }
 GENERATION_2_AUTHORITY_PATHS = {
-    "authority_bundle": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.json",
+    "authority_bundle": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json",
     "receipt_profile": "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json",
     "b00_repair": "docs/governance/decisions/DEC-B00-REPAIR-002.json",
     "trust_registry": TRUST_REL_G2,
@@ -80,7 +80,10 @@ SUBJECTS = {
         GOV / "trust" / "receipt_trust_registry.v1.template.json"),
 }
 GENERATION_2_SUBJECTS = {
-    "authority_bundle": SUBJECTS["authority_bundle"],
+    "authority_bundle": (
+        "AUTHORITY_BUNDLE_G2_DECISION_SHA256", "DEC-AUTHORITY-BUNDLE-002",
+        GOV / "decisions" / "DEC-AUTHORITY-BUNDLE-002.json",
+        GOV / "decisions" / "DEC-AUTHORITY-BUNDLE-002.template.json"),
     "receipt_profile": (
         "RECEIPT_PROFILE_G2_DECISION_SHA256", "DEC-RECEIPT-PROFILE-002",
         GOV / "decisions" / "DEC-RECEIPT-PROFILE-002.json",
@@ -294,6 +297,9 @@ def _verify_subject_bindings(
         path = root / rel
         if not path.is_file() or _sha256(path) != profile["subject_sha256s"].get(name):
             raise AuthorityRootError(f"DECISION_SUBJECT_MISMATCH:{name}")
+    if (repair_generation == 2
+            and profile.get("supersedes") != ["DEC-RECEIPT-PROFILE-001"]):
+        raise AuthorityRootError("RECEIPT_PROFILE_G2_SUPERSESSION_MISMATCH")
     authority = decisions["authority_bundle"]
     if set(authority.get("subject_sha256s", {})) != set(authority_paths):
         raise AuthorityRootError("AUTHORITY_BUNDLE_SUBJECT_SET_MISMATCH")
@@ -301,6 +307,8 @@ def _verify_subject_bindings(
         path = root / rel
         if not path.is_file() or _sha256(path) != authority["subject_sha256s"].get(name):
             raise AuthorityRootError(f"DECISION_SUBJECT_MISMATCH:{name}")
+    if repair_generation == 2 and authority.get("supersedes") != ["DEC-AUTHORITY-BUNDLE-001"]:
+        raise AuthorityRootError("AUTHORITY_BUNDLE_G2_SUPERSESSION_MISMATCH")
 
     repair = decisions["b00_repair"]
     subjects = repair.get("subject_sha256s", {})

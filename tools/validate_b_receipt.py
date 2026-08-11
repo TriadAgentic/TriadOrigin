@@ -35,13 +35,13 @@ try:  # importable both as `python tools/...` and as `from tools import ...`
         LiveRulesetError, LiveRulesetUnavailable, fetch_and_match_live_ruleset,
         fetch_and_match_pull_request,
         fetch_and_match_pull_request_review, fetch_and_match_rule_suite,
-        fetch_canary_ref_sha, fetch_repository_permission)
+        fetch_and_verify_receipt_merge, fetch_canary_ref_sha, fetch_repository_permission)
 except ModuleNotFoundError:  # pragma: no cover - direct script fallback
     from github_ruleset_live import (  # type: ignore  # noqa: E402
         LiveRulesetError, LiveRulesetUnavailable, fetch_and_match_live_ruleset,
         fetch_and_match_pull_request,
         fetch_and_match_pull_request_review, fetch_and_match_rule_suite,
-        fetch_canary_ref_sha, fetch_repository_permission)
+        fetch_and_verify_receipt_merge, fetch_canary_ref_sha, fetch_repository_permission)
 
 
 class ReceiptBindingError(ValueError):
@@ -65,6 +65,13 @@ SOURCE_PR_ROLE = "SOURCE_PR_PROVIDER_RECORD"
 SOURCE_PR_PATH = f"{EVIDENCE_ROOT}/source_pr.provider.raw.json"
 SOURCE_PR_REVIEW_ROLE = "SOURCE_PR_APPROVED_REVIEW_PROVIDER_RECORD"
 SOURCE_PR_REVIEW_PATH = f"{EVIDENCE_ROOT}/source_pr.approved_review.provider.raw.json"
+CODEOWNERS_BOOTSTRAP_PR_ROLE = "CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD"
+CODEOWNERS_BOOTSTRAP_PR_PATH = \
+    f"{EVIDENCE_ROOT}/codeowners_bootstrap_pr.provider.raw.json"
+CODEOWNERS_BOOTSTRAP_REVIEW_ROLE = \
+    "CODEOWNERS_BOOTSTRAP_APPROVED_REVIEW_PROVIDER_RECORD"
+CODEOWNERS_BOOTSTRAP_REVIEW_PATH = \
+    f"{EVIDENCE_ROOT}/codeowners_bootstrap_pr.approved_review.provider.raw.json"
 REPOSITORY_ID = 1_327_825_324
 MAX_CANARY_TIME_SKEW_US = 5 * 60 * 1_000_000
 
@@ -173,6 +180,7 @@ def _validate_source_pr_provider_record(
             or head.get("sha") != payload.get("final_source_head")
             or not isinstance(head_repo, dict)
             or head_repo.get("full_name") != "TriadAgentic/TriadOrigin"
+            or head_repo.get("id") != REPOSITORY_ID
             or not isinstance(author, dict) or author.get("type") != "User"
             or not isinstance(author.get("login"), str) or not author.get("login")):
         raise ReceiptBindingError("SOURCE_PR_PROVIDER_IDENTITY_MISMATCH")
@@ -181,6 +189,8 @@ def _validate_source_pr_provider_record(
             document.get("merged_at"))
     except governance.GovernanceError as exc:
         raise ReceiptBindingError(f"SOURCE_PR_PROVIDER_MERGED_AT_INVALID:{exc}") from exc
+    if merged_at_us != payload.get("source_merge_time_us"):
+        raise ReceiptBindingError("SOURCE_PR_PROVIDER_PAYLOAD_TIME_MISMATCH")
     observed_at_us = payload.get("observed_at_us")
     emitted_at_us = payload.get("emitted_at_us")
     if (not isinstance(observed_at_us, int) or isinstance(observed_at_us, bool)
@@ -268,6 +278,141 @@ def _validate_source_pr_approved_review(
                 f"SOURCE_PR_REVIEW_LIVE_PROOF:{exc}") from exc
         except LiveRulesetError as exc:
             raise ReceiptBindingError(f"SOURCE_PR_REVIEW_LIVE_PROOF:{exc}") from exc
+
+
+def _validate_codeowners_bootstrap(
+    *,
+    entries: list[dict],
+    root: pathlib.Path,
+    payload: dict,
+    source_base_parent: str,
+    source_provider_merge_time_us: int,
+    now_us: int | None,
+    github_token: str | None,
+    require_live_provider: bool,
+) -> None:
+    """Prove ``source_base_parent`` is a separately reviewed CODEOWNERS-only PR merge."""
+    pr_entries = [
+        entry for entry in entries if entry.get("role") == CODEOWNERS_BOOTSTRAP_PR_ROLE
+    ]
+    if (len(pr_entries) != 1
+            or pr_entries[0].get("path") != CODEOWNERS_BOOTSTRAP_PR_PATH
+            or pr_entries[0].get("role_unique") is not True):
+        raise ReceiptBindingError(
+            f"CODEOWNERS_BOOTSTRAP_PR_ROLE_COUNT_OR_PATH:{len(pr_entries)}")
+    pr_raw = (root / CODEOWNERS_BOOTSTRAP_PR_PATH).read_bytes()
+    if sha256_hex(pr_raw) != pr_entries[0].get("sha256"):
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_PR_DIGEST_MISMATCH")
+    document = _loads_unique_json(pr_raw, "CODEOWNERS_BOOTSTRAP_PR_PROVIDER")
+    number = document.get("number")
+    base = document.get("base")
+    head = document.get("head")
+    base_repo = base.get("repo") if isinstance(base, dict) else None
+    head_repo = head.get("repo") if isinstance(head, dict) else None
+    head_sha = head.get("sha") if isinstance(head, dict) else None
+    author = document.get("user")
+    author_login = author.get("login") if isinstance(author, dict) else None
+    if (not isinstance(number, int) or isinstance(number, bool) or number <= 0
+            or number == payload.get("source_pr")
+            or document.get("state") != "closed" or document.get("merged") is not True
+            or document.get("merge_commit_sha") != source_base_parent
+            or not isinstance(base, dict) or base.get("ref") != "main"
+            or not isinstance(base_repo, dict)
+            or base_repo.get("full_name") != "TriadAgentic/TriadOrigin"
+            or base_repo.get("id") != REPOSITORY_ID
+            or not isinstance(head, dict)
+            or not isinstance(head_sha, str)
+            or re.fullmatch(r"[0-9a-f]{40}", head_sha) is None
+            or not isinstance(head_repo, dict)
+            or head_repo.get("full_name") != "TriadAgentic/TriadOrigin"
+            or head_repo.get("id") != REPOSITORY_ID
+            or not isinstance(author, dict) or author.get("type") != "User"
+            or not isinstance(author_login, str) or not author_login):
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_PR_IDENTITY_MISMATCH")
+    try:
+        merged_at_us = governance._parse_provider_utc_us(  # noqa: SLF001
+            document.get("merged_at"))
+    except governance.GovernanceError as exc:
+        raise ReceiptBindingError(
+            f"CODEOWNERS_BOOTSTRAP_PR_MERGED_AT_INVALID:{exc}") from exc
+    if merged_at_us >= source_provider_merge_time_us:
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_NOT_BEFORE_SOURCE_MERGE")
+    if now_us is not None and merged_at_us > now_us:
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_MERGED_AT_IN_FUTURE")
+
+    parent_row = str(
+        _git(root, "rev-list", "--parents", "-n", "1", source_base_parent)).split()
+    if (len(parent_row) != 3 or parent_row[0] != source_base_parent
+            or parent_row[2] != head_sha):
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_NOT_EXACT_TWO_PARENT_PR_MERGE")
+    bootstrap_base = parent_row[1]
+    if str(_git(root, "rev-parse", f"{head_sha}^{{tree}}")) != str(
+            _git(root, "rev-parse", f"{source_base_parent}^{{tree}}")):
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_HEAD_TREE_MISMATCH")
+    bootstrap_time_us = int(str(
+        _git(root, "show", "-s", "--format=%ct", source_base_parent))) * 1_000_000
+    if merged_at_us != bootstrap_time_us:
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_PROVIDER_GIT_TIME_MISMATCH")
+    changed = set(str(_git(
+        root, "diff", "--name-only", bootstrap_base, head_sha)).splitlines())
+    if changed != {".github/CODEOWNERS"}:
+        raise ReceiptBindingError(
+            f"CODEOWNERS_BOOTSTRAP_DIFF_NOT_EXACT:{sorted(changed)}")
+    before = _git(root, "show", f"{bootstrap_base}:.github/CODEOWNERS", text=False)
+    after = _git(root, "show", f"{source_base_parent}:.github/CODEOWNERS", text=False)
+    if before == after:
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_BYTES_UNCHANGED")
+
+    review_entries = [
+        entry for entry in entries if entry.get("role") == CODEOWNERS_BOOTSTRAP_REVIEW_ROLE
+    ]
+    if (len(review_entries) != 1
+            or review_entries[0].get("path") != CODEOWNERS_BOOTSTRAP_REVIEW_PATH
+            or review_entries[0].get("role_unique") is not True):
+        raise ReceiptBindingError(
+            f"CODEOWNERS_BOOTSTRAP_REVIEW_ROLE_COUNT_OR_PATH:{len(review_entries)}")
+    review_raw = (root / CODEOWNERS_BOOTSTRAP_REVIEW_PATH).read_bytes()
+    if sha256_hex(review_raw) != review_entries[0].get("sha256"):
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_REVIEW_DIGEST_MISMATCH")
+    record = _loads_unique_json(review_raw, "CODEOWNERS_BOOTSTRAP_REVIEW")
+    review = record.get("review")
+    user = review.get("user") if isinstance(review, dict) else None
+    reviewer = user.get("login") if isinstance(user, dict) else None
+    if (record.get("source_pr") != number
+            or record.get("source_head") != head_sha
+            or not isinstance(review, dict)
+            or not isinstance(review.get("id"), int) or isinstance(review.get("id"), bool)
+            or review.get("id") <= 0
+            or review.get("state") != "APPROVED"
+            or review.get("commit_id") != head_sha
+            or not isinstance(user, dict) or user.get("type") != "User"
+            or not isinstance(reviewer, str) or reviewer.lower() != "djordi10"):
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_REVIEW_IDENTITY_MISMATCH")
+    if reviewer.lower() == author_login.lower():
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_REVIEW_NOT_INDEPENDENT")
+    try:
+        submitted_at_us = governance._parse_provider_utc_us(  # noqa: SLF001
+            review.get("submitted_at"))
+    except governance.GovernanceError as exc:
+        raise ReceiptBindingError(
+            f"CODEOWNERS_BOOTSTRAP_REVIEW_SUBMITTED_AT_INVALID:{exc}") from exc
+    if submitted_at_us >= merged_at_us:
+        raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_REVIEW_NOT_BEFORE_MERGE")
+    if require_live_provider:
+        if now_us is None:
+            raise ReceiptBindingError("CODEOWNERS_BOOTSTRAP_LIVE_NOW_ABSENT")
+        try:
+            fetch_and_match_pull_request(pr_raw, token=github_token, now_us=now_us)
+            fetch_and_match_pull_request_review(
+                review_raw, token=github_token, now_us=now_us)
+            fetch_repository_permission(
+                reviewer, token=github_token, now_us=now_us)
+        except LiveRulesetUnavailable as exc:
+            raise ReceiptBindingUnavailable(
+                f"CODEOWNERS_BOOTSTRAP_LIVE_PROOF:{exc}") from exc
+        except LiveRulesetError as exc:
+            raise ReceiptBindingError(
+                f"CODEOWNERS_BOOTSTRAP_LIVE_PROOF:{exc}") from exc
 
 
 def _validate_provider_negative_canary(
@@ -478,6 +623,8 @@ def validate_receipt_bindings(
     require_live_source_pr: bool = False,
     require_live_rule_suite: bool = False,
     require_live_canary_ref: bool = False,
+    receipt_pr: int | None = None,
+    require_live_receipt_pr: bool = False,
 ) -> int:
     """Cross-bind authority, receipt, manifest preimages, and immutable Git objects."""
     if re.fullmatch(r"[0-9a-f]{40}", expected_head or "") is None:
@@ -626,6 +773,8 @@ def validate_receipt_bindings(
     source_time_s = int(str(_git(root, "show", "-s", "--format=%ct", source_merge)))
     if payload["source_merge_time_us"] != source_time_s * 1_000_000:
         raise ReceiptBindingError("SOURCE_MERGE_TIME_MISMATCH")
+    if provider_merge_time_us != payload["source_merge_time_us"]:
+        raise ReceiptBindingError("SOURCE_PR_PROVIDER_GIT_TIME_MISMATCH")
     if str(_git(root, "rev-parse", f"{final_source}^{{tree}}")) != source_tree:
         raise ReceiptBindingError("FINAL_SOURCE_HEAD_TREE_MISMATCH")
     _git(root, "merge-base", "--is-ancestor", final_source, source_merge)
@@ -642,6 +791,18 @@ def validate_receipt_bindings(
             head_blob = _git(root, "show", f"{expected_head}:{rel}", text=False)
             if source_blob != disk or head_blob != disk:
                 raise ReceiptBindingError(f"GOVERNANCE_EVIDENCE_GIT_BLOB_MISMATCH:{rel}")
+
+    if milestone == governance.ROOT_MILESTONE:
+        _validate_codeowners_bootstrap(
+            entries=entries,
+            root=root,
+            payload=payload,
+            source_base_parent=base_parent,
+            source_provider_merge_time_us=provider_merge_time_us,
+            now_us=now_us,
+            github_token=github_token,
+            require_live_provider=require_live_source_pr,
+        )
 
     if milestone == governance.ROOT_MILESTONE:
         repair = authority.decisions["b00_repair"]
@@ -661,6 +822,39 @@ def validate_receipt_bindings(
                      if path != receipt_rel and not path.startswith(namespace_prefix))
     if escaped:
         raise ReceiptBindingError(f"POST_SOURCE_MERGE_SOURCE_DRIFT:{escaped}")
+    if require_live_receipt_pr:
+        if (not isinstance(receipt_pr, int) or isinstance(receipt_pr, bool)
+                or receipt_pr <= 0):
+            raise ReceiptBindingError("RECEIPT_PR_NUMBER_ABSENT_OR_INVALID")
+        if now_us is None:
+            raise ReceiptBindingError("RECEIPT_PR_LIVE_NOW_ABSENT")
+        try:
+            receipt_proof = fetch_and_verify_receipt_merge(
+                receipt_pr,
+                expected_merge_sha=expected_head,
+                expected_codeowner="djordi10",
+                token=github_token,
+                now_us=now_us,
+            )
+        except LiveRulesetUnavailable as exc:
+            raise ReceiptBindingUnavailable(f"RECEIPT_PR_LIVE_PROOF:{exc}") from exc
+        except LiveRulesetError as exc:
+            raise ReceiptBindingError(f"RECEIPT_PR_LIVE_PROOF:{exc}") from exc
+        receipt_parent_row = str(
+            _git(root, "rev-list", "--parents", "-n", "1", expected_head)).split()
+        if (len(receipt_parent_row) != 3 or receipt_parent_row[0] != expected_head
+                or receipt_parent_row[1] != source_merge
+                or receipt_parent_row[2] != receipt_proof.head_sha):
+            raise ReceiptBindingError("RECEIPT_MERGE_NOT_EXACT_TWO_PARENT_PR_MERGE")
+        if str(_git(root, "rev-parse", f"{receipt_proof.head_sha}^{{tree}}")) != str(
+                _git(root, "rev-parse", f"{expected_head}^{{tree}}")):
+            raise ReceiptBindingError("RECEIPT_PR_HEAD_TREE_MISMATCH")
+        receipt_git_time_us = int(str(
+            _git(root, "show", "-s", "--format=%ct", expected_head))) * 1_000_000
+        if receipt_proof.merged_at_us != receipt_git_time_us:
+            raise ReceiptBindingError("RECEIPT_PR_PROVIDER_GIT_TIME_MISMATCH")
+        if receipt_proof.merged_at_us <= provider_merge_time_us:
+            raise ReceiptBindingError("RECEIPT_PR_NOT_AFTER_SOURCE_MERGE")
     return provider_merge_time_us
 
 
@@ -719,6 +913,7 @@ def _strict(
     require_live_rule_suite: bool,
     require_live_canary_ref: bool,
     nonterminal_provider_proof: bool,
+    receipt_pr: int | None,
 ) -> int:
     try:
         raw = path.read_bytes()
@@ -757,7 +952,11 @@ def _strict(
             now_us=now_us, github_token=os.environ.get("GITHUB_TOKEN"),
             require_live_source_pr=True,
             require_live_rule_suite=require_live_rule_suite,
-            require_live_canary_ref=require_live_canary_ref)
+            require_live_canary_ref=require_live_canary_ref,
+            receipt_pr=receipt_pr,
+            require_live_receipt_pr=(
+                milestone == governance.ROOT_MILESTONE
+                and not nonterminal_provider_proof))
         _validate_governance_evidence(
             snapshot_path=governance_snapshot_path, provider_raw_path=provider_raw_path,
             provider_pin=provider_pin, git_root=git_root, now_us=now_us,
@@ -804,6 +1003,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--nonterminal-provider-proof", action="store_true",
         help="CI-only: skip privileged rule-suite/ref/bypass reads and never claim closure")
+    parser.add_argument(
+        "--receipt-pr", type=int,
+        help="terminal B00R-only GitHub receipt PR number bound to the expected merge head")
     args = parser.parse_args(argv)
     if not args.strict:
         return _legacy(args.receipt)
@@ -829,6 +1031,13 @@ def main(argv: list[str]) -> int:
         print("FAIL: nonterminal provider mode conflicts with terminal bypass visibility",
               file=sys.stderr)
         return 2
+    if (
+        args.milestone == governance.ROOT_MILESTONE
+        and not args.nonterminal_provider_proof
+        and (args.receipt_pr is None or args.receipt_pr <= 0)
+    ):
+        print("FAIL: terminal B00R strict mode requires a positive --receipt-pr", file=sys.stderr)
+        return 2
     terminal_provider_proof = not args.nonterminal_provider_proof
     return _strict(
         args.receipt, milestone=args.milestone, now_us=args.now_us, pins_path=args.pins,
@@ -839,7 +1048,8 @@ def main(argv: list[str]) -> int:
             args.require_bypass_visibility or terminal_provider_proof),
         require_live_rule_suite=terminal_provider_proof,
         require_live_canary_ref=terminal_provider_proof,
-        nonterminal_provider_proof=args.nonterminal_provider_proof)
+        nonterminal_provider_proof=args.nonterminal_provider_proof,
+        receipt_pr=args.receipt_pr)
 
 
 if __name__ == "__main__":
