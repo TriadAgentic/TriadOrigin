@@ -1,0 +1,155 @@
+{
+  "schema": "triad.closure.coordination_checkpoint.v1",
+  "checkpoint_id": "0001_EXECUTION_AUTHORIZED_BASELINE",
+  "classification": "COORDINATION_ONLY_NON_EVIDENCE",
+  "recorded_at_utc": "2026-08-11T12:20:57Z",
+  "supersedes": null,
+  "program": "TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11",
+  "phase": "C0_AND_B00R_G2_DIAGNOSTIC",
+  "activation_posture": {
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "subjects": {
+    "repository": "TriadAgentic/TriadOrigin",
+    "main_sha": "ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd",
+    "source_pr": 34,
+    "source_head_sha": "77a1ff3c7d31ba8b817be750976291c690c87b23",
+    "canary_sha": "ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd",
+    "receipt_pr": null,
+    "receipt_merge_sha": null,
+    "anchor": null
+  },
+  "tests": [
+    {
+      "id": "PROVIDER_CI_31484607824",
+      "subject_sha": "77a1ff3c7d31ba8b817be750976291c690c87b23",
+      "command": "GitHub Actions test-and-verify",
+      "environment": "GitHub-hosted Ubuntu; Python 3.11; exact repository constraints",
+      "result": "FAIL",
+      "actual": "Deterministic engineering passed; strict authority root and provider snapshot gates failed closed",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "LOCAL_PYTEST_DOCUMENTED_GATE",
+      "subject_sha": "77a1ff3c7d31ba8b817be750976291c690c87b23",
+      "command": "PYTHONHASHSEED=0 PIP_CONSTRAINT=constraints/ci.txt python -m pytest -p no:cacheprovider",
+      "environment": "Fresh full clone; CPython 3.11.15; pinned packages",
+      "result": "FAIL",
+      "actual": "1 failed, 1999 passed; isolated wheel subprocess could not resolve the inherited relative constraints path",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "LOCAL_WHEEL_ABSOLUTE_CONSTRAINT",
+      "subject_sha": "77a1ff3c7d31ba8b817be750976291c690c87b23",
+      "command": "PIP_CONSTRAINT=<absolute-repository-path>/constraints/ci.txt python tools/test_wheel_install.py",
+      "environment": "Fresh full clone; CPython 3.11.15; pinned packages",
+      "result": "PASS",
+      "actual": "Isolated sdist-built wheel matched runtime, verified 148 artifacts, and diagnosed all 44 goldens",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "LOCAL_SOURCE_HISTORY_CONTRACT_BUILD",
+      "subject_sha": "77a1ff3c7d31ba8b817be750976291c690c87b23",
+      "command": "verify_source_hashes; verify_historical_evidence; verify_manifest; validate_contract_manifest; verify_reproducible_build",
+      "environment": "Fresh full clone; CPython 3.11.15; absolute pinned constraint path",
+      "result": "PASS",
+      "actual": "51 source pins, 11 historical receipts, 148 contract artifacts, reproducible sdist and wheel",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "LOCAL_CAPABILITY_E2E_LEDGER_DAG",
+      "subject_sha": "77a1ff3c7d31ba8b817be750976291c690c87b23",
+      "command": "verify_no_forbidden_capabilities; e2e_audit; build_ledger --verify; validate_combined_dag",
+      "environment": "Fresh full clone; CPython 3.11.15; absolute pinned constraint path",
+      "result": "PASS",
+      "actual": "No forbidden E02 capability; E2E 24/24; 1250 reviewed tasks; 2383 hard edges; acyclic",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    }
+  ],
+  "defects": [
+    {
+      "id": "C0_NORMATIVE_REGISTRY_ABSENT",
+      "severity": "P0",
+      "owner": "C0",
+      "status": "IN_PROGRESS",
+      "actual": "No machine-authoritative composite milestone registry/crosswalk/profile law is committed"
+    },
+    {
+      "id": "LOCAL_CONSTRAINT_PATH_NOT_RELOCATABLE",
+      "severity": "P1",
+      "owner": "B00R_G2",
+      "status": "OPEN",
+      "actual": "Documented relative constraint path breaks the isolated wheel subprocess"
+    },
+    {
+      "id": "G2_AUTHORITY_PINS_ABSENT",
+      "severity": "P0",
+      "owner": "B00R_G2_AUTHORITY_CEREMONY",
+      "status": "BLOCKED",
+      "actual": "All four required protected authority digests are absent"
+    },
+    {
+      "id": "G2_RULESET_CAPTURE_SYNTHETIC",
+      "severity": "P0",
+      "owner": "B00R_G2_PROVIDER",
+      "status": "BLOCKED",
+      "actual": "Committed raw ruleset is declarative rather than a real GitHub provider response"
+    },
+    {
+      "id": "G2_PROVIDER_PIN_STALE",
+      "severity": "P0",
+      "owner": "B00R_G2_PROVIDER",
+      "status": "BLOCKED",
+      "actual": "Protected provider pin does not match PR-head raw ruleset bytes"
+    },
+    {
+      "id": "G2_NEGATIVE_CANARY_ABSENT",
+      "severity": "P0",
+      "owner": "B00R_G2_PROVIDER",
+      "status": "BLOCKED",
+      "actual": "No dedicated pre-source rejected canary and rule-suite record exists"
+    },
+    {
+      "id": "G2_INDEPENDENT_REVIEW_ABSENT",
+      "severity": "P0",
+      "owner": "B00R_G2_REVIEW",
+      "status": "BLOCKED",
+      "actual": "PR 34 has zero submitted reviews"
+    },
+    {
+      "id": "G2_RECEIPT_AND_ANCHOR_ABSENT",
+      "severity": "P0",
+      "owner": "B00R_G2_RECEIPT",
+      "status": "BLOCKED",
+      "actual": "No G2 receipt PR, receipt merge, tag ruleset proof, or protected G2 anchor exists"
+    },
+    {
+      "id": "RUNTIME_NOT_ATTESTED",
+      "severity": "P0",
+      "owner": "B05C_B10_BN",
+      "status": "BLOCKED",
+      "actual": "Current deployed subjects, leases, routes, planes, and side effects are not freshly attested"
+    }
+  ],
+  "blockers": [
+    "C0 machine controls and cryptographic owner authentication",
+    "Real GitHub main-plus-canary merge-only ruleset capture and external pin",
+    "Dedicated rejected canary proof",
+    "Exact-head independent PR 34 approval",
+    "Source merge, clean reproduction, evidence-only receipt, tag rule, anchor, and terminal gate",
+    "Later explicit deployment/restart authorization before B05 deployed proof"
+  ],
+  "closed_claims": [],
+  "next_gate": "Implement and validate C0-NORM on PR 34 while keeping main and canary at ba495ba and OFF/OFF/OFF/LIVE unchanged",
+  "documents": {
+    "master_path": "docs/closure/00_TRIAD_CLOSURE_MASTER.md",
+    "master_sha256": "70153683cee888e1a9fe9f7958a7ee45ea0982aa5cc3c403a0d6ec44ee8c8383",
+    "plan_path": "docs/closure/01_TRIAD_B00_BN_MARATHON_PLAN.md",
+    "plan_sha256": "295d9a05c22a1e37f5eaca986c36ab4e4aa29e6337f95814663ea00d38adf72d"
+  },
+  "secrets_scan": "PASS",
+  "authoritative_refs_unchanged": true
+}

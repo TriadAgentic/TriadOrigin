@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://triad.internal/schemas/closure-checkpoint.v1.json",
+  "title": "TRIAD closure coordination checkpoint v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "checkpoint_id",
+    "classification",
+    "recorded_at_utc",
+    "supersedes",
+    "program",
+    "phase",
+    "activation_posture",
+    "subjects",
+    "tests",
+    "defects",
+    "blockers",
+    "closed_claims",
+    "next_gate",
+    "documents",
+    "secrets_scan",
+    "authoritative_refs_unchanged"
+  ],
+  "properties": {
+    "schema": {"const": "triad.closure.coordination_checkpoint.v1"},
+    "checkpoint_id": {"type": "string", "pattern": "^[0-9]{4}_[A-Z0-9_]+$"},
+    "classification": {"const": "COORDINATION_ONLY_NON_EVIDENCE"},
+    "recorded_at_utc": {"type": "string", "format": "date-time"},
+    "supersedes": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "pattern": "^[0-9]{4}_[A-Z0-9_]+$"}
+      ]
+    },
+    "program": {"const": "TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11"},
+    "phase": {"type": "string", "minLength": 1},
+    "activation_posture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["venue_environment", "venue_activation", "paper_activation", "shadow_activation"],
+      "properties": {
+        "venue_environment": {"const": "OFF"},
+        "venue_activation": {"const": "OFF"},
+        "paper_activation": {"const": "OFF"},
+        "shadow_activation": {"const": "LIVE"}
+      }
+    },
+    "subjects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "main_sha", "source_pr", "source_head_sha", "canary_sha", "receipt_pr", "receipt_merge_sha", "anchor"],
+      "properties": {
+        "repository": {"const": "TriadAgentic/TriadOrigin"},
+        "main_sha": {"$ref": "#/$defs/shaOrAbsent"},
+        "source_pr": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "source_head_sha": {"$ref": "#/$defs/shaOrAbsent"},
+        "canary_sha": {"$ref": "#/$defs/shaOrAbsent"},
+        "receipt_pr": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
+        "receipt_merge_sha": {"$ref": "#/$defs/shaOrAbsent"},
+        "anchor": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "subject_sha", "command", "environment", "result", "actual", "evidence_sha256"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "subject_sha": {"$ref": "#/$defs/sha"},
+          "command": {"type": "string", "minLength": 1},
+          "environment": {"type": "string", "minLength": 1},
+          "result": {"enum": ["PASS", "FAIL", "BLOCKED", "UNAVAILABLE", "NOT_RUN"]},
+          "actual": {"type": "string", "minLength": 1},
+          "evidence_sha256": {"$ref": "#/$defs/digestOrNotCaptured"}
+        }
+      }
+    },
+    "defects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "severity", "owner", "status", "actual"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "severity": {"enum": ["P0", "P1", "P2", "P3"]},
+          "owner": {"type": "string", "minLength": 1},
+          "status": {"enum": ["OPEN", "IN_PROGRESS", "BLOCKED", "FIXED_UNVERIFIED", "CLOSED"]},
+          "actual": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "blockers": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "closed_claims": {"type": "array", "maxItems": 0},
+    "next_gate": {"type": "string", "minLength": 1},
+    "documents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["master_path", "master_sha256", "plan_path", "plan_sha256"],
+      "properties": {
+        "master_path": {"const": "docs/closure/00_TRIAD_CLOSURE_MASTER.md"},
+        "master_sha256": {"$ref": "#/$defs/digest"},
+        "plan_path": {"const": "docs/closure/01_TRIAD_B00_BN_MARATHON_PLAN.md"},
+        "plan_sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "secrets_scan": {"enum": ["PASS", "FAIL", "NOT_RUN"]},
+    "authoritative_refs_unchanged": {"type": "boolean"}
+  },
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "shaOrAbsent": {"oneOf": [{"$ref": "#/$defs/sha"}, {"type": "null"}]},
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "digestOrNotCaptured": {
+      "oneOf": [
+        {"$ref": "#/$defs/digest"},
+        {"const": "NOT_CAPTURED_COORDINATION_BASELINE"}
+      ]
+    }
+  }
+}
