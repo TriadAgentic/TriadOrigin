@@ -79,6 +79,25 @@
     }
   },
   "main_sequence_law": "NO_INTERVENING_MAIN_MERGE: reviewed CODEOWNERS bootstrap merge -> reviewed corrective source merge -> reviewed append-only receipt merge",
+  "main_ruleset_law": {
+    "allowed_merge_methods": [
+      "merge"
+    ],
+    "bypass_actors": [],
+    "current_user_can_bypass": "never",
+    "do_not_enforce_on_create": false,
+    "excluded_refs": [],
+    "provider": "github",
+    "pull_request_required": true,
+    "required_status_check_context": "test-and-verify",
+    "required_status_check_integration_id": 15368,
+    "repository": "TriadAgentic/TriadOrigin",
+    "strict_required_status_checks_policy": true,
+    "target_refs": [
+      "refs/heads/main",
+      "refs/heads/b00r-ruleset-canary"
+    ]
+  },
   "closure_anchor": {
     "id": "B00R_RECEIPT_ANCHOR_G2",
     "message_profile": "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1",

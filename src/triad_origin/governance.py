@@ -63,6 +63,7 @@ SAFETY_POSTURE = {
 }
 ACTIVATION_RESULT = "DENIED_SAFE_HOLD"
 GITHUB_ACTIONS_INTEGRATION_ID = 15368
+REQUIRED_STATUS_CHECK_CONTEXT = "test-and-verify"
 
 # Trust-registry / decision vocabulary.
 SIGNER_ROLES = ("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER", "AUTHORITY_OWNER")
@@ -1071,7 +1072,8 @@ def validate_governance_snapshot(
     contexts = [checks_raw[0].get("context")]
     integration_id = checks_raw[0].get("integration_id")
     if (status.get("strict_required_status_checks_policy") is not True
-            or contexts != ["CI / test-and-verify"]
+            or status.get("do_not_enforce_on_create") is not False
+            or contexts != [REQUIRED_STATUS_CHECK_CONTEXT]
             or integration_id != GITHUB_ACTIONS_INTEGRATION_ID):
         return "FAIL", "GOVERNANCE_RAW_STATUS_CONTROL_MISMATCH"
     if len(by_type.get("deletion", [])) != 1 or len(by_type.get("non_fast_forward", [])) != 1:
@@ -1080,7 +1082,7 @@ def validate_governance_snapshot(
     checks = (
         ("pull_request_required", ruleset.get("pull_request_required") is True),
         ("required_status_check",
-         ruleset.get("required_status_check") == "CI / test-and-verify"),
+         ruleset.get("required_status_check") == REQUIRED_STATUS_CHECK_CONTEXT),
         ("strict_required_status", ruleset.get("strict_required_status") is True),
         ("required_approvals", isinstance(ruleset.get("required_approvals"), int)
          and ruleset.get("required_approvals") >= 1),
@@ -1090,7 +1092,7 @@ def validate_governance_snapshot(
         ("block_force_push", ruleset.get("block_force_push") is True),
         ("block_deletions", ruleset.get("block_deletions") is True),
         ("no_bypass_actors", not ruleset.get("bypass_actors")),
-        ("targets_main", ruleset.get("target") in ("refs/heads/main", "~DEFAULT_BRANCH")),
+        ("targets_main", ruleset.get("target") == "refs/heads/main"),
         ("effective_time", isinstance(doc.get("effective_at_us"), int)),
         ("ruleset_id", str(raw.get("id")) == ruleset.get("ruleset_id")),
         ("raw_approvals", ruleset.get("required_approvals") == raw_approvals),

@@ -90,7 +90,7 @@ def _ruleset() -> dict:
                     "do_not_enforce_on_create": False,
                     "required_status_checks": [
                         {
-                            "context": "CI / test-and-verify",
+                            "context": "test-and-verify",
                             "integration_id": 15368,
                         }
                     ],
@@ -723,6 +723,9 @@ def test_live_receipt_merge_binds_pr_review_actions_check_and_main_ancestry():
          "SUCCESS_WORKFLOW_COUNT:0"),
         (lambda docs: docs[check_runs_for_head_url("e" * 40)][
             "check_runs"][0]["app"].__setitem__("id", 1),
+         "REQUIRED_CHECK_COUNT:0"),
+        (lambda docs: docs[check_runs_for_head_url("e" * 40)][
+            "check_runs"][0].__setitem__("name", "CI / test-and-verify"),
          "REQUIRED_CHECK_COUNT:0"),
         (lambda docs: docs[check_runs_for_head_url("e" * 40)][
             "check_runs"][0].__setitem__(

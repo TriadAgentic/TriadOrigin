@@ -3,7 +3,7 @@
   "effective_at_us": 1786320000000000,
   "provider": {
     "api_response_path": "docs/governance/rulesets/main.ruleset.provider.raw.json",
-    "api_response_sha256": "d2a35fb67b5eb5dea0c06df1f4418047c4c7f9aa5c63cec70bc6508a17b18e61",
+    "api_response_sha256": "cd70034cb3f8785b7122d147ed356cd00404482434e4091208f52313fe57f224",
     "captured_at_us": 1786352038201600,
     "name": "github",
     "note": "INVALIDATED DECLARATIVE STUB: not provider evidence and never closure-capable. Replace only with a privileged live GitHub ruleset API response after enforcement is active.",
@@ -36,7 +36,7 @@
     "pull_request_required": true,
     "require_conversation_resolution": true,
     "required_approvals": 1,
-    "required_status_check": "CI / test-and-verify",
+    "required_status_check": "test-and-verify",
     "ruleset_id": "DECLARATIVE",
     "strict_required_status": true,
     "target": "refs/heads/main"

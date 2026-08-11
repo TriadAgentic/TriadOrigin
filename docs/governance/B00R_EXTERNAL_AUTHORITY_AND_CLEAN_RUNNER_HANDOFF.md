@@ -169,8 +169,10 @@ The live GitHub provider object must satisfy all of these conditions simultaneou
 - stale approvals dismissed, CODEOWNER review required, last-push approval required, and every
   conversation resolved;
 - `allowed_merge_methods=["merge"]` — squash and rebase are not permitted for the corrective train;
-- exactly one strict required check, `CI / test-and-verify`, bound to GitHub Actions integration id
+- exactly one strict required check, provider `CheckRun.name=test-and-verify`, bound to GitHub Actions integration id
   `15368`;
+- `do_not_enforce_on_create=false`, so creating the dedicated canary ref cannot evade the required
+  check rule;
 - deletion and non-fast-forward updates blocked.
 
 Capture the exact raw bytes returned by the fixed provider endpoint into
@@ -216,7 +218,8 @@ After every source-phase artifact is committed:
 1. freeze the literal 40-hex final source head and tree;
 2. require a clean worktree and no Git replace objects;
 3. run the full repository gate suite under `PYTHONHASHSEED=0` and `1`;
-4. require GitHub `CI / test-and-verify` green on that exact head;
+4. require GitHub `test-and-verify` green on that exact head (the UI may display
+   `CI / test-and-verify`);
 5. obtain a submitted `APPROVED` review from the independent CODEOWNER on that exact head;
 6. resolve every actionable review thread;
 7. merge with GitHub's ordinary **merge** method under the active ruleset; and
@@ -354,7 +357,8 @@ receipt-PR proof, so it is explicitly not closure and is insufficient by itself 
 Terminal validation after merge must omit that flag and must expose the live empty bypass
 set, rule suite, unchanged canary ref, exact source PR/review, and the receipt PR number. The
 terminal gate fetches that receipt PR, independently proves exact-head CODEOWNER approval and
-successful `CI / test-and-verify` before merge, and proves its two-parent merge is on live `main`.
+successful provider check `test-and-verify` before merge, and proves its two-parent merge is on live
+`main`.
 The receipt does not self-reference its future merge SHA; terminal provider/Git proof supplies that
 binding after merge.
 The terminal token must be able to read the ruleset bypass field, rule suite, canary and anchor refs,

@@ -90,8 +90,8 @@ separate gate receipt._
 - [ ] Issue #5 is open/reopened; post-hoc ruleset `20641102` and rejected administrative canaries are
   useful historical evidence only. Close it only after G2 terminal PASS.
 - [ ] Promote the future control to the stricter G2 profile: exact main+canary target, no exclusions,
-  no bypass, integration-bound `CI / test-and-verify`, independent CODEOWNER, and merge-only method;
-  recapture and pin it before the G2 source merge
+  no bypass, integration-bound `test-and-verify`, `do_not_enforce_on_create=false`, independent
+  CODEOWNER, and merge-only method; recapture and pin it before the G2 source merge
 - [x] Seal R00 disposition and exact-current-main B00 receipt — `R00_SUPERSESSION.md` + `evidence/receipts/{R00,B00}.json`
 - [x] B00C source PR merged green — PR #12, CI `31296105920`
 - [x] B00C post-merge receipt passed; B01R may open — `evidence/receipts/B00C.json` binds `b641edc…` (this receipt PR)

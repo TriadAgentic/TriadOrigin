@@ -61,8 +61,10 @@ def test_ci_has_no_branch_specific_receipt_skip_and_is_role_aware():
     assert "changed_paths.txt" not in workflow
     assert "HEAD~1" not in workflow
     assert "git fetch" not in workflow
-    # The stable required context is the job name (surfaced as "CI / test-and-verify").
-    assert "test-and-verify:" in workflow
+    # GitHub rulesets bind CheckRun.name. With no explicit job-level name, that provider identity
+    # is the job key `test-and-verify`; the UI's `CI / test-and-verify` label is not the context.
+    assert "  test-and-verify:\n    runs-on:" in workflow
+    assert 'name: "CI / test-and-verify"' not in workflow
 
 
 def test_ci_receipt_closure_is_exactly_one_canonical_strict_validation():

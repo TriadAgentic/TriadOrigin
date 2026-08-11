@@ -28,7 +28,7 @@
       "parameters": {
         "required_status_checks": [
           {
-            "context": "CI / test-and-verify"
+            "context": "test-and-verify"
           }
         ],
         "strict_required_status_checks_policy": true

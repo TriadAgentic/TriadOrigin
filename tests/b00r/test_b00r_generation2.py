@@ -171,6 +171,20 @@ def test_policy_ledger_and_generation_1_immutable_bindings_are_consistent():
     assert policy["generation_ledger"] == GENERATION_LEDGER
     assert repair_subjects["generation_ledger"] == _sha256(GENERATION_LEDGER)
     assert repair_subjects["policy_v2"] == _sha256(POLICY_V2)
+    assert policy["main_ruleset_law"] == {
+        "allowed_merge_methods": ["merge"],
+        "bypass_actors": [],
+        "current_user_can_bypass": "never",
+        "do_not_enforce_on_create": False,
+        "excluded_refs": [],
+        "provider": "github",
+        "pull_request_required": True,
+        "required_status_check_context": "test-and-verify",
+        "required_status_check_integration_id": 15368,
+        "repository": "TriadAgentic/TriadOrigin",
+        "strict_required_status_checks_policy": True,
+        "target_refs": ["refs/heads/main", "refs/heads/b00r-ruleset-canary"],
+    }
 
     assert old_receipt["payload"]["repair_generation"] == 1
     assert old_receipt_digest == generation_1["receipt_sha256"] \

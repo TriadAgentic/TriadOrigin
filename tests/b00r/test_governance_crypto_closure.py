@@ -382,8 +382,9 @@ def _raw_ruleset() -> dict:
                 "allowed_merge_methods": ["merge"]}},
             {"type": "required_status_checks", "parameters": {
                 "strict_required_status_checks_policy": True,
+                "do_not_enforce_on_create": False,
                 "required_status_checks": [{
-                    "context": "CI / test-and-verify", "integration_id": 15368}]}},
+                    "context": "test-and-verify", "integration_id": 15368}]}},
             {"type": "deletion"}, {"type": "non_fast_forward"},
         ],
     }
@@ -401,7 +402,7 @@ def test_governance_snapshot_semantics_are_derived_from_pinned_provider_shape():
                      "api_response_sha256": pin},
         "ruleset": {"ruleset_id": "42", "target": "refs/heads/main",
                     "pull_request_required": True,
-                    "required_status_check": "CI / test-and-verify",
+                    "required_status_check": "test-and-verify",
                     "strict_required_status": True, "required_approvals": 1,
                     "dismiss_stale_reviews": True, "require_conversation_resolution": True,
                     "block_force_push": True, "block_deletions": True, "bypass_actors": []},
@@ -412,6 +413,11 @@ def test_governance_snapshot_semantics_are_derived_from_pinned_provider_shape():
     assert gov.validate_governance_snapshot(
         doc, provider_raw_bytes=raw_bytes, external_pin=pin, now_us=30_000_000,
         source_merge_time_us=25_000_000) == ("PASS", "OK")
+    retargeted = copy.deepcopy(doc)
+    retargeted["ruleset"]["target"] = "~DEFAULT_BRANCH"
+    result, reason = gov.validate_governance_snapshot(
+        retargeted, provider_raw_bytes=raw_bytes, external_pin=pin, now_us=30_000_000)
+    assert result == "FAIL" and "targets_main" in reason
     altered = _raw_ruleset()
     altered.pop("bypass_actors")
     altered_bytes = canonical_json(altered)
@@ -435,7 +441,7 @@ def _snapshot_for_raw(raw: dict) -> tuple[dict, bytes, str]:
                      "api_response_sha256": pin},
         "ruleset": {"ruleset_id": str(raw.get("id")), "target": "refs/heads/main",
                     "pull_request_required": True,
-                    "required_status_check": "CI / test-and-verify",
+                    "required_status_check": "test-and-verify",
                     "strict_required_status": True, "required_approvals": 1,
                     "dismiss_stale_reviews": True, "require_conversation_resolution": True,
                     "block_force_push": True, "block_deletions": True, "bypass_actors": []},
@@ -503,8 +509,46 @@ def _snapshot_for_raw(raw: dict) -> tuple[dict, bytes, str]:
             "MAIN_TARGET",
         ),
         (
+            lambda raw: raw["conditions"]["ref_name"]["include"].append(
+                "refs/heads/other"
+            ),
+            "MAIN_TARGET",
+        ),
+        (
+            lambda raw: raw["conditions"]["ref_name"]["include"].append(
+                "refs/heads/main"
+            ),
+            "MAIN_TARGET",
+        ),
+        (
+            lambda raw: raw["rules"][0]["parameters"].pop("allowed_merge_methods"),
+            "REVIEW_CONTROLS",
+        ),
+        (
+            lambda raw: raw["rules"][0]["parameters"].__setitem__(
+                "allowed_merge_methods", ["merge", "squash"]
+            ),
+            "REVIEW_CONTROLS",
+        ),
+        (
+            lambda raw: raw["rules"][1]["parameters"].pop("do_not_enforce_on_create"),
+            "STATUS_CONTROL",
+        ),
+        (
+            lambda raw: raw["rules"][1]["parameters"].__setitem__(
+                "do_not_enforce_on_create", True
+            ),
+            "STATUS_CONTROL",
+        ),
+        (
             lambda raw: raw["rules"][1]["parameters"]["required_status_checks"][0].pop(
                 "integration_id"
+            ),
+            "STATUS_CONTROL",
+        ),
+        (
+            lambda raw: raw["rules"][1]["parameters"]["required_status_checks"][0].__setitem__(
+                "context", "CI / test-and-verify"
             ),
             "STATUS_CONTROL",
         ),
