@@ -25,7 +25,7 @@
     "generation_1_anchor_object_sha": "0b2f0579a81e03988cca119ae7e4a0fbf888ad09",
     "generation_1_receipt_sha256": "f1328ceb29a8730be93f4fd47d295ac96ef514a747385ab500256d6fa52a7cca",
     "generation_ledger": "c9417108929965c010a5094bfa920d32ccd2d7e1a3f114f4db632c81e1e2310a",
-    "policy_v2": "5ef391c56b1567064d743760eba977ac4f22da2db5427e3b85f8e0b5601601c5"
+    "policy_v2": "6be80cbfe8a510a4f9dc3f289b947eda9b8fd429b442af850904926404736c79"
   },
   "supersedes": [
     "DEC-B00-REPAIR-001"

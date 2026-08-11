@@ -91,8 +91,6 @@
         "docs/plan/08_BUILD_CHECKLIST.md",
         "docs/plan/09_OPEN_QUESTIONS.md",
         "docs/plan/README.md",
-        "docs/plan/closure/TRIAD_B00_BN_CLOSURE_MASTER_2026-08-11.md",
-        "docs/plan/closure/TRIAD_B00_BN_CLOSURE_MARATHON_LEDGER_2026-08-11.md",
         "docs/repair/B01C_ACCEPTANCE_PROFILE.v1.json",
         "docs/repair/B01C_ENTRY_GATE.md",
         "src/triad_origin/governance.py",

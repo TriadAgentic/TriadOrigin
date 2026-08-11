@@ -1,0 +1,180 @@
+{
+  "$id": "https://triad.invalid/schemas/closure-status-events-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "digest": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "canonicalizer": {
+          "const": "triad_origin.canonical.canonical_json"
+        },
+        "domain": {
+          "const": "triad.closure.status_events.artifact.v1"
+        },
+        "preimage_rule": {
+          "const": "canonical_json({domain,schema,version,payload})"
+        },
+        "value": {
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "canonicalizer",
+        "domain",
+        "preimage_rule",
+        "value"
+      ],
+      "type": "object"
+    },
+    "payload": {
+      "additionalProperties": false,
+      "properties": {
+        "chain_head_sha256": {
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "classification": {
+          "const": "APPEND_ONLY_STATUS_EVENT_INPUT"
+        },
+        "event_count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "event_digest_domain": {
+          "const": "triad.closure.status_event.v1"
+        },
+        "events": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "event_digest": {
+                "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "event_type": {
+                "const": "WORK_TRANSITION"
+              },
+              "evidence_refs": {
+                "items": {
+                  "minLength": 1,
+                  "not": {
+                    "pattern": "(?i)PLACEHOLDER"
+                  },
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "from_state": {
+                "enum": [
+                  "NOT_STARTED",
+                  "BASELINED_FAIL",
+                  "SOURCE_IN_PROGRESS",
+                  "SOURCE_READY",
+                  "SOURCE_MERGED",
+                  "RECEIPT_IN_PROGRESS",
+                  "RECEIPT_READY",
+                  "CLOSED"
+                ]
+              },
+              "milestone_identity": {
+                "pattern": "^(?:CONTROL_FREEZE::C0|ORIGIN_REPAIR::(?:B00R_G2|B01C|B02C|B03C|B04C|B05C|B06R|B07|B08|B09|B10)|ESTATE_CROSS_REPO::XC01|ESTATE_CLOSURE::BN)::sha256:(?!0{64}$)[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "previous_event_digest": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+                    "type": "string"
+                  }
+                ]
+              },
+              "satisfied_requirements": {
+                "items": {
+                  "minLength": 1,
+                  "not": {
+                    "pattern": "(?i)PLACEHOLDER"
+                  },
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "sequence": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "to_state": {
+                "enum": [
+                  "NOT_STARTED",
+                  "BASELINED_FAIL",
+                  "SOURCE_IN_PROGRESS",
+                  "SOURCE_READY",
+                  "SOURCE_MERGED",
+                  "RECEIPT_IN_PROGRESS",
+                  "RECEIPT_READY",
+                  "CLOSED"
+                ]
+              }
+            },
+            "required": [
+              "sequence",
+              "event_type",
+              "milestone_identity",
+              "from_state",
+              "to_state",
+              "satisfied_requirements",
+              "evidence_refs",
+              "previous_event_digest",
+              "event_digest"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "program": {
+          "const": "TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11"
+        },
+        "semantics_digest_sha256": {
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "classification",
+        "program",
+        "semantics_digest_sha256",
+        "event_digest_domain",
+        "event_count",
+        "chain_head_sha256",
+        "events"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "triad.closure.status_events.v1"
+    },
+    "version": {
+      "const": "1"
+    }
+  },
+  "required": [
+    "schema",
+    "version",
+    "digest",
+    "payload"
+  ],
+  "type": "object"
+}

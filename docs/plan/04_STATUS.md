@@ -1,143 +1,31 @@
-# 04 · Status — Evidence-Based Reconciled View
+# 04 · Generated Closure Status
 
-_As of 2026-08-11 · Repository facts are separated from runtime facts. No activation is authorized._
+_Mechanical projection. Do not edit; run `python tools/closure_control.py --write`._
 
-This file is a human-readable projection. Canonical milestone identities, scope, conflicts, and
-current machine status are controlled by `docs/control/closure/closure_semantics.v1.json` and
-`closure_status.v1.json`; this view cannot create a closure claim.
+- Overall: `SOURCE_IN_PROGRESS_BLOCKED_SAFE_HOLD`
+- Activation posture: `OFF / OFF / OFF / LIVE`
+- Open blockers: `103`
+- Closed claims: `0`
 
-## Controlling state
+## Milestones
 
-| Item | State | Meaning |
-|---|---|---|
-| C0 control freeze | `SOURCE_IN_PROGRESS_BLOCKED_SAFE_HOLD` | Composite registry, crosswalk, profiles, scope guard, and status validator are being added to PR #34; chat confirmation is recorded but cryptographic authentication and independent exact-head review remain absent |
-| B00R generation 1 | `MERGED_UNVERIFIED_IMMUTABLE` | Mechanically authentic bytes and tag, but not a valid governance root |
-| B00R generation 2 | `CORRECTIVE_SOURCE_DRAFT` | CODEOWNERS bootstrap merged; additive source correction remains draft in PR #34; no source merge, receipt merge, or G2 anchor exists yet |
-| B00R terminal result | `BLOCKED` | Only generation 2 may eventually return `PASS_REPOSITORY_SAFE_HOLD` |
-| B01C onward | `FROZEN` | May begin only from the receipt merge named by a validated `B00R_RECEIPT_ANCHOR_G2` |
-| Activation | `DENIED_SAFE_HOLD` | No venue, paper, or money authority |
-| Lever baseline | `OFF / OFF / OFF / LIVE` | Venue environment OFF; venue activation OFF; paper activation OFF; shadow activation LIVE |
-| Current deployed runtime | `UNKNOWN_UNTIL_FRESH_ATTESTATION` | Repository status and dated MCP evidence do not certify a running estate |
+| Composite milestone | Work | Gate | Receipt | Runtime | Blockers |
+|---|---|---|---|---|---:|
+| `CONTROL_FREEZE::C0::sha256:3a2152de236540099955b21e9efef846775d1aee0d15af86eafabecb954cc230` | `SOURCE_IN_PROGRESS` | `BLOCKED` | `BLOCKED` | `NOT_APPLICABLE` | 8 |
+| `ORIGIN_REPAIR::B00R_G2::sha256:71b011d46c6a7ebd092bda6d2d303572c9a44508bd126ff9a50e2e5bad40eaf5` | `SOURCE_IN_PROGRESS` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 11 |
+| `ORIGIN_REPAIR::B01C::sha256:7d6e36d32db8e3eee19aa6fd446bdc48644f70916ef09d939f113f19c5a6db5e` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 6 |
+| `ORIGIN_REPAIR::B02C::sha256:b39df55b17320f8638d440ecada4dcfd35ff631fb9006f5a5acdce33207bda27` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 6 |
+| `ORIGIN_REPAIR::B03C::sha256:fb31fc7a907297c0efe67d88e926ed744c2d7753536d3ddf858ada6778a0b8ec` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 6 |
+| `ORIGIN_REPAIR::B04C::sha256:f9f42e48fc0a642b16a2512854a39acd595e9f45070db4580db487eaaca274c2` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 6 |
+| `ORIGIN_REPAIR::B05C::sha256:d05dd3facf362c71aec3a66e344962a0bf7a76cf0ee8c63fe14fb05f717c6c22` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 9 |
+| `ORIGIN_REPAIR::B06R::sha256:b851e656d1e01bd2ba1705d47c93ff4551f4ffd2842939b807ab486f76fcde2d` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 6 |
+| `ORIGIN_REPAIR::B07::sha256:2d5ebad6dc68cf908d1a26f161f4d5870fe585c4cbca8a8b7e9d998cd8150bef` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 6 |
+| `ESTATE_CROSS_REPO::XC01::sha256:70a8eb8cf39df88c508f2469a936ba1e926ed6bc84d608c5ff5b9dc913db3ca8` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 7 |
+| `ORIGIN_REPAIR::B08::sha256:4bf3e75b3c4de3c0f997f2191551afd5dbd39b452658eff5e3f9e67416b9f83f` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 6 |
+| `ORIGIN_REPAIR::B09::sha256:00773cb7d61c85d047cbd2c828c9f0324476d6fb0701b7019541ccc24bae3407` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 7 |
+| `ORIGIN_REPAIR::B10::sha256:f1d75c13f8d1cd0622738fc1d9e6f30cbc73aed0828652df1a71817f7fe06a25` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 12 |
+| `ESTATE_CLOSURE::BN::sha256:80dd0762c222cb661692896003ace482602cd028860d630d58da71a925cb79e3` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 7 |
 
-## Generation-1 historical facts
+## Next gate
 
-`docs/governance/B00R_GENERATION_LEDGER.v1.json` is the additive disposition record. These
-identities are preserved and must not be edited, repointed, or retro-reviewed into a pass.
-
-| Object | Provider/Git identity | Review state | Disposition |
-|---|---|---|---|
-| Source PR #31 | head `6033e9e0812d3eb980cfbcb3928006226414c7e4`; merge `5b2a0edc6db99934fe6fbe6bb0fa582bf689a7cc`; merged `2026-08-10T12:37:25Z` | Zero submitted reviews | `MERGED_UNVERIFIED` |
-| Receipt PR #32 | head `462152e29d249ab3596f6025e1f4d568efab335c`; merge `76b5e4857f80f22f99385810037c5c66289ebd5f`; merged `2026-08-10T13:05:54Z` | Zero submitted reviews | `MERGED_UNVERIFIED` |
-| Generation-1 receipt | `evidence/receipts/B00R.receipt.v3.json`; SHA-256 `f1328ceb29a8730be93f4fd47d295ac96ef514a747385ab500256d6fa52a7cca` | Declares `source_pr=27` while binding PR #31's merge | Historical evidence only |
-| Generation-1 anchor | `B00R_RECEIPT_ANCHOR`; tag object `0b2f0579a81e03988cca119ae7e4a0fbf888ad09`; target `76b5e4857f80f22f99385810037c5c66289ebd5f` | Protected after the fact | Never a B01C predecessor |
-
-Generation 1 false-greened because the validator authenticated the bytes of a hand-written
-`id:"DECLARATIVE"` provider stub instead of proving those bytes came from GitHub, and because it did
-not bind the true source PR identity or require independent pre-merge review.
-
-## Historical ruleset capture and PR #33: useful, but post-hoc
-
-GitHub issue #5 is open/reopened. It must remain open until generation-2 terminal
-`PASS_REPOSITORY_SAFE_HOLD`; its state does not repair generation 1 or close generation 2.
-
-| Fact | Current judgment |
-|---|---|
-| Historical ruleset `20641102` capture | Real provider object at its recorded observation, created `2026-08-10T13:47:11.736Z`, after PRs #31 and #32 merged; its current live state is `NOT_ATTESTED` |
-| Rejected administrative canaries | Real post-hoc evidence that future protected-ref operations were refused; no historical effect |
-| PR #33 | Open at observed head `0fc4edef83aa60ffe06d1d8356d798e492a6d98e`; zero submitted reviews; evidence-only, not a generation-2 source or receipt PR |
-| Generation-2 profile gap | PR #33's capture targets only `main` and permits merge/squash/rebase. G2 requires exact `{main, b00r-ruleset-canary}` scope, empty exclusions, and merge-only operation |
-| Old anchor ruleset `20636422` | Protects `B00R_RECEIPT_ANCHOR`; it does not protect the new `B00R_RECEIPT_ANCHOR_G2` identity |
-
-## Generation-2 live train
-
-| Object | Verified identity | Current state |
-|---|---|---|
-| CODEOWNERS bootstrap PR #35 | reviewed head `47706a55e1f62966496c808822678b0f9d15c2f8`; ordinary merge `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd` | Merged; literal reserved `main` base |
-| Corrective source PR #34 | provider baseline head `77a1ff3c7d31ba8b817be750976291c690c87b23`; base `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd` | Draft with zero reviews; C0/scope/reproducibility hardening is not yet published, so this head is not final and must not merge |
-| Obsolete PR #11 | head `208a059ea26dc333f00721336bf86a2c5be6ca81` | Closed unmerged; branch retained as historical evidence |
-| Obsolete PR #26 | head `8dba2b864ab38ef52800f888f8b51e0e79fe51c7` | Closed unmerged; branch retained as salvage archive only |
-
-First fetch the current provider object with repository-administration authority. It may then need
-an update or replacement for generation 2, but no mutation may be inferred from the historical
-capture. The final provider capture, external pin, dedicated rejected canary, exact-head CI, and
-review must all predate the corrective source merge.
-
-## Generation-2 correction inventory
-
-The correction is additive and uses distinct identities:
-
-| Object | Canonical identity | Current state |
-|---|---|---|
-| Policy | `docs/control/b00r_policy.v2.json` | Prepared on corrective source branch |
-| Generation ledger | `docs/governance/B00R_GENERATION_LEDGER.v1.json` | Prepared; preserves generation 1 |
-| Authority-bundle decision | `docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json` | Owner-authenticated object absent; template remains fail-closed |
-| Receipt-profile decision | `docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json` | Owner-authenticated object absent; template remains fail-closed |
-| Repair decision | `docs/governance/decisions/DEC-B00-REPAIR-002.json` | Owner-authenticated object absent; template remains fail-closed |
-| Independent CODEOWNER | `@djordi10` on critical paths | Bootstrap exact-head approval and merge proven in PR #35; future source/receipt exact-head approvals remain required |
-| Evidence root | `evidence/B00R_G2/` | Must be added only in the separate receipt PR |
-| Receipt | `evidence/receipts/B00R.g2.receipt.v3.json` | Absent until after the corrective source merge and clean reproduction |
-| Physical anchor | `B00R_RECEIPT_ANCHOR_G2` | Absent until after the receipt merge |
-
-Required external pins are
-`AUTHORITY_BUNDLE_G2_DECISION_SHA256`, `RECEIPT_PROFILE_G2_DECISION_SHA256`,
-`B00R_G2_REPAIR_DECISION_SHA256`, `RECEIPT_G2_TRUST_REGISTRY_SHA256`,
-`MAIN_RULESET_EVIDENCE_SHA256`, and `B00R_G2_TAG_RULESET_SHA256`.
-
-## Required closure sequence
-
-1. Freeze and validate the C0 registry/crosswalk/profile/status controls, positive B00R source
-   allowlist, and relative-constraint wheel regression; cascade source hashes and pass all
-   adversarial, dual-seed, distribution, and end-to-end gates.
-2. Publish the completed hardening to draft PR #34 and verify deterministic CI. The reviewed
-   CODEOWNERS bootstrap is already merged as `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd`; reserve
-   `main` there with no intervening merge.
-3. Create the canary ref; install/capture/pin the exact main+canary merge-only rule; run and preserve
-   its rejected direct-push canary before source merge.
-4. Materialize, owner-sign, and externally pin the G2 registry and all three `002` decisions; commit
-   those objects and the authenticated source-phase ruleset capture to PR #34.
-5. Freeze PR #34; obtain exact-head CI and `@djordi10` approval; merge ordinarily with the bootstrap
-   as first parent and reviewed source head/tree as second parent/result.
-6. Reproduce the source merge cleanly; install/capture/pin the tag rule; build/sign the append-only
-   receipt; obtain exact-head CI and `@djordi10` approval; merge it ordinarily with the source merge
-   as literal first parent and no intervening `main` merge.
-7. Publish the protected annotated G2 anchor; run the privileged terminal gate with the receipt PR
-   number; only then close issue #5 and unfreeze B01C from that exact receipt merge.
-
-Until step 7 passes, the source-mode result remains deliberately non-closing and B01C remains
-frozen.
-
-## Historical build artifacts
-
-R00/B00/B00C/B01–B07 source artifacts and receipts remain in the repository for audit and possible
-promotion after the new root. Their historical bytes are not deleted or rewritten. Their prior
-closure claims remain `INVALIDATED` or `BUILT_ON_INVALID_ANCESTRY` under
-`docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json`.
-
-Offline B01C preparation may continue only as non-authoritative work. It may not create a B01C
-source PR, receipt, branch-from-root claim, or promotion before the G2 anchor validates.
-
-## Authority and contract boundaries
-
-TriadOrigin remains the deterministic E02 repository. It consumes E01 facts and must not acquire
-E03–E10 forecast/LLM, admission, risk, execution, outcome, P&L, or learning authority. Repository
-governance repair does not authorize any runtime wiring.
-
-Published contract bytes remain immutable under the same identity. In particular, the dated MCP
-guide's suggestion to add `symbol` and `side/role` to `fill.v1` is rejected. The compatible path is
-the already catalogued strict `fill.v3` train with dual-publish, reconciliation, signed
-supersession, and consumer cutover outside B00R.
-
-## Dated MCP evidence is not a current gate receipt
-
-The supplied MCP books describe a 2026-08-07 snapshot and a read-mostly operational surface. They
-cannot prove GitHub review chronology, branch controls, current runtime state, or B00R closure. No
-MCP family activation, keeper edit, server restart, proposal write, or trading-box action belongs in
-this correction.
-
-## Immediate next action
-
-Finish the C0 controls, source-scope guard, reproducibility correction, and hash/test cascade, then
-publish one new draft head to PR #34 and run exact-head CI. Keep `main` and the canary reserved at
-`ba495ba…`. Before changing provider controls, obtain a fresh privileged ruleset capture; then close
-the exact main+canary merge-only profile and rejected canary. Do not start the source merge or
-receipt work out of sequence, reuse generation-1 evidence, or open B01C.
+Complete C0 owner authentication and exact-head independent review; continue B00R G2 source validation without runtime or venue mutation.

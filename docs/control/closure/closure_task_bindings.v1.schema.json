@@ -1,0 +1,258 @@
+{
+  "$id": "https://triad.invalid/schemas/closure-task-binding-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "digest": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "canonicalizer": {
+          "const": "triad_origin.canonical.canonical_json"
+        },
+        "domain": {
+          "const": "triad.closure.task_binding.artifact.v1"
+        },
+        "preimage_rule": {
+          "const": "canonical_json({domain,schema,version,payload})"
+        },
+        "value": {
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "canonicalizer",
+        "domain",
+        "preimage_rule",
+        "value"
+      ],
+      "type": "object"
+    },
+    "payload": {
+      "additionalProperties": false,
+      "properties": {
+        "blocking_dispositions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "disposition_id": {
+                "const": "LEGACY_B00_REALLOCATION_REQUIRED"
+              },
+              "reason": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "severity": {
+                "const": "P0"
+              },
+              "status": {
+                "const": "OPEN"
+              }
+            },
+            "required": [
+              "disposition_id",
+              "severity",
+              "status",
+              "reason"
+            ],
+            "type": "object"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "type": "array"
+        },
+        "classification": {
+          "const": "NORMATIVE_TASK_BINDING_SAFE_HOLD"
+        },
+        "mapping_law": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "program": {
+          "const": "TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11"
+        },
+        "reviewed_rows": {
+          "additionalProperties": false,
+          "properties": {
+            "byte_sha256": {
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "path": {
+              "const": "docs/control/build_ledger_review.v1.json"
+            },
+            "review_version": {
+              "const": "build-ledger-review.v1"
+            },
+            "row_count": {
+              "const": 1250
+            }
+          },
+          "required": [
+            "path",
+            "byte_sha256",
+            "review_version",
+            "row_count"
+          ],
+          "type": "object"
+        },
+        "rows": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "legacy_milestone": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "legacy_task_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "review_row_digest": {
+                "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "source_row_digest": {
+                "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "target": {
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "const": "CURRENT_COMPOSITE_MILESTONE"
+                      },
+                      "milestone_identity": {
+                        "pattern": "^(?:ORIGIN_REPAIR::(?:B01C|B02C|B03C|B04C|B05C|B06R|B07|B08|B09)|ESTATE_CROSS_REPO::XC01)::sha256:(?!0{64}$)[0-9a-f]{64}$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "milestone_identity"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "const": "XC01"
+                      },
+                      "milestone_identity": {
+                        "pattern": "^(?:ORIGIN_REPAIR::(?:B01C|B02C|B03C|B04C|B05C|B06R|B07|B08|B09)|ESTATE_CROSS_REPO::XC01)::sha256:(?!0{64}$)[0-9a-f]{64}$",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "milestone_identity"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "future_track": {
+                        "const": "FUTURE_EXPANSION"
+                      },
+                      "kind": {
+                        "const": "FUTURE_EXPANSION"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "future_track"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "disposition_id": {
+                        "const": "LEGACY_B00_REALLOCATION_REQUIRED"
+                      },
+                      "kind": {
+                        "const": "BLOCKING_DISPOSITION"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "disposition_id"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "legacy_task_id",
+              "legacy_milestone",
+              "source_row_digest",
+              "review_row_digest",
+              "target"
+            ],
+            "type": "object"
+          },
+          "maxItems": 1250,
+          "minItems": 1250,
+          "type": "array"
+        },
+        "source_ledger": {
+          "additionalProperties": false,
+          "properties": {
+            "byte_sha256": {
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "ledger_version": {
+              "const": "REVIEWED_V3"
+            },
+            "path": {
+              "const": "docs/control/build_ledger.json"
+            },
+            "row_count": {
+              "const": 1250
+            }
+          },
+          "required": [
+            "path",
+            "byte_sha256",
+            "ledger_version",
+            "row_count"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "classification",
+        "program",
+        "source_ledger",
+        "reviewed_rows",
+        "mapping_law",
+        "blocking_dispositions",
+        "rows"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "triad.closure.task_binding.v1"
+    },
+    "version": {
+      "const": "1"
+    }
+  },
+  "required": [
+    "schema",
+    "version",
+    "digest",
+    "payload"
+  ],
+  "type": "object"
+}

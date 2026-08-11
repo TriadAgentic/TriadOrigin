@@ -502,6 +502,8 @@ def _safe_relpath(path: str) -> bool:
         return False
     if path.startswith("/") or "\\" in path:
         return False
+    if any(ord(ch) < 32 or ord(ch) == 127 for ch in path):
+        return False
     parts = path.split("/")
     return ".." not in parts and "" not in parts and "." not in parts
 
@@ -918,8 +920,6 @@ B00R_SOURCE_ALLOWED_EXACT_PATHS = frozenset({
     "docs/plan/08_BUILD_CHECKLIST.md",
     "docs/plan/09_OPEN_QUESTIONS.md",
     "docs/plan/README.md",
-    "docs/plan/closure/TRIAD_B00_BN_CLOSURE_MASTER_2026-08-11.md",
-    "docs/plan/closure/TRIAD_B00_BN_CLOSURE_MARATHON_LEDGER_2026-08-11.md",
     "docs/repair/B01C_ACCEPTANCE_PROFILE.v1.json",
     "docs/repair/B01C_ENTRY_GATE.md",
     "src/triad_origin/governance.py",

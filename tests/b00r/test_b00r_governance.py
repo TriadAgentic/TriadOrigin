@@ -378,6 +378,20 @@ def test_neg017_b00r_source_scope_allows_only_c0_and_b00r_test_prefixes():
         "INVALID"
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "docs/control/closure/bad\nname.json",
+        "docs/control/closure/bad\tname.json",
+        "docs/control/closure/bad\x7fname.json",
+    ],
+)
+def test_neg017_package_classifier_rejects_control_character_paths(path):
+    role, reason = gov.classify_changed_paths([path])
+    assert role == "INVALID"
+    assert "unsafe changed path" in reason
+
+
 # --- NEG-018 · B01C without exact B00R anchor is blocked (successor variant) ----------------------
 def test_neg018_successor_requires_predecessor_anchor():
     receipt = _golden("triad.evidence_receipt.v3", "valid")

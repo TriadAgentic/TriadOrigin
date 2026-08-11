@@ -23,6 +23,12 @@ Canonical machine milestone semantics and status are routed through
 input views and cannot override that registry. This C0 routing change does not claim that C0 is
 closed or signed.
 
+Within that directory, `closure_semantics.v1.json` is normative; the 1,250-row
+`closure_task_bindings.v1.json` and append-only `closure_status_events.v1.json` are canonical
+inputs; and `closure_status.v1.json`, `docs/plan/04_STATUS.md`, and
+`docs/plan/08_BUILD_CHECKLIST.md` are byte-exact generated projections. Validate with
+`python tools/closure_control.py --check`; regenerate only those three outputs with `--write`.
+
 - The merged foundation originated against `1.0.0-RC1` and failed the later repository audit.
 - The supplied `1.0.0-RC2` package is a `RATIFICATION_CANDIDATE_NOT_ARMED`; it is incomplete and
   internally contradictory.

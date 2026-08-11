@@ -39,10 +39,18 @@ REQUIRED_MEMBERSHIP = [
     "docs/control/rc4_control_bundle.json",
     "docs/control/b00r_policy.v1.json",
     "docs/control/b00r_policy.v2.json",
+    "docs/control/build_ledger.json",
+    "docs/control/build_ledger_review.v1.json",
     "docs/control/closure/closure_semantics.v1.schema.json",
     "docs/control/closure/closure_semantics.v1.json",
     "docs/control/closure/closure_status.v1.schema.json",
     "docs/control/closure/closure_status.v1.json",
+    "docs/control/closure/closure_status_events.v1.schema.json",
+    "docs/control/closure/closure_status_events.v1.json",
+    "docs/control/closure/closure_task_bindings.v1.schema.json",
+    "docs/control/closure/closure_task_bindings.v1.json",
+    "docs/plan/04_STATUS.md",
+    "docs/plan/08_BUILD_CHECKLIST.md",
     "docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json",
     "docs/governance/B00R_GENERATION_LEDGER.v1.json",
     "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.template.json",
@@ -72,6 +80,7 @@ REQUIRED_MEMBERSHIP = [
     "tools/verify_manifest.py",
     "tools/verify_no_forbidden_capabilities.py",
     "tools/verify_reproducible_build.py",
+    "tools/verify_source_hashes.py",
 ]
 
 

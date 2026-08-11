@@ -13,6 +13,11 @@ does not override the closure registry. In particular, `04_STATUS.md`,
 historical, generated, or input views. Routing them this way does not claim that C0 is closed or
 signed.
 
+The normative semantics, exact 1,250-row task-binding sidecar, and immutable-prefix status-event
+chain are canonical inputs. `closure_status.v1.json`, `04_STATUS.md`, and
+`08_BUILD_CHECKLIST.md` are deterministically generated and byte-compared by
+`python tools/closure_control.py --check`; only `--write` may regenerate those three outputs.
+
 B00R closes only the governance/evidence root. It does not close formula migration or capability
 implementation; those remain downstream blockers. The operational posture is invariant
 `OFF/OFF/OFF/LIVE`.

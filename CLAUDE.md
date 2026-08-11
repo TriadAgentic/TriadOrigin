@@ -43,6 +43,10 @@ never a B01C predecessor. Safety posture is invariant `DENIED_SAFE_HOLD`, OFF/OF
 does not itself close or sign C0. B00R is governance-only: it cannot certify formula migration,
 capability implementation, cross-estate wiring, runtime readiness, or activation. Those remain
 downstream blockers. The invariant operational posture is `OFF/OFF/OFF/LIVE`.
+The canonical C0 input set is the semantics registry, exact legacy-task binding sidecar, and
+semantics-anchored append-only status-event chain. Status JSON plus plan files 04 and 08 are
+mechanical projections and fail validation on manual drift; `closure_control.py --write` may
+regenerate only those projections.
 
 Authority order:
 

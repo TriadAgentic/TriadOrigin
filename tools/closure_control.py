@@ -30,12 +30,25 @@ SEMANTICS_SCHEMA_REL = pathlib.Path("docs/control/closure/closure_semantics.v1.s
 SEMANTICS_REL = pathlib.Path("docs/control/closure/closure_semantics.v1.json")
 STATUS_SCHEMA_REL = pathlib.Path("docs/control/closure/closure_status.v1.schema.json")
 STATUS_REL = pathlib.Path("docs/control/closure/closure_status.v1.json")
+STATUS_EVENTS_SCHEMA_REL = pathlib.Path("docs/control/closure/closure_status_events.v1.schema.json")
+STATUS_EVENTS_REL = pathlib.Path("docs/control/closure/closure_status_events.v1.json")
+TASK_BINDING_SCHEMA_REL = pathlib.Path("docs/control/closure/closure_task_bindings.v1.schema.json")
+TASK_BINDING_REL = pathlib.Path("docs/control/closure/closure_task_bindings.v1.json")
 B00R_POLICY_REL = pathlib.Path("docs/control/b00r_policy.v2.json")
+BUILD_LEDGER_REL = pathlib.Path("docs/control/build_ledger.json")
+BUILD_LEDGER_REVIEW_REL = pathlib.Path("docs/control/build_ledger_review.v1.json")
+STATUS_DOC_REL = pathlib.Path("docs/plan/04_STATUS.md")
+CHECKLIST_DOC_REL = pathlib.Path("docs/plan/08_BUILD_CHECKLIST.md")
 
 SEMANTICS_SCHEMA = "triad.closure.semantics.v1"
 SEMANTICS_DOMAIN = "triad.closure.semantics.artifact.v1"
 STATUS_SCHEMA = "triad.closure.status.v1"
 STATUS_DOMAIN = "triad.closure.status.artifact.v1"
+STATUS_EVENTS_SCHEMA = "triad.closure.status_events.v1"
+STATUS_EVENTS_DOMAIN = "triad.closure.status_events.artifact.v1"
+STATUS_EVENT_DOMAIN = "triad.closure.status_event.v1"
+TASK_BINDING_SCHEMA = "triad.closure.task_binding.v1"
+TASK_BINDING_DOMAIN = "triad.closure.task_binding.artifact.v1"
 SCOPE_DOMAIN = "triad.closure.milestone_scope.v1"
 
 EXPECTED_MILESTONES: tuple[tuple[str, str], ...] = (
@@ -48,6 +61,7 @@ EXPECTED_MILESTONES: tuple[tuple[str, str], ...] = (
     ("ORIGIN_REPAIR", "B05C"),
     ("ORIGIN_REPAIR", "B06R"),
     ("ORIGIN_REPAIR", "B07"),
+    ("ESTATE_CROSS_REPO", "XC01"),
     ("ORIGIN_REPAIR", "B08"),
     ("ORIGIN_REPAIR", "B09"),
     ("ORIGIN_REPAIR", "B10"),
@@ -61,6 +75,7 @@ EXPECTED_PROFILE_IDS: Mapping[str, str] = {
     "B05C": "B05C_ACCEPTANCE_PROFILE_V1",
     "B06R": "B06R_ACCEPTANCE_PROFILE_V1",
     "B07": "B07_ACCEPTANCE_PROFILE_V1",
+    "XC01": "XC01_ACCEPTANCE_PROFILE_V1",
     "B08": "B08_ACCEPTANCE_PROFILE_V1",
     "B09": "B09_ACCEPTANCE_PROFILE_V1",
     "B10": "B10_ACCEPTANCE_PROFILE_V1",
@@ -80,6 +95,117 @@ EXPECTED_DECISION_RULES: Mapping[str, str] = {
 }
 EXPECTED_CONFLICTS = tuple(f"C-{number:02d}" for number in range(1, 15))
 EXPECTED_TEST_LAYERS = tuple(f"T{number}" for number in range(13))
+EXPECTED_BLOCKER_SPECS: Mapping[str, tuple[str, str, str, str]] = {
+    "B00R-G2-AUTHORITY-PINS": ("B00R_G2", "P0", "four authenticated G2 authority pins are absent", "D-02"),
+    "B00R-G2-CANARY": ("B00R_G2", "P0", "rejected negative canary is NOT_ATTESTED", "T6"),
+    "B00R-G2-EXACT-HEAD-REVIEW": ("B00R_G2", "P0", "B00R G2 exact-head review is UNBOUND", "review_policy:SOURCE_REVIEWER"),
+    "B00R-G2-RECEIPT-ANCHOR": ("B00R_G2", "P0", "evidence-only receipt merge and protected anchor are absent", "T7"),
+    "B00R-G2-RULESET": ("B00R_G2", "P0", "real live provider ruleset capture and external pin are NOT_ATTESTED", "T6"),
+    "B05-AUTHORIZATION": ("B05C", "P0", "deployment and restart remain unauthorized", "D-08"),
+    "B05-CREDENTIAL-ROTATION": ("B05C", "P0", "D-09 credential rotation is NOT_ATTESTED", "D-09"),
+    "B05-PHYSICAL-ISOLATION-SOAK": ("B05C", "P0", "physical four-plane isolation and 24-hour SHADOW soak are NOT_ATTESTED", "T8:T9"),
+    "B09-CONFORMANCE-DR": ("B09", "P0", "unique conformance and disaster-recovery owner proofs are NOT_ATTESTED", "T10:T11"),
+    "B10-CREDENTIAL-GATE": ("B10", "P0", "D-09 credential rotation/security gate is NOT_ATTESTED", "D-09"),
+    "B10-FROZEN-SUBJECT": ("B10", "P0", "B10 terminal subject registry is not frozen", "b10_terminal_control"),
+    "B10-TWO-AUDITS": ("B10", "P0", "two distinct B10 auditor slots and adjudicator are UNBOUND", "b10_terminal_control"),
+    "BN-FRESH-AGGREGATE": ("BN", "P0", "fresh identical-subject runtime and money-ledger aggregate is NOT_ATTESTED", "D-05:T8:T10"),
+    "C0-EXACT-HEAD-REVIEW": ("C0", "P0", "C0 exact-head source review is UNBOUND", "review_policy:SOURCE_REVIEWER"),
+    "C0-OWNER-AUTH": ("C0", "P0", "C0 owner authentication is UNBOUND", "review_policy:C0_OWNER_AUTHENTICATOR"),
+    "LEGACY_B00_REALLOCATION_REQUIRED": ("C0", "P0", "legacy B00 tasks require explicit owner reallocation", "closure_task_bindings.v1.json"),
+    "XC01-OWNER-RECEIPTS": ("XC01", "P0", "owner-repository receipt slots are UNBOUND and NOT_ATTESTED", "XC01_ACCEPTANCE_PROFILE_V1"),
+}
+EXPECTED_STATUS_EVENT_PREFIX_DIGESTS: tuple[str, ...] = (
+    "8d02c050e76c9ba3132642736033939aca1ddd7ec438b8a44bf5a708d1bb6571",
+    "8d0668ab8e70fe8ef4f13ea6ca99ea9116854bdacd5b2b529d5ab36c7c3b0ff7",
+    "48aeda74961b04b55e7e9f94912736eed35b6380b243c1bcfae101c9b096f164",
+    "b82aba34e5b1c666aba0fb663d81fc1ff3b1ae5420e65a3ea6a2e10241a8ce8f",
+)
+# legacy_ref -> (target kind, current milestone, disposition, receipt path, receipt SHA-256,
+# receipt-scope SHA-256, receipt's own historical milestone token).  ``current milestone`` is None
+# for historical-only and future-track rows.  These constants stop a self-consistent rewrite from
+# silently aliasing an old receipt to a different new milestone.
+EXPECTED_LEGACY_BINDINGS: Mapping[
+    str, tuple[str, str | None, str, str | None, str | None, str | None, str | None]
+] = {
+    "R00": (
+        "HISTORICAL_ONLY", None, "HISTORICAL_ONLY_INVALIDATED", "evidence/receipts/R00.json",
+        "b1ea0b353637070dcc0d1b56bd01d43e856b86d830a73ccbbd4141fb5330687f",
+        "9781e8e22ccb4863bd43f710a1f3754179e025809ba4e342f12410ddd0ffbcd8", "R00",
+    ),
+    "B00": (
+        "COMPOSITE_IDENTITY", "B00R_G2", "FORWARD_REPAIR_SUCCESSOR",
+        "evidence/receipts/B00.json",
+        "2b0518ea0f9540b63ff8d771a131597da34c2acb3452d171020cd70bbc386877",
+        "15a8b32df046cf1215397641850f0cca1d0ac5c5f6929171b6500c1f3140fd6e", "B00",
+    ),
+    "B00C": (
+        "COMPOSITE_IDENTITY", "B00R_G2", "FORWARD_REPAIR_SUCCESSOR",
+        "evidence/receipts/B00C.json",
+        "b5f89dbf6cb27f90c9ab7a731baea91044abb2b21709607e9f29741fdc2abcf9",
+        "dfbdfac2770eb21c65358e86100ef897aea43a6d43a7fd85ec9564f868b81a13", "B00C",
+    ),
+    "B00R_GENERATION_1": (
+        "HISTORICAL_ONLY", None, "HISTORICAL_ONLY_INVALIDATED",
+        "evidence/receipts/B00R.receipt.v3.json",
+        "f1328ceb29a8730be93f4fd47d295ac96ef514a747385ab500256d6fa52a7cca",
+        "caf2a2ee2ff7837e6285f8549b64c3b09603a6e4e82a321052d55817a8ddc56d", "B00R",
+    ),
+    "B01": (
+        "COMPOSITE_IDENTITY", "B01C", "FORWARD_REPAIR_SUCCESSOR",
+        "evidence/receipts/B01.json",
+        "d456e673a82a12786a89bae1dc302f9e3a013f295962e0db8e80294241613cc6",
+        "ab4d544de7056656c11f8194719be47397a8bf94bb034a64c32ef87b5355a302", "B01",
+    ),
+    "B01R": (
+        "COMPOSITE_IDENTITY", "B01C", "FORWARD_REPAIR_SUCCESSOR",
+        "evidence/receipts/B01R.json",
+        "510dc65d3c2e6586a7370e5db1629624796459b4335d960e2b20380584dce6ea",
+        "b94f13304e22985f483000cc20a7caa42ace6519c752866d925a4c7d050689d7", "B01R",
+    ),
+    "B02": (
+        "COMPOSITE_IDENTITY", "B02C", "FORWARD_REPAIR_SUCCESSOR",
+        "evidence/receipts/B02.json",
+        "63df9ba2d52e2701af57adfbf9d46cdc64a87db0b411ea36885291373a3b7679",
+        "9d3e42be33012a59efec262904053c2129773657cead2709395d49de2c02e4c1", "B02",
+    ),
+    "B03": (
+        "COMPOSITE_IDENTITY", "B03C", "FORWARD_REPAIR_SUCCESSOR",
+        "evidence/receipts/B03.json",
+        "25486baaf425c281003ce1b7f40b6ffeb60f0f8dd8ce19cf9f76640561099fec",
+        "b612c5a6e49d4f868929f3ff2d7cddfea10b3894b910e7a88334bf8114038240", "B03",
+    ),
+    "B04": (
+        "COMPOSITE_IDENTITY", "B04C", "FORWARD_REPAIR_SUCCESSOR",
+        "evidence/receipts/B04.json",
+        "e235eeaf5739fb3b5a49be0abb24bf16c2a488b85a1c68948704b5f08c1f83c5",
+        "3f489548cbd838cf6fedc96d7ea2b921ccc268b09309b7bb906c2f7788a03fa3", "B04",
+    ),
+    "B05": (
+        "COMPOSITE_IDENTITY", "B05C", "FORWARD_REPAIR_SUCCESSOR",
+        "evidence/receipts/B05.json",
+        "2ba214fdcf3971e9dd9cfd7bf51324c6fbcfd871071e89b8d19e8977a7aadbb0",
+        "cf918213ef81ea82ad0595bd9a6079b2e22fbe5d2110337f545d6cd57aedeebd", "B05",
+    ),
+    "B06": (
+        "COMPOSITE_IDENTITY", "B06R", "FORWARD_REPAIR_SUCCESSOR",
+        "evidence/receipts/B06.json",
+        "2656ed5ce2a52fd6ff1230b2be7d5c0c233b16fe20fe7731d39fa5222261f928",
+        "a6612d817a98e2d9c2d9610a8f85d15e8badad068b85dcb08537298eecab3d2d", "B06",
+    ),
+    "B07": (
+        "COMPOSITE_IDENTITY", "B07", "FORWARD_REPAIR_SUCCESSOR",
+        "evidence/receipts/B07.json",
+        "5a8939f35d133f2965846eb03f4fd409ad7d33d030ee87312dbff7d9d4ae34e4",
+        "533e6a38e284c8a4b2db34b46c8618ccfb6661a8f1ff6162de22241ed30870e1", "B07",
+    ),
+    "B08": ("COMPOSITE_IDENTITY", "B08", "PRESERVED_CURRENT_MEANING", None, None, None, None),
+    "B09": ("COMPOSITE_IDENTITY", "B09", "PRESERVED_CURRENT_MEANING", None, None, None, None),
+    "B10": ("FUTURE_TRACK", None, "DEFERRED_EXPANSION", None, None, None, None),
+    "B10_EXPANSION": (
+        "FUTURE_TRACK", None, "DEFERRED_EXPANSION", None, None, None, None,
+    ),
+    "BN": ("COMPOSITE_IDENTITY", "BN", "FORWARD_REPAIR_SUCCESSOR", None, None, None, None),
+}
 SAFE_HOLD = {
     "venue_environment": "OFF",
     "venue_activation": "OFF",
@@ -344,6 +470,36 @@ def validate_milestones(semantics: Mapping[str, Any]) -> dict[tuple[str, str], M
         previous_identity = identity
 
     _validate_dependency_dag(rows, set(by_identity))
+    xc01_identity = by_key[("ESTATE_CROSS_REPO", "XC01")]["identity"]
+    b08_identity = by_key[("ORIGIN_REPAIR", "B08")]["identity"]
+    b10_identity = by_key[("ORIGIN_REPAIR", "B10")]["identity"]
+    expected_direct_dependencies = {
+        ("ORIGIN_REPAIR", "B08"): {xc01_identity},
+        ("ORIGIN_REPAIR", "B09"): {b08_identity, xc01_identity},
+        ("ESTATE_CLOSURE", "BN"): {b10_identity, xc01_identity},
+    }
+    for key, expected_dependencies in expected_direct_dependencies.items():
+        actual_dependencies = set(by_key[key]["dependency_identities"])
+        if actual_dependencies != expected_dependencies:
+            _fail(
+                "XC01_DIRECT_DEPENDENCY_LAW_MISMATCH",
+                f"{key!r}: {sorted(actual_dependencies)!r}",
+            )
+    xc01 = by_key[("ESTATE_CROSS_REPO", "XC01")]
+    expected_xc01_path_law = {
+        "adoption_manifest": "docs/control/adoption/XC01.v1.json",
+        "anchor": "XC01_RECEIPT_ANCHOR",
+        "source_receipt": "evidence/receipts/XC01.receipt.v4.json",
+    }
+    if xc01["path_law"] != expected_xc01_path_law:
+        _fail("XC01_PATH_LAW_MISMATCH", repr(xc01["path_law"]))
+    expected_bn_aggregate = [{
+        "anchor": expected_xc01_path_law["anchor"],
+        "milestone_identity": xc01_identity,
+        "source_receipt": expected_xc01_path_law["source_receipt"],
+    }]
+    if by_key[("ESTATE_CLOSURE", "BN")].get("aggregate_receipt_dependencies") != expected_bn_aggregate:
+        _fail("BN_XC01_RECEIPT_AGGREGATE_MISMATCH", "aggregate_receipt_dependencies")
     return by_key
 
 
@@ -397,7 +553,8 @@ def validate_profiles(
 
     known_identities = {row["identity"] for row in milestones.values()}
     for milestone_id, profile_id in EXPECTED_PROFILE_IDS.items():
-        milestone = milestones[("ORIGIN_REPAIR", milestone_id)]
+        track_id = "ESTATE_CROSS_REPO" if milestone_id == "XC01" else "ORIGIN_REPAIR"
+        milestone = milestones[(track_id, milestone_id)]
         profile = by_id[profile_id]
         if profile["milestone_identity"] != milestone["identity"]:
             _fail("PROFILE_MILESTONE_MISMATCH", profile_id)
@@ -421,6 +578,7 @@ def validate_profiles(
             "required_artifacts",
             "targeted_tests",
             "cumulative_tests",
+            "external_tests",
             "external_evidence",
             "work_packages",
             "acceptance_criteria",
@@ -439,6 +597,41 @@ def validate_profiles(
             _fail("PROFILE_ADOPTION_MANIFEST_PATH_INVALID", profile_id)
         if adoption_manifest != milestone["path_law"]["adoption_manifest"]:
             _fail("PROFILE_ADOPTION_MANIFEST_MISMATCH", profile_id)
+
+        owner_slots = profile.get("owner_repo_receipt_slots")
+        if milestone_id == "XC01":
+            expected_slots = {
+                "XC01-E08-F20": ("E08", ("F20",)),
+                "XC01-E09-F21-F22": ("E09", ("F21", "F22")),
+                "XC01-E10-F23": ("E10", ("F23",)),
+            }
+            if not isinstance(owner_slots, list) or len(owner_slots) != 3:
+                _fail("XC01_OWNER_RECEIPT_SLOT_SET_MISMATCH", repr(owner_slots))
+            actual_slots = {
+                slot.get("receipt_slot_id"): (
+                    slot.get("owner_engine"), tuple(slot.get("formula_ids", ()))
+                )
+                for slot in owner_slots
+            }
+            if actual_slots != expected_slots:
+                _fail("XC01_OWNER_RECEIPT_SLOT_SET_MISMATCH", repr(actual_slots))
+            for slot in owner_slots:
+                if (
+                    slot.get("provider_binding_state") != "UNBOUND"
+                    or slot.get("attestation_state") != "NOT_ATTESTED"
+                ):
+                    _fail("XC01_OWNER_RECEIPT_SLOT_OVERCLAIM", slot["receipt_slot_id"])
+            required_tokens = {"WAVE-C-001", "WAVE-C-005", "WAVE-C-006", "E08", "E09", "E10", "F20", "F21", "F22", "F23"}
+            profile_text = canonical_json(profile).decode("utf-8")
+            missing = sorted(token for token in required_tokens if token not in profile_text)
+            if missing:
+                _fail("XC01_ACCEPTANCE_REQUIREMENT_MISSING", repr(missing))
+            if "proxy" not in profile["failure_policy"].lower() and not any(
+                "proxy" in value.lower() for value in profile["excluded_scope"]
+            ):
+                _fail("XC01_PROXY_EVIDENCE_LAW_MISSING", profile_id)
+        elif owner_slots is not None:
+            _fail("OWNER_RECEIPT_SLOTS_OUTSIDE_XC01", profile_id)
 
 
 def validate_test_matrix(
@@ -465,37 +658,43 @@ def validate_test_matrix(
             _fail("TEST_MATRIX_EMPTY_ROW", identity)
 
     for milestone_id in EXPECTED_PROFILE_IDS:
-        identity = milestones[("ORIGIN_REPAIR", milestone_id)]["identity"]
-        modes = set(rows_by_identity[identity]["layers"].values())
-        for required in ("TARGETED", "CUMULATIVE", "EXTERNAL"):
-            if required not in modes:
-                _fail("TEST_MATRIX_PROFILE_MODE_MISSING", f"{milestone_id}:{required}")
+        track_id = "ESTATE_CROSS_REPO" if milestone_id == "XC01" else "ORIGIN_REPAIR"
+        identity = milestones[(track_id, milestone_id)]["identity"]
+        layers_for_profile = rows_by_identity[identity]["layers"]
+        profile = next(
+            row for row in payload["acceptance_profiles"]
+            if row["milestone_identity"] == identity
+        )
+        for field, mode in (
+            ("targeted_tests", "TARGETED"),
+            ("cumulative_tests", "CUMULATIVE"),
+            ("external_tests", "EXTERNAL"),
+        ):
+            declared = profile[field]
+            expected = sorted(layer for layer, value in layers_for_profile.items() if value == mode)
+            if any(layer not in EXPECTED_TEST_LAYERS for layer in declared):
+                _fail("PROFILE_TEST_LAYER_UNKNOWN", f"{profile['profile_id']}:{field}")
+            if declared != expected:
+                _fail(
+                    "PROFILE_TEST_MATRIX_MISMATCH",
+                    f"{profile['profile_id']}:{field}: expected {expected!r}, got {declared!r}",
+                )
 
 
 def validate_legacy_crosswalk(
-    semantics: Mapping[str, Any], milestones: Mapping[tuple[str, str], Mapping[str, Any]]
+    semantics: Mapping[str, Any],
+    milestones: Mapping[tuple[str, str], Mapping[str, Any]],
+    root: pathlib.Path = ROOT,
 ) -> None:
     crosswalk = semantics["payload"]["legacy_crosswalk"]
     if not isinstance(crosswalk, list) or not crosswalk:
         _fail("LEGACY_CROSSWALK_EMPTY", "legacy_crosswalk")
     identities = {row["identity"] for row in milestones.values()}
+    milestones_by_id = {key[1]: row for key, row in milestones.items()}
     seen_legacy: set[str] = set()
-    expected_legacy_refs = {
-        "R00",
-        "B00",
-        "B00C",
-        "B00R_GENERATION_1",
-        "B01",
-        "B01R",
-        "B02",
-        "B03",
-        "B04",
-        "B05",
-        "B06",
-        "B07",
-        "B10_EXPANSION",
-        "BN",
-    }
+    actual_order = tuple(row.get("legacy_ref") for row in crosswalk)
+    if actual_order != tuple(EXPECTED_LEGACY_BINDINGS):
+        _fail("LEGACY_CROSSWALK_SET_OR_ORDER_MISMATCH", repr(actual_order))
     for row in crosswalk:
         if not isinstance(row, dict):
             _fail("LEGACY_CROSSWALK_ROW_INVALID", repr(row))
@@ -503,27 +702,391 @@ def validate_legacy_crosswalk(
         current_identity = row.get("current_identity")
         if not isinstance(legacy_id, str) or not legacy_id or legacy_id in seen_legacy:
             _fail("LEGACY_CROSSWALK_DUPLICATE", repr(legacy_id))
-        target_kind = row.get("target_kind")
-        if target_kind == "COMPOSITE_IDENTITY":
-            if (
-                current_identity not in identities
-                or row.get("future_track") is not None
-            ):
-                _fail("LEGACY_CROSSWALK_TARGET_INVALID", repr(current_identity))
-        elif target_kind == "FUTURE_TRACK":
-            if current_identity is not None or row.get("future_track") != "FUTURE_EXPANSION":
-                _fail("LEGACY_CROSSWALK_TARGET_INVALID", legacy_id)
-        elif target_kind == "HISTORICAL_ONLY":
-            if current_identity is not None or row.get("future_track") is not None:
-                _fail("LEGACY_CROSSWALK_TARGET_INVALID", legacy_id)
-        else:
+        (
+            expected_kind,
+            expected_milestone,
+            expected_disposition,
+            expected_receipt_path,
+            expected_receipt_sha,
+            expected_scope_digest,
+            expected_receipt_milestone,
+        ) = EXPECTED_LEGACY_BINDINGS[legacy_id]
+        expected_identity = (
+            milestones_by_id[expected_milestone]["identity"]
+            if expected_milestone is not None else None
+        )
+        expected_future = "FUTURE_EXPANSION" if expected_kind == "FUTURE_TRACK" else None
+        if (
+            row.get("target_kind") != expected_kind
+            or current_identity != expected_identity
+            or row.get("future_track") != expected_future
+            or row.get("disposition") != expected_disposition
+        ):
             _fail("LEGACY_CROSSWALK_TARGET_INVALID", legacy_id)
+        if current_identity is not None and current_identity not in identities:
+            _fail("LEGACY_CROSSWALK_TARGET_INVALID", repr(current_identity))
+        if (
+            row.get("historical_receipt_path") != expected_receipt_path
+            or row.get("historical_receipt_sha256") != expected_receipt_sha
+            or row.get("historical_scope_digest") != expected_scope_digest
+        ):
+            _fail("LEGACY_RECEIPT_BINDING_MISMATCH", legacy_id)
+        if expected_receipt_path is not None:
+            receipt_path = root / expected_receipt_path
+            try:
+                receipt_bytes = receipt_path.read_bytes()
+            except OSError as exc:
+                _fail("LEGACY_RECEIPT_UNAVAILABLE", f"{legacy_id}: {exc}")
+            if hashlib.sha256(receipt_bytes).hexdigest() != expected_receipt_sha:
+                _fail("LEGACY_RECEIPT_BYTE_DIGEST_MISMATCH", legacy_id)
+            receipt = load_json_object(receipt_path)
+            receipt_scope = receipt.get("payload", {}).get("scope")
+            if not isinstance(receipt_scope, dict):
+                _fail("LEGACY_RECEIPT_SCOPE_MISSING", legacy_id)
+            if receipt_scope.get("milestone") != expected_receipt_milestone:
+                _fail("LEGACY_RECEIPT_SCOPE_ID_MISMATCH", legacy_id)
+            if _sha256_canonical(receipt_scope) != expected_scope_digest:
+                _fail("LEGACY_RECEIPT_SCOPE_DIGEST_MISMATCH", legacy_id)
         seen_legacy.add(legacy_id)
-    if seen_legacy != expected_legacy_refs:
+    if seen_legacy != set(EXPECTED_LEGACY_BINDINGS):
         _fail("LEGACY_CROSSWALK_SET_MISMATCH", repr(sorted(seen_legacy)))
 
 
-def validate_semantics(semantics: Mapping[str, Any], schema: Mapping[str, Any]) -> str:
+def validate_review_policy(
+    semantics: Mapping[str, Any], milestones: Mapping[tuple[str, str], Mapping[str, Any]]
+) -> None:
+    """Prove that every human/provider role is explicit, unbound, and fail-closed at C0."""
+
+    policy = semantics["payload"]["review_policy"]
+    if policy.get("binding_failure_rule") != (
+        "UNBOUND_OR_SUBJECT_MISMATCH_BLOCKS_SOURCE_RECEIPT_AUDIT_AND_CLOSURE"
+    ):
+        _fail("REVIEW_BINDING_FAILURE_LAW_MISMATCH", repr(policy.get("binding_failure_rule")))
+    requirements = policy.get("provider_identity_requirements", [])
+    required_words = ("account", "event", "repository", "role", "subject", "timestamp")
+    requirements_text = " ".join(requirements).lower()
+    if any(word not in requirements_text for word in required_words):
+        _fail("PROVIDER_IDENTITY_REQUIREMENT_INCOMPLETE", repr(requirements))
+    independent_roles = {
+        "SOURCE_REVIEWER", "RECEIPT_REVIEWER",
+        "B10_RUNTIME_SIDE_EFFECT_AUDITOR", "B10_SEMANTIC_SOURCE_AUDITOR",
+        "B10_ADJUDICATOR",
+    }
+    actor_roles = {
+        "AUTHOR", "C0_OWNER_AUTHENTICATOR", "EVIDENCE_PRODUCER",
+        "OWNER_DECISION_SIGNER", "RESULT_PRODUCER",
+    }
+    required_pairs = {
+        (actor, reviewer)
+        for actor in actor_roles
+        for reviewer in independent_roles
+    } | {
+        ("B10_RUNTIME_SIDE_EFFECT_AUDITOR", "B10_SEMANTIC_SOURCE_AUDITOR"),
+        ("B10_ADJUDICATOR", "B10_RUNTIME_SIDE_EFFECT_AUDITOR"),
+        ("B10_ADJUDICATOR", "B10_SEMANTIC_SOURCE_AUDITOR"),
+    }
+    actual_pairs = {tuple(pair) for pair in policy.get("disjoint_pairs", [])}
+    if actual_pairs != required_pairs:
+        _fail("REVIEW_DISJOINT_PAIR_SET_MISMATCH", repr(sorted(actual_pairs)))
+    roles = {row.get("role_id"): row.get("independent") for row in policy.get("role_registry", [])}
+    expected_roles = {
+        "AUTHOR": False, "C0_OWNER_AUTHENTICATOR": False,
+        "EVIDENCE_PRODUCER": False, "OWNER_DECISION_SIGNER": False,
+        "RESULT_PRODUCER": False,
+        "SOURCE_REVIEWER": True, "RECEIPT_REVIEWER": True,
+        "B10_RUNTIME_SIDE_EFFECT_AUDITOR": True,
+        "B10_SEMANTIC_SOURCE_AUDITOR": True,
+        "B10_ADJUDICATOR": True,
+    }
+    if roles != expected_roles or len(policy.get("role_registry", [])) != len(expected_roles):
+        _fail("REVIEW_ROLE_REGISTRY_MISMATCH", repr(roles))
+    if policy.get("controlling_entity_key") != "PROVIDER_ACCOUNT_IMMUTABLE_ID":
+        _fail("REVIEW_CONTROLLING_ENTITY_KEY_MISMATCH", repr(policy.get("controlling_entity_key")))
+    validate_role_identity_bindings(policy, {})
+
+    expected_identities = [milestones[key]["identity"] for key in EXPECTED_MILESTONES]
+    rows = policy.get("milestone_slots", [])
+    if [row.get("milestone_identity") for row in rows] != expected_identities:
+        _fail("REVIEW_SLOT_MILESTONE_SET_OR_ORDER_MISMATCH", "milestone_slots")
+    for row in rows:
+        identity = row["milestone_identity"]
+        roles = [slot.get("role_id") for slot in row.get("slots", [])]
+        if len(roles) != len(set(roles)) or not {"SOURCE_REVIEWER", "RECEIPT_REVIEWER"} <= set(roles):
+            _fail("REVIEW_SLOT_ROLE_SET_INVALID", identity)
+        for slot in row["slots"]:
+            if slot.get("binding_state") != "UNBOUND" or slot.get("provider_binding") is not None:
+                _fail("REVIEW_SLOT_PREMATURE_BINDING", f"{identity}:{slot.get('role_id')}")
+            hint = slot.get("eligible_hint")
+            milestone_id = next(
+                item["scope"]["milestone_id"]
+                for item in milestones.values()
+                if item["identity"] == identity
+            )
+            if hint is not None and not (
+                milestone_id == "B00R_G2" and slot["role_id"] == "SOURCE_REVIEWER" and hint == "djordi10"
+            ):
+                _fail("REVIEW_ELIGIBLE_HINT_INVALID", f"{identity}:{slot['role_id']}")
+        if identity == milestones[("CONTROL_FREEZE", "C0")]["identity"] and "C0_OWNER_AUTHENTICATOR" not in roles:
+            _fail("C0_OWNER_AUTHENTICATION_SLOT_MISSING", identity)
+        if identity == milestones[("ORIGIN_REPAIR", "B10")]["identity"]:
+            required = {
+                "B10_RUNTIME_SIDE_EFFECT_AUDITOR",
+                "B10_SEMANTIC_SOURCE_AUDITOR",
+                "B10_ADJUDICATOR",
+            }
+            if not required <= set(roles):
+                _fail("B10_REVIEW_ROLE_SET_INCOMPLETE", repr(roles))
+
+    bn_dependencies = set(milestones[("ESTATE_CLOSURE", "BN")]["dependency_identities"])
+    if milestones[("ESTATE_CROSS_REPO", "XC01")]["identity"] not in bn_dependencies:
+        _fail("BN_XC01_AGGREGATE_DEPENDENCY_MISSING", "BN dependency_identities")
+
+
+def validate_role_identity_bindings(
+    policy: Mapping[str, Any], bindings: Mapping[str, str]
+) -> None:
+    """Reject controlling-entity aliasing for every declared disjoint role pair."""
+
+    known_roles = {row.get("role_id") for row in policy.get("role_registry", [])}
+    unknown = sorted(set(bindings) - known_roles)
+    if unknown:
+        _fail("REVIEW_IDENTITY_BINDING_ROLE_UNKNOWN", repr(unknown))
+    for role, controlling_entity in bindings.items():
+        if not isinstance(controlling_entity, str) or not controlling_entity:
+            _fail("REVIEW_IDENTITY_BINDING_INVALID", role)
+    for left, right in policy.get("disjoint_pairs", []):
+        if left in bindings and right in bindings and bindings[left] == bindings[right]:
+            _fail("REVIEW_CONTROLLING_ENTITY_ALIAS", f"{left}={right}")
+
+
+def validate_b10_terminal_control(
+    semantics: Mapping[str, Any], milestones: Mapping[tuple[str, str], Mapping[str, Any]]
+) -> None:
+    control = semantics["payload"]["b10_terminal_control"]
+    b10_identity = milestones[("ORIGIN_REPAIR", "B10")]["identity"]
+    if control.get("milestone_identity") != b10_identity:
+        _fail("B10_CONTROL_IDENTITY_MISMATCH", repr(control.get("milestone_identity")))
+    tasks = control.get("tasks", [])
+    criteria = control.get("criteria", [])
+    verifications = control.get("verifications", [])
+    if not tasks or not criteria or not verifications:
+        _fail("B10_CONTROL_EMPTY", "tasks criteria and verifications must be nonzero")
+    task_ids = {row.get("task_id") for row in tasks}
+    criterion_ids = {row.get("criterion_id") for row in criteria}
+    verification_ids = {row.get("verification_id") for row in verifications}
+    if len(task_ids) != len(tasks) or len(criterion_ids) != len(criteria) or len(verification_ids) != len(verifications):
+        _fail("B10_CONTROL_DUPLICATE_ID", "task criterion or verification")
+    graph: dict[str, tuple[str, ...]] = {}
+    for row in tasks:
+        task_id = row["task_id"]
+        dependencies = tuple(row["dependency_task_ids"])
+        if any(dep not in task_ids or dep == task_id for dep in dependencies):
+            _fail("B10_TASK_DEPENDENCY_UNKNOWN", task_id)
+        if any(ref not in criterion_ids for ref in row["criterion_ids"]):
+            _fail("B10_TASK_CRITERION_UNKNOWN", task_id)
+        if any(ref not in verification_ids for ref in row["verification_ids"]):
+            _fail("B10_TASK_VERIFICATION_UNKNOWN", task_id)
+        graph[task_id] = dependencies
+    for verification in verifications:
+        if any(ref not in criterion_ids for ref in verification["criterion_ids"]):
+            _fail("B10_VERIFICATION_CRITERION_UNKNOWN", verification["verification_id"])
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(task_id: str) -> None:
+        if task_id in visiting:
+            _fail("B10_TASK_DEPENDENCY_CYCLE", task_id)
+        if task_id in visited:
+            return
+        visiting.add(task_id)
+        for dependency in graph[task_id]:
+            visit(dependency)
+        visiting.remove(task_id)
+        visited.add(task_id)
+
+    for task_id in graph:
+        visit(task_id)
+    roles = [row.get("role_id") for row in control.get("audit_roles", [])]
+    expected_roles = ["B10_RUNTIME_SIDE_EFFECT_AUDITOR", "B10_SEMANTIC_SOURCE_AUDITOR"]
+    if roles != expected_roles or len(set(roles)) != 2:
+        _fail("B10_AUDIT_ROLE_SET_MISMATCH", repr(roles))
+    adjudication = control.get("adjudication", {})
+    if (
+        adjudication.get("adjudicator_role") != "B10_ADJUDICATOR"
+        or sorted(adjudication.get("requires_audit_roles", [])) != sorted(expected_roles)
+        or adjudication.get("state") != "UNBOUND"
+    ):
+        _fail("B10_ADJUDICATION_LAW_MISMATCH", repr(adjudication))
+    receipt_law = control.get("receipt_anchor_law", {})
+    b10_path_law = milestones[("ORIGIN_REPAIR", "B10")]["path_law"]
+    if (
+        receipt_law.get("anchor_must_follow_receipt_merge") is not True
+        or receipt_law.get("required_result") != "PASS_REPOSITORY_SAFE_HOLD"
+        or receipt_law.get("receipt_path") != b10_path_law["source_receipt"]
+        or receipt_law.get("required_anchor") != b10_path_law["anchor"]
+    ):
+        _fail("B10_RECEIPT_ANCHOR_LAW_MISMATCH", repr(receipt_law))
+
+
+def _expected_task_target(task: Mapping[str, Any], milestones: Mapping[tuple[str, str], Mapping[str, Any]]) -> dict[str, str]:
+    legacy = task["milestone"]
+    identity_by_id = {key[1]: row["identity"] for key, row in milestones.items()}
+    if legacy == "B00":
+        return {"disposition_id": "LEGACY_B00_REALLOCATION_REQUIRED", "kind": "BLOCKING_DISPOSITION"}
+    if legacy == "RESEARCH":
+        return {"future_track": "FUTURE_EXPANSION", "kind": "FUTURE_EXPANSION"}
+    if legacy in {"ESTATE", "OPERATOR"}:
+        return {"kind": "XC01", "milestone_identity": identity_by_id["XC01"]}
+    legacy_map = {
+        "B01": "B01C", "B02": "B02C", "B03": "B03C", "B04": "B04C",
+        "B05": "B05C", "B07": "B07", "B08": "B08",
+    }
+    if legacy == "B06":
+        target = "B04C" if re.fullmatch(r"FORM-F14-[0-9]+", task["id"]) else "B06R"
+        return {"kind": "CURRENT_COMPOSITE_MILESTONE", "milestone_identity": identity_by_id[target]}
+    if legacy == "B09":
+        if re.fullmatch(r"FORM-F(?:20|21|22|23)-[0-9]+", task["id"]):
+            return {"kind": "XC01", "milestone_identity": identity_by_id["XC01"]}
+        return {"kind": "CURRENT_COMPOSITE_MILESTONE", "milestone_identity": identity_by_id["B09"]}
+    if legacy in legacy_map:
+        return {"kind": "CURRENT_COMPOSITE_MILESTONE", "milestone_identity": identity_by_id[legacy_map[legacy]]}
+    _fail("TASK_BINDING_LEGACY_MILESTONE_UNKNOWN", repr(legacy))
+
+
+def validate_task_bindings(
+    document: Mapping[str, Any], schema: Mapping[str, Any], semantics: Mapping[str, Any],
+    root: pathlib.Path = ROOT,
+) -> str:
+    validate_schema(schema, document, "closure task bindings")
+    digest = validate_envelope(document, TASK_BINDING_SCHEMA, TASK_BINDING_DOMAIN)
+    payload = document["payload"]
+    ledger_path = root / BUILD_LEDGER_REL
+    review_path = root / BUILD_LEDGER_REVIEW_REL
+    ledger_bytes = ledger_path.read_bytes()
+    review_bytes = review_path.read_bytes()
+    if payload["source_ledger"]["byte_sha256"] != hashlib.sha256(ledger_bytes).hexdigest():
+        _fail("TASK_BINDING_LEDGER_BYTE_DIGEST_MISMATCH", BUILD_LEDGER_REL.as_posix())
+    if payload["reviewed_rows"]["byte_sha256"] != hashlib.sha256(review_bytes).hexdigest():
+        _fail("TASK_BINDING_REVIEW_BYTE_DIGEST_MISMATCH", BUILD_LEDGER_REVIEW_REL.as_posix())
+    ledger = load_json_object(ledger_path)
+    review = load_json_object(review_path)
+    tasks = ledger.get("tasks", [])
+    review_rows = review.get("rows", [])
+    if len(tasks) != 1250 or len(review_rows) != 1250:
+        _fail("TASK_BINDING_SOURCE_ROW_COUNT_MISMATCH", f"{len(tasks)}/{len(review_rows)}")
+    source_by_id = {row.get("id"): row for row in tasks}
+    review_by_id = {row.get("id"): row for row in review_rows}
+    if len(source_by_id) != 1250 or set(source_by_id) != set(review_by_id):
+        _fail("TASK_BINDING_SOURCE_ID_SET_MISMATCH", "source/review IDs")
+
+    _, milestones, _ = _milestone_maps(semantics)
+    rows = payload.get("rows", [])
+    row_ids = [row.get("legacy_task_id") for row in rows]
+    if len(rows) != 1250 or len(set(row_ids)) != 1250 or row_ids != sorted(source_by_id):
+        _fail("TASK_BINDING_EXACTLY_ONCE_SET_MISMATCH", f"{len(rows)} rows")
+    formula_owners: dict[str, set[str]] = {f"F{number:02d}": set() for number in range(24)}
+    forbidden_identities = {
+        milestones[("CONTROL_FREEZE", "C0")]["identity"],
+        milestones[("ORIGIN_REPAIR", "B00R_G2")]["identity"],
+    }
+    for row in rows:
+        task_id = row["legacy_task_id"]
+        task = source_by_id[task_id]
+        review_row = review_by_id[task_id]
+        if row["legacy_milestone"] != task["milestone"]:
+            _fail("TASK_BINDING_LEGACY_MILESTONE_MISMATCH", task_id)
+        if row["source_row_digest"] != _sha256_canonical(task):
+            _fail("TASK_BINDING_SOURCE_ROW_DIGEST_MISMATCH", task_id)
+        if row["review_row_digest"] != _sha256_canonical(review_row):
+            _fail("TASK_BINDING_REVIEW_ROW_DIGEST_MISMATCH", task_id)
+        expected_target = _expected_task_target(task, milestones)
+        if row["target"] != expected_target:
+            _fail("TASK_BINDING_TARGET_MISMATCH", f"{task_id}: {row['target']!r}")
+        if row["target"].get("milestone_identity") in forbidden_identities:
+            _fail("TASK_BINDING_C0_B00R_FORBIDDEN", task_id)
+        match = re.fullmatch(r"FORM-(F(?:0[0-9]|1[0-9]|2[0-3]))-[0-9]+", task_id)
+        if match:
+            target = row["target"].get("milestone_identity") or row["target"].get("future_track")
+            formula_owners[match.group(1)].add(str(target))
+    missing_or_ambiguous = {
+        formula: sorted(owners) for formula, owners in formula_owners.items() if len(owners) != 1
+    }
+    if missing_or_ambiguous:
+        _fail("FORMULA_TASK_OWNER_NOT_UNIQUE", repr(missing_or_ambiguous))
+    validate_no_secrets(document, "closure task bindings")
+    return digest
+
+
+def _status_event_digest(event: Mapping[str, Any]) -> str:
+    preimage = {key: value for key, value in event.items() if key != "event_digest"}
+    return _sha256_canonical({"domain": STATUS_EVENT_DOMAIN, "event": preimage})
+
+
+def validate_status_events(
+    document: Mapping[str, Any], schema: Mapping[str, Any], semantics: Mapping[str, Any],
+    semantics_digest: str,
+) -> tuple[str, dict[str, str]]:
+    validate_schema(schema, document, "closure status events")
+    digest = validate_envelope(document, STATUS_EVENTS_SCHEMA, STATUS_EVENTS_DOMAIN)
+    payload = document["payload"]
+    if payload["semantics_digest_sha256"] != semantics_digest:
+        _fail("STATUS_EVENT_SEMANTICS_DIGEST_MISMATCH", "semantics_digest_sha256")
+    if "PLACEHOLDER" in canonical_json(document).decode("utf-8").upper():
+        _fail("STATUS_EVENT_PLACEHOLDER_FORBIDDEN", "event log")
+    rows, _, by_identity = _milestone_maps(semantics)
+    states = {row["identity"]: "NOT_STARTED" for row in rows}
+    transition_map = {
+        (row["from"], row["to"]): sorted(row["requires"])
+        for row in semantics["payload"]["state_machine"]["transitions"]
+    }
+    previous: str | None = None
+    events = payload["events"]
+    if payload["event_count"] != len(events):
+        _fail("STATUS_EVENT_COUNT_MISMATCH", repr(payload["event_count"]))
+    prefix_anchor = semantics["payload"]["status_event_prefix_anchor"]
+    prefix_count = prefix_anchor["event_count"]
+    if len(events) < prefix_count:
+        _fail("STATUS_EVENT_FROZEN_PREFIX_TRUNCATED", str(len(events)))
+    actual_prefix = [event["event_digest"] for event in events[:prefix_count]]
+    if actual_prefix != prefix_anchor["event_digests"]:
+        _fail("STATUS_EVENT_FROZEN_PREFIX_REWRITTEN", repr(actual_prefix))
+    if actual_prefix[-1] != prefix_anchor["chain_head_sha256"]:
+        _fail("STATUS_EVENT_FROZEN_PREFIX_HEAD_MISMATCH", actual_prefix[-1])
+    for sequence, event in enumerate(events):
+        if event["sequence"] != sequence:
+            _fail("STATUS_EVENT_SEQUENCE_MISMATCH", repr(event["sequence"]))
+        if event["previous_event_digest"] != previous:
+            _fail("STATUS_EVENT_CHAIN_MISMATCH", str(sequence))
+        actual_digest = _status_event_digest(event)
+        if event["event_digest"] != actual_digest:
+            _fail("STATUS_EVENT_DIGEST_MISMATCH", str(sequence))
+        identity = event["milestone_identity"]
+        if identity not in by_identity:
+            _fail("STATUS_EVENT_MILESTONE_UNKNOWN", identity)
+        if event["from_state"] != states[identity]:
+            _fail("STATUS_EVENT_REWRITTEN_HISTORY", f"{identity}:{event['from_state']}")
+        transition = (event["from_state"], event["to_state"])
+        if transition not in transition_map:
+            _fail("STATUS_EVENT_ILLEGAL_TRANSITION", repr(transition))
+        if sorted(event["satisfied_requirements"]) != transition_map[transition]:
+            _fail("STATUS_EVENT_REQUIREMENT_SET_MISMATCH", repr(transition))
+        if not event["evidence_refs"]:
+            _fail("STATUS_EVENT_EVIDENCE_MISSING", str(sequence))
+        # Current C0 input deliberately cannot advance into a closing-capable state while every
+        # review/provider slot is UNBOUND and the blocker catalog is open.
+        if event["to_state"] in {"SOURCE_READY", "SOURCE_MERGED", "RECEIPT_IN_PROGRESS", "RECEIPT_READY", "CLOSED"}:
+            _fail("STATUS_EVENT_ADVANCE_WITH_OPEN_BLOCKERS", f"{identity}:{event['to_state']}")
+        states[identity] = event["to_state"]
+        previous = actual_digest
+    if payload["chain_head_sha256"] != previous:
+        _fail("STATUS_EVENT_CHAIN_HEAD_MISMATCH", repr(payload["chain_head_sha256"]))
+    validate_no_secrets(document, "closure status events")
+    return digest, states
+
+
+def validate_semantics(
+    semantics: Mapping[str, Any], schema: Mapping[str, Any], root: pathlib.Path = ROOT
+) -> str:
     validate_schema(schema, semantics, "closure semantics")
     digest = validate_envelope(semantics, SEMANTICS_SCHEMA, SEMANTICS_DOMAIN)
     payload = semantics["payload"]
@@ -534,14 +1097,221 @@ def validate_semantics(semantics: Mapping[str, Any], schema: Mapping[str, Any]) 
         _fail("CRYPTOGRAPHIC_AUTHENTICATION_OVERCLAIM", "semantics")
     if authority["activation_authorized"] or not authority["repository_work_authorized"]:
         _fail("AUTHORIZATION_BOUNDARY_MISMATCH", repr(authority))
+    prefix_anchor = payload["status_event_prefix_anchor"]
+    if (
+        prefix_anchor["event_count"] != len(EXPECTED_STATUS_EVENT_PREFIX_DIGESTS)
+        or tuple(prefix_anchor["event_digests"]) != EXPECTED_STATUS_EVENT_PREFIX_DIGESTS
+        or prefix_anchor["chain_head_sha256"] != EXPECTED_STATUS_EVENT_PREFIX_DIGESTS[-1]
+    ):
+        _fail("STATUS_EVENT_PREFIX_ANCHOR_INVALID", repr(prefix_anchor))
     milestones = validate_milestones(semantics)
     validate_decisions(semantics)
     validate_conflicts(semantics, milestones)
     validate_profiles(semantics, milestones)
     validate_test_matrix(semantics, milestones)
-    validate_legacy_crosswalk(semantics, milestones)
+    validate_legacy_crosswalk(semantics, milestones, root)
+    validate_review_policy(semantics, milestones)
+    validate_b10_terminal_control(semantics, milestones)
+    blocker_ids = [row.get("blocker_id") for row in payload["blocker_catalog"]]
+    if blocker_ids != sorted(set(blocker_ids)):
+        _fail("BLOCKER_CATALOG_NOT_CANONICAL", repr(blocker_ids))
+    if set(blocker_ids) != set(EXPECTED_BLOCKER_SPECS):
+        _fail("BLOCKER_CATALOG_SET_MISMATCH", repr(blocker_ids))
+    identity_by_milestone = {key[1]: row["identity"] for key, row in milestones.items()}
+    known_identities = set(identity_by_milestone.values())
+    for blocker in payload["blocker_catalog"]:
+        if blocker["owner_identity"] not in known_identities:
+            _fail("BLOCKER_CATALOG_OWNER_UNKNOWN", blocker["blocker_id"])
+        if blocker["severity"] not in {"P0", "P1"}:
+            _fail("BLOCKER_CATALOG_SEVERITY_INVALID", blocker["blocker_id"])
+        owner_milestone, severity, reason, provenance = EXPECTED_BLOCKER_SPECS[blocker["blocker_id"]]
+        expected = {
+            "blocker_id": blocker["blocker_id"],
+            "owner_identity": identity_by_milestone[owner_milestone],
+            "provenance_ref": provenance,
+            "reason": reason,
+            "severity": severity,
+        }
+        if blocker != expected:
+            _fail("BLOCKER_CATALOG_SPEC_MISMATCH", blocker["blocker_id"])
     validate_no_secrets(semantics, "closure semantics")
     return digest
+
+
+def derive_status_projection(
+    semantics: Mapping[str, Any], semantics_digest: str,
+    status_events: Mapping[str, Any], status_events_digest: str,
+    task_bindings: Mapping[str, Any], task_bindings_digest: str,
+    work_states: Mapping[str, str],
+) -> dict[str, Any]:
+    """Derive the sole status projection from normative controls plus chained events."""
+
+    rows, _, _ = _milestone_maps(semantics)
+    blockers: list[dict[str, str]] = []
+
+    def add_blocker(
+        blocker_id: str, owner_identity: str, severity: str, reason: str,
+        provenance_kind: str, provenance_ref: str,
+    ) -> None:
+        blockers.append({
+            "blocker_id": blocker_id,
+            "owner_identity": owner_identity,
+            "provenance_kind": provenance_kind,
+            "provenance_ref": provenance_ref,
+            "reason": reason,
+            "severity": severity,
+            "status": "OPEN",
+        })
+
+    for catalog in semantics["payload"]["blocker_catalog"]:
+        add_blocker(
+            catalog["blocker_id"], catalog["owner_identity"], catalog["severity"],
+            catalog["reason"], "SEMANTICS_BLOCKER_CATALOG", catalog["provenance_ref"],
+        )
+    slot_rows = {
+        row["milestone_identity"]: row["slots"]
+        for row in semantics["payload"]["review_policy"]["milestone_slots"]
+    }
+    for row in rows:
+        identity = row["identity"]
+        milestone_id = row["scope"]["milestone_id"]
+        for slot in slot_rows[identity]:
+            if slot["binding_state"] == "UNBOUND":
+                add_blocker(
+                    f"REVIEW-SLOT::{milestone_id}::{slot['role_id']}", identity, "P0",
+                    f"{slot['role_id']} provider identity is UNBOUND",
+                    "REVIEW_POLICY_SLOT", f"{identity}:{slot['role_id']}",
+                )
+        predecessor = row["predecessor_identity"]
+        if predecessor is not None and work_states[predecessor] != "CLOSED":
+            add_blocker(
+                f"PREDECESSOR::{milestone_id}", identity, "P0",
+                "exact predecessor is not CLOSED", "MILESTONE_DEPENDENCY", predecessor,
+            )
+        add_blocker(
+            f"RECEIPT::{milestone_id}", identity, "P0",
+            "required evidence-only receipt is not merged", "PATH_LAW", row["path_law"]["source_receipt"],
+        )
+        add_blocker(
+            f"ANCHOR::{milestone_id}", identity, "P0",
+            "required protected anchor is not published", "PATH_LAW", row["path_law"]["anchor"],
+        )
+        if milestone_id != "C0":
+            add_blocker(
+                f"RUNTIME::{milestone_id}", identity, "P0",
+                "applicable identical-subject runtime proof is NOT_ATTESTED", "TEST_LAYER", "T8",
+            )
+    blockers.sort(key=lambda item: item["blocker_id"])
+    blocker_ids = [row["blocker_id"] for row in blockers]
+    if len(blocker_ids) != len(set(blocker_ids)):
+        _fail("DERIVED_BLOCKER_ID_COLLISION", repr(blocker_ids))
+    reasons_by_owner: dict[str, list[str]] = {row["identity"]: [] for row in rows}
+    for blocker in blockers:
+        reasons_by_owner[blocker["owner_identity"]].append(blocker["blocker_id"])
+    status_rows = []
+    for row in rows:
+        identity = row["identity"]
+        milestone_id = row["scope"]["milestone_id"]
+        reasons = sorted(reasons_by_owner[identity])
+        if not reasons:
+            _fail("DERIVED_FALSE_GREEN_MILESTONE", identity)
+        status_rows.append({
+            "blocking_reasons": reasons,
+            "gate_state": "BLOCKED",
+            "identity": identity,
+            "receipt_state": "BLOCKED",
+            "runtime_state": "NOT_APPLICABLE" if milestone_id == "C0" else "NOT_ATTESTED",
+            "work_state": work_states[identity],
+        })
+    current_work = [row["identity"] for row in rows if work_states[row["identity"]] == "SOURCE_IN_PROGRESS"]
+    payload = {
+        "activation_posture": semantics["payload"]["activation_posture"],
+        "classification": "GENERATED_STATUS_NON_EVIDENCE",
+        "closed_claims": [],
+        "cryptographic_authentication": "NOT_CLAIMED",
+        "current_work": current_work,
+        "generation_law": "Derived from canonical semantics, exact task bindings, and append-only chained status events; manual edits are forbidden.",
+        "milestones": status_rows,
+        "next_gate": "Complete C0 owner authentication and exact-head independent review; continue B00R G2 source validation without runtime or venue mutation.",
+        "open_blockers": blockers,
+        "overall_state": "SOURCE_IN_PROGRESS_BLOCKED_SAFE_HOLD",
+        "program": semantics["payload"]["program"],
+        "semantics_reference": {
+            "digest_domain": SEMANTICS_DOMAIN, "digest_sha256": semantics_digest,
+            "path": SEMANTICS_REL.as_posix(), "schema": SEMANTICS_SCHEMA,
+        },
+        "status_events_reference": {
+            "chain_head_sha256": status_events["payload"]["chain_head_sha256"],
+            "digest_domain": STATUS_EVENTS_DOMAIN, "digest_sha256": status_events_digest,
+            "event_count": status_events["payload"]["event_count"],
+            "path": STATUS_EVENTS_REL.as_posix(), "schema": STATUS_EVENTS_SCHEMA,
+        },
+        "task_binding_reference": {
+            "digest_domain": TASK_BINDING_DOMAIN, "digest_sha256": task_bindings_digest,
+            "path": TASK_BINDING_REL.as_posix(), "row_count": len(task_bindings["payload"]["rows"]),
+            "schema": TASK_BINDING_SCHEMA,
+        },
+    }
+    document: dict[str, Any] = {
+        "digest": {
+            "algorithm": "sha256", "canonicalizer": "triad_origin.canonical.canonical_json",
+            "domain": STATUS_DOMAIN,
+            "preimage_rule": "canonical_json({domain,schema,version,payload})", "value": "",
+        },
+        "payload": payload, "schema": STATUS_SCHEMA, "version": "1",
+    }
+    document["digest"]["value"] = compute_envelope_digest(document, STATUS_DOMAIN)
+    return document
+
+
+def render_status_document(status: Mapping[str, Any]) -> bytes:
+    payload = status["payload"]
+    lines = [
+        "# 04 · Generated Closure Status",
+        "",
+        "_Mechanical projection. Do not edit; run `python tools/closure_control.py --write`._",
+        "",
+        f"- Overall: `{payload['overall_state']}`",
+        "- Activation posture: `OFF / OFF / OFF / LIVE`",
+        f"- Open blockers: `{len(payload['open_blockers'])}`",
+        "- Closed claims: `0`",
+        "",
+        "## Milestones",
+        "",
+        "| Composite milestone | Work | Gate | Receipt | Runtime | Blockers |",
+        "|---|---|---|---|---|---:|",
+    ]
+    for row in payload["milestones"]:
+        lines.append(
+            f"| `{row['identity']}` | `{row['work_state']}` | `{row['gate_state']}` | "
+            f"`{row['receipt_state']}` | `{row['runtime_state']}` | {len(row['blocking_reasons'])} |"
+        )
+    lines.extend(["", "## Next gate", "", payload["next_gate"], ""])
+    return "\n".join(lines).encode("utf-8")
+
+
+def render_checklist_document(status: Mapping[str, Any]) -> bytes:
+    payload = status["payload"]
+    lines = [
+        "# 08 · Generated Closure Checklist",
+        "",
+        "_Mechanical projection. Do not edit; run `python tools/closure_control.py --write`._",
+        "",
+        "Safety baseline: `OFF / OFF / OFF / LIVE`. No deployment, restart, MCP enablement, arming, order action, venue mutation, or promotion is authorized.",
+        "",
+    ]
+    blockers_by_owner: dict[str, list[Mapping[str, Any]]] = {}
+    for blocker in payload["open_blockers"]:
+        blockers_by_owner.setdefault(blocker["owner_identity"], []).append(blocker)
+    for row in payload["milestones"]:
+        lines.extend([f"## `{row['identity']}`", ""])
+        for blocker in blockers_by_owner[row["identity"]]:
+            lines.append(
+                f"- [ ] `{blocker['blocker_id']}` — {blocker['reason']} "
+                f"(provenance: `{blocker['provenance_kind']}:{blocker['provenance_ref']}`)"
+            )
+        lines.append("")
+    return "\n".join(lines).encode("utf-8")
 
 
 def validate_status(
@@ -635,21 +1405,94 @@ def check_all(root: pathlib.Path = ROOT) -> dict[str, str | int]:
 
     semantics_schema = load_json_object(root / SEMANTICS_SCHEMA_REL)
     status_schema = load_json_object(root / STATUS_SCHEMA_REL)
+    status_events_schema = load_json_object(root / STATUS_EVENTS_SCHEMA_REL)
+    task_binding_schema = load_json_object(root / TASK_BINDING_SCHEMA_REL)
     semantics = load_canonical_object(root / SEMANTICS_REL)
+    status_events = load_canonical_object(root / STATUS_EVENTS_REL)
+    task_bindings = load_canonical_object(root / TASK_BINDING_REL)
     status = load_canonical_object(root / STATUS_REL)
     policy = load_json_object(root / B00R_POLICY_REL)
 
-    semantics_digest = validate_semantics(semantics, semantics_schema)
+    semantics_digest = validate_semantics(semantics, semantics_schema, root)
+    task_bindings_digest = validate_task_bindings(
+        task_bindings, task_binding_schema, semantics, root
+    )
+    status_events_digest, work_states = validate_status_events(
+        status_events, status_events_schema, semantics, semantics_digest
+    )
+    expected_status = derive_status_projection(
+        semantics, semantics_digest, status_events, status_events_digest,
+        task_bindings, task_bindings_digest, work_states,
+    )
+    if canonical_json(status) != canonical_json(expected_status):
+        _fail("GENERATED_STATUS_DRIFT", "run tools/closure_control.py --write")
     status_digest = validate_status(status, status_schema, semantics, semantics_digest)
+    expected_status_doc = render_status_document(expected_status)
+    expected_checklist_doc = render_checklist_document(expected_status)
+    try:
+        actual_status_doc = (root / STATUS_DOC_REL).read_bytes()
+        actual_checklist_doc = (root / CHECKLIST_DOC_REL).read_bytes()
+    except OSError as exc:
+        _fail("GENERATED_DOCUMENT_UNAVAILABLE", str(exc))
+    if actual_status_doc != expected_status_doc:
+        _fail("GENERATED_STATUS_DOCUMENT_DRIFT", STATUS_DOC_REL.as_posix())
+    if actual_checklist_doc != expected_checklist_doc:
+        _fail("GENERATED_CHECKLIST_DOCUMENT_DRIFT", CHECKLIST_DOC_REL.as_posix())
     validate_b00r_policy(policy, semantics)
     return {
         "semantics_digest": semantics_digest,
         "status_digest": status_digest,
+        "status_events_digest": status_events_digest,
+        "task_bindings_digest": task_bindings_digest,
         "milestones": len(EXPECTED_MILESTONES),
         "decisions": len(EXPECTED_DECISIONS),
         "conflicts": len(EXPECTED_CONFLICTS),
         "profiles": len(EXPECTED_PROFILE_IDS),
         "test_layers": len(EXPECTED_TEST_LAYERS),
+        "task_bindings": len(task_bindings["payload"]["rows"]),
+        "status_events": len(status_events["payload"]["events"]),
+        "open_blockers": len(expected_status["payload"]["open_blockers"]),
+    }
+
+
+def write_generated_outputs(root: pathlib.Path = ROOT) -> dict[str, str | int]:
+    """Validate immutable inputs, then mechanically rewrite only the three generated outputs."""
+
+    semantics_schema = load_json_object(root / SEMANTICS_SCHEMA_REL)
+    status_events_schema = load_json_object(root / STATUS_EVENTS_SCHEMA_REL)
+    task_binding_schema = load_json_object(root / TASK_BINDING_SCHEMA_REL)
+    semantics = load_canonical_object(root / SEMANTICS_REL)
+    status_events = load_canonical_object(root / STATUS_EVENTS_REL)
+    task_bindings = load_canonical_object(root / TASK_BINDING_REL)
+    policy = load_json_object(root / B00R_POLICY_REL)
+    semantics_digest = validate_semantics(semantics, semantics_schema, root)
+    task_bindings_digest = validate_task_bindings(
+        task_bindings, task_binding_schema, semantics, root
+    )
+    status_events_digest, work_states = validate_status_events(
+        status_events, status_events_schema, semantics, semantics_digest
+    )
+    validate_b00r_policy(policy, semantics)
+    status = derive_status_projection(
+        semantics, semantics_digest, status_events, status_events_digest,
+        task_bindings, task_bindings_digest, work_states,
+    )
+    (root / STATUS_REL).write_bytes(canonical_json(status))
+    (root / STATUS_DOC_REL).write_bytes(render_status_document(status))
+    (root / CHECKLIST_DOC_REL).write_bytes(render_checklist_document(status))
+    return {
+        "semantics_digest": semantics_digest,
+        "status_digest": status["digest"]["value"],
+        "status_events_digest": status_events_digest,
+        "task_bindings_digest": task_bindings_digest,
+        "milestones": len(EXPECTED_MILESTONES),
+        "decisions": len(EXPECTED_DECISIONS),
+        "conflicts": len(EXPECTED_CONFLICTS),
+        "profiles": len(EXPECTED_PROFILE_IDS),
+        "test_layers": len(EXPECTED_TEST_LAYERS),
+        "task_bindings": len(task_bindings["payload"]["rows"]),
+        "status_events": len(status_events["payload"]["events"]),
+        "open_blockers": len(status["payload"]["open_blockers"]),
     }
 
 
@@ -661,14 +1504,22 @@ def main(argv: Iterable[str] | None = None) -> int:
         help="read-only validation (the default; retained for explicit CI invocation)",
     )
     parser.add_argument(
+        "--write",
+        action="store_true",
+        help="mechanically regenerate closure_status.v1.json and the two documented projections",
+    )
+    parser.add_argument(
         "--root",
         type=pathlib.Path,
         default=ROOT,
         help=argparse.SUPPRESS,
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
+    if args.check and args.write:
+        parser.error("--check and --write are mutually exclusive")
     try:
-        result = check_all(args.root.resolve())
+        root = args.root.resolve()
+        result = write_generated_outputs(root) if args.write else check_all(root)
     except ClosureControlError as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1
@@ -676,7 +1527,9 @@ def main(argv: Iterable[str] | None = None) -> int:
         "OK: C0 closure control canonical; "
         f"{result['milestones']} milestones; {result['decisions']} decisions; "
         f"{result['conflicts']} conflict dispositions; {result['profiles']} profiles; "
-        f"{result['test_layers']} test layers; OFF/OFF/OFF/LIVE; no closure claim"
+        f"{result['test_layers']} test layers; {result['task_bindings']} task bindings; "
+        f"{result['status_events']} chained status events; {result['open_blockers']} open blockers; "
+        "OFF/OFF/OFF/LIVE; no closure claim"
     )
     return 0
 
