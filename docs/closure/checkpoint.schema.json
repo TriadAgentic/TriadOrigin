@@ -56,6 +56,9 @@
         "main_sha": {"$ref": "#/$defs/shaOrAbsent"},
         "source_pr": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
         "source_head_sha": {"$ref": "#/$defs/shaOrAbsent"},
+        "prior_source_head_sha": {"$ref": "#/$defs/shaOrAbsent"},
+        "source_head_validation": {"type": "string", "minLength": 1},
+        "coordination_parent_sha": {"$ref": "#/$defs/shaOrAbsent"},
         "canary_sha": {"$ref": "#/$defs/shaOrAbsent"},
         "receipt_pr": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "null"}]},
         "receipt_merge_sha": {"$ref": "#/$defs/shaOrAbsent"},
@@ -89,7 +92,7 @@
           "id": {"type": "string", "minLength": 1},
           "severity": {"enum": ["P0", "P1", "P2", "P3"]},
           "owner": {"type": "string", "minLength": 1},
-          "status": {"enum": ["OPEN", "IN_PROGRESS", "BLOCKED", "FIXED_UNVERIFIED", "CLOSED"]},
+          "status": {"enum": ["OPEN", "IN_PROGRESS", "FIX_IN_PROGRESS", "BLOCKED", "FIXED_UNVERIFIED", "CLOSED"]},
           "actual": {"type": "string", "minLength": 1}
         }
       }
