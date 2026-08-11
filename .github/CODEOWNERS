@@ -37,6 +37,7 @@
 /tools/build_evidence_manifest.py           @djordi10
 /tools/classify_milestone_pr.py             @djordi10
 /tools/b00r_gate.py                         @djordi10
+/src/triad_origin/governance.py             @djordi10
 /src/triad_origin/                          @djordi10
 
 # Evidence namespace (receipt PRs)
