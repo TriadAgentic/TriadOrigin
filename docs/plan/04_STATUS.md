@@ -2,10 +2,15 @@
 
 _As of 2026-08-11 · Repository facts are separated from runtime facts. No activation is authorized._
 
+This file is a human-readable projection. Canonical milestone identities, scope, conflicts, and
+current machine status are controlled by `docs/control/closure/closure_semantics.v1.json` and
+`closure_status.v1.json`; this view cannot create a closure claim.
+
 ## Controlling state
 
 | Item | State | Meaning |
 |---|---|---|
+| C0 control freeze | `SOURCE_IN_PROGRESS_BLOCKED_SAFE_HOLD` | Composite registry, crosswalk, profiles, scope guard, and status validator are being added to PR #34; chat confirmation is recorded but cryptographic authentication and independent exact-head review remain absent |
 | B00R generation 1 | `MERGED_UNVERIFIED_IMMUTABLE` | Mechanically authentic bytes and tag, but not a valid governance root |
 | B00R generation 2 | `CORRECTIVE_SOURCE_DRAFT` | CODEOWNERS bootstrap merged; additive source correction remains draft in PR #34; no source merge, receipt merge, or G2 anchor exists yet |
 | B00R terminal result | `BLOCKED` | Only generation 2 may eventually return `PASS_REPOSITORY_SAFE_HOLD` |
@@ -30,14 +35,14 @@ Generation 1 false-greened because the validator authenticated the bytes of a ha
 `id:"DECLARATIVE"` provider stub instead of proving those bytes came from GitHub, and because it did
 not bind the true source PR identity or require independent pre-merge review.
 
-## Live ruleset and PR #33: useful, but post-hoc
+## Historical ruleset capture and PR #33: useful, but post-hoc
 
 GitHub issue #5 is open/reopened. It must remain open until generation-2 terminal
 `PASS_REPOSITORY_SAFE_HOLD`; its state does not repair generation 1 or close generation 2.
 
 | Fact | Current judgment |
 |---|---|
-| Main ruleset `20641102` | Real provider object, created `2026-08-10T13:47:11.736Z`, after PRs #31 and #32 merged |
+| Historical ruleset `20641102` capture | Real provider object at its recorded observation, created `2026-08-10T13:47:11.736Z`, after PRs #31 and #32 merged; its current live state is `NOT_ATTESTED` |
 | Rejected administrative canaries | Real post-hoc evidence that future protected-ref operations were refused; no historical effect |
 | PR #33 | Open at observed head `0fc4edef83aa60ffe06d1d8356d798e492a6d98e`; zero submitted reviews; evidence-only, not a generation-2 source or receipt PR |
 | Generation-2 profile gap | PR #33's capture targets only `main` and permits merge/squash/rebase. G2 requires exact `{main, b00r-ruleset-canary}` scope, empty exclusions, and merge-only operation |
@@ -48,13 +53,14 @@ GitHub issue #5 is open/reopened. It must remain open until generation-2 termina
 | Object | Verified identity | Current state |
 |---|---|---|
 | CODEOWNERS bootstrap PR #35 | reviewed head `47706a55e1f62966496c808822678b0f9d15c2f8`; ordinary merge `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd` | Merged; literal reserved `main` base |
-| Corrective source PR #34 | published head `e8e6357f2c9f62e2ce2a28e84c206a0106bafe10`; base `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd` | Draft; superseded by unpublished hardening; do not merge |
+| Corrective source PR #34 | provider baseline head `77a1ff3c7d31ba8b817be750976291c690c87b23`; base `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd` | Draft with zero reviews; C0/scope/reproducibility hardening is not yet published, so this head is not final and must not merge |
 | Obsolete PR #11 | head `208a059ea26dc333f00721336bf86a2c5be6ca81` | Closed unmerged; branch retained as historical evidence |
 | Obsolete PR #26 | head `8dba2b864ab38ef52800f888f8b51e0e79fe51c7` | Closed unmerged; branch retained as salvage archive only |
 
-The existing main ruleset may be updated or replaced for future generation-2 merges, but the final
-provider capture, external pin, dedicated rejected canary, exact-head CI, and review must all predate
-the corrective source merge.
+First fetch the current provider object with repository-administration authority. It may then need
+an update or replacement for generation 2, but no mutation may be inferred from the historical
+capture. The final provider capture, external pin, dedicated rejected canary, exact-head CI, and
+review must all predate the corrective source merge.
 
 ## Generation-2 correction inventory
 
@@ -79,8 +85,9 @@ Required external pins are
 
 ## Required closure sequence
 
-1. Finish the truthful clean-runner capture producer and remaining verifier/documentation cleanup;
-   cascade source hashes and pass all adversarial, dual-seed, distribution, and end-to-end gates.
+1. Freeze and validate the C0 registry/crosswalk/profile/status controls, positive B00R source
+   allowlist, and relative-constraint wheel regression; cascade source hashes and pass all
+   adversarial, dual-seed, distribution, and end-to-end gates.
 2. Publish the completed hardening to draft PR #34 and verify deterministic CI. The reviewed
    CODEOWNERS bootstrap is already merged as `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd`; reserve
    `main` there with no intervening merge.
@@ -129,8 +136,8 @@ this correction.
 
 ## Immediate next action
 
-Finish the clean-runner producer plus verifier/docs/hash/test correction, then update draft PR #34.
-Keep `main` reserved at the already reviewed CODEOWNERS merge `ba495ba…`; next create the canary and
-canonical ruleset before producing authority/provider artifacts on the final source train. Do not
-start the source merge or receipt work out of sequence; do not reuse generation-1 evidence and do
-not open B01C.
+Finish the C0 controls, source-scope guard, reproducibility correction, and hash/test cascade, then
+publish one new draft head to PR #34 and run exact-head CI. Keep `main` and the canary reserved at
+`ba495ba…`. Before changing provider controls, obtain a fresh privileged ruleset capture; then close
+the exact main+canary merge-only profile and rejected canary. Do not start the source merge or
+receipt work out of sequence, reuse generation-1 evidence, or open B01C.

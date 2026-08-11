@@ -335,13 +335,47 @@ def test_neg017_pr_role_mixed_fails():
 
 
 def test_neg017_pure_roles_pass():
-    assert gov.classify_changed_paths(["src/x.py"])[0] == "SOURCE"
+    assert gov.classify_changed_paths(["src/triad_origin/governance.py"])[0] == "SOURCE"
     assert gov.classify_changed_paths(
         ["evidence/receipts/B00R.g2.receipt.v3.json"]
     )[0] == "RECEIPT"
     assert gov.classify_changed_paths(
         ["evidence/receipts/B00R.receipt.v3.json"]
     )[0] == "INVALID"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "contracts/schemas/triad.execution_cmd.v2.schema.json",
+        "docs/spec_rc4/new_formula.html",
+        "src/triad_origin/contracts.py",
+        "src/triad_origin/structures/structure_state.py",
+        "src/triad_origin/control/lever_law.py",
+        "src/triad_origin/formulas.py",
+        "src/triad_origin/adapters/binance.py",
+        "deploy/triad-origin.yaml",
+        "ops/restart.sh",
+        "venue/binance.json",
+    ],
+)
+def test_neg017_b00r_source_scope_rejects_downstream_owned_paths(path):
+    role, reason = gov.classify_changed_paths([path])
+    assert role == "INVALID"
+    assert "outside frozen governance scope" in reason
+
+
+def test_neg017_b00r_source_scope_allows_only_c0_and_b00r_test_prefixes():
+    assert gov.classify_changed_paths(
+        ["docs/control/closure/closure_semantics.v1.json"]
+    )[0] == "SOURCE"
+    assert gov.classify_changed_paths(
+        ["tests/b00r/test_new_scope_guard.py"]
+    )[0] == "SOURCE"
+    assert gov.classify_changed_paths(["docs/closure/coordination.md"])[0] == "INVALID"
+    assert gov.classify_changed_paths(["tests/runtime/test_activation.py"])[0] == "INVALID"
+    assert gov.classify_changed_paths(["tests/b00r/../runtime/test_activation.py"])[0] == \
+        "INVALID"
 
 
 # --- NEG-018 · B01C without exact B00R anchor is blocked (successor variant) ----------------------

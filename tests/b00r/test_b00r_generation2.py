@@ -16,6 +16,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 from triad_origin import governance  # noqa: E402
+from tools import classify_milestone_pr as classifier  # noqa: E402
 from tools import validate_authority_root as authority  # noqa: E402
 
 
@@ -110,6 +111,23 @@ def test_generation_2_profile_has_exact_receipt_root_and_anchor():
     assert governance.receipt_profile_from_decision(
         profile, repair_generation=2,
     ) == (2, ("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER"), "ed25519")
+
+
+def test_generation_2_policy_freezes_positive_source_scope():
+    source_law = _json(POLICY_V2)["pr_role_law"]["source_pr"]
+    assert set(source_law["allowed_exact_paths"]) == classifier.ALLOWED_SOURCE_EXACT_PATHS
+    assert tuple(source_law["allowed_prefixes"]) == classifier.ALLOWED_SOURCE_PREFIXES
+    assert source_law["default"] == "DENY_SOURCE_PATH_OUT_OF_SCOPE"
+    assert source_law["composite_scope_binding"] == {
+        "track_id": "ORIGIN_REPAIR",
+        "milestone_id": "B00R_G2",
+        "scope_digest": "71b011d46c6a7ebd092bda6d2d303572c9a44508bd126ff9a50e2e5bad40eaf5",
+        "scope_digest_source": "docs/control/closure/closure_semantics.v1.json",
+        "status": "BOUND_CANONICAL",
+        "failure_behavior": (
+            "SOURCE_MERGE_FORBIDDEN_ON_SCOPE_BINDING_MISMATCH"
+        ),
+    }
 
 
 def test_generation_2_authority_profile_selects_generation_2_decisions_and_pins():

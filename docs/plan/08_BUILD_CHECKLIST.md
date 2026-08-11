@@ -4,6 +4,9 @@ _A box is checked only after the owning source PR is merged green and the item i
 milestone closes only when its separate post-merge receipt validates. Gate completion requires a
 separate gate receipt._
 
+The canonical machine projection is `docs/control/closure/closure_status.v1.json`. This checklist
+is descriptive and cannot override a composite milestone identity, blocker, receipt, or result.
+
 > **B00R generation-2 correction (2026-08-11):** checked historical boxes prove only that artifacts
 > exist. PR #31 and PR #32 merged without submitted reviews and before the real main ruleset was
 > created; generation 1 is therefore `MERGED_UNVERIFIED` and immutable. PR #33 is open, unreviewed,
@@ -39,6 +42,12 @@ separate gate receipt._
 
 ## B00R generation 2 · only open root correction
 
+- [ ] Merge the canonical C0 composite registry, legacy crosswalk, D-01–D-09 dispositions,
+  acceptance profiles, T0–T12 matrix, status snapshot, and validator on the final reviewed head
+- [ ] Prove the positive B00R SOURCE allowlist rejects contracts, formulas, runtime/control modules,
+  adapters, venues, deployment/ops, `docs/spec*/**`, `docs/closure/**`, and mixed evidence
+- [ ] Prove the documented repository-relative constraint remains valid across every isolated
+  wheel verifier cwd transition
 - [x] Additive policy `docs/control/b00r_policy.v2.json` names audited start `76b5e48…`
 - [x] Distinct decisions and identities defined: `DEC-AUTHORITY-BUNDLE-002`,
   `DEC-RECEIPT-PROFILE-002`, `DEC-B00-REPAIR-002`, `evidence/B00R_G2/`,
@@ -91,7 +100,8 @@ separate gate receipt._
 - [x] Invalid receipt fixtures: stale/scope/digest/reviewer/blocker/rollback/composition failures — `tests/test_b00c_control_closure.py` refusal battery
 - [ ] Issue #5 is open/reopened; post-hoc ruleset `20641102` and rejected administrative canaries are
   useful historical evidence only. Close it only after G2 terminal PASS.
-- [ ] Promote the future control to the stricter G2 profile: exact main+canary target, no exclusions,
+- [ ] Fetch current provider truth, then promote the future control to the stricter G2 profile:
+  exact main+canary target, no exclusions,
   no bypass, integration-bound `test-and-verify`, `do_not_enforce_on_create=false`, independent
   CODEOWNER, and merge-only method; recapture and pin it before the G2 source merge
 - [x] Seal R00 disposition and exact-current-main B00 receipt — `R00_SUPERSESSION.md` + `evidence/receipts/{R00,B00}.json`

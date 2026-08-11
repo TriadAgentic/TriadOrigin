@@ -890,14 +890,88 @@ _CANONICAL_RECEIPT_RE = (
     r"evidence/receipts/(B00R\.g2|B01C|B02C|B03C|B04C|B05C|B06R|B07)"
     r"\.receipt\.v3\.json"
 )
-# A source PR may touch anything EXCEPT the evidence namespace; a receipt PR may touch ONLY the
-# evidence namespace. Mixed content fails regardless of test results (``NEG-017``).
+# B00R G2 is a governance/evidence-root repair.  SOURCE is therefore a positive path grant, not
+# the complement of ``evidence/**``.  Only the C0 control namespace and the B00R falsification-test
+# namespace receive prefixes; package/executable paths are exact so downstream formula, contract,
+# binding, runtime, deployment, adapter, and venue work cannot be smuggled into the root repair.
+B00R_SOURCE_ALLOWED_EXACT_PATHS = frozenset({
+    ".github/workflows/ci.yml",
+    "CLAUDE.md",
+    "README.md",
+    "docs/control/SOURCE_HASHES.sha256",
+    "docs/control/b00r_policy.v2.json",
+    "docs/governance/B00R_EXTERNAL_AUTHORITY_AND_CLEAN_RUNNER_HANDOFF.md",
+    "docs/governance/B00R_GENERATION_LEDGER.v1.json",
+    "docs/governance/README.md",
+    "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json",
+    "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.template.json",
+    "docs/governance/decisions/DEC-B00-REPAIR-002.json",
+    "docs/governance/decisions/DEC-B00-REPAIR-002.template.json",
+    "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json",
+    "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.template.json",
+    "docs/governance/rulesets/main.ruleset.provider.json",
+    "docs/governance/rulesets/main.ruleset.provider.raw.json",
+    "docs/governance/rulesets/main.ruleset.provider.template.json",
+    "docs/governance/trust/receipt_trust_registry.g2.v1.json",
+    "docs/governance/trust/receipt_trust_registry.g2.v1.template.json",
+    "docs/plan/04_STATUS.md",
+    "docs/plan/08_BUILD_CHECKLIST.md",
+    "docs/plan/09_OPEN_QUESTIONS.md",
+    "docs/plan/README.md",
+    "docs/plan/closure/TRIAD_B00_BN_CLOSURE_MASTER_2026-08-11.md",
+    "docs/plan/closure/TRIAD_B00_BN_CLOSURE_MARATHON_LEDGER_2026-08-11.md",
+    "docs/repair/B01C_ACCEPTANCE_PROFILE.v1.json",
+    "docs/repair/B01C_ENTRY_GATE.md",
+    "src/triad_origin/governance.py",
+    "tests/contracts/test_promotion_b01c.py",
+    "tests/test_ci_integrity.py",
+    "tests/test_wheel_distribution.py",
+    "tests/tools/test_acceptance_profile_b01c.py",
+    "tests/tools/test_closure_control.py",
+    "tests/tools/test_validate_b_receipt_failclosed_b01c.py",
+    "tests/tools/test_verify_b01c_entry.py",
+    "tools/b00r_clean_runner.py",
+    "tools/b00r_clean_runner_capture.py",
+    "tools/b00r_gate.py",
+    "tools/b00r_pytest_inventory.py",
+    "tools/build_evidence_manifest.py",
+    "tools/classify_milestone_pr.py",
+    "tools/closure_control.py",
+    "tools/collect_test_ids.py",
+    "tools/e2e_audit.py",
+    "tools/gen_acceptance_profile.py",
+    "tools/github_ruleset_live.py",
+    "tools/test_wheel_install.py",
+    "tools/validate_authority_root.py",
+    "tools/validate_b00r_anchor.py",
+    "tools/validate_b00r_tag_ruleset.py",
+    "tools/validate_b_receipt.py",
+    "tools/validate_governance_snapshot.py",
+    "tools/verify_b01c_entry.py",
+    "tools/verify_codeowners.py",
+    "tools/verify_source_hashes.py",
+})
+B00R_SOURCE_ALLOWED_PREFIXES = (
+    "docs/control/closure/",
+    "tests/b00r/",
+)
+
+
+def b00r_source_path_allowed(path: str) -> bool:
+    """Return whether one path is in the frozen B00R G2 SOURCE domain."""
+    return (
+        path in B00R_SOURCE_ALLOWED_EXACT_PATHS
+        or any(path.startswith(prefix) for prefix in B00R_SOURCE_ALLOWED_PREFIXES)
+    )
 
 
 def classify_changed_paths(paths: list[str]) -> tuple[str, str]:
     """Return ``(role, reason)`` where role is ``SOURCE``, ``RECEIPT``, ``MIXED``, or ``EMPTY``."""
     if not paths:
         return "EMPTY", "no changed paths"
+    unsafe = sorted(path for path in paths if not _safe_relpath(path))
+    if unsafe:
+        return "INVALID", f"unsafe changed path: {unsafe[:2]}"
     receipt = [p for p in paths if any(p.startswith(pre) for pre in RECEIPT_PATH_PREFIXES)]
     source = [p for p in paths if p not in receipt]
     if receipt and source:
@@ -916,6 +990,9 @@ def classify_changed_paths(paths: list[str]) -> tuple[str, str]:
         if any(p.endswith(".dsse.json") for p in receipt):
             return "INVALID", "DSSE filename unsupported by receipt-v3 canonical JSON profile"
         return "RECEIPT", f"milestone={milestone};receipt={receipt_files[0]}"
+    outside = sorted(path for path in source if not b00r_source_path_allowed(path))
+    if outside:
+        return "INVALID", f"B00R SOURCE path outside frozen governance scope: {outside[:2]}"
     return "SOURCE", f"{len(source)} source paths"
 
 
