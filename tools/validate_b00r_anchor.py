@@ -23,6 +23,9 @@ import re
 import subprocess
 import sys
 
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
 try:  # importable both as `python tools/...` and as `from tools import ...`
     from tools.github_ruleset_live import (  # type: ignore
         LiveRulesetError, LiveRulesetUnavailable, fetch_anchor_tag_object_sha,
@@ -32,19 +35,30 @@ except ModuleNotFoundError:  # pragma: no cover - direct script fallback
         LiveRulesetError, LiveRulesetUnavailable, fetch_anchor_tag_object_sha,
         fetch_and_match_live_ruleset, fetch_and_verify_receipt_merge)
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
 TAG_NAME = "B00R_RECEIPT_ANCHOR_G2"
 RECEIPT_PATH = "evidence/receipts/B00R.g2.receipt.v3.json"
 DEFAULT_RULESET = "evidence/B00R_G2/tag_ruleset.provider.json"
 PIN_ENV = "B00R_G2_TAG_RULESET_SHA256"
 EXPECTED_SOURCE_TYPE = "Repository"
 EXPECTED_SOURCE = "TriadAgentic/TriadOrigin"
+PROVIDER_RULESET_FIELDS = {
+    "id", "name", "target", "source_type", "source", "current_user_can_bypass",
+    "enforcement", "node_id", "_links", "created_at", "updated_at", "conditions",
+    "bypass_actors", "rules",
+}
 HEX40_RE = re.compile(r"[0-9a-f]{40}")
 HEX64_RE = re.compile(r"[0-9a-f]{64}")
 
 
 class AnchorError(ValueError):
     """The receipt anchor is absent or does not prove immutable closure."""
+
+
+def _resolve_ruleset_pin(cli_pin: str | None, env_pin: str | None) -> str | None:
+    """Reject any CLI value that conflicts with the protected tag-ruleset pin."""
+    if cli_pin and env_pin and cli_pin != env_pin:
+        raise AnchorError("FAIL: CONFLICTING_CLI_AND_PROTECTED_TAG_RULESET_PINS")
+    return env_pin or cli_pin
 
 
 def _git(root: pathlib.Path, *args: str, blocked_if_missing: bool = False) -> bytes:
@@ -79,24 +93,26 @@ def _parse_tag(raw: bytes) -> tuple[dict[str, str], str]:
         if key in headers:
             raise AnchorError(f"FAIL: ANCHOR_TAG_HEADER_DUPLICATE: {key}")
         headers[key] = value
+    expected_headers = {"object", "type", "tag", "tagger"}
+    if set(headers) != expected_headers:
+        raise AnchorError(
+            "FAIL: ANCHOR_TAG_HEADER_SET_NOT_EXACT: "
+            f"missing={sorted(expected_headers - set(headers))} "
+            f"extra={sorted(set(headers) - expected_headers)}"
+        )
     return headers, message
 
 
 def _parse_anchor_message(message: str) -> dict[str, str]:
-    lines = message.rstrip("\n").splitlines()
-    if not lines or lines[0] != "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1":
-        raise AnchorError("FAIL: ANCHOR_MESSAGE_PROFILE_MISMATCH")
-    values: dict[str, str] = {}
-    for line in lines[1:]:
-        if "=" not in line:
-            raise AnchorError(f"FAIL: ANCHOR_MESSAGE_LINE_MALFORMED: {line!r}")
-        key, value = line.split("=", 1)
-        if key in values or key not in {"receipt_path", "receipt_sha256"}:
-            raise AnchorError(f"FAIL: ANCHOR_MESSAGE_FIELD_INVALID: {key!r}")
-        values[key] = value
-    if set(values) != {"receipt_path", "receipt_sha256"}:
-        raise AnchorError(f"FAIL: ANCHOR_MESSAGE_FIELDS_INCOMPLETE: {sorted(values)}")
-    return values
+    match = re.fullmatch(
+        r"TRIAD-B00R-RECEIPT-ANCHOR-G2-V1\n"
+        r"receipt_path=evidence/receipts/B00R\.g2\.receipt\.v3\.json\n"
+        r"receipt_sha256=([0-9a-f]{64})\n",
+        message,
+    )
+    if match is None:
+        raise AnchorError("FAIL: ANCHOR_MESSAGE_NOT_EXACT_CANONICAL_THREE_LINES")
+    return {"receipt_path": RECEIPT_PATH, "receipt_sha256": match.group(1)}
 
 
 def _loads_unique_object(data: bytes) -> dict:
@@ -118,17 +134,32 @@ def _loads_unique_object(data: bytes) -> dict:
     return document
 
 
+def _receipt_observation_window(receipt_document: dict) -> tuple[int, int]:
+    payload = receipt_document.get("payload")
+    observed = payload.get("observed_at_us") if isinstance(payload, dict) else None
+    emitted = payload.get("emitted_at_us") if isinstance(payload, dict) else None
+    if (not isinstance(observed, int) or isinstance(observed, bool) or observed <= 0
+            or not isinstance(emitted, int) or isinstance(emitted, bool)
+            or emitted < observed):
+        raise AnchorError("FAIL: RECEIPT_OBSERVATION_WINDOW_INVALID")
+    return observed, emitted
+
+
 def _validate_ruleset(doc: dict) -> None:
     if not isinstance(doc, dict):
         raise AnchorError("FAIL: TAG_RULESET_NOT_OBJECT")
+    if set(doc) != PROVIDER_RULESET_FIELDS:
+        raise AnchorError(
+            "FAIL: TAG_RULESET_PROVIDER_FIELDS_MISMATCH: "
+            f"missing={sorted(PROVIDER_RULESET_FIELDS - set(doc))} "
+            f"extra={sorted(set(doc) - PROVIDER_RULESET_FIELDS)}"
+        )
     if doc.get("target") != "tag":
         raise AnchorError(f"FAIL: TAG_RULESET_WRONG_TARGET: {doc.get('target')!r}")
     if doc.get("enforcement") != "active":
         raise AnchorError(f"FAIL: TAG_RULESET_NOT_ACTIVE: {doc.get('enforcement')!r}")
     if not isinstance(doc.get("id"), int) or isinstance(doc.get("id"), bool) or doc["id"] <= 0:
         raise AnchorError("FAIL: TAG_RULESET_ID_INVALID")
-    if "note" in doc:
-        raise AnchorError("FAIL: TAG_RULESET_SYNTHETIC_METADATA")
     name = doc.get("name")
     if (not isinstance(name, str) or not name.strip()
             or name.strip().upper() in {"DECLARATIVE", "TEMPLATE", "PLACEHOLDER"}):
@@ -144,22 +175,22 @@ def _validate_ruleset(doc: dict) -> None:
             f"{doc.get('current_user_can_bypass')!r}"
         )
     node_id = doc.get("node_id")
-    if node_id is not None and (
-        not isinstance(node_id, str) or re.fullmatch(r"RRS_[A-Za-z0-9_-]+", node_id) is None
-    ):
+    if (not isinstance(node_id, str)
+            or re.fullmatch(r"RRS_[A-Za-z0-9_-]+", node_id) is None):
         raise AnchorError("FAIL: TAG_RULESET_NODE_ID_INVALID")
     links = doc.get("_links")
-    if links is not None:
-        self_link = links.get("self") if isinstance(links, dict) else None
-        html_link = links.get("html") if isinstance(links, dict) else None
-        expected_self = (
-            f"https://api.github.com/repos/{EXPECTED_SOURCE}/rulesets/{doc['id']}"
-        )
-        expected_html = f"https://github.com/{EXPECTED_SOURCE}/rules/{doc['id']}"
-        html_href = html_link.get("href") if isinstance(html_link, dict) else None
-        if (not isinstance(self_link, dict) or self_link.get("href") != expected_self
-                or html_href not in (None, expected_html)):
-            raise AnchorError("FAIL: TAG_RULESET_PROVIDER_LINKS_MISMATCH")
+    self_link = links.get("self") if isinstance(links, dict) else None
+    html_link = links.get("html") if isinstance(links, dict) else None
+    expected_self = (
+        f"https://api.github.com/repos/{EXPECTED_SOURCE}/rulesets/{doc['id']}"
+    )
+    expected_html = f"https://github.com/{EXPECTED_SOURCE}/rules/{doc['id']}"
+    if (not isinstance(links, dict) or set(links) != {"self", "html"}
+            or not isinstance(self_link, dict) or set(self_link) != {"href"}
+            or self_link.get("href") != expected_self
+            or not isinstance(html_link, dict) or set(html_link) != {"href"}
+            or html_link.get("href") != expected_html):
+        raise AnchorError("FAIL: TAG_RULESET_PROVIDER_LINKS_MISMATCH")
     for field in ("created_at", "updated_at"):
         value = doc.get(field)
         if not isinstance(value, str) or re.fullmatch(
@@ -172,7 +203,9 @@ def _validate_ruleset(doc: dict) -> None:
     include = ref_name.get("include") if isinstance(ref_name, dict) else None
     exclude = ref_name.get("exclude") if isinstance(ref_name, dict) else None
     expected_ref = f"refs/tags/{TAG_NAME}"
-    if include != [expected_ref] or exclude not in ([], None):
+    if (not isinstance(conditions, dict) or set(conditions) != {"ref_name"}
+            or not isinstance(ref_name, dict) or set(ref_name) != {"include", "exclude"}
+            or include != [expected_ref] or exclude != []):
         raise AnchorError(
             f"FAIL: TAG_RULESET_SCOPE_NOT_EXACT: include={include!r} exclude={exclude!r}"
         )
@@ -180,12 +213,19 @@ def _validate_ruleset(doc: dict) -> None:
     if bypass != []:
         raise AnchorError(f"FAIL: TAG_RULESET_BYPASS_ACTORS_PRESENT: {bypass!r}")
     rules = doc.get("rules")
-    if not isinstance(rules, list):
+    if (not isinstance(rules, list)
+            or any(
+                not isinstance(rule, dict)
+                or set(rule) not in ({"type"}, {"type", "parameters"})
+                or not isinstance(rule.get("type"), str)
+                or ("parameters" in rule and not isinstance(rule["parameters"], dict))
+                for rule in rules
+            )):
         raise AnchorError("FAIL: TAG_RULESET_RULES_NOT_ARRAY")
-    rule_types = {rule.get("type") for rule in rules if isinstance(rule, dict)}
-    missing = {"update", "deletion"} - rule_types
-    if missing:
-        raise AnchorError(f"FAIL: TAG_RULESET_IMMUTABILITY_RULE_MISSING: {sorted(missing)}")
+    if len(rules) != 2 or {rule["type"] for rule in rules} != {"update", "deletion"}:
+        raise AnchorError("FAIL: TAG_RULESET_RULE_SET_NOT_EXACT")
+    if any(set(rule) != {"type"} for rule in rules):
+        raise AnchorError("FAIL: TAG_RULESET_IMMUTABILITY_RULE_INVALID")
 
 
 def _ruleset_time_us(value: object, field: str) -> int:
@@ -256,6 +296,8 @@ def _verify_static_bundle(
         raise AnchorError("FAIL: RECEIPT_SOURCE_MERGE_IDENTITY_MALFORMED") from exc
     if not isinstance(source_merge_sha, str) or HEX40_RE.fullmatch(source_merge_sha) is None:
         raise AnchorError("FAIL: RECEIPT_SOURCE_MERGE_IDENTITY_MALFORMED")
+    receipt_observed_at_us, receipt_emitted_at_us = _receipt_observation_window(
+        receipt_document)
     parent_row = _git(root, "rev-list", "--parents", "-n", "1", expected_head).decode().split()
     if (len(parent_row) != 3 or parent_row[0] != expected_head
             or parent_row[1] != source_merge_sha):
@@ -301,6 +343,10 @@ def _verify_static_bundle(
         raise AnchorError("FAIL: TAG_RULESET_EXTERNAL_PIN_MISMATCH")
     ruleset = _loads_unique_object(ruleset_bytes)
     _validate_ruleset(ruleset)
+    created_at_us = _ruleset_time_us(ruleset.get("created_at"), "created_at")
+    updated_at_us = _ruleset_time_us(ruleset.get("updated_at"), "updated_at")
+    if not created_at_us <= updated_at_us < receipt_observed_at_us <= receipt_emitted_at_us:
+        raise AnchorError("FAIL: TAG_RULESET_NOT_EFFECTIVE_BEFORE_RECEIPT_OBSERVATION")
     return receipt_sha, ruleset_bytes, tag_object_sha
 
 
@@ -393,8 +439,8 @@ def main(argv: list[str]) -> int:
         receipt = root / receipt
     if not ruleset.is_absolute():
         ruleset = root / ruleset
-    pin = args.ruleset_pin if args.ruleset_pin is not None else os.environ.get(PIN_ENV)
     try:
+        pin = _resolve_ruleset_pin(args.ruleset_pin, os.environ.get(PIN_ENV))
         receipt_sha = verify(
             root=root,
             expected_head=args.expected_head,

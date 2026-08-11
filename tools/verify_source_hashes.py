@@ -31,6 +31,7 @@ SOURCE_HASHES = ROOT / "docs" / "control" / "SOURCE_HASHES.sha256"
 # Controlling artifacts that MUST be pinned (complete expected membership). A new controlling
 # artifact that is not pinned here fails the run.
 REQUIRED_MEMBERSHIP = [
+    "constraints/ci.txt",
     "docs/control/rc3_effective_control_bundle.json",
     "docs/control/rc3_normative_overlay.json",
     "docs/control/rc3_overlay_schema.json",
@@ -49,6 +50,20 @@ REQUIRED_MEMBERSHIP = [
     "contracts/schemas/triad.governance_decision.v1.schema.json",
     "contracts/schemas/triad.governance_snapshot.v1.schema.json",
     "contracts/schemas/triad.evidence_manifest.v1.schema.json",
+    "tools/__init__.py",
+    "tools/b00r_clean_runner.py",
+    "tools/b00r_clean_runner_capture.py",
+    "tools/b00r_pytest_inventory.py",
+    "tools/build_ledger.py",
+    "tools/collect_test_ids.py",
+    "tools/e2e_audit.py",
+    "tools/test_wheel_install.py",
+    "tools/validate_b00r_tag_ruleset.py",
+    "tools/validate_combined_dag.py",
+    "tools/validate_contract_manifest.py",
+    "tools/verify_manifest.py",
+    "tools/verify_no_forbidden_capabilities.py",
+    "tools/verify_reproducible_build.py",
 ]
 
 

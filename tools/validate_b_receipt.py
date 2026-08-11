@@ -17,11 +17,20 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
 from triad_origin import contracts, governance  # noqa: E402
 from triad_origin.canonical import (  # noqa: E402
     CanonicalError, canonical_json, loads_canonical, sha256_hex)
+try:  # importable both as ``python tools/...`` and as ``from tools import ...``
+    from tools.b00r_clean_runner import (  # type: ignore  # noqa: E402
+        ALLOWED_EMPTY_PATHS, CleanRunnerError,
+        validate_bundle as validate_clean_runner_bundle)
+except ModuleNotFoundError:  # pragma: no cover - direct script fallback
+    from b00r_clean_runner import (  # type: ignore  # noqa: E402
+        ALLOWED_EMPTY_PATHS, CleanRunnerError,
+        validate_bundle as validate_clean_runner_bundle)
 try:  # importable both as ``python tools/...`` and as ``from tools import ...``
     from tools.validate_authority_root import (  # type: ignore  # noqa: E402
         AuthorityContext, AuthorityRootError, AuthorityRootUnavailable, ed25519_verify,
@@ -35,13 +44,15 @@ try:  # importable both as `python tools/...` and as `from tools import ...`
         LiveRulesetError, LiveRulesetUnavailable, fetch_and_match_live_ruleset,
         fetch_and_match_pull_request,
         fetch_and_match_pull_request_review, fetch_and_match_rule_suite,
-        fetch_and_verify_receipt_merge, fetch_canary_ref_sha, fetch_repository_permission)
+        fetch_and_verify_receipt_head, fetch_and_verify_receipt_merge,
+        fetch_canary_ref_sha, fetch_repository_permission)
 except ModuleNotFoundError:  # pragma: no cover - direct script fallback
     from github_ruleset_live import (  # type: ignore  # noqa: E402
         LiveRulesetError, LiveRulesetUnavailable, fetch_and_match_live_ruleset,
         fetch_and_match_pull_request,
         fetch_and_match_pull_request_review, fetch_and_match_rule_suite,
-        fetch_and_verify_receipt_merge, fetch_canary_ref_sha, fetch_repository_permission)
+        fetch_and_verify_receipt_head, fetch_and_verify_receipt_merge,
+        fetch_canary_ref_sha, fetch_repository_permission)
 
 
 class ReceiptBindingError(ValueError):
@@ -55,6 +66,8 @@ class ReceiptBindingUnavailable(ReceiptBindingError):
 EVIDENCE_ROOT = "evidence/B00R_G2"
 CANONICAL_MANIFEST_PATH = f"{EVIDENCE_ROOT}/evidence_manifest.json"
 CANONICAL_RECEIPT_PATH = "evidence/receipts/B00R.g2.receipt.v3.json"
+TAG_RULESET_ROLE = "TAG_RULESET_PROVIDER"
+TAG_RULESET_PATH = f"{EVIDENCE_ROOT}/tag_ruleset.provider.json"
 CANARY_PATH = f"{EVIDENCE_ROOT}/provider_negative_canary.v1.json"
 CANARY_TRANSCRIPT_ROLE = "PROVIDER_NEGATIVE_CANARY_TRANSCRIPT"
 CANARY_TRANSCRIPT_PATH = f"{EVIDENCE_ROOT}/provider_negative_canary.transcript.txt"
@@ -74,6 +87,49 @@ CODEOWNERS_BOOTSTRAP_REVIEW_PATH = \
     f"{EVIDENCE_ROOT}/codeowners_bootstrap_pr.approved_review.provider.raw.json"
 REPOSITORY_ID = 1_327_825_324
 MAX_CANARY_TIME_SKEW_US = 5 * 60 * 1_000_000
+RECEIPT_DIGEST_ROLE_FIELDS = {
+    "WORKFLOW": "workflow_sha256",
+    "CONTRACT_MANIFEST": "contract_manifest_sha256",
+    "TEST_MANIFEST": "test_manifest_sha256",
+    "CONFIG_BUNDLE": "config_bundle_sha256",
+    "ROLLBACK_PROOF": "rollback_proof_sha256",
+}
+
+
+def _validate_tag_ruleset_manifest_entry(entries: list[dict]) -> None:
+    """Require one signed-manifest binding for the canonical pre-anchor provider capture."""
+    matches = [entry for entry in entries if entry.get("role") == TAG_RULESET_ROLE]
+    if (len(matches) != 1
+            or matches[0].get("path") != TAG_RULESET_PATH
+            or matches[0].get("role_unique") is not True):
+        raise ReceiptBindingError(
+            f"TAG_RULESET_PROVIDER_ROLE_COUNT_OR_PATH:{len(matches)}")
+
+
+def _validate_receipt_digest_roles(
+    entries: list[dict], payload: dict, *, require_explicit_unique: bool = True
+) -> None:
+    """Bind each receipt digest field to exactly one singleton manifest role.
+
+    Generation-2 B00R requires the new literal ``role_unique:true`` declaration.  Successor
+    milestones retain the receipt-v3 legacy default where omission means singleton, while an
+    explicit false declaration is still rejected for these reserved digest roles.
+    """
+    for role, field in RECEIPT_DIGEST_ROLE_FIELDS.items():
+        matches = [entry for entry in entries if entry.get("role") == role]
+        unique = (
+            len(matches) == 1
+            and (
+                matches[0].get("role_unique") is True
+                if require_explicit_unique
+                else matches[0].get("role_unique", True) is True
+            )
+        )
+        if not unique:
+            raise ReceiptBindingError(
+                f"EVIDENCE_RESERVED_ROLE_COUNT_OR_UNIQUENESS:{role}:{len(matches)}")
+        if matches[0].get("sha256") != payload[field]:
+            raise ReceiptBindingError(f"EVIDENCE_ROLE_DIGEST_MISMATCH:{role}")
 
 
 def _loads_unique_json(data: bytes | str, label: str) -> dict:
@@ -624,6 +680,7 @@ def validate_receipt_bindings(
     require_live_rule_suite: bool = False,
     require_live_canary_ref: bool = False,
     receipt_pr: int | None = None,
+    require_live_receipt_head: bool = False,
     require_live_receipt_pr: bool = False,
 ) -> int:
     """Cross-bind authority, receipt, manifest preimages, and immutable Git objects."""
@@ -697,21 +754,26 @@ def validate_receipt_bindings(
             f"EVIDENCE_NAMESPACE_NOT_CLOSED:missing={missing}:extra={extra}")
     try:
         governance.validate_evidence_manifest(
-            manifest, root, expected_paths=set(paths), tracked_paths=tracked)
+            manifest, root, expected_paths=set(paths), tracked_paths=tracked,
+            allowed_empty_paths=(
+                ALLOWED_EMPTY_PATHS
+                if milestone == governance.ROOT_MILESTONE
+                else frozenset()
+            ))
     except governance.GovernanceError as exc:
         raise ReceiptBindingError(str(exc)) from exc
 
-    role_fields = {
-        "WORKFLOW": "workflow_sha256",
-        "CONTRACT_MANIFEST": "contract_manifest_sha256",
-        "TEST_MANIFEST": "test_manifest_sha256",
-        "CONFIG_BUNDLE": "config_bundle_sha256",
-        "ROLLBACK_PROOF": "rollback_proof_sha256",
-    }
-    by_role = {entry.get("role"): entry.get("sha256") for entry in entries}
-    for role, field in role_fields.items():
-        if by_role.get(role) != payload[field]:
-            raise ReceiptBindingError(f"EVIDENCE_ROLE_DIGEST_MISMATCH:{role}")
+    if milestone == governance.ROOT_MILESTONE:
+        _validate_tag_ruleset_manifest_entry(entries)
+        try:
+            validate_clean_runner_bundle(
+                root, entries, payload, expected_head, now_us=now_us)
+        except CleanRunnerError as exc:
+            raise ReceiptBindingError(f"CLEAN_RUNNER_BUNDLE_INVALID:{exc}") from exc
+
+    _validate_receipt_digest_roles(
+        entries, payload,
+        require_explicit_unique=(milestone == governance.ROOT_MILESTONE))
 
     source_merge = payload["source_merge_sha"]
     source_merge_time_us = payload["source_merge_time_us"]
@@ -822,6 +884,32 @@ def validate_receipt_bindings(
                      if path != receipt_rel and not path.startswith(namespace_prefix))
     if escaped:
         raise ReceiptBindingError(f"POST_SOURCE_MERGE_SOURCE_DRIFT:{escaped}")
+    if require_live_receipt_head and require_live_receipt_pr:
+        raise ReceiptBindingError("RECEIPT_PROVIDER_PROOF_MODES_CONFLICT")
+    if require_live_receipt_head:
+        if (not isinstance(receipt_pr, int) or isinstance(receipt_pr, bool)
+                or receipt_pr <= 0):
+            raise ReceiptBindingError("RECEIPT_PR_NUMBER_ABSENT_OR_INVALID")
+        if now_us is None:
+            raise ReceiptBindingError("RECEIPT_PR_LIVE_NOW_ABSENT")
+        try:
+            receipt_head_proof = fetch_and_verify_receipt_head(
+                receipt_pr,
+                expected_head_sha=expected_head,
+                expected_base_sha=source_merge,
+                expected_codeowner="djordi10",
+                token=github_token,
+                now_us=now_us,
+            )
+        except LiveRulesetUnavailable as exc:
+            raise ReceiptBindingUnavailable(
+                f"RECEIPT_PR_PREMERGE_LIVE_PROOF:{exc}") from exc
+        except LiveRulesetError as exc:
+            raise ReceiptBindingError(
+                f"RECEIPT_PR_PREMERGE_LIVE_PROOF:{exc}") from exc
+        if (receipt_head_proof.head_sha != expected_head
+                or receipt_head_proof.base_sha != source_merge):
+            raise ReceiptBindingError("RECEIPT_PR_PREMERGE_IDENTITY_MISMATCH")
     if require_live_receipt_pr:
         if (not isinstance(receipt_pr, int) or isinstance(receipt_pr, bool)
                 or receipt_pr <= 0):
@@ -912,7 +1000,7 @@ def _strict(
     require_bypass_visibility: bool,
     require_live_rule_suite: bool,
     require_live_canary_ref: bool,
-    nonterminal_provider_proof: bool,
+    provider_proof_mode: str,
     receipt_pr: int | None,
 ) -> int:
     try:
@@ -956,7 +1044,10 @@ def _strict(
             receipt_pr=receipt_pr,
             require_live_receipt_pr=(
                 milestone == governance.ROOT_MILESTONE
-                and not nonterminal_provider_proof))
+                and provider_proof_mode == "terminal"),
+            require_live_receipt_head=(
+                milestone == governance.ROOT_MILESTONE
+                and provider_proof_mode == "premerge"))
         _validate_governance_evidence(
             snapshot_path=governance_snapshot_path, provider_raw_path=provider_raw_path,
             provider_pin=provider_pin, git_root=git_root, now_us=now_us,
@@ -968,11 +1059,17 @@ def _strict(
     except (OSError, ValueError, ReceiptBindingError) as exc:
         print(f"FAIL: RECEIPT_BINDING_INVALID:{exc}", file=sys.stderr)
         return 1
-    if nonterminal_provider_proof:
+    if provider_proof_mode == "nonterminal":
         print(
             f"OK_NONTERMINAL: {milestone} receipt-v3 {result}; static canary, authority, "
             "manifest, and Git bound, but privileged rule-suite/ref/bypass proof was not run; "
             "this cannot close B00R"
+        )
+    elif provider_proof_mode == "premerge":
+        print(
+            f"OK_PREMERGE: {milestone} receipt-v3 {result}; authority, manifest, Git, live "
+            "source/review, rule-suite, unchanged canary ref, and visible empty bypass state "
+            "bound, but the receipt merge does not yet exist; this cannot close B00R"
         )
     else:
         print(
@@ -1004,8 +1101,16 @@ def main(argv: list[str]) -> int:
         "--nonterminal-provider-proof", action="store_true",
         help="CI-only: skip privileged rule-suite/ref/bypass reads and never claim closure")
     parser.add_argument(
+        "--premerge-provider-proof", action="store_true",
+        help=(
+            "privileged receipt-head preflight: require live rule-suite/ref/bypass proof but "
+            "do not require the not-yet-existing receipt merge; never claim closure"
+        ))
+    parser.add_argument(
         "--receipt-pr", type=int,
-        help="terminal B00R-only GitHub receipt PR number bound to the expected merge head")
+        help=(
+            "premerge/terminal B00R GitHub receipt PR number bound to the exact receipt head"
+        ))
     args = parser.parse_args(argv)
     if not args.strict:
         return _legacy(args.receipt)
@@ -1027,28 +1132,46 @@ def main(argv: list[str]) -> int:
         print("FAIL: --strict requires --provider-pin or MAIN_RULESET_EVIDENCE_SHA256",
               file=sys.stderr)
         return 2
+    if args.nonterminal_provider_proof and args.premerge_provider_proof:
+        print("FAIL: nonterminal and premerge provider modes are mutually exclusive",
+              file=sys.stderr)
+        return 2
     if args.nonterminal_provider_proof and args.require_bypass_visibility:
         print("FAIL: nonterminal provider mode conflicts with terminal bypass visibility",
               file=sys.stderr)
         return 2
+    if args.nonterminal_provider_proof and args.receipt_pr is not None:
+        print("FAIL: nonterminal provider mode does not accept --receipt-pr", file=sys.stderr)
+        return 2
+    if args.premerge_provider_proof and args.milestone != governance.ROOT_MILESTONE:
+        print("FAIL: premerge provider mode is defined only for B00R", file=sys.stderr)
+        return 2
+    provider_proof_mode = (
+        "nonterminal" if args.nonterminal_provider_proof
+        else "premerge" if args.premerge_provider_proof
+        else "terminal"
+    )
     if (
         args.milestone == governance.ROOT_MILESTONE
-        and not args.nonterminal_provider_proof
+        and provider_proof_mode in {"premerge", "terminal"}
         and (args.receipt_pr is None or args.receipt_pr <= 0)
     ):
-        print("FAIL: terminal B00R strict mode requires a positive --receipt-pr", file=sys.stderr)
+        print(
+            f"FAIL: {provider_proof_mode} B00R strict mode requires a positive --receipt-pr",
+            file=sys.stderr,
+        )
         return 2
-    terminal_provider_proof = not args.nonterminal_provider_proof
+    privileged_provider_proof = provider_proof_mode in {"premerge", "terminal"}
     return _strict(
         args.receipt, milestone=args.milestone, now_us=args.now_us, pins_path=args.pins,
         manifest_path=args.manifest, git_root=args.git_root, expected_head=args.expected_head,
         governance_snapshot_path=args.governance_snapshot,
         provider_raw_path=args.provider_raw, provider_pin=provider_pin,
         require_bypass_visibility=(
-            args.require_bypass_visibility or terminal_provider_proof),
-        require_live_rule_suite=terminal_provider_proof,
-        require_live_canary_ref=terminal_provider_proof,
-        nonterminal_provider_proof=args.nonterminal_provider_proof,
+            args.require_bypass_visibility or privileged_provider_proof),
+        require_live_rule_suite=privileged_provider_proof,
+        require_live_canary_ref=privileged_provider_proof,
+        provider_proof_mode=provider_proof_mode,
         receipt_pr=args.receipt_pr)
 
 

@@ -230,6 +230,24 @@ def _receipt_gates(args: argparse.Namespace) -> tuple[Gate, ...]:
                 "--require-tracked",
             ),
         ),
+        Gate(
+            "clean_runner_bundle",
+            (
+                PY,
+                "tools/b00r_clean_runner.py",
+                "verify",
+                "--root",
+                ".",
+                "--manifest",
+                args.manifest,
+                "--receipt",
+                args.receipt,
+                "--expected-head",
+                args.expected_head,
+                "--now-us",
+                str(args.now_us),
+            ),
+        ),
     )
 
 

@@ -260,6 +260,86 @@ def test_evidence_manifest_membership_is_closed(tmp_path):
     ]) == 1
 
 
+def test_evidence_manifest_builder_preserves_explicit_role_uniqueness(tmp_path):
+    root = tmp_path / "repo"
+    closed = root / "evidence" / "B00R_G2"
+    closed.mkdir(parents=True)
+    spec = closed / "spec.json"
+    record = closed / "source_pr.provider.raw.json"
+    repeatable = closed / "repeatable.log"
+    entries = [
+        {"path": "evidence/B00R_G2/spec.json", "role": "SPEC"},
+        {
+            "path": "evidence/B00R_G2/repeatable.log",
+            "role": "REPEATABLE_LOG",
+            "role_unique": False,
+        },
+        {
+            "path": "evidence/B00R_G2/source_pr.provider.raw.json",
+            "role": "SOURCE_PR_PROVIDER_RECORD",
+            "role_unique": True,
+        },
+    ]
+    spec.write_text(json.dumps({"entries": entries}), encoding="utf-8")
+    record.write_text("{}\n", encoding="utf-8")
+    repeatable.write_text("repeatable\n", encoding="utf-8")
+    manifest = closed / "evidence_manifest.json"
+
+    assert evidence_manifest.main([
+        "--build", str(spec), "--root", str(root), "--out", str(manifest),
+        "--closed-root", "evidence/B00R_G2",
+    ]) == 0
+    built = json.loads(manifest.read_text(encoding="utf-8"))
+    by_role = {entry["role"]: entry for entry in built["entries"]}
+    assert "role_unique" not in by_role["SPEC"]
+    assert by_role["REPEATABLE_LOG"]["role_unique"] is False
+    assert by_role["SOURCE_PR_PROVIDER_RECORD"]["role_unique"] is True
+    assert evidence_manifest.main([
+        "--verify", str(manifest), "--root", str(root),
+        "--closed-root", "evidence/B00R_G2",
+    ]) == 0
+
+    for invalid in ("false", 1, None):
+        entries[1]["role_unique"] = invalid
+        spec.write_text(json.dumps({"entries": entries}), encoding="utf-8")
+        assert evidence_manifest.main([
+            "--build", str(spec), "--root", str(root), "--out", str(manifest),
+            "--closed-root", "evidence/B00R_G2",
+        ]) == 1
+
+    entries[1]["role_unique"] = False
+    entries[1]["role_uniqe"] = True
+    spec.write_text(json.dumps({"entries": entries}), encoding="utf-8")
+    assert evidence_manifest.main([
+        "--build", str(spec), "--root", str(root), "--out", str(manifest),
+        "--closed-root", "evidence/B00R_G2",
+    ]) == 1
+
+
+def test_receipt_ci_and_terminal_orchestrator_require_semantic_clean_runner_bundle():
+    ci = (b00r_gate.ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+    assert "Semantic B00R clean-runner bundle" in ci
+    assert "python tools/b00r_clean_runner.py verify" in ci
+    assert "--expected-head \"$EXPECTED_HEAD\"" in ci
+
+    from argparse import Namespace
+
+    args = Namespace(
+        base_sha="b" * 40,
+        expected_head="a" * 40,
+        manifest=b00r_gate.CANONICAL_MANIFEST,
+        receipt=b00r_gate.CANONICAL_RECEIPT,
+        now_us=1_000_000,
+    )
+    gates = b00r_gate._receipt_gates(args)
+    semantic = [gate for gate in gates if gate.gate_id == "clean_runner_bundle"]
+    assert len(semantic) == 1
+    command = semantic[0].argv
+    assert "tools/b00r_clean_runner.py" in command
+    assert command[command.index("--expected-head") + 1] == "a" * 40
+    assert command[command.index("--receipt") + 1] == b00r_gate.CANONICAL_RECEIPT
+
+
 def test_evidence_manifest_rejects_count_and_media_type_drift(tmp_path):
     root = tmp_path / "repo"
     _closed, manifest = _write_closed_evidence(root)
@@ -439,8 +519,14 @@ def _anchored_receipt_repo(
     _git(root, "checkout", "-qb", "receipt-work")
     receipt = root / validate_b00r_anchor.RECEIPT_PATH
     receipt.parent.mkdir(parents=True)
+    ruleset_updated_us = validate_b00r_anchor._ruleset_time_us(
+        ruleset_updated_at, "updated_at")
     receipt.write_text(json.dumps({
-        "payload": {"source_merge_sha": source_merge},
+        "payload": {
+            "source_merge_sha": source_merge,
+            "observed_at_us": ruleset_updated_us + 1,
+            "emitted_at_us": ruleset_updated_us + 2,
+        },
         "receipt": "b00r",
     }, sort_keys=True), encoding="utf-8")
     ruleset = root / validate_b00r_anchor.DEFAULT_RULESET
@@ -504,6 +590,58 @@ def test_receipt_anchor_binds_merge_receipt_and_pinned_immutable_ruleset(tmp_pat
         ruleset_pin=pin,
     )
     assert receipt_sha == hashlib.sha256(receipt.read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        (
+            "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1\n"
+            f"receipt_sha256={'a' * 64}\n"
+            f"receipt_path={validate_b00r_anchor.RECEIPT_PATH}\n"
+        ),
+        (
+            "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1\n"
+            f"receipt_path={validate_b00r_anchor.RECEIPT_PATH}\n"
+            f"receipt_sha256={'a' * 64}"
+        ),
+        (
+            "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1\n"
+            f"receipt_path={validate_b00r_anchor.RECEIPT_PATH}\n"
+            f"receipt_sha256={'a' * 64}\n\n"
+        ),
+        (
+            "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1\n"
+            f"receipt_path={validate_b00r_anchor.RECEIPT_PATH}\n"
+            f"receipt_sha256={'a' * 64}\n"
+            "-----BEGIN PGP SIGNATURE-----\n"
+        ),
+    ],
+)
+def test_anchor_message_requires_exact_order_and_one_terminal_newline(message):
+    with pytest.raises(
+        validate_b00r_anchor.AnchorError,
+        match="ANCHOR_MESSAGE_NOT_EXACT_CANONICAL_THREE_LINES",
+    ):
+        validate_b00r_anchor._parse_anchor_message(message)
+
+
+def test_anchor_tag_object_rejects_extra_header_even_with_exact_message():
+    raw = (
+        f"object {'a' * 40}\n"
+        "type commit\n"
+        f"tag {validate_b00r_anchor.TAG_NAME}\n"
+        "tagger Anchor Custodian <anchor@example.invalid> 1 +0000\n"
+        "encoding UTF-8\n\n"
+        "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1\n"
+        f"receipt_path={validate_b00r_anchor.RECEIPT_PATH}\n"
+        f"receipt_sha256={'b' * 64}\n"
+    ).encode("utf-8")
+    with pytest.raises(
+        validate_b00r_anchor.AnchorError,
+        match="ANCHOR_TAG_HEADER_SET_NOT_EXACT",
+    ):
+        validate_b00r_anchor._parse_tag(raw)
 
 
 def test_receipt_anchor_rejects_tagged_single_parent_evidence_commit(tmp_path):
@@ -617,7 +755,7 @@ def test_receipt_anchor_rejects_tag_ruleset_created_after_its_update(
             head_sha=receipt_head, merged_at_us=merge_time_us))
     with pytest.raises(
         validate_b00r_anchor.AnchorError,
-        match="TAG_RULESET_NOT_EFFECTIVE_BEFORE_RECEIPT_MERGE",
+        match="TAG_RULESET_NOT_EFFECTIVE_BEFORE_RECEIPT_OBSERVATION",
     ):
         validate_b00r_anchor.verify(
             root=repo, expected_head=head, receipt_path=receipt, ruleset_path=ruleset,

@@ -111,6 +111,21 @@ jobs:
           --root .
           --closed-root evidence/B00R_G2
           --require-tracked
+      - name: Semantic B00R clean-runner bundle
+        if: steps.milestone_role.outputs.role == 'RECEIPT'
+        shell: bash
+        env:
+          EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
+          RECEIPT_PATH: ${{ steps.milestone_role.outputs.receipt_path }}
+          MANIFEST_PATH: ${{ steps.milestone_role.outputs.manifest_path }}
+        run: |
+          NOW_US="$(date -u +%s)000000"
+          python tools/b00r_clean_runner.py verify \
+            --root . \
+            --manifest "$MANIFEST_PATH" \
+            --receipt "$RECEIPT_PATH" \
+            --expected-head "$EXPECTED_HEAD" \
+            --now-us "$NOW_US"
       - name: Mark deterministic engineering complete
         id: engineering_complete
         run: echo "deterministic engineering and role-specific evidence gates completed"
@@ -192,6 +207,25 @@ jobs:
             --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" \
             --expected-head "$EXPECTED_HEAD" --git-root . \
             --now-us "$NOW_US"
+      - name: Pre-anchor G2 tag ruleset validation
+        if: >-
+          always() && steps.engineering_complete.outcome == 'success' &&
+          steps.milestone_role.outputs.role == 'RECEIPT'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_HEAD: ${{ steps.event_facts.outputs.head_sha }}
+          RECEIPT_PATH: ${{ steps.milestone_role.outputs.receipt_path }}
+          B00R_G2_TAG_RULESET_SHA256: ${{ vars.B00R_G2_TAG_RULESET_SHA256 }}
+        run: |
+          NOW_US="$(date -u +%s)000000"
+          python tools/validate_b00r_tag_ruleset.py \
+            --expected-head "$EXPECTED_HEAD" \
+            --now-us "$NOW_US" \
+            --ruleset evidence/B00R_G2/tag_ruleset.provider.json \
+            --ruleset-pin "$B00R_G2_TAG_RULESET_SHA256" \
+            --receipt "$RECEIPT_PATH" \
+            --strict-live
       - name: Authenticate exactly one B00R receipt
         if: >-
           always() && steps.engineering_complete.outcome == 'success' &&

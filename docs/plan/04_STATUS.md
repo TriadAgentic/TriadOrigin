@@ -7,7 +7,7 @@ _As of 2026-08-11 · Repository facts are separated from runtime facts. No activ
 | Item | State | Meaning |
 |---|---|---|
 | B00R generation 1 | `MERGED_UNVERIFIED_IMMUTABLE` | Mechanically authentic bytes and tag, but not a valid governance root |
-| B00R generation 2 | `CORRECTIVE_SOURCE_REQUIRED` | Additive correction prepared from audited start `76b5e4857f80f22f99385810037c5c66289ebd5f`; no source merge, receipt merge, or G2 anchor exists yet |
+| B00R generation 2 | `CORRECTIVE_SOURCE_DRAFT` | CODEOWNERS bootstrap merged; additive source correction remains draft in PR #34; no source merge, receipt merge, or G2 anchor exists yet |
 | B00R terminal result | `BLOCKED` | Only generation 2 may eventually return `PASS_REPOSITORY_SAFE_HOLD` |
 | B01C onward | `FROZEN` | May begin only from the receipt merge named by a validated `B00R_RECEIPT_ANCHOR_G2` |
 | Activation | `DENIED_SAFE_HOLD` | No venue, paper, or money authority |
@@ -43,6 +43,15 @@ GitHub issue #5 is open/reopened. It must remain open until generation-2 termina
 | Generation-2 profile gap | PR #33's capture targets only `main` and permits merge/squash/rebase. G2 requires exact `{main, b00r-ruleset-canary}` scope, empty exclusions, and merge-only operation |
 | Old anchor ruleset `20636422` | Protects `B00R_RECEIPT_ANCHOR`; it does not protect the new `B00R_RECEIPT_ANCHOR_G2` identity |
 
+## Generation-2 live train
+
+| Object | Verified identity | Current state |
+|---|---|---|
+| CODEOWNERS bootstrap PR #35 | reviewed head `47706a55e1f62966496c808822678b0f9d15c2f8`; ordinary merge `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd` | Merged; literal reserved `main` base |
+| Corrective source PR #34 | published head `e8e6357f2c9f62e2ce2a28e84c206a0106bafe10`; base `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd` | Draft; superseded by unpublished hardening; do not merge |
+| Obsolete PR #11 | head `208a059ea26dc333f00721336bf86a2c5be6ca81` | Closed unmerged; branch retained as historical evidence |
+| Obsolete PR #26 | head `8dba2b864ab38ef52800f888f8b51e0e79fe51c7` | Closed unmerged; branch retained as salvage archive only |
+
 The existing main ruleset may be updated or replaced for future generation-2 merges, but the final
 provider capture, external pin, dedicated rejected canary, exact-head CI, and review must all predate
 the corrective source merge.
@@ -58,7 +67,7 @@ The correction is additive and uses distinct identities:
 | Authority-bundle decision | `docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json` | Owner-authenticated object absent; template remains fail-closed |
 | Receipt-profile decision | `docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json` | Owner-authenticated object absent; template remains fail-closed |
 | Repair decision | `docs/governance/decisions/DEC-B00-REPAIR-002.json` | Owner-authenticated object absent; template remains fail-closed |
-| Independent CODEOWNER | `@djordi10` on critical paths | Live admin permission observed; base-CODEOWNER eligibility and exact-head bootstrap/source/receipt approvals remain unproven |
+| Independent CODEOWNER | `@djordi10` on critical paths | Bootstrap exact-head approval and merge proven in PR #35; future source/receipt exact-head approvals remain required |
 | Evidence root | `evidence/B00R_G2/` | Must be added only in the separate receipt PR |
 | Receipt | `evidence/receipts/B00R.g2.receipt.v3.json` | Absent until after the corrective source merge and clean reproduction |
 | Physical anchor | `B00R_RECEIPT_ANCHOR_G2` | Absent until after the receipt merge |
@@ -70,23 +79,24 @@ Required external pins are
 
 ## Required closure sequence
 
-1. Close verifier/policy/documentation gaps, cascade policy/ledger decision hashes, and pass all
-   adversarial, dual-seed, distribution, and end-to-end gates.
-2. Update draft PR #34 and verify deterministic CI; owner/admin absence remains an explicit block.
-3. Merge a separately reviewed CODEOWNERS-only bootstrap, reserve `main` exclusively, and refresh
-   PR #34 so that bootstrap merge is the future source merge's literal first parent.
-4. Materialize, owner-sign, and externally pin the G2 registry and all three `002` decisions.
-5. Create the canary ref; install/capture/pin the exact main+canary merge-only rule; run and preserve
+1. Finish the truthful clean-runner capture producer and remaining verifier/documentation cleanup;
+   cascade source hashes and pass all adversarial, dual-seed, distribution, and end-to-end gates.
+2. Publish the completed hardening to draft PR #34 and verify deterministic CI. The reviewed
+   CODEOWNERS bootstrap is already merged as `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd`; reserve
+   `main` there with no intervening merge.
+3. Create the canary ref; install/capture/pin the exact main+canary merge-only rule; run and preserve
    its rejected direct-push canary before source merge.
-6. Freeze PR #34; obtain exact-head CI and `@djordi10` approval; merge ordinarily with the bootstrap
+4. Materialize, owner-sign, and externally pin the G2 registry and all three `002` decisions; commit
+   those objects and the authenticated source-phase ruleset capture to PR #34.
+5. Freeze PR #34; obtain exact-head CI and `@djordi10` approval; merge ordinarily with the bootstrap
    as first parent and reviewed source head/tree as second parent/result.
-7. Reproduce the source merge cleanly; install/capture/pin the tag rule; build/sign the append-only
+6. Reproduce the source merge cleanly; install/capture/pin the tag rule; build/sign the append-only
    receipt; obtain exact-head CI and `@djordi10` approval; merge it ordinarily with the source merge
    as literal first parent and no intervening `main` merge.
-8. Publish the protected annotated G2 anchor; run the privileged terminal gate with the receipt PR
+7. Publish the protected annotated G2 anchor; run the privileged terminal gate with the receipt PR
    number; only then close issue #5 and unfreeze B01C from that exact receipt merge.
 
-Until step 8 passes, the source-mode result remains deliberately non-closing and B01C remains
+Until step 7 passes, the source-mode result remains deliberately non-closing and B01C remains
 frozen.
 
 ## Historical build artifacts
@@ -119,7 +129,8 @@ this correction.
 
 ## Immediate next action
 
-Finish verifier/docs/hash/test correction first and update draft PR #34. Then perform the separately
-reviewed CODEOWNERS-only bootstrap, reserve `main`, and refresh #34 from that exact merge. Do not
-start owner signatures, ruleset/canary, source merge, or receipt work out of sequence; do not reuse
-generation-1 evidence and do not open B01C.
+Finish the clean-runner producer plus verifier/docs/hash/test correction, then update draft PR #34.
+Keep `main` reserved at the already reviewed CODEOWNERS merge `ba495ba…`; next create the canary and
+canonical ruleset before producing authority/provider artifacts on the final source train. Do not
+start the source merge or receipt work out of sequence; do not reuse generation-1 evidence and do
+not open B01C.

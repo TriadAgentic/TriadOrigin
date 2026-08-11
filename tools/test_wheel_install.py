@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import pathlib
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -27,6 +28,15 @@ def main() -> int:
     try:
         with tempfile.TemporaryDirectory(prefix="triad-origin-wheel-") as tmp_name:
             tmp = pathlib.Path(tmp_name)
+            source = tmp / "source"
+            shutil.copytree(
+                ROOT,
+                source,
+                ignore=shutil.ignore_patterns(
+                    ".git", ".pytest_cache", ".venv", "__pycache__", "*.egg-info",
+                    "build", "dist",
+                ),
+            )
             sdist_dir = tmp / "sdist"
             dist = tmp / "dist"
             _run(
@@ -38,7 +48,7 @@ def main() -> int:
                     "--dist-dir",
                     str(sdist_dir),
                 ],
-                cwd=ROOT,
+                cwd=source,
             )
             sdists = sorted(sdist_dir.glob("triad_origin-*.tar.gz"))
             if len(sdists) != 1:
@@ -83,7 +93,7 @@ def main() -> int:
                     "--wheel-dir",
                     str(dist),
                 ],
-                cwd=ROOT,
+                cwd=source,
             )
             wheels = sorted(dist.glob("triad_origin-*.whl"))
             if len(wheels) != 1:

@@ -71,6 +71,19 @@ class LiveReceiptMerge:
     check_run_id: int
 
 
+@dataclass(frozen=True)
+class LiveReceiptHead:
+    """Provider-authenticated open receipt-PR head facts for the irreversible merge preflight."""
+
+    pull_request: int
+    base_sha: str
+    head_sha: str
+    reviewer: str
+    review_id: int
+    workflow_run_id: int
+    check_run_id: int
+
+
 def _loads_unique_object(data: bytes, label: str) -> dict:
     def unique_object(pairs):
         value = {}
@@ -183,14 +196,17 @@ def workflow_runs_for_head_url(head_sha: str) -> str:
         raise LiveRulesetMismatch("WORKFLOW_HEAD_SHA_INVALID")
     return (
         f"https://api.github.com/repos/{REPOSITORY}/actions/runs"
-        f"?head_sha={head_sha}&event=pull_request&status=completed&per_page=100"
+        f"?head_sha={head_sha}&event=pull_request&per_page=100"
     )
 
 
 def check_runs_for_head_url(head_sha: str) -> str:
     if not isinstance(head_sha, str) or re.fullmatch(r"[0-9a-f]{40}", head_sha) is None:
         raise LiveRulesetMismatch("CHECK_RUN_HEAD_SHA_INVALID")
-    return f"https://api.github.com/repos/{REPOSITORY}/commits/{head_sha}/check-runs?per_page=100"
+    return (
+        f"https://api.github.com/repos/{REPOSITORY}/commits/{head_sha}/check-runs"
+        "?filter=all&per_page=100"
+    )
 
 
 def compare_receipt_merge_to_main_url(merge_sha: str) -> str:
@@ -714,8 +730,10 @@ def fetch_and_verify_receipt_merge(
 
     The receipt PR cannot commit its own post-merge provider response.  This terminal-only proof
     therefore uses fixed endpoints, refuses redirects/cached responses, and binds the exact merge
-    to its PR head, one independent CODEOWNER approval, the required GitHub Actions job, and live
-    ``main`` ancestry.  Local callers additionally verify the two-parent Git object.
+    to its PR head, the latest decisive independent CODEOWNER approval, the latest relevant
+    pre-merge GitHub Actions run/check, and live ``main`` ancestry.  Local callers additionally
+    verify the two-parent Git object.  Provider history is append-only: superseded approvals and
+    earlier reruns are retained but can never override the latest relevant state.
     """
     if not isinstance(number, int) or isinstance(number, bool) or number <= 0:
         raise LiveRulesetMismatch("RECEIPT_PR_NUMBER_INVALID")
@@ -765,7 +783,7 @@ def fetch_and_verify_receipt_merge(
         api_version=API_VERSION,
         user_agent="TriadOrigin-B00R-G2-live-receipt-review-verifier",
         label="LIVE_RECEIPT_PR_REVIEWS", timeout_s=timeout_s, opener=opener)
-    matching_reviews: list[dict] = []
+    matching_reviews: list[tuple[int, int, dict]] = []
     for review in reviews:
         user = review.get("user")
         login = user.get("login") if isinstance(user, dict) else None
@@ -777,18 +795,20 @@ def fetch_and_verify_receipt_merge(
                 and isinstance(user, dict) and user.get("type") == "User"
                 and isinstance(login, str)
                 and login.lower() == expected_codeowner.lower()):
-            matching_reviews.append(review)
-    if len(matching_reviews) != 1:
+            submitted_at_us = _provider_utc_us(
+                review.get("submitted_at"), "LIVE_RECEIPT_PR_REVIEW_SUBMITTED_AT")
+            matching_reviews.append((submitted_at_us, review["id"], review))
+    if not matching_reviews:
         raise LiveRulesetMismatch(
-            f"LIVE_RECEIPT_PR_EXACT_HEAD_CODEOWNER_APPROVAL_COUNT:{len(matching_reviews)}")
-    review = matching_reviews[0]
+            "LIVE_RECEIPT_PR_EXACT_HEAD_CODEOWNER_APPROVAL_COUNT:0")
+    _review_time_us, _review_id, review = max(
+        matching_reviews, key=lambda row: (row[0], row[1]))
     _require_latest_decisive_review(
         reviews, review, label="LIVE_RECEIPT_PR_REVIEW")
     reviewer = review["user"]["login"]
     if reviewer.lower() == author_login.lower():
         raise LiveRulesetMismatch("LIVE_RECEIPT_PR_REVIEW_NOT_INDEPENDENT")
-    submitted_at_us = _provider_utc_us(
-        review.get("submitted_at"), "LIVE_RECEIPT_PR_REVIEW_SUBMITTED_AT")
+    submitted_at_us = _review_time_us
     if submitted_at_us >= merged_at_us:
         raise LiveRulesetMismatch("LIVE_RECEIPT_PR_REVIEW_NOT_BEFORE_MERGE")
     fetch_repository_permission(
@@ -807,7 +827,7 @@ def fetch_and_verify_receipt_merge(
             or workflow_total != len(workflow_runs)
             or any(not isinstance(item, dict) for item in workflow_runs)):
         raise LiveRulesetMismatch("LIVE_RECEIPT_WORKFLOW_RUNS_MALFORMED")
-    matching_workflows = []
+    matching_workflows: list[tuple[int, int, int, int, dict]] = []
     for run in workflow_runs:
         pull_requests = run.get("pull_requests")
         repository = run.get("repository")
@@ -819,20 +839,17 @@ def fetch_and_verify_receipt_merge(
             is not None
             and ".." not in workflow_path.split("@", 1)[1]
         )
-        try:
-            workflow_completed_at_us = _provider_utc_us(
-                run.get("updated_at"), "LIVE_RECEIPT_WORKFLOW_COMPLETED_AT")
-        except LiveRulesetMismatch:
-            continue
         if (run.get("head_sha") == head_sha
                 and run.get("event") == "pull_request"
-                and run.get("status") == "completed"
-                and run.get("conclusion") == "success"
                 and valid_workflow_path
                 and isinstance(run.get("id"), int)
                 and not isinstance(run.get("id"), bool) and run.get("id") > 0
+                and isinstance(run.get("run_attempt"), int)
+                and not isinstance(run.get("run_attempt"), bool)
+                and run.get("run_attempt") > 0
                 and isinstance(run.get("check_suite_id"), int)
                 and not isinstance(run.get("check_suite_id"), bool)
+                and run.get("check_suite_id") > 0
                 and isinstance(repository, dict)
                 and repository.get("full_name") == REPOSITORY
                 and repository.get("id") == REPOSITORY_ID
@@ -841,13 +858,34 @@ def fetch_and_verify_receipt_merge(
                 and head_repository.get("id") == REPOSITORY_ID
                 and isinstance(pull_requests, list)
                 and any(isinstance(item, dict) and item.get("number") == number
-                        for item in pull_requests)
-                and workflow_completed_at_us < merged_at_us):
-            matching_workflows.append(run)
-    if len(matching_workflows) != 1:
+                        for item in pull_requests)):
+            workflow_created_at_us = _provider_utc_us(
+                run.get("created_at"), "LIVE_RECEIPT_WORKFLOW_CREATED_AT")
+            workflow_started_at_us = _provider_utc_us(
+                run.get("run_started_at"), "LIVE_RECEIPT_WORKFLOW_STARTED_AT")
+            workflow_updated_at_us = _provider_utc_us(
+                run.get("updated_at"), "LIVE_RECEIPT_WORKFLOW_UPDATED_AT")
+            if not workflow_created_at_us <= workflow_started_at_us <= workflow_updated_at_us:
+                raise LiveRulesetMismatch("LIVE_RECEIPT_WORKFLOW_CHRONOLOGY_INVALID")
+            if workflow_started_at_us < merged_at_us:
+                matching_workflows.append(
+                    (
+                        workflow_started_at_us,
+                        run["id"],
+                        run["run_attempt"],
+                        workflow_updated_at_us,
+                        run,
+                    ))
+    if not matching_workflows:
         raise LiveRulesetMismatch(
-            f"LIVE_RECEIPT_PR_SUCCESS_WORKFLOW_COUNT:{len(matching_workflows)}")
-    workflow = matching_workflows[0]
+            "LIVE_RECEIPT_PR_RELEVANT_WORKFLOW_COUNT:0")
+    (_workflow_started_at_us, _workflow_id, _workflow_attempt,
+     workflow_updated_at_us, workflow) = max(
+        matching_workflows, key=lambda row: (row[0], row[1], row[2]))
+    if workflow.get("status") != "completed" or workflow.get("conclusion") != "success":
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PR_LATEST_WORKFLOW_NOT_SUCCESS")
+    if workflow_updated_at_us >= merged_at_us:
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PR_LATEST_WORKFLOW_NOT_BEFORE_MERGE")
 
     checks_document = _fetch_fixed_json(
         check_runs_for_head_url(head_sha), token=token, now_us=now_us,
@@ -862,30 +900,35 @@ def fetch_and_verify_receipt_merge(
             or checks_total != len(check_runs)
             or any(not isinstance(item, dict) for item in check_runs)):
         raise LiveRulesetMismatch("LIVE_RECEIPT_CHECK_RUNS_MALFORMED")
-    matching_checks = []
+    workflow_suite_ids = {row[4]["check_suite_id"] for row in matching_workflows}
+    matching_checks: list[tuple[int, int, dict]] = []
     for check in check_runs:
         app = check.get("app")
         check_suite = check.get("check_suite")
-        try:
-            check_completed_at_us = _provider_utc_us(
-                check.get("completed_at"), "LIVE_RECEIPT_CHECK_COMPLETED_AT")
-        except LiveRulesetMismatch:
-            continue
         if (check.get("name") == "test-and-verify"
                 and check.get("head_sha") == head_sha
-                and check.get("status") == "completed"
-                and check.get("conclusion") == "success"
                 and isinstance(check.get("id"), int)
                 and not isinstance(check.get("id"), bool) and check.get("id") > 0
                 and isinstance(app, dict) and app.get("id") == 15368
                 and isinstance(check_suite, dict)
-                and check_suite.get("id") == workflow.get("check_suite_id")
-                and check_completed_at_us < merged_at_us):
-            matching_checks.append(check)
-    if len(matching_checks) != 1:
+                and check_suite.get("id") in workflow_suite_ids):
+            check_started_at_us = _provider_utc_us(
+                check.get("started_at"), "LIVE_RECEIPT_CHECK_STARTED_AT")
+            if check_started_at_us < merged_at_us:
+                matching_checks.append((check_started_at_us, check["id"], check))
+    if not matching_checks:
         raise LiveRulesetMismatch(
-            f"LIVE_RECEIPT_PR_REQUIRED_CHECK_COUNT:{len(matching_checks)}")
-    check = matching_checks[0]
+            "LIVE_RECEIPT_PR_RELEVANT_CHECK_COUNT:0")
+    check_started_at_us, _check_id, check = max(
+        matching_checks, key=lambda row: (row[0], row[1]))
+    if check["check_suite"].get("id") != workflow.get("check_suite_id"):
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PR_LATEST_CHECK_WORKFLOW_MISMATCH")
+    if check.get("status") != "completed" or check.get("conclusion") != "success":
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PR_LATEST_CHECK_NOT_SUCCESS")
+    check_completed_at_us = _provider_utc_us(
+        check.get("completed_at"), "LIVE_RECEIPT_CHECK_COMPLETED_AT")
+    if not check_started_at_us <= check_completed_at_us < merged_at_us:
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PR_LATEST_CHECK_NOT_BEFORE_MERGE")
 
     comparison = _fetch_fixed_json(
         compare_receipt_merge_to_main_url(expected_merge_sha), token=token, now_us=now_us,
@@ -907,6 +950,206 @@ def fetch_and_verify_receipt_merge(
         head_sha=head_sha,
         merge_sha=expected_merge_sha,
         merged_at_us=merged_at_us,
+        reviewer=reviewer,
+        review_id=review["id"],
+        workflow_run_id=workflow["id"],
+        check_run_id=check["id"],
+    )
+
+
+def fetch_and_verify_receipt_head(
+    number: int,
+    *,
+    expected_head_sha: str,
+    expected_base_sha: str,
+    expected_codeowner: str,
+    token: str | None,
+    now_us: int,
+    timeout_s: float = DEFAULT_TIMEOUT_S,
+    opener: Callable[..., object] = _direct_urlopen,
+) -> LiveReceiptHead:
+    """Prove an open receipt PR is exact-head reviewed and CI-green before merge.
+
+    This intentionally omits only future merge facts: merge SHA/time, main ancestry of that merge,
+    and the local two-parent merge object.  The PR identity, exact source base, latest decisive
+    CODEOWNER approval, and latest relevant Actions workflow/check are all mandatory.
+    """
+    if (not isinstance(number, int) or isinstance(number, bool) or number <= 0
+            or re.fullmatch(r"[0-9a-f]{40}", expected_head_sha or "") is None
+            or re.fullmatch(r"[0-9a-f]{40}", expected_base_sha or "") is None):
+        raise LiveRulesetMismatch("RECEIPT_PREFLIGHT_IDENTITY_ARGUMENT_INVALID")
+
+    pr = _fetch_fixed_json(
+        pull_request_url(number), token=token, now_us=now_us, api_version=API_VERSION,
+        user_agent="TriadOrigin-B00R-G2-live-receipt-premerge-pr-verifier",
+        label="LIVE_RECEIPT_PREMERGE_PR", timeout_s=timeout_s, opener=opener)
+    base = pr.get("base")
+    head = pr.get("head")
+    base_repo = base.get("repo") if isinstance(base, dict) else None
+    head_repo = head.get("repo") if isinstance(head, dict) else None
+    author = pr.get("user")
+    author_login = author.get("login") if isinstance(author, dict) else None
+    if (pr.get("number") != number
+            or pr.get("state") != "open" or pr.get("merged") is not False
+            or pr.get("draft") is not False
+            or pr.get("merged_at") is not None
+            or not isinstance(base, dict) or base.get("ref") != "main"
+            or base.get("sha") != expected_base_sha
+            or not isinstance(base_repo, dict)
+            or base_repo.get("full_name") != REPOSITORY
+            or base_repo.get("id") != REPOSITORY_ID
+            or not isinstance(head, dict) or head.get("sha") != expected_head_sha
+            or not isinstance(head_repo, dict)
+            or head_repo.get("full_name") != REPOSITORY
+            or head_repo.get("id") != REPOSITORY_ID
+            or not isinstance(author, dict) or author.get("type") != "User"
+            or not isinstance(author_login, str) or not author_login):
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_PR_IDENTITY_MISMATCH")
+
+    reviews = _fetch_fixed_json_array(
+        pull_request_reviews_url(number), token=token, now_us=now_us,
+        api_version=API_VERSION,
+        user_agent="TriadOrigin-B00R-G2-live-receipt-premerge-review-verifier",
+        label="LIVE_RECEIPT_PREMERGE_REVIEWS", timeout_s=timeout_s, opener=opener)
+    approvals: list[tuple[int, int, dict]] = []
+    for review in reviews:
+        user = review.get("user")
+        login = user.get("login") if isinstance(user, dict) else None
+        if (review.get("state") == "APPROVED"
+                and review.get("commit_id") == expected_head_sha
+                and isinstance(review.get("id"), int)
+                and not isinstance(review.get("id"), bool) and review.get("id") > 0
+                and isinstance(user, dict) and user.get("type") == "User"
+                and isinstance(login, str)
+                and login.lower() == expected_codeowner.lower()):
+            submitted = _provider_utc_us(
+                review.get("submitted_at"), "LIVE_RECEIPT_PREMERGE_REVIEW_SUBMITTED_AT")
+            approvals.append((submitted, review["id"], review))
+    if not approvals:
+        raise LiveRulesetMismatch(
+            "LIVE_RECEIPT_PREMERGE_EXACT_HEAD_CODEOWNER_APPROVAL_COUNT:0")
+    submitted_at_us, _review_id, review = max(
+        approvals, key=lambda row: (row[0], row[1]))
+    _require_latest_decisive_review(
+        reviews, review, label="LIVE_RECEIPT_PREMERGE_REVIEW")
+    if submitted_at_us > now_us:
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_REVIEW_IN_FUTURE")
+    reviewer = review["user"]["login"]
+    if reviewer.lower() == author_login.lower():
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_REVIEW_NOT_INDEPENDENT")
+    fetch_repository_permission(
+        reviewer, token=token, now_us=now_us, timeout_s=timeout_s, opener=opener)
+
+    workflow_document = _fetch_fixed_json(
+        workflow_runs_for_head_url(expected_head_sha), token=token, now_us=now_us,
+        api_version=API_VERSION,
+        user_agent="TriadOrigin-B00R-G2-live-receipt-premerge-workflow-verifier",
+        label="LIVE_RECEIPT_PREMERGE_WORKFLOW_RUNS", timeout_s=timeout_s, opener=opener)
+    workflow_runs = workflow_document.get("workflow_runs")
+    workflow_total = workflow_document.get("total_count")
+    if (not isinstance(workflow_total, int) or isinstance(workflow_total, bool)
+            or workflow_total < 0 or not isinstance(workflow_runs, list)
+            or workflow_total != len(workflow_runs)
+            or any(not isinstance(item, dict) for item in workflow_runs)):
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_WORKFLOW_RUNS_MALFORMED")
+    workflows: list[tuple[int, int, int, int, dict]] = []
+    for run in workflow_runs:
+        pull_requests = run.get("pull_requests")
+        repository = run.get("repository")
+        head_repository = run.get("head_repository")
+        workflow_path = run.get("path")
+        valid_path = (
+            isinstance(workflow_path, str)
+            and re.fullmatch(r"\.github/workflows/ci\.yml@[A-Za-z0-9._/-]+", workflow_path)
+            is not None
+            and ".." not in workflow_path.split("@", 1)[1]
+        )
+        if (run.get("head_sha") == expected_head_sha
+                and run.get("event") == "pull_request"
+                and valid_path
+                and isinstance(run.get("id"), int) and not isinstance(run.get("id"), bool)
+                and run.get("id") > 0
+                and isinstance(run.get("run_attempt"), int)
+                and not isinstance(run.get("run_attempt"), bool)
+                and run.get("run_attempt") > 0
+                and isinstance(run.get("check_suite_id"), int)
+                and not isinstance(run.get("check_suite_id"), bool)
+                and run.get("check_suite_id") > 0
+                and isinstance(repository, dict)
+                and repository.get("full_name") == REPOSITORY
+                and repository.get("id") == REPOSITORY_ID
+                and isinstance(head_repository, dict)
+                and head_repository.get("full_name") == REPOSITORY
+                and head_repository.get("id") == REPOSITORY_ID
+                and isinstance(pull_requests, list)
+                and any(isinstance(item, dict) and item.get("number") == number
+                        for item in pull_requests)):
+            created = _provider_utc_us(
+                run.get("created_at"), "LIVE_RECEIPT_PREMERGE_WORKFLOW_CREATED_AT")
+            started = _provider_utc_us(
+                run.get("run_started_at"), "LIVE_RECEIPT_PREMERGE_WORKFLOW_STARTED_AT")
+            updated = _provider_utc_us(
+                run.get("updated_at"), "LIVE_RECEIPT_PREMERGE_WORKFLOW_UPDATED_AT")
+            if not created <= started <= updated:
+                raise LiveRulesetMismatch(
+                    "LIVE_RECEIPT_PREMERGE_WORKFLOW_CHRONOLOGY_INVALID")
+            if started <= now_us:
+                workflows.append((started, run["id"], run["run_attempt"], updated, run))
+    if not workflows:
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_RELEVANT_WORKFLOW_COUNT:0")
+    (_workflow_started, _workflow_id, _workflow_attempt,
+     workflow_updated, workflow) = max(
+        workflows, key=lambda row: (row[0], row[1], row[2]))
+    if workflow.get("status") != "completed" or workflow.get("conclusion") != "success":
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_LATEST_WORKFLOW_NOT_SUCCESS")
+    if workflow_updated > now_us:
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_WORKFLOW_UPDATED_IN_FUTURE")
+
+    checks_document = _fetch_fixed_json(
+        check_runs_for_head_url(expected_head_sha), token=token, now_us=now_us,
+        api_version=API_VERSION,
+        user_agent="TriadOrigin-B00R-G2-live-receipt-premerge-check-verifier",
+        label="LIVE_RECEIPT_PREMERGE_CHECK_RUNS", timeout_s=timeout_s, opener=opener)
+    check_runs = checks_document.get("check_runs")
+    checks_total = checks_document.get("total_count")
+    if (not isinstance(checks_total, int) or isinstance(checks_total, bool)
+            or checks_total < 0 or not isinstance(check_runs, list)
+            or checks_total != len(check_runs)
+            or any(not isinstance(item, dict) for item in check_runs)):
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_CHECK_RUNS_MALFORMED")
+    workflow_suite_ids = {row[4]["check_suite_id"] for row in workflows}
+    checks: list[tuple[int, int, dict]] = []
+    for check in check_runs:
+        app = check.get("app")
+        suite = check.get("check_suite")
+        if (check.get("name") == "test-and-verify"
+                and check.get("head_sha") == expected_head_sha
+                and isinstance(check.get("id"), int)
+                and not isinstance(check.get("id"), bool) and check.get("id") > 0
+                and isinstance(app, dict) and app.get("id") == 15368
+                and isinstance(suite, dict)
+                and suite.get("id") in workflow_suite_ids):
+            started = _provider_utc_us(
+                check.get("started_at"), "LIVE_RECEIPT_PREMERGE_CHECK_STARTED_AT")
+            if started <= now_us:
+                checks.append((started, check["id"], check))
+    if not checks:
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_RELEVANT_CHECK_COUNT:0")
+    check_started, _check_id, check = max(checks, key=lambda row: (row[0], row[1]))
+    if check["check_suite"].get("id") != workflow.get("check_suite_id"):
+        raise LiveRulesetMismatch(
+            "LIVE_RECEIPT_PREMERGE_LATEST_CHECK_WORKFLOW_MISMATCH")
+    if check.get("status") != "completed" or check.get("conclusion") != "success":
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_LATEST_CHECK_NOT_SUCCESS")
+    check_completed = _provider_utc_us(
+        check.get("completed_at"), "LIVE_RECEIPT_PREMERGE_CHECK_COMPLETED_AT")
+    if not check_started <= check_completed <= now_us:
+        raise LiveRulesetMismatch("LIVE_RECEIPT_PREMERGE_CHECK_CHRONOLOGY_INVALID")
+
+    return LiveReceiptHead(
+        pull_request=number,
+        base_sha=expected_base_sha,
+        head_sha=expected_head_sha,
         reviewer=reviewer,
         review_id=review["id"],
         workflow_run_id=workflow["id"],

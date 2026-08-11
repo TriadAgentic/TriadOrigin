@@ -47,9 +47,11 @@ separate gate receipt._
 - [x] Generation-1 evidence guarded immutable; G2 receipt role rejects mixed content
 - [x] Source PR/review provider records require actual PR number, final head, merge SHA/time, positive
   review id, exact-head `APPROVED`, independent author/reviewer, and pre-merge submission time
-- [ ] Bootstrap the exact `@djordi10` critical-path CODEOWNERS bytes onto `main` in a separate
-  independently reviewed change; reserve `main` and require that bootstrap merge to be the source
-  merge's literal first parent
+- [x] Bootstrap the exact `@djordi10` critical-path CODEOWNERS bytes onto `main` in independently
+  reviewed PR #35; ordinary merge `ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd` is the reserved
+  source-merge first parent
+- [ ] Land the truthful fresh-clone/fresh-venv clean-runner capture producer on the final corrective
+  source head; a verifier without a producer is not reproducible evidence
 - [ ] Owner-authenticate all three G2 `002` decisions under the G2 registry; externally pin all four
   decision/trust objects
 - [ ] Install/capture/pin an active provider rule targeting exactly `main` plus

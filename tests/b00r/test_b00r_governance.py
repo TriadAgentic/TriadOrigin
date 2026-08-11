@@ -209,6 +209,101 @@ def test_neg011_evidence_manifest_rejects_symlink(tmp_path):
         gov.validate_evidence_manifest(manifest, tmp_path)
 
 
+@pytest.mark.parametrize(
+    ("unique_flags", "should_fail"),
+    [((True, False), True), ((False, True), True), ((None, False), True),
+     ((False, False), False)],
+)
+def test_evidence_manifest_duplicate_role_group_law(
+    tmp_path, unique_flags, should_fail
+):
+    (tmp_path / "evidence").mkdir()
+    entries = []
+    for index, flag in enumerate(unique_flags):
+        rel = f"evidence/{index}.json"
+        data = b"{}"
+        (tmp_path / rel).write_bytes(data)
+        entry = {
+            "path": rel,
+            "role": "SINGLETON",
+            "media_type": "application/json",
+            "size": len(data),
+            "sha256": sha256_hex(data),
+        }
+        if flag is not None:
+            entry["role_unique"] = flag
+        entries.append(entry)
+    manifest = {
+        "schema": "triad.evidence_manifest.v1",
+        "schema_version": "1.0.0",
+        "manifest_kind": "EVIDENCE_MANIFEST",
+        "entry_count": len(entries),
+        "entries": entries,
+    }
+    if not should_fail:
+        gov.validate_evidence_manifest(manifest, tmp_path)
+        return
+    with pytest.raises(gov.GovernanceError, match="EVIDENCE_DUPLICATE_ROLE: SINGLETON"):
+        gov.validate_evidence_manifest(manifest, tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("rel", "role", "role_unique", "allowed"),
+    [
+        (
+            "evidence/B00R_G2/clean_runner/commands/00-pytest-seed0/stderr.bin",
+            "CLEAN_RUNNER_COMMAND_STDERR", False, True,
+        ),
+        (
+            "evidence/B00R_G2/clean_runner/rollback/stdout.bin",
+            "CLEAN_RUNNER_ROLLBACK_STDOUT", True, True,
+        ),
+        (
+            "evidence/B00R_G2/clean_runner/commands/00-pytest-seed0/stderr.bin",
+            "UNRELATED", False, False,
+        ),
+        (
+            "evidence/B00R_G2/clean_runner/commands/00-pytest-seed0/stderr.bin",
+            "CLEAN_RUNNER_COMMAND_STDERR", True, False,
+        ),
+        (
+            "evidence/B00R_G2/clean_runner/not-a-command/stderr.bin",
+            "CLEAN_RUNNER_COMMAND_STDERR", False, False,
+        ),
+    ],
+)
+def test_evidence_manifest_empty_stream_exception_is_narrow(
+    tmp_path, rel, role, role_unique, allowed
+):
+    from tools.b00r_clean_runner import ALLOWED_EMPTY_PATHS
+
+    path = tmp_path / rel
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"")
+    entry = {
+        "path": rel,
+        "role": role,
+        "role_unique": role_unique,
+        "media_type": "application/octet-stream",
+        "size": 0,
+        "sha256": sha256_hex(b""),
+    }
+    manifest = {
+        "schema": "triad.evidence_manifest.v1",
+        "schema_version": "1.0.0",
+        "manifest_kind": "EVIDENCE_MANIFEST",
+        "entry_count": 1,
+        "entries": [entry],
+    }
+    if allowed:
+        gov.validate_evidence_manifest(
+            manifest, tmp_path, allowed_empty_paths=ALLOWED_EMPTY_PATHS)
+    else:
+        with pytest.raises(gov.GovernanceError, match="EVIDENCE_ZERO_SIZE"):
+            gov.validate_evidence_manifest(
+                manifest, tmp_path, allowed_empty_paths=ALLOWED_EMPTY_PATHS)
+
+
 # --- NEG-012 · evidence before source merge / future-dated fails ----------------------------------
 def test_neg012_chronology_order_and_future():
     receipt = _golden("triad.evidence_receipt.v3", "valid")
@@ -315,6 +410,37 @@ def test_empty_provider_expansion_does_not_become_a_malformed_authority_pin():
     assert authority.load_external_pins(environ=empty_ci_environment) == {}
 
 
+def test_generation2_pin_file_must_contain_exactly_four_authority_pins(
+    tmp_path
+):
+    from tools import validate_authority_root as authority
+
+    subjects, _paths = authority._authority_profile(2)
+    names = [meta[0] for meta in subjects.values()]
+    complete = {name: chr(97 + index) * 64 for index, name in enumerate(names)}
+    pins = tmp_path / "pins.json"
+    pins.write_text(json.dumps(complete), encoding="utf-8")
+    assert authority.load_external_pins(
+        pins_path=pins, environ={}, repair_generation=2) == complete
+
+    partial = dict(complete)
+    missing_name = names[-1]
+    partial.pop(missing_name)
+    pins.write_text(json.dumps(partial), encoding="utf-8")
+    with pytest.raises(
+        authority.AuthorityRootError, match="EXTERNAL_PIN_FILE_KEY_SET_MISMATCH"
+    ):
+        authority.load_external_pins(
+            pins_path=pins,
+            environ={missing_name: complete[missing_name]},
+            repair_generation=2,
+        )
+
+    pins.write_text(json.dumps({**complete, "MAIN_RULESET_EVIDENCE_SHA256": "f" * 64}))
+    with pytest.raises(authority.AuthorityRootError, match="UNKNOWN_EXTERNAL_PIN_NAMES"):
+        authority.load_external_pins(pins_path=pins, environ={}, repair_generation=2)
+
+
 def test_decision_templates_are_unauthenticated():
     for name in (
         "DEC-AUTHORITY-BUNDLE-001",
@@ -380,3 +506,76 @@ def test_b00r_gate_owner_commands_are_strict_and_use_one_canonical_receipt():
     assert receipt_commands[0][receipt_commands[0].index("--receipt-pr") + 1] == "35"
     assert "--trust" not in receipt_commands[0]
     assert not any("dsse" in part.lower() for command in commands for part in command)
+
+
+@pytest.mark.parametrize(
+    ("mode_flag", "expected_mode", "expected_privileged"),
+    [
+        ("--nonterminal-provider-proof", "nonterminal", False),
+        ("--premerge-provider-proof", "premerge", True),
+    ],
+)
+def test_receipt_provider_proof_modes_are_separate_and_nonterminal(
+    monkeypatch, mode_flag, expected_mode, expected_privileged
+):
+    from tools import validate_b_receipt
+
+    captured = {}
+
+    def fake_strict(_receipt, **kwargs):
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr(validate_b_receipt, "_strict", fake_strict)
+    receipt_pr_args = ["--receipt-pr", "35"] if expected_mode == "premerge" else []
+    result = validate_b_receipt.main([
+        "--strict",
+        "--milestone", "B00R",
+        "--now-us", "1000000",
+        "--manifest", "evidence/B00R_G2/evidence_manifest.json",
+        "--expected-head", "a" * 40,
+        "--governance-snapshot", "docs/governance/rulesets/main.ruleset.provider.json",
+        "--provider-raw", "docs/governance/rulesets/main.ruleset.provider.raw.json",
+        "--provider-pin", "b" * 64,
+        *receipt_pr_args,
+        mode_flag,
+        "evidence/receipts/B00R.g2.receipt.v3.json",
+    ])
+    assert result == 0
+    assert captured["provider_proof_mode"] == expected_mode
+    assert captured["require_live_rule_suite"] is expected_privileged
+    assert captured["require_live_canary_ref"] is expected_privileged
+    assert captured["require_bypass_visibility"] is expected_privileged
+    assert captured["receipt_pr"] == (35 if expected_mode == "premerge" else None)
+
+
+def test_receipt_provider_proof_modes_reject_ambiguous_terminal_inputs(capsys):
+    from tools import validate_b_receipt
+
+    common = [
+        "--strict", "--milestone", "B00R", "--now-us", "1000000",
+        "--manifest", "evidence/B00R_G2/evidence_manifest.json",
+        "--expected-head", "a" * 40,
+        "--governance-snapshot", "docs/governance/rulesets/main.ruleset.provider.json",
+        "--provider-raw", "docs/governance/rulesets/main.ruleset.provider.raw.json",
+        "--provider-pin", "b" * 64,
+        "evidence/receipts/B00R.g2.receipt.v3.json",
+    ]
+    assert validate_b_receipt.main([
+        *common[:-1], "--nonterminal-provider-proof", "--premerge-provider-proof", common[-1]
+    ]) == 2
+    assert "mutually exclusive" in capsys.readouterr().err
+    assert validate_b_receipt.main([
+        *common[:-1], "--premerge-provider-proof", common[-1]
+    ]) == 2
+    assert "premerge B00R strict mode requires" in capsys.readouterr().err
+    assert validate_b_receipt.main([
+        *common[:-1], "--nonterminal-provider-proof", "--receipt-pr", "35", common[-1]
+    ]) == 2
+    assert "nonterminal provider mode does not accept" in capsys.readouterr().err
+    nonroot = list(common)
+    nonroot[2] = "B01C"
+    assert validate_b_receipt.main([
+        *nonroot[:-1], "--premerge-provider-proof", "--receipt-pr", "35", nonroot[-1]
+    ]) == 2
+    assert "defined only for B00R" in capsys.readouterr().err

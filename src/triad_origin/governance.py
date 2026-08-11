@@ -506,12 +506,45 @@ def _safe_relpath(path: str) -> bool:
     return ".." not in parts and "" not in parts and "." not in parts
 
 
+def _empty_evidence_stream_allowed(
+    rel: str,
+    entry: dict,
+    allowed_empty_paths: set[str] | frozenset[str],
+) -> bool:
+    """Allow only raw clean-runner process streams to truthfully be empty.
+
+    Empty semantic evidence remains forbidden.  A successful command or rollback can legitimately
+    emit no stderr/stdout, however, and adding marker bytes would falsify the captured stream.  The
+    clean-runner semantic validator independently requires every allowed path, role, digest, size,
+    command binding, and return code.
+    """
+    if rel not in allowed_empty_paths:
+        return False
+    role = entry.get("role")
+    role_unique = entry.get("role_unique")
+    command_stderr = re.fullmatch(
+        r"evidence/B00R_G2/clean_runner/commands/[0-9]{2}-[a-z0-9-]+/stderr\.bin",
+        rel)
+    if (command_stderr is not None
+            and role == "CLEAN_RUNNER_COMMAND_STDERR"
+            and role_unique is False):
+        return True
+    rollback_streams = {
+        "evidence/B00R_G2/clean_runner/rollback/stdout.bin":
+            "CLEAN_RUNNER_ROLLBACK_STDOUT",
+        "evidence/B00R_G2/clean_runner/rollback/stderr.bin":
+            "CLEAN_RUNNER_ROLLBACK_STDERR",
+    }
+    return rollback_streams.get(rel) == role and role_unique is True
+
+
 def validate_evidence_manifest(
     manifest: dict,
     root,
     *,
     expected_paths: set[str] | None = None,
     tracked_paths: set[str] | None = None,
+    allowed_empty_paths: set[str] | frozenset[str] | None = None,
 ) -> None:
     """Validate a closed evidence manifest against committed bytes.
 
@@ -520,6 +553,11 @@ def validate_evidence_manifest(
     """
     import pathlib
     root = pathlib.Path(root).resolve(strict=True)
+    if allowed_empty_paths is None:
+        allowed_empty_paths = frozenset()
+    if (not isinstance(allowed_empty_paths, (set, frozenset))
+            or any(not _safe_relpath(path) for path in allowed_empty_paths)):
+        raise GovernanceError("EVIDENCE_ALLOWED_EMPTY_PATHS_INVALID")
     validate_structure(manifest, "triad.evidence_manifest.v1")
     entries = manifest.get("entries")
     if not isinstance(entries, list) or not entries:
@@ -530,7 +568,7 @@ def validate_evidence_manifest(
     if declared_order != sorted(declared_order):
         raise GovernanceError("EVIDENCE_PATHS_NOT_CANONICAL_ORDER")
     seen_paths: set[str] = set()
-    seen_roles: set[str] = set()
+    seen_roles: dict[str, bool] = {}
     for entry in entries:
         rel = entry.get("path")
         if not _safe_relpath(rel):
@@ -541,9 +579,13 @@ def validate_evidence_manifest(
         if tracked_paths is not None and rel not in tracked_paths:
             raise GovernanceError(f"EVIDENCE_UNTRACKED_FILE: {rel}")
         role = entry.get("role")
-        if role in seen_roles and entry.get("role_unique", True):
+        role_unique = entry.get("role_unique", True)
+        # A role is repeatable only when every occurrence explicitly opts out of uniqueness.
+        # Checking only the later entry lets ``unique=true`` followed by ``unique=false`` evade
+        # the declaration made by the first record.
+        if role in seen_roles and (seen_roles[role] or role_unique):
             raise GovernanceError(f"EVIDENCE_DUPLICATE_ROLE: {role}")
-        seen_roles.add(role)
+        seen_roles.setdefault(role, role_unique)
         abspath = root / rel
         # Inspect exactly the candidate and its ancestors up to the evidence root.  Walking
         # ``Path.parents`` unbounded would inspect unrelated ancestors above ``root`` and could
@@ -567,7 +609,9 @@ def validate_evidence_manifest(
         if not abspath.is_file():
             raise GovernanceError(f"EVIDENCE_MISSING_FILE: {rel}")
         data = abspath.read_bytes()
-        if len(data) == 0:
+        if len(data) == 0 and not _empty_evidence_stream_allowed(
+            rel, entry, allowed_empty_paths
+        ):
             raise GovernanceError(f"EVIDENCE_ZERO_SIZE: {rel}")
         declared_size = entry.get("size")
         if declared_size is not None and declared_size != len(data):
@@ -596,6 +640,9 @@ def build_evidence_manifest(root, entries: list[dict]) -> dict:
     root = pathlib.Path(root)
     out = []
     for entry in sorted(entries, key=lambda e: e["path"]):
+        unknown = set(entry) - {"path", "role", "media_type", "role_unique"}
+        if unknown:
+            raise GovernanceError(f"EVIDENCE_SPEC_ENTRY_UNKNOWN_FIELDS:{sorted(unknown)}")
         rel = entry["path"]
         if not _safe_relpath(rel):
             raise GovernanceError(f"EVIDENCE_PATH_UNSAFE: {rel!r}")
@@ -604,13 +651,21 @@ def build_evidence_manifest(root, entries: list[dict]) -> dict:
             raise GovernanceError(f"EVIDENCE_NOT_A_TRACKED_FILE: {rel}")
         data = abspath.read_bytes()
         media = "application/json" if rel.endswith(".json") else "application/octet-stream"
-        out.append({
+        built_entry = {
             "path": rel,
             "role": entry["role"],
             "media_type": entry.get("media_type", media),
             "size": len(data),
             "sha256": sha256_hex(data),
-        })
+        }
+        # ``role_unique`` is receipt-binding law, not presentation metadata.  Several B00R G2
+        # provider records are required to carry the literal boolean ``true``; dropping it while
+        # resolving file bytes produces a manifest that passes the generic validator but is
+        # mechanically unusable by the strict receipt validator.  Preserve the caller's explicit
+        # declaration and let the manifest schema reject non-boolean values.
+        if "role_unique" in entry:
+            built_entry["role_unique"] = entry["role_unique"]
+        out.append(built_entry)
     return {
         "schema": "triad.evidence_manifest.v1",
         "schema_version": "1.0.0",

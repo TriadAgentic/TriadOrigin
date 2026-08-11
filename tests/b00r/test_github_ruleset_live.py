@@ -22,6 +22,7 @@ from tools.github_ruleset_live import (
     fetch_and_match_pull_request,
     fetch_and_match_pull_request_review,
     fetch_and_match_rule_suite,
+    fetch_and_verify_receipt_head,
     fetch_and_verify_receipt_merge,
     fetch_anchor_tag_object_sha,
     fetch_canary_ref_sha,
@@ -636,6 +637,9 @@ def _receipt_provider_documents() -> dict[str, object]:
                 "event": "pull_request",
                 "status": "completed",
                 "conclusion": "success",
+                "run_attempt": 1,
+                "created_at": "1970-01-01T00:00:17Z",
+                "run_started_at": "1970-01-01T00:00:17Z",
                 "updated_at": "1970-01-01T00:00:18Z",
                 "path": ".github/workflows/ci.yml@main",
                 "check_suite_id": 8001,
@@ -652,6 +656,7 @@ def _receipt_provider_documents() -> dict[str, object]:
                 "head_sha": head_sha,
                 "status": "completed",
                 "conclusion": "success",
+                "started_at": "1970-01-01T00:00:17Z",
                 "completed_at": "1970-01-01T00:00:18Z",
                 "app": {"id": 15368},
                 "check_suite": {"id": 8001},
@@ -693,6 +698,308 @@ def test_live_receipt_merge_binds_pr_review_actions_check_and_main_ancestry():
     assert proof.check_run_id == 8002
 
 
+def _receipt_premerge_documents() -> dict[str, object]:
+    documents = _receipt_provider_documents()
+    pr = documents[pull_request_url(35)]
+    pr.update({"state": "open", "merged": False, "merged_at": None, "draft": False})
+    pr["base"]["sha"] = "c" * 40
+    return documents
+
+
+def _add_older_workflow_rerun(
+    documents: dict[str, object], *, failing_layer: str, outcome: str
+) -> None:
+    workflows = documents[workflow_runs_for_head_url("e" * 40)]
+    prior_workflow = workflows["workflow_runs"][0]
+    workflow_terminal = failing_layer == "check" or outcome == "failure"
+    workflows["workflow_runs"].append({
+        **copy.deepcopy(prior_workflow),
+        "id": 9000,
+        "check_suite_id": 8000,
+        "run_attempt": 2,
+        "created_at": "1970-01-01T00:00:09Z",
+        "run_started_at": "1970-01-01T00:00:19Z",
+        "updated_at": "1970-01-01T00:00:19Z",
+        "status": "completed" if workflow_terminal else "in_progress",
+        "conclusion": (
+            "success" if failing_layer == "check"
+            else "failure" if outcome == "failure"
+            else None
+        ),
+    })
+    workflows["total_count"] = 2
+
+    checks = documents[check_runs_for_head_url("e" * 40)]
+    prior_check = checks["check_runs"][0]
+    check_terminal = outcome == "failure"
+    checks["check_runs"].append({
+        **copy.deepcopy(prior_check),
+        "id": 8000,
+        "check_suite": {"id": 8000},
+        "started_at": "1970-01-01T00:00:19Z",
+        "status": "completed" if check_terminal else "in_progress",
+        "conclusion": "failure" if check_terminal else None,
+        "completed_at": "1970-01-01T00:00:19Z" if check_terminal else None,
+    })
+    checks["total_count"] = 2
+
+
+def test_live_receipt_premerge_binds_open_pr_base_head_review_and_latest_ci():
+    documents = _receipt_premerge_documents()
+    proof = fetch_and_verify_receipt_head(
+        35,
+        expected_head_sha="e" * 40,
+        expected_base_sha="c" * 40,
+        expected_codeowner="djordi10",
+        token="token",
+        now_us=NOW_US,
+        opener=_provider_opener(documents),
+    )
+    assert proof.base_sha == "c" * 40
+    assert proof.head_sha == "e" * 40
+    assert proof.review_id == 7001
+    assert proof.workflow_run_id == 9001
+    assert proof.check_run_id == 8002
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason"),
+    [
+        (lambda docs: docs[pull_request_url(35)]["base"].__setitem__("sha", "b" * 40),
+         "PREMERGE_PR_IDENTITY_MISMATCH"),
+        (lambda docs: docs[pull_request_url(35)]["head"].__setitem__("sha", "b" * 40),
+         "PREMERGE_PR_IDENTITY_MISMATCH"),
+        (lambda docs: docs[pull_request_url(35)].__setitem__("draft", True),
+         "PREMERGE_PR_IDENTITY_MISMATCH"),
+        (lambda docs: docs[pull_request_reviews_url(35)].clear(),
+         "PREMERGE_EXACT_HEAD_CODEOWNER_APPROVAL_COUNT:0"),
+        (lambda docs: docs[workflow_runs_for_head_url("e" * 40)][
+            "workflow_runs"][0].__setitem__("conclusion", "failure"),
+         "PREMERGE_LATEST_WORKFLOW_NOT_SUCCESS"),
+        (lambda docs: docs[check_runs_for_head_url("e" * 40)][
+            "check_runs"][0].__setitem__("conclusion", "failure"),
+         "PREMERGE_LATEST_CHECK_NOT_SUCCESS"),
+    ],
+)
+def test_live_receipt_premerge_rejects_false_green_paths(mutation, reason):
+    documents = _receipt_premerge_documents()
+    mutation(documents)
+    with pytest.raises(LiveRulesetMismatch, match=reason):
+        fetch_and_verify_receipt_head(
+            35,
+            expected_head_sha="e" * 40,
+            expected_base_sha="c" * 40,
+            expected_codeowner="djordi10",
+            token="token",
+            now_us=NOW_US,
+            opener=_provider_opener(documents),
+        )
+
+
+@pytest.mark.parametrize("latest_kind", ["workflow", "check"])
+def test_live_receipt_premerge_rejects_newer_pending_actions(latest_kind):
+    documents = _receipt_premerge_documents()
+    if latest_kind == "workflow":
+        workflows = documents[workflow_runs_for_head_url("e" * 40)]
+        workflows["workflow_runs"].append({
+            **copy.deepcopy(workflows["workflow_runs"][0]),
+            "id": 9002,
+            "check_suite_id": 8003,
+            "status": "in_progress",
+            "conclusion": None,
+            "created_at": "1970-01-01T00:00:19Z",
+            "run_started_at": "1970-01-01T00:00:19Z",
+            "updated_at": "1970-01-01T00:00:19Z",
+        })
+        workflows["total_count"] = 2
+        reason = "PREMERGE_LATEST_WORKFLOW_NOT_SUCCESS"
+    else:
+        checks = documents[check_runs_for_head_url("e" * 40)]
+        checks["check_runs"].append({
+            **copy.deepcopy(checks["check_runs"][0]),
+            "id": 8003,
+            "status": "in_progress",
+            "conclusion": None,
+            "started_at": "1970-01-01T00:00:19Z",
+            "completed_at": None,
+        })
+        checks["total_count"] = 2
+        reason = "PREMERGE_LATEST_CHECK_NOT_SUCCESS"
+    with pytest.raises(LiveRulesetMismatch, match=reason):
+        fetch_and_verify_receipt_head(
+            35,
+            expected_head_sha="e" * 40,
+            expected_base_sha="c" * 40,
+            expected_codeowner="djordi10",
+            token="token",
+            now_us=NOW_US,
+            opener=_provider_opener(documents),
+        )
+
+
+@pytest.mark.parametrize("failing_layer", ["workflow", "check"])
+@pytest.mark.parametrize("outcome", ["pending", "failure"])
+def test_live_receipt_premerge_rejects_older_run_current_rerun(
+    failing_layer, outcome
+):
+    documents = _receipt_premerge_documents()
+    _add_older_workflow_rerun(
+        documents, failing_layer=failing_layer, outcome=outcome)
+    reason = (
+        "PREMERGE_LATEST_WORKFLOW_NOT_SUCCESS"
+        if failing_layer == "workflow"
+        else "PREMERGE_LATEST_CHECK_NOT_SUCCESS"
+    )
+    with pytest.raises(LiveRulesetMismatch, match=reason):
+        fetch_and_verify_receipt_head(
+            35,
+            expected_head_sha="e" * 40,
+            expected_base_sha="c" * 40,
+            expected_codeowner="djordi10",
+            token="token",
+            now_us=NOW_US,
+            opener=_provider_opener(documents),
+        )
+
+
+def test_live_receipt_merge_selects_latest_success_from_retained_provider_history():
+    documents = _receipt_provider_documents()
+    reviews = documents[pull_request_reviews_url(35)]
+    reviews.insert(0, {
+        **copy.deepcopy(reviews[0]),
+        "id": 7000,
+        "submitted_at": "1970-01-01T00:00:10Z",
+    })
+    workflows = documents[workflow_runs_for_head_url("e" * 40)]
+    workflows["workflow_runs"].insert(0, {
+        **copy.deepcopy(workflows["workflow_runs"][0]),
+        "id": 9000,
+        "check_suite_id": 8000,
+        "created_at": "1970-01-01T00:00:09Z",
+        "run_started_at": "1970-01-01T00:00:09Z",
+        "updated_at": "1970-01-01T00:00:10Z",
+    })
+    workflows["total_count"] = 2
+    checks = documents[check_runs_for_head_url("e" * 40)]
+    checks["check_runs"].insert(0, {
+        **copy.deepcopy(checks["check_runs"][0]),
+        "id": 8000,
+        "check_suite": {"id": 8000},
+        "started_at": "1970-01-01T00:00:09Z",
+        "completed_at": "1970-01-01T00:00:10Z",
+    })
+    checks["total_count"] = 2
+
+    proof = fetch_and_verify_receipt_merge(
+        35,
+        expected_merge_sha="d" * 40,
+        expected_codeowner="djordi10",
+        token="token",
+        now_us=NOW_US,
+        opener=_provider_opener(documents),
+    )
+    assert proof.review_id == 7001
+    assert proof.workflow_run_id == 9001
+    assert proof.check_run_id == 8002
+
+
+@pytest.mark.parametrize("latest_kind", ["workflow", "check"])
+def test_live_receipt_merge_rejects_latest_relevant_actions_failure(latest_kind):
+    documents = _receipt_provider_documents()
+    if latest_kind == "workflow":
+        workflows = documents[workflow_runs_for_head_url("e" * 40)]
+        workflows["workflow_runs"].append({
+            **copy.deepcopy(workflows["workflow_runs"][0]),
+            "id": 9002,
+            "check_suite_id": 8003,
+            "conclusion": "failure",
+            "updated_at": "1970-01-01T00:00:19Z",
+        })
+        workflows["total_count"] = 2
+        reason = "LATEST_WORKFLOW_NOT_SUCCESS"
+    else:
+        checks = documents[check_runs_for_head_url("e" * 40)]
+        checks["check_runs"].append({
+            **copy.deepcopy(checks["check_runs"][0]),
+            "id": 8003,
+            "conclusion": "failure",
+            "completed_at": "1970-01-01T00:00:19Z",
+        })
+        checks["total_count"] = 2
+        reason = "LATEST_CHECK_NOT_SUCCESS"
+    with pytest.raises(LiveRulesetMismatch, match=reason):
+        fetch_and_verify_receipt_merge(
+            35,
+            expected_merge_sha="d" * 40,
+            expected_codeowner="djordi10",
+            token="token",
+            now_us=NOW_US,
+            opener=_provider_opener(documents),
+        )
+
+
+@pytest.mark.parametrize("latest_kind", ["workflow", "check"])
+def test_live_receipt_merge_rejects_newer_pending_actions(latest_kind):
+    documents = _receipt_provider_documents()
+    if latest_kind == "workflow":
+        workflows = documents[workflow_runs_for_head_url("e" * 40)]
+        workflows["workflow_runs"].append({
+            **copy.deepcopy(workflows["workflow_runs"][0]),
+            "id": 9002,
+            "check_suite_id": 8003,
+            "status": "in_progress",
+            "conclusion": None,
+            "created_at": "1970-01-01T00:00:19Z",
+            "run_started_at": "1970-01-01T00:00:19Z",
+            "updated_at": "1970-01-01T00:00:19Z",
+        })
+        workflows["total_count"] = 2
+        reason = "LATEST_WORKFLOW_NOT_SUCCESS"
+    else:
+        checks = documents[check_runs_for_head_url("e" * 40)]
+        checks["check_runs"].append({
+            **copy.deepcopy(checks["check_runs"][0]),
+            "id": 8003,
+            "status": "in_progress",
+            "conclusion": None,
+            "started_at": "1970-01-01T00:00:19Z",
+            "completed_at": None,
+        })
+        checks["total_count"] = 2
+        reason = "LATEST_CHECK_NOT_SUCCESS"
+    with pytest.raises(LiveRulesetMismatch, match=reason):
+        fetch_and_verify_receipt_merge(
+            35,
+            expected_merge_sha="d" * 40,
+            expected_codeowner="djordi10",
+            token="token",
+            now_us=NOW_US,
+            opener=_provider_opener(documents),
+        )
+
+
+@pytest.mark.parametrize("failing_layer", ["workflow", "check"])
+@pytest.mark.parametrize("outcome", ["pending", "failure"])
+def test_live_receipt_merge_rejects_older_run_current_rerun(failing_layer, outcome):
+    documents = _receipt_provider_documents()
+    _add_older_workflow_rerun(
+        documents, failing_layer=failing_layer, outcome=outcome)
+    reason = (
+        "LATEST_WORKFLOW_NOT_SUCCESS"
+        if failing_layer == "workflow"
+        else "LATEST_CHECK_NOT_SUCCESS"
+    )
+    with pytest.raises(LiveRulesetMismatch, match=reason):
+        fetch_and_verify_receipt_merge(
+            35,
+            expected_merge_sha="d" * 40,
+            expected_codeowner="djordi10",
+            token="token",
+            now_us=NOW_US,
+            opener=_provider_opener(documents),
+        )
+
+
 @pytest.mark.parametrize(
     ("mutation", "reason"),
     [
@@ -711,26 +1018,26 @@ def test_live_receipt_merge_binds_pr_review_actions_check_and_main_ancestry():
         }), "APPROVAL_SUPERSEDED"),
         (lambda docs: docs[workflow_runs_for_head_url("e" * 40)][
             "workflow_runs"][0].__setitem__("path", ".github/workflows/ci.yml"),
-         "SUCCESS_WORKFLOW_COUNT:0"),
+         "RELEVANT_WORKFLOW_COUNT:0"),
         (lambda docs: docs[workflow_runs_for_head_url("e" * 40)].__setitem__(
             "total_count", 2), "WORKFLOW_RUNS_MALFORMED"),
         (lambda docs: docs[workflow_runs_for_head_url("e" * 40)][
             "workflow_runs"][0].__setitem__("conclusion", "failure"),
-         "SUCCESS_WORKFLOW_COUNT:0"),
+         "LATEST_WORKFLOW_NOT_SUCCESS"),
         (lambda docs: docs[workflow_runs_for_head_url("e" * 40)][
             "workflow_runs"][0].__setitem__(
                 "updated_at", "1970-01-01T00:00:20Z"),
-         "SUCCESS_WORKFLOW_COUNT:0"),
+         "LATEST_WORKFLOW_NOT_BEFORE_MERGE"),
         (lambda docs: docs[check_runs_for_head_url("e" * 40)][
             "check_runs"][0]["app"].__setitem__("id", 1),
-         "REQUIRED_CHECK_COUNT:0"),
+         "RELEVANT_CHECK_COUNT:0"),
         (lambda docs: docs[check_runs_for_head_url("e" * 40)][
             "check_runs"][0].__setitem__("name", "CI / test-and-verify"),
-         "REQUIRED_CHECK_COUNT:0"),
+         "RELEVANT_CHECK_COUNT:0"),
         (lambda docs: docs[check_runs_for_head_url("e" * 40)][
             "check_runs"][0].__setitem__(
                 "completed_at", "1970-01-01T00:00:20Z"),
-         "REQUIRED_CHECK_COUNT:0"),
+         "LATEST_CHECK_NOT_BEFORE_MERGE"),
         (lambda docs: docs[check_runs_for_head_url("e" * 40)].__setitem__(
             "total_count", 2), "CHECK_RUNS_MALFORMED"),
         (lambda docs: docs[compare_receipt_merge_to_main_url("d" * 40)].__setitem__(

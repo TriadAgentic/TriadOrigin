@@ -262,6 +262,10 @@ def load_external_pins(
     unknown = set(pins) - allowed
     if unknown:
         raise AuthorityRootError(f"UNKNOWN_EXTERNAL_PIN_NAMES:{sorted(unknown)}")
+    if pins_path is not None and set(pins) != allowed:
+        raise AuthorityRootError(
+            "EXTERNAL_PIN_FILE_KEY_SET_MISMATCH:"
+            f"missing={sorted(allowed-set(pins))}:extra={sorted(set(pins)-allowed)}")
     for name in allowed:
         # GitHub `${{ vars.NAME }}` expands an undefined variable to the empty string. Treat that
         # exact representation as absent owner input (UNAVAILABLE), not as a malformed supplied

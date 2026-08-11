@@ -99,7 +99,7 @@ def test_ci_never_ignores_owner_validators_and_wires_external_pins():
     assert "name: Strict B00R authority control" in workflow
     assert "name: Nonterminal B00R provider revalidation" in workflow
     assert "name: Mark deterministic engineering complete" in workflow
-    assert workflow.count("steps.engineering_complete.outcome == 'success'") == 5
+    assert workflow.count("steps.engineering_complete.outcome == 'success'") == 6
     assert "Source safe-hold governance report" not in workflow
     owner_offset = workflow.index("name: Concrete critical-path CODEOWNERS identity")
     for completed_first in (
@@ -116,8 +116,8 @@ def test_ci_never_ignores_owner_validators_and_wires_external_pins():
     assert "name: Resolve trusted owner-validation time" not in workflow
     assert "NOW_US: ${{ steps.owner_time.outputs.now_us }}" not in workflow
     assert "NOW_US: ${{ steps.event_facts.outputs.now_us }}" not in workflow
-    assert workflow.count('NOW_US="$(date -u +%s)000000"') == 6
-    assert workflow.count('--expected-head "$EXPECTED_HEAD"') == 6
+    assert workflow.count('NOW_US="$(date -u +%s)000000"') == 8
+    assert workflow.count('--expected-head "$EXPECTED_HEAD"') == 8
     assert workflow.count("--git-root .") == 5
     assert workflow.count("--repair-generation 2") == 2
     for name in (

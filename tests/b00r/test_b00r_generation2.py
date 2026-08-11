@@ -185,6 +185,29 @@ def test_policy_ledger_and_generation_1_immutable_bindings_are_consistent():
         "strict_required_status_checks_policy": True,
         "target_refs": ["refs/heads/main", "refs/heads/b00r-ruleset-canary"],
     }
+    assert policy["clean_runner_law"]["canonical_receipt_roles"] == {
+        "WORKFLOW": "evidence/B00R_G2/clean_runner/source/ci.yml",
+        "CONTRACT_MANIFEST": (
+            "evidence/B00R_G2/clean_runner/source/contracts.MANIFEST.sha256"
+        ),
+        "TEST_MANIFEST": "evidence/B00R_G2/clean_runner/tests/test_manifest.v1.json",
+        "CONFIG_BUNDLE": "evidence/B00R_G2/clean_runner/config/config_bundle.v1.json",
+        "ROLLBACK_PROOF": (
+            "evidence/B00R_G2/clean_runner/rollback/rollback_proof.v1.json"
+        ),
+    }
+    assert policy["clean_runner_law"]["commands"] == [
+        "pytest-seed0", "pytest-seed1", "collect-test-ids", "verify-manifest",
+        "validate-contract-manifest", "verify-reproducible-build", "test-wheel-install",
+        "verify-no-forbidden-capabilities", "e2e-audit", "build-ledger",
+        "validate-combined-dag",
+    ]
+    assert policy["receipt_premerge_law"]["result"].startswith("OK_PREMERGE only")
+    assert "visible empty bypass_actors" in policy["receipt_premerge_law"]["tag_ruleset"]
+    assert policy["closure_anchor"]["tag_ruleset_chronology"] == (
+        "created_at <= updated_at < receipt observed_at_us <= emitted_at_us < "
+        "receipt provider merged_at"
+    )
 
     assert old_receipt["payload"]["repair_generation"] == 1
     assert old_receipt_digest == generation_1["receipt_sha256"] \

@@ -50,13 +50,12 @@ the integration-bound strict CI context and independent review controls, and per
 ordinary `merge` method. Provider capture, external pin, rejected canary, exact-head CI, and
 independent review must all satisfy the chronology enforced by the validators.
 
-GitHub reads CODEOWNERS from the PR base, not from the proposed head. Therefore `@djordi10` must
-first be made the exact critical-path owner on `main` through a separate, independently reviewed
-bootstrap (or the existing base team must be made real and then perform that bootstrap). The
-corrective source must be refreshed from that main commit. The receipt validator requires an
-ordinary two-parent merge whose literal first parent is the recorded bootstrap merge; it
-byte-compares that parent's CODEOWNERS and requires the second parent/tree to equal the reviewed
-source head. Reserve `main`: no merge may intervene from bootstrap through source and receipt.
+GitHub reads CODEOWNERS from the PR base, not from the proposed head. The required independent
+bootstrap is complete: PR #35 merged the exact sole-owner bytes by ordinary two-parent merge at
+`ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd`. The corrective source is based on that literal commit.
+The receipt validator byte-compares the first parent's CODEOWNERS and requires the source merge's
+second parent/tree to equal the reviewed source head. Reserve `main`: no merge may intervene from
+that bootstrap through the source and receipt merges.
 
 ## Generation-2 canonical receipt layout
 
@@ -99,9 +98,11 @@ B00R_RECEIPT_ANCHOR_G2
 
 Its message profile is `TRIAD-B00R-RECEIPT-ANCHOR-G2-V1` and binds the G2 receipt path and SHA-256.
 The tag must point to the exact receipt merge. Its active exact-ref update/deletion/no-bypass
-ruleset is installed, captured, and externally pinned before the final receipt head is signed or
-reviewed. Its `created_at <= updated_at < receipt merged_at` chronology is strict. Terminal
-validation requires a positive receipt PR number and freshly revalidates the rule and anchor.
+ruleset is installed, captured, and externally pinned before receipt observation, signing, or
+review. Its strict chronology is
+`created_at <= updated_at < receipt observed_at_us <= emitted_at_us < receipt provider merged_at`.
+Terminal validation requires a positive receipt PR number and freshly revalidates the rule and
+anchor.
 
 The generation-1 anchor is never moved and does not satisfy this requirement. The terminal gate may
 return only `PASS_REPOSITORY_SAFE_HOLD`; it does not authorize a venue or deployed runtime.

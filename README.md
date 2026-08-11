@@ -60,8 +60,10 @@ python tools/verify_no_forbidden_capabilities.py
 ```
 
 Test count is descriptive, not acceptance evidence. A milestone also requires exact-head CI,
-resolved actionable findings, authenticated clean acceptance for that same immutable head, guarded
-squash merge, fresh-main reproduction, and an immutable receipt. For corrective R00, a persistent
+resolved actionable findings, authenticated clean acceptance for that same immutable head, the
+provider-enforced merge method required by its active receipt law, fresh-main reproduction, and an
+immutable receipt. B00R generation 2 specifically requires an ordinary two-parent merge; squash and
+rebase are forbidden. For corrective R00, a persistent
 connector PR-root `+1` is corroboration only; final-head acceptance requires its own fresh clean
 Codex artifact, an exact reviewed historical review/comment baseline, unedited top-level comments,
 and a complete timeline proving no later head/base mutation or review dismissal. Both acceptance

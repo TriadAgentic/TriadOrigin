@@ -9,6 +9,9 @@ import pathlib
 import re
 import sys
 
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
 try:  # importable both as `python tools/...` and as `from tools import ...`
     from tools.github_ruleset_live import (  # type: ignore
         LiveRulesetError, LiveRulesetUnavailable,
@@ -18,7 +21,6 @@ except ModuleNotFoundError:  # pragma: no cover - direct script fallback
         LiveRulesetError, LiveRulesetUnavailable,
         fetch_codeowners_errors, fetch_repository_permission)
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
 DEFAULT = ROOT / ".github" / "CODEOWNERS"
 MAX_CODEOWNERS_BYTES = 3 * 1024 * 1024
 KNOWN_PLACEHOLDERS = frozenset(

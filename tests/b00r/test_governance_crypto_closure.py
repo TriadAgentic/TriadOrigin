@@ -24,7 +24,9 @@ from tools.validate_authority_root import (  # noqa: E402
     load_authority_context, validate_git_bound_authority)
 from tools.validate_b_receipt import (  # noqa: E402
     ReceiptBindingError, _validate_codeowners_bootstrap, _validate_provider_negative_canary,
-    _validate_source_pr_provider_record, validate_receipt_bindings)
+    _validate_receipt_digest_roles, _validate_source_pr_provider_record,
+    _validate_tag_ruleset_manifest_entry,
+    validate_receipt_bindings)
 from tools.validate_governance_snapshot import _validate_git_binding  # noqa: E402
 from tools.verify_codeowners import CRITICAL_PATTERNS  # noqa: E402
 
@@ -876,7 +878,85 @@ def _provider_time(root: pathlib.Path, commit: str) -> str:
     return datetime.fromtimestamp(seconds, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def test_tag_ruleset_provider_manifest_binding_is_exact_and_unique():
+    canonical = {
+        "path": "evidence/B00R_G2/tag_ruleset.provider.json",
+        "role": "TAG_RULESET_PROVIDER",
+        "role_unique": True,
+    }
+    _validate_tag_ruleset_manifest_entry([canonical])
+    attacks = [
+        [],
+        [{**canonical, "path": "evidence/B00R_G2/tag-ruleset.json"}],
+        [{**canonical, "role_unique": False}],
+        [canonical, {**canonical, "path": "evidence/B00R_G2/duplicate.json"}],
+    ]
+    for entries in attacks:
+        with pytest.raises(
+            ReceiptBindingError, match="TAG_RULESET_PROVIDER_ROLE_COUNT_OR_PATH"
+        ):
+            _validate_tag_ruleset_manifest_entry(entries)
+
+
+def test_receipt_digest_roles_are_explicit_singletons_not_last_wins():
+    roles = {
+        "WORKFLOW": "workflow_sha256",
+        "CONTRACT_MANIFEST": "contract_manifest_sha256",
+        "TEST_MANIFEST": "test_manifest_sha256",
+        "CONFIG_BUNDLE": "config_bundle_sha256",
+        "ROLLBACK_PROOF": "rollback_proof_sha256",
+    }
+    payload = {field: chr(97 + index) * 64
+               for index, field in enumerate(roles.values())}
+    entries = [
+        {"path": f"evidence/{role}.json", "role": role, "role_unique": True,
+         "sha256": payload[field]}
+        for role, field in roles.items()
+    ]
+    _validate_receipt_digest_roles(entries, payload)
+    duplicate = copy.deepcopy(entries)
+    duplicate[0]["role_unique"] = False
+    duplicate.append({
+        **copy.deepcopy(duplicate[0]),
+        "path": "evidence/duplicate-workflow.json",
+    })
+    with pytest.raises(
+        ReceiptBindingError, match="RESERVED_ROLE_COUNT_OR_UNIQUENESS:WORKFLOW:2"
+    ):
+        _validate_receipt_digest_roles(duplicate, payload)
+
+
+def test_successor_receipt_digest_roles_retain_legacy_implicit_singleton():
+    roles = {
+        "WORKFLOW": "workflow_sha256",
+        "CONTRACT_MANIFEST": "contract_manifest_sha256",
+        "TEST_MANIFEST": "test_manifest_sha256",
+        "CONFIG_BUNDLE": "config_bundle_sha256",
+        "ROLLBACK_PROOF": "rollback_proof_sha256",
+    }
+    payload = {field: chr(97 + index) * 64
+               for index, field in enumerate(roles.values())}
+    entries = [
+        {"path": f"evidence/B01C/{role}.json", "role": role,
+         "sha256": payload[field]}
+        for role, field in roles.items()
+    ]
+    _validate_receipt_digest_roles(
+        entries, payload, require_explicit_unique=False)
+    entries[0]["role_unique"] = False
+    with pytest.raises(
+        ReceiptBindingError, match="RESERVED_ROLE_COUNT_OR_UNIQUENESS:WORKFLOW:1"
+    ):
+        _validate_receipt_digest_roles(
+            entries, payload, require_explicit_unique=False)
+
+
 def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path, monkeypatch):
+    clean_runner_calls = []
+    monkeypatch.setattr(
+        "tools.validate_b_receipt.validate_clean_runner_bundle",
+        lambda *args, **kwargs: clean_runner_calls.append((args, kwargs)),
+    )
     repo = tmp_path / "repo"
     repo.mkdir()
     _git(repo, "init", "-b", "main")
@@ -938,8 +1018,9 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path, m
         path.parent.mkdir(parents=True, exist_ok=True)
         data = canonical_json({"role": role})
         path.write_bytes(data)
-        entries.append({"path": rel, "role": role, "media_type": "application/json",
-                        "size": len(data), "sha256": sha256_hex(data)})
+        entries.append({"path": rel, "role": role, "role_unique": True,
+                        "media_type": "application/json", "size": len(data),
+                        "sha256": sha256_hex(data)})
     transcript_rel = "evidence/B00R_G2/provider_negative_canary.transcript.txt"
     transcript = (
         b"TRIAD_CANARY_REF=refs/heads/b00r-ruleset-canary\n"
@@ -1122,6 +1203,17 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path, m
         "size": len(bootstrap_review_record),
         "sha256": sha256_hex(bootstrap_review_record),
     })
+    tag_ruleset_rel = "evidence/B00R_G2/tag_ruleset.provider.json"
+    tag_ruleset = canonical_json({"id": 42, "capture": "unit-test"})
+    (repo / tag_ruleset_rel).write_bytes(tag_ruleset)
+    entries.append({
+        "path": tag_ruleset_rel,
+        "role": "TAG_RULESET_PROVIDER",
+        "role_unique": True,
+        "media_type": "application/json",
+        "size": len(tag_ruleset),
+        "sha256": sha256_hex(tag_ruleset),
+    })
     entries.sort(key=lambda item: item["path"])
     manifest = {"schema": "triad.evidence_manifest.v1", "schema_version": "1.0.0",
                 "manifest_kind": "EVIDENCE_MANIFEST", "entry_count": len(entries),
@@ -1158,22 +1250,34 @@ def test_receipt_binding_rejects_unlisted_tracked_milestone_evidence(tmp_path, m
     _git(repo, "add", "evidence")
     _git_at(repo, "1970-01-01T00:00:40Z", "commit", "-m", "receipt")
     receipt_head = _git(repo, "rev-parse", "HEAD")
-    _git(repo, "checkout", "main")
-    _git_at(
-        repo, "1970-01-01T00:00:50Z", "merge", "--no-ff", "generation-2-receipt",
-        "-m", "merge receipt")
-    head = _git(repo, "rev-parse", "HEAD")
     authority = AuthorityContext(
         trust={}, decisions={"b00_repair": {"effective_at_us": 1, "subject_sha256s": {
             "generation_ledger": "e" * 64, "audited_start_sha": audited_start}}},
         digests={"b00_repair": "d" * 64}, receipt_threshold=2,
         receipt_roles=("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER"),
         receipt_algorithm="ed25519")
+    monkeypatch.setattr(
+        "tools.validate_b_receipt.fetch_and_verify_receipt_head",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            head_sha=receipt_head, base_sha=source),
+    )
+    validate_receipt_bindings(
+        receipt, receipt_path=receipt_path, manifest_path=manifest_path, git_root=repo,
+        expected_head=receipt_head, authority=authority,
+        governance_evidence_paths=(snapshot_path, provider_raw_path),
+        now_us=45_000_000, github_token="token", require_live_source_pr=False,
+        receipt_pr=35, require_live_receipt_head=True)
+    _git(repo, "checkout", "main")
+    _git_at(
+        repo, "1970-01-01T00:00:50Z", "merge", "--no-ff", "generation-2-receipt",
+        "-m", "merge receipt")
+    head = _git(repo, "rev-parse", "HEAD")
     validate_receipt_bindings(
         receipt, receipt_path=receipt_path, manifest_path=manifest_path, git_root=repo,
         expected_head=head, authority=authority,
         governance_evidence_paths=(snapshot_path, provider_raw_path),
         require_live_source_pr=False)
+    assert clean_runner_calls
 
     monkeypatch.setattr(
         "tools.validate_b_receipt.fetch_and_verify_receipt_merge",

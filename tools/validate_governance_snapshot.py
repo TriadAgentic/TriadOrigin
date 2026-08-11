@@ -12,6 +12,7 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 from triad_origin import governance  # noqa: E402
 try:  # importable both as `python tools/...` and as `from tools import ...`
