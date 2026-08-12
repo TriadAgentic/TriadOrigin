@@ -73,23 +73,35 @@ def require(params: Params, name: str) -> Any:
     return value
 
 
-def require_bundle(bundle: Any, parameter_id: str) -> Any:
-    """Fetch a required parameter from an authenticated, sealed capability, or fail closed.
+def require_bundle(bundle: Any, parameter_id: str, *, formula_id: str, ctx: Any) -> Any:
+    """Verify a sealed parameter bundle by CONTENT and resolve one parameter (spec §C.1).
 
-    B01C-BIND-05: the public production path accepts ONLY an exact
-    :class:`~triad_origin.bindings.ResolvedParameterBundle` — the unforgeable capability the
-    authenticated loader constructs. A raw dict, a copied/forged dataclass, a subclass, or a
-    reloaded marker is refused by an exact-type check *before* any lookup, so a presence-only
-    dictionary can never reach a formula. The bundle's own ``require`` face fails closed on an
-    absent/blocked/sentinel parameter (never a code default).
+    B02C §C.1: a Python object is never a security boundary — type identity is trusted nowhere.
+    On EVERY call the full content law is re-verified against the explicit
+    :class:`~triad_origin.bindings.VerificationContext` ``ctx``:
+
+    1. the ``canonical_root_digest`` is recomputed from ``bundle.rows`` and compared;
+    2. the supplied trust-registry bytes must hash to BOTH the bundle's
+       ``trust_registry_digest`` AND the process-pinned expected digest (set-once at startup,
+       cross-checked against the repository trust file);
+    3. every signature is verified through the injected Ed25519 seam (role, revocation,
+       threshold) — memoizable ONLY by digest with a hand-rolled constant-time compare against
+       the process-pinned expected digest;
+    4. ``valid_from <= now_us <= valid_to`` and the bundle scope must equal the process's bound
+       ``{repository, environment}``;
+    5. the REQUESTING formula's binding set must be complete-and-ACTIVE, else the typed refusal
+       ``BLOCKED_BINDING_INCOMPLETE{formula_id}``;
+    6. only then a :class:`~triad_origin.bindings.VerifiedCapability` handle carrying the
+       digests (``source_bundle_digest`` — partial content identity; ``signed_root_digest`` —
+       the actually-signed canonical root) is returned.
+
+    Forging acceptance requires forging Ed25519 signatures over the pinned trust registry; a
+    fabricated map, subclass, copy, pickle round-trip, reloaded module, or mutated instance
+    fails the content law before any formula can consume a value.
     """
-    from .bindings import ResolvedParameterBundle, CapabilityForgeryError
+    from .bindings import accept_sealed_bundle
 
-    if type(bundle) is not ResolvedParameterBundle:
-        raise CapabilityForgeryError(
-            "production parameters require a sealed ResolvedParameterBundle; "
-            f"got {type(bundle).__name__!r}")
-    return bundle.require(parameter_id)
+    return accept_sealed_bundle(bundle, parameter_id, formula_id=formula_id, ctx=ctx)
 
 
 @dataclass(frozen=True)
