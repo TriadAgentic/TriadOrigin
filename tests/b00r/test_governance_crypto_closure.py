@@ -574,17 +574,25 @@ def test_governance_snapshot_rejects_non_provider_ruleset_shapes(mutation, reaso
 
 
 def test_checked_in_declarative_ruleset_stub_cannot_pass_even_when_pinned():
+    # The checked-in provider files are live ceremony evidence after the G2 source
+    # merge; the declarative stub lives only in the template, which must remain
+    # incapable of authenticating even when pinned against the real raw bytes.
     doc = json.loads(
-        (ROOT / "docs/governance/rulesets/main.ruleset.provider.json").read_text()
+        (ROOT / "docs/governance/rulesets/main.ruleset.provider.template.json").read_text()
     )
     raw_bytes = (
         ROOT / "docs/governance/rulesets/main.ruleset.provider.raw.json"
     ).read_bytes()
     pin = sha256_hex(raw_bytes)
     doc["authenticated"] = True
+    raw_doc = json.loads(raw_bytes)
+    updated_us = gov._parse_provider_utc_us(raw_doc["updated_at"])
+    doc["effective_at_us"] = updated_us
+    doc["provider"]["api_response_sha256"] = pin
+    doc["provider"]["captured_at_us"] = updated_us
     result, reason = gov.validate_governance_snapshot(
         doc, provider_raw_bytes=raw_bytes, external_pin=pin,
-        now_us=doc["provider"]["captured_at_us"] + 1,
+        now_us=updated_us + 1,
     )
     assert result == "FAIL"
     assert "SYNTHETIC" in reason or "RULESET_ID" in reason
