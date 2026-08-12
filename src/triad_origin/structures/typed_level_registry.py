@@ -34,7 +34,9 @@ first (a strictly better extreme re-freezes level + delta + origin; an equal ext
 re-freeze), then the reversal check runs against the frozen extreme. In the two-sided SEED phase
 a bar on which BOTH reversals confirm is an ambiguous boundary: it emits the named abstention
 ``F03_AMBIGUOUS_SEED_REVERSAL`` and re-seeds from that bar — never a side-preferring guess,
-which would break the LONG/SHORT mirror law.
+which would break the LONG/SHORT mirror law. (The F03 machine below is the retired
+``swing.dc.bar_extrema.v1`` — see its class banner; the repaired ``swing.dc.bar_extrema.v2``
+lives in :mod:`triad_origin.structures.swing_dc_v2`. F04 and F06 below remain live law.)
 
 F04 publishes only when the second right bar finalizes (delayed benchmark, never early); a tie
 on either side rejects (strict unique extreme); an incomplete right window yields no pivot
@@ -119,7 +121,19 @@ def _frozen(extreme_ticks: int, delta_ticks: int, origin_event_id: str) -> dict:
 
 
 class DirectionalChangeSwing:
-    """F03 — directional-change swing over finalized bars carrying causal ATR14 (GV-005).
+    """RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F03} —
+    ``swing.dc.bar_extrema.v1`` withdrawal banner (repair spec §1.5).
+
+    DEFECT: this v1 machine extends the provisional extreme FIRST and then evaluates the
+    reversal against the POST-extension extreme, so a wide-range extending bar confirms a swing
+    at its own bar (``origin_event_id == confirmed_by_event_id``) — the intrabar path is
+    unknowable from OHLC, so the outcome was implementation-defined. Repaired as
+    ``swing.dc.bar_extrema.v2`` (:mod:`triad_origin.structures.swing_dc_v2` — pre-bar reversal
+    evaluation + the PAR-036b ``ABSTAIN_EXTEND_WINS`` ambiguous-bar law). The bytes/logic below
+    are FROZEN: never edited in place, never deleted; rows produced under v1 keep their version
+    tag forever (never-blend applies across formula versions exactly as across cohorts).
+
+    F03 — directional-change swing over finalized bars carrying causal ATR14 (GV-005).
 
     ``delta_ticks = evaluate_declared_rational(DECLARED_DC_REVERSAL, atr)`` with the declared
     string arriving as the required parameter ``dc_reversal_rule`` (any other string refuses).

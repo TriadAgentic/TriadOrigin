@@ -80,7 +80,11 @@ def abstentions(result):
 
 
 # ---------------------------------------------------------------------------------------------
-# F03 — DirectionalChangeSwing
+# F03 — DirectionalChangeSwing (RETIRED swing.dc.bar_extrema.v1 — R-F03, spec §1.5)
+#
+# These tests LOCK the retired machine's frozen behavior (bytes/logic unchanged under the
+# withdrawal banner). The repaired surface is swing.dc.bar_extrema.v2 in
+# triad_origin/structures/swing_dc_v2.py, tested by tests/structures/test_swing_dc_v2.py.
 # ---------------------------------------------------------------------------------------------
 
 GV005_BARS = [
@@ -270,6 +274,25 @@ class TestFractalPivot:
             machine.transition(
                 machine.initial_state(), bar(0, 8, 1, seq=0),
                 {tlr.PARAM_FRACTAL_LEFT: 2}, {})
+
+
+# ---------------------------------------------------------------------------------------------
+# Version discipline (§1.5): the retired v1 DC machine carries the banner — nothing else does
+# ---------------------------------------------------------------------------------------------
+
+
+class TestVersionWithdrawalDiscipline:
+    def test_v1_dc_machine_carries_the_retired_defective_banner(self):
+        doc = tlr.DirectionalChangeSwing.__doc__ or ""
+        assert doc.lstrip().startswith("RETIRED_DEFECTIVE{")
+        assert "R-F03" in doc
+        assert "swing.dc.bar_extrema.v2" in doc
+
+    def test_no_banner_on_the_module_or_the_live_machines(self):
+        # The module still hosts live law (F04, F06): a module-wide banner is forbidden.
+        assert "RETIRED_DEFECTIVE" not in (tlr.__doc__ or "")
+        assert "RETIRED_DEFECTIVE" not in (tlr.FractalPivot.__doc__ or "")
+        assert "RETIRED_DEFECTIVE" not in (tlr.EqualLevelCluster.__doc__ or "")
 
 
 # ---------------------------------------------------------------------------------------------
