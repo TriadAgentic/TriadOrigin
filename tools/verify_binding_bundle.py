@@ -8,7 +8,9 @@ Two surfaces:
   scope-collision law. A tampered / wrong-count / non-hex-digest bundle exits 1. Without a real,
   externally pinned ``--authority`` preimage the tool CANNOT authenticate the bundle root (the owner
   trust anchor is out-of-repo and B00R is unvalidated), so it prints ``UNAVAILABLE_AUTHORITY`` and
-  exits 0 — fail-closed, never a fabricated authenticated PASS.
+  exits 0 — fail-closed, never a fabricated authenticated PASS. A ``--authority`` preimage that IS
+  supplied but that offline-prep cannot actually authenticate exits **2** (fail-closed): a supplied
+  preimage must never be mistaken for an authenticated PASS just because it was present.
 * ``--selftest``: build a synthetic tool-layer Ed25519 owner key, authenticate a real
   :class:`~triad_origin.bindings.ResolvedParameterBundle`, then run six authenticity attacks
   (unsigned · wrong-signer · revoked · expired · valid-signature-over-other-bytes · wrong-trust-key)
@@ -168,10 +170,15 @@ def main(argv: list[str]) -> int:
             print("UNAVAILABLE_AUTHORITY: bundle inventory verified; owner-pinned authority preimage "
                   "absent, so bundle-root authentication is not attempted (fail-closed).")
             return 0
-        # An owner-side run with a real authority preimage would authenticate here; offline-prep
-        # never fabricates that path.
-        print("AUTHORITY_PREIMAGE_SUPPLIED: owner-gated authentication path is not run in offline-prep")
-        return 0
+        # A supplied authority preimage MUST be cryptographically authenticated before this tool
+        # may report success. Offline-prep cannot reach the out-of-repo owner trust anchor, so it
+        # CANNOT authenticate the supplied preimage and therefore fails closed (exit 2) rather than
+        # returning a green exit that would read as an authenticated PASS. Presence of a preimage is
+        # not authentication — this is the exact false-green the gate exists to refuse (audit #10).
+        print("UNAVAILABLE_AUTHORITY: an --authority preimage was supplied, but the owner trust "
+              "anchor is out-of-repo and authentication was NOT performed; failing closed (exit 2, "
+              "not a PASS). Run --selftest for the real offline authenticity proof.", file=sys.stderr)
+        return 2
     except contracts.SchemaValidatorUnavailable as exc:
         print(f"SCHEMA_VALIDATOR_UNAVAILABLE: {exc}", file=sys.stderr)
         return 3

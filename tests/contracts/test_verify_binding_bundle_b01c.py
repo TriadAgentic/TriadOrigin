@@ -97,3 +97,15 @@ def test_validator_absent_lane_exits_three(monkeypatch):
 
 def test_unknown_bundle_path_exits_one(tmp_path):
     assert vbb.main(["--bundle", str(tmp_path / "does_not_exist.json")]) == 1
+
+
+def test_supplied_but_unauthenticated_authority_fails_closed(tmp_path, capsys):
+    # Audit #10: a supplied --authority preimage that offline-prep cannot authenticate must NOT
+    # exit 0 (which would read as an authenticated PASS). Presence is not authentication; the tool
+    # fails closed with a non-zero exit until a real owner authentication path runs.
+    preimage = tmp_path / "authority_preimage.json"
+    preimage.write_text("{}", encoding="utf-8")
+    rc = vbb.main(["--authority", str(preimage)])
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "UNAVAILABLE_AUTHORITY" in err
