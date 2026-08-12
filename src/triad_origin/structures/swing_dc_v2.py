@@ -179,7 +179,7 @@ def _require_caps(caps: object) -> str:
         raise bindings.CapabilityForgeryError(
             "F03 caps must be a mapping parameter_id -> VerifiedCapability; "
             f"got {type(caps).__name__}")
-    unknown = sorted(set(caps) - set(REQUIRED_PARAMETERS))
+    unknown = [key for key in caps if key not in REQUIRED_PARAMETERS]
     if unknown:
         raise bindings.CapabilityForgeryError(
             f"F03 admits only the parameters {REQUIRED_PARAMETERS}; unknown key {unknown[0]!r}")

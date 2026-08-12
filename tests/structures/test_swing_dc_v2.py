@@ -745,6 +745,12 @@ class TestBoundaryRejections:
         with pytest.raises(bindings.CapabilityForgeryError):
             sdc.evaluate(widened, vbar("b0", 1000, 998), sdc.initial_state(), atr14_ticks=20)
 
+    def test_mixed_type_mapping_keys_are_still_a_typed_rejection(self, caps):
+        widened = dict(caps)
+        widened[17] = caps[sdc.PARAMETER_DC_REVERSAL]  # an unsortable key mix stays TYPED
+        with pytest.raises(bindings.CapabilityForgeryError):
+            sdc.evaluate(widened, vbar("b0", 1000, 998), sdc.initial_state(), atr14_ticks=20)
+
     def test_foreign_formula_capability_is_refused(self, foreign_cap):
         assert foreign_cap.formula_id == "F00"  # a GENUINE capability — for another formula
         with pytest.raises(bindings.CapabilityForgeryError):
