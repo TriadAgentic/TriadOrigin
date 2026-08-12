@@ -36,6 +36,9 @@ fields — nothing here reads a clock, an environment variable, or any calendar 
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+from .canonical import INT64_MAX, INT64_MIN
 from .structures.common import StructureLawError, require_int
 
 DAY_US = 86_400_000_000
@@ -209,3 +212,349 @@ def validate_session_level(event: object) -> dict:
             "session_low_ticks": low_ticks,
         },
     }
+
+
+# =================================================================================================
+# TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 — Part A §1.1 VALID_BAR + Part C §C.3 boundary
+# validators (B02C). Additive: nothing above this line changed; validate_finalized_bar /
+# validate_session_level callers are untouched.
+#
+# ValidatedBar / ValidatedTrade / ValidatedBookUpdate are the C.3 `ValidatedInput` types. They
+# are frozen dataclasses defined ONLY in this module; the later CI static gate enforces
+# construction-locality by scan ("construction of ValidatedInput outside the e01_interface
+# module" fails the build). Deliberately NO token mechanism — a Python object is never a
+# security boundary; the scan is the wall.
+#
+# Failure behavior is a TYPED quarantine exception (fail-closed): the consuming formula emits
+# no atom and journals the exception's `.record()` (quarantine-shaped, mirroring `rejection()`).
+# A quarantined bar invalidates any path/window that requires it, exactly as a GAP does (§1.1).
+# =================================================================================================
+
+QUARANTINE_INVALID_BAR = "QUARANTINE_INVALID_BAR"
+QUARANTINE_INVALID_TRADE = "QUARANTINE_INVALID_TRADE"
+QUARANTINE_INVALID_BOOK_UPDATE = "QUARANTINE_INVALID_BOOK_UPDATE"
+
+# The venue-provided aggressor flag vocabulary (R-F15 law: venue aggressor flag only; the
+# existing per-formula twin is structures.flow_atoms.TRADE_SIDES — kept byte-equal, re-homing
+# the formula constant onto this boundary constant is the §C.3 conversion train's edit).
+TRADE_AGGRESSOR_SIDES = ("BUY", "SELL")
+
+_VALID_BAR_PRICE_FIELDS = ("open_ticks", "high_ticks", "low_ticks", "close_ticks")
+_VALID_BAR_COUNT_FIELDS = ("base_volume", "quote_volume", "trade_count")
+_VALID_BAR_FIELDS = _VALID_BAR_PRICE_FIELDS + _VALID_BAR_COUNT_FIELDS
+
+
+class QuarantineInvalidBar(ValueError):
+    """§1.1 failure: ``QUARANTINE_INVALID_BAR{bar_identity, reason}``.
+
+    The consuming formula emits NO atom and records this quarantine; the bar invalidates any
+    path/window that requires it (F11 path, F02 window, F13 hold chain), exactly as a GAP does.
+    ``bar_identity`` is the extractable identity or ``None`` when the input carries none —
+    never a fabricated placeholder.
+    """
+
+    def __init__(self, *, bar_identity: str | None, reason: str) -> None:
+        super().__init__(f"{QUARANTINE_INVALID_BAR}:{bar_identity!r}:{reason}")
+        self.bar_identity = bar_identity
+        self.reason = reason
+
+    def record(self) -> dict:
+        return {
+            "event_kind": "QUARANTINE",
+            "accepted": False,
+            "reason_code": QUARANTINE_INVALID_BAR,
+            "bar_identity": self.bar_identity,
+            "reason": self.reason,
+        }
+
+
+class QuarantineInvalidTrade(ValueError):
+    """§C.3 trade-boundary failure: typed, fail-closed; ``trade_id`` is best-effort or None."""
+
+    def __init__(self, *, trade_id: str | None, reason: str) -> None:
+        super().__init__(f"{QUARANTINE_INVALID_TRADE}:{trade_id!r}:{reason}")
+        self.trade_id = trade_id
+        self.reason = reason
+
+    def record(self) -> dict:
+        return {
+            "event_kind": "QUARANTINE",
+            "accepted": False,
+            "reason_code": QUARANTINE_INVALID_TRADE,
+            "trade_id": self.trade_id,
+            "reason": self.reason,
+        }
+
+
+class QuarantineInvalidBookUpdate(ValueError):
+    """§C.3 book-boundary failure: typed, fail-closed; ``sequence`` is best-effort or None."""
+
+    def __init__(self, *, sequence: int | None, reason: str) -> None:
+        super().__init__(f"{QUARANTINE_INVALID_BOOK_UPDATE}:{sequence!r}:{reason}")
+        self.sequence = sequence
+        self.reason = reason
+
+    def record(self) -> dict:
+        return {
+            "event_kind": "QUARANTINE",
+            "accepted": False,
+            "reason_code": QUARANTINE_INVALID_BOOK_UPDATE,
+            "sequence": self.sequence,
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True)
+class ValidatedBar:
+    """A bar that passed the §1.1 VALID_BAR predicate. Constructed ONLY by require_valid_bar."""
+
+    bar_identity: str
+    metadata_revision: str
+    open_ticks: int
+    high_ticks: int
+    low_ticks: int
+    close_ticks: int
+    base_volume: int
+    quote_volume: int
+    trade_count: int
+
+
+@dataclass(frozen=True)
+class ValidatedTrade:
+    """A trade that passed the §C.3 boundary. Constructed ONLY by validate_trade."""
+
+    trade_id: str
+    revision: str
+    event_time_us: int
+    aggressor_side: str
+
+
+@dataclass(frozen=True)
+class ValidatedBookUpdate:
+    """A best-quote update that passed the §C.3 boundary. Constructed ONLY by
+    validate_book_update."""
+
+    sequence: int
+    event_time_us: int
+    best_bid_price_ticks: int
+    best_bid_qty_steps: int
+    best_ask_price_ticks: int
+    best_ask_qty_steps: int
+
+
+def _identity_str_or_none(payload: dict, key: str) -> str | None:
+    value = payload.get(key)
+    if isinstance(value, str) and value:
+        return value
+    return None
+
+
+def _bar_int64(payload: dict, name: str, *, bar_identity: str | None) -> int:
+    """An exact signed-int64 VALID_BAR field, else QuarantineInvalidBar (fail closed)."""
+    value = payload.get(name)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise QuarantineInvalidBar(
+            bar_identity=bar_identity,
+            reason=f"{name} must be an exact int, got {type(value).__name__}")
+    if value < INT64_MIN or value > INT64_MAX:
+        raise QuarantineInvalidBar(
+            bar_identity=bar_identity,
+            reason=f"{name} is outside the signed int64 domain (PAR-INT-01)")
+    return value
+
+
+def require_valid_bar(bar: object) -> ValidatedBar:
+    """The §1.1 VALID_BAR predicate, verbatim; returns a ValidatedBar or raises
+    QuarantineInvalidBar.
+
+    ``VALID_BAR(b) := open, high, low, close, base_volume, quote_volume, trade_count all
+    present AND all price fields are checked signed int64 ticks under the bar's
+    metadata_revision AND low <= min(open, close) AND max(open, close) <= high AND
+    low <= high (implied; asserted anyway) AND base_volume >= 0 AND quote_volume >= 0
+    AND trade_count >= 0.``
+
+    Input is a mapping carrying ``bar_identity`` (non-empty str), ``metadata_revision``
+    (non-empty str — the revision the int64 tick check is made under), the four ``*_ticks``
+    price fields and the three volume/count fields. Never repairs, never synthesizes.
+    """
+    if not isinstance(bar, dict):
+        raise QuarantineInvalidBar(bar_identity=None, reason="bar is not an object")
+    bar_identity = _identity_str_or_none(bar, "bar_identity")
+    if bar_identity is None:
+        raise QuarantineInvalidBar(
+            bar_identity=None, reason="bar_identity must be a non-empty str")
+    revision = bar.get("metadata_revision")
+    if not isinstance(revision, str) or not revision:
+        raise QuarantineInvalidBar(
+            bar_identity=bar_identity, reason="metadata_revision must be a non-empty str")
+    # Clause 1 — all seven fields present (None is absent, never a value).
+    for name in _VALID_BAR_FIELDS:
+        if bar.get(name) is None:
+            raise QuarantineInvalidBar(bar_identity=bar_identity, reason=f"{name} is missing")
+    # Clause 2 — price fields are exact signed int64 ticks under metadata_revision. The three
+    # count fields are persisted integers too, so they carry the same §1.2 boundary check.
+    values = {
+        name: _bar_int64(bar, name, bar_identity=bar_identity) for name in _VALID_BAR_FIELDS
+    }
+    open_ticks = values["open_ticks"]
+    high_ticks = values["high_ticks"]
+    low_ticks = values["low_ticks"]
+    close_ticks = values["close_ticks"]
+    # Clause 3 — low <= min(open, close).
+    if not low_ticks <= min(open_ticks, close_ticks):
+        raise QuarantineInvalidBar(
+            bar_identity=bar_identity, reason="low_ticks must satisfy low <= min(open, close)")
+    # Clause 4 — max(open, close) <= high.
+    if not max(open_ticks, close_ticks) <= high_ticks:
+        raise QuarantineInvalidBar(
+            bar_identity=bar_identity, reason="high_ticks must satisfy max(open, close) <= high")
+    # Clause 5 — low <= high: implied by clauses 3+4; asserted anyway (spec: "assert anyway").
+    if not low_ticks <= high_ticks:  # pragma: no cover - unreachable when clauses 3+4 hold
+        raise QuarantineInvalidBar(
+            bar_identity=bar_identity, reason="low_ticks must satisfy low <= high")
+    # Clause 6 — volumes and trade count are non-negative.
+    for name in _VALID_BAR_COUNT_FIELDS:
+        if values[name] < 0:
+            raise QuarantineInvalidBar(
+                bar_identity=bar_identity, reason=f"{name} must be >= 0")
+    return ValidatedBar(
+        bar_identity=bar_identity,
+        metadata_revision=revision,
+        open_ticks=open_ticks,
+        high_ticks=high_ticks,
+        low_ticks=low_ticks,
+        close_ticks=close_ticks,
+        base_volume=values["base_volume"],
+        quote_volume=values["quote_volume"],
+        trade_count=values["trade_count"],
+    )
+
+
+def _trade_int64(payload: dict, name: str, *, trade_id: str | None) -> int:
+    value = payload.get(name)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise QuarantineInvalidTrade(
+            trade_id=trade_id, reason=f"{name} must be an exact int, got {type(value).__name__}")
+    if value < INT64_MIN or value > INT64_MAX:
+        raise QuarantineInvalidTrade(
+            trade_id=trade_id, reason=f"{name} is outside the signed int64 domain (PAR-INT-01)")
+    return value
+
+
+def validate_trade(trade: object) -> ValidatedTrade:
+    """§C.3 trade boundary: requires event_time, aggressor flag, trade_id, revision.
+
+    Fail-closed typed rejection (:class:`QuarantineInvalidTrade`) on any missing or malformed
+    requirement. The aggressor flag is the venue-provided side, exactly one of
+    ``TRADE_AGGRESSOR_SIDES`` — a trade with a missing/unknown flag never crosses the boundary
+    (R-F15: excluded, never guessed).
+    """
+    if not isinstance(trade, dict):
+        raise QuarantineInvalidTrade(trade_id=None, reason="trade is not an object")
+    trade_id = _identity_str_or_none(trade, "trade_id")
+    if trade_id is None:
+        raise QuarantineInvalidTrade(trade_id=None, reason="trade_id must be a non-empty str")
+    revision = trade.get("revision")
+    if not isinstance(revision, str) or not revision:
+        raise QuarantineInvalidTrade(
+            trade_id=trade_id, reason="revision must be a non-empty str")
+    event_time_us = _trade_int64(trade, "event_time_us", trade_id=trade_id)
+    if event_time_us < 0:
+        raise QuarantineInvalidTrade(trade_id=trade_id, reason="event_time_us must be >= 0")
+    aggressor_side = trade.get("aggressor_side")
+    if not isinstance(aggressor_side, str) or aggressor_side not in TRADE_AGGRESSOR_SIDES:
+        raise QuarantineInvalidTrade(
+            trade_id=trade_id,
+            reason=f"aggressor_side must be one of {TRADE_AGGRESSOR_SIDES}, "
+                   f"got {aggressor_side!r}")
+    return ValidatedTrade(
+        trade_id=trade_id,
+        revision=revision,
+        event_time_us=event_time_us,
+        aggressor_side=aggressor_side,
+    )
+
+
+def _book_int64(payload: dict, name: str, *, sequence: int | None) -> int:
+    value = payload.get(name)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise QuarantineInvalidBookUpdate(
+            sequence=sequence,
+            reason=f"{name} must be an exact int, got {type(value).__name__}")
+    if value < INT64_MIN or value > INT64_MAX:
+        raise QuarantineInvalidBookUpdate(
+            sequence=sequence,
+            reason=f"{name} is outside the signed int64 domain (PAR-INT-01)")
+    return value
+
+
+def validate_book_update(
+    update: object,
+    *,
+    prior_seq: int | None,
+    now_us: int,
+    freshness_bound_us: int,
+) -> ValidatedBookUpdate:
+    """§C.3 book boundary: seq continuity vs prior seq, uncrossed bid<ask, positive qty,
+    event_time, freshness bound.
+
+    Fail-closed typed rejection (:class:`QuarantineInvalidBookUpdate`) on any violation:
+
+    * ``sequence`` continuity — with a known ``prior_seq`` the update must carry EXACTLY
+      ``prior_seq + 1`` (a duplicate, backward, or gapped sequence is rejected); the first
+      update (``prior_seq is None``) has no continuity to check.
+    * ``best_bid_price_ticks < best_ask_price_ticks`` — strictly uncrossed (a locked book is
+      rejected too).
+    * both quantities strictly positive.
+    * ``event_time_us`` present, and fresh under the injected clock: not in the future of
+      ``now_us`` and ``now_us - event_time_us <= freshness_bound_us`` (inclusive at the bound).
+
+    ``now_us`` is INJECTED — nothing here reads a wall clock.
+    """
+    if not isinstance(update, dict):
+        raise QuarantineInvalidBookUpdate(sequence=None, reason="book update is not an object")
+    sequence = _book_int64(update, "sequence", sequence=None)
+    if sequence < 0:
+        raise QuarantineInvalidBookUpdate(sequence=sequence, reason="sequence must be >= 0")
+    event_time_us = _book_int64(update, "event_time_us", sequence=sequence)
+    if event_time_us < 0:
+        raise QuarantineInvalidBookUpdate(
+            sequence=sequence, reason="event_time_us must be >= 0")
+    bid_price = _book_int64(update, "best_bid_price_ticks", sequence=sequence)
+    bid_qty = _book_int64(update, "best_bid_qty_steps", sequence=sequence)
+    ask_price = _book_int64(update, "best_ask_price_ticks", sequence=sequence)
+    ask_qty = _book_int64(update, "best_ask_qty_steps", sequence=sequence)
+    if prior_seq is not None:
+        prior = require_int(prior_seq, "prior_seq")
+        if sequence != prior + 1:
+            raise QuarantineInvalidBookUpdate(
+                sequence=sequence,
+                reason=f"sequence discontinuity: expected {prior + 1}, got {sequence}")
+    if not bid_price < ask_price:
+        raise QuarantineInvalidBookUpdate(
+            sequence=sequence,
+            reason="book is crossed or locked: require best_bid_price_ticks < "
+                   "best_ask_price_ticks")
+    if bid_qty <= 0 or ask_qty <= 0:
+        raise QuarantineInvalidBookUpdate(
+            sequence=sequence, reason="best-quote quantities must be strictly positive")
+    clock_now = require_int(now_us, "now_us")
+    bound = require_int(freshness_bound_us, "freshness_bound_us")
+    if bound < 0:
+        raise StructureLawError("freshness_bound_us must be >= 0")
+    if event_time_us > clock_now:
+        raise QuarantineInvalidBookUpdate(
+            sequence=sequence, reason="event_time_us is in the future of now_us")
+    if clock_now - event_time_us > bound:
+        raise QuarantineInvalidBookUpdate(
+            sequence=sequence,
+            reason=f"stale book update: age {clock_now - event_time_us}us exceeds "
+                   f"freshness bound {bound}us")
+    return ValidatedBookUpdate(
+        sequence=sequence,
+        event_time_us=event_time_us,
+        best_bid_price_ticks=bid_price,
+        best_bid_qty_steps=bid_qty,
+        best_ask_price_ticks=ask_price,
+        best_ask_qty_steps=ask_qty,
+    )

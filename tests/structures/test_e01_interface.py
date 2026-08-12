@@ -179,7 +179,15 @@ def test_module_exposes_no_bar_or_session_constructor():
         and callable(getattr(e01, name))
         and getattr(getattr(e01, name), "__module__", None) == e01.__name__
     }
-    assert public_callables == {"validate_finalized_bar", "validate_session_level", "rejection"}
+    # B02C (TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 Part A §1.1 / Part C §C.3) added the
+    # boundary validators + the ValidatedInput types + their typed quarantines. All remain
+    # VALIDATORS of consumed facts — none authors a bar/session/trade/book from raw trades.
+    assert public_callables == {
+        "validate_finalized_bar", "validate_session_level", "rejection",
+        "require_valid_bar", "validate_trade", "validate_book_update",
+        "ValidatedBar", "ValidatedTrade", "ValidatedBookUpdate",
+        "QuarantineInvalidBar", "QuarantineInvalidTrade", "QuarantineInvalidBookUpdate",
+    }
     for name in public_callables:
         lowered = name.lower()
         assert not any(verb in lowered for verb in ("build", "aggregate", "make", "synthes"))
