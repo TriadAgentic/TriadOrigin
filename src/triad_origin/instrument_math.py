@@ -1,5 +1,19 @@
 """Integer tick/step algebra and fail-closed boundary conversion (MOD-004, Doc 02 §02.2).
 
+.. warning::
+
+   ``RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F00}``
+
+   This module is ``instrument_math.v1`` and is **retired**. Its ``EXACT`` boundary
+   (``_scaled_dec``) decides integrality by comparing decimal *display exponents* rather than the
+   *value*, so a mathematically exact conversion — price ``"1.0"`` with tick ``"0.10"`` where
+   ``1.0 / 0.10 = 10`` exactly — is wrongly quarantined. It is superseded by
+   :mod:`triad_origin.instrument_math_v2` (``instrument_math.v2``, Option-B value integrality +
+   INGRESS/ORDER-COMPUTE separation + §1.2 wire-width + §1.4 metadata-revision law). The bytes and
+   behaviour of this module are preserved unchanged for replay of rows produced under v1
+   (never-blend applies across formula versions); new conversions use v2. Do not edit the logic
+   below in place and do not delete this module.
+
 All prices enter *semantic* code as signed 64-bit integer ticks under a pinned instrument metadata
 revision. The only place decimals are permitted is this boundary module, which converts a venue
 decimal price/quantity into integer ticks/steps and back. Overflow and conversion error are
