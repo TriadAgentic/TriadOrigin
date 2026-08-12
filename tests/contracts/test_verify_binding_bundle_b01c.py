@@ -4,9 +4,14 @@ Proves that ``tools/verify_binding_bundle.py``:
 
 * authenticates a real capability with an ephemeral owner key and REFUSES all six authenticity
   attacks (unsigned · wrong-signer · revoked · expired · valid-sig-over-other-bytes · wrong-trust-key),
-  each with a NAMED refusal reason — never a wrongly-built capability;
-* inventory-verifies the packaged 105-row bundle but, with no externally pinned authority preimage,
-  prints ``UNAVAILABLE_AUTHORITY`` and exits 0 (fail-closed, never a fabricated authenticated PASS);
+  each with a NAMED refusal reason — never a wrongly-built capability (the labeled SELF_TEST);
+* inventory-verifies the packaged 105-row bundle but, with no ``--authority`` preimage, exits
+  NONZERO with the single typed reason ``UNAVAILABLE_AUTHORITY`` on stdout (Formula-Repair spec
+  §C.2: the owner-gated path was not run, and absence is never a green PASS — the historical
+  exit-0 was the defect);
+* refuses a supplied-but-empty authority preimage as ``MALFORMED_PREIMAGE`` (presence of the
+  argument never functions as proof — the full §C.2 matrix lives in
+  ``test_verify_binding_bundle_authority.py``);
 * exits 1 on a byte-tampered / wrong-count bundle; and
 * exits 3 when the full schema validator is absent (never a silent pass).
 """
@@ -57,12 +62,14 @@ def test_selftest_cli_exits_zero():
     assert vbb.main(["--selftest"]) == 0
 
 
-def test_bundle_only_reports_unavailable_authority_and_exits_zero(capsys):
+def test_bundle_only_without_authority_exits_nonzero_with_the_token_on_stdout(capsys):
+    # §C.2: absent --authority => the owner-gated path was not run => NONZERO, and stdout carries
+    # exactly the one typed reason token. The inventory facts move to stderr (never a green PASS).
     rc = vbb.main([])  # default bundle, no --authority
-    out = capsys.readouterr().out
-    assert rc == 0
-    assert "UNAVAILABLE_AUTHORITY" in out
-    assert f"rows={bindings.REQUIRED_ROW_COUNT}" in out
+    captured = capsys.readouterr()
+    assert rc == 2
+    assert captured.out.strip() == "UNAVAILABLE_AUTHORITY"
+    assert f"rows={bindings.REQUIRED_ROW_COUNT}" in captured.err
 
 
 def test_wrong_count_bundle_exits_one(tmp_path):
@@ -99,13 +106,14 @@ def test_unknown_bundle_path_exits_one(tmp_path):
     assert vbb.main(["--bundle", str(tmp_path / "does_not_exist.json")]) == 1
 
 
-def test_supplied_but_unauthenticated_authority_fails_closed(tmp_path, capsys):
-    # Audit #10: a supplied --authority preimage that offline-prep cannot authenticate must NOT
-    # exit 0 (which would read as an authenticated PASS). Presence is not authentication; the tool
-    # fails closed with a non-zero exit until a real owner authentication path runs.
+def test_supplied_but_empty_authority_preimage_fails_closed(tmp_path, capsys):
+    # Audit #10 / §C.2: presence of a preimage is not authentication. An {} manifest carries none
+    # of the required authority material, so the run is NONZERO with the single typed reason
+    # MALFORMED_PREIMAGE on stdout (prose on stderr) — never a PASS.
     preimage = tmp_path / "authority_preimage.json"
     preimage.write_text("{}", encoding="utf-8")
-    rc = vbb.main(["--authority", str(preimage)])
+    rc = vbb.main(["--authority", str(preimage), "--now-us", "1500000000000000"])
+    captured = capsys.readouterr()
     assert rc == 2
-    err = capsys.readouterr().err
-    assert "UNAVAILABLE_AUTHORITY" in err
+    assert captured.out.strip() == "MALFORMED_PREIMAGE"
+    assert "MALFORMED_PREIMAGE" in captured.err
