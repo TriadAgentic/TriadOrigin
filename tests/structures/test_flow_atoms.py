@@ -454,3 +454,17 @@ def test_f17_never_reaches_into_future_input():
     batched = run_f17(inputs)
     assert collected == batched.events
     assert state == batched.final_state
+
+
+def test_f17_zero_denominator_abstains_even_when_minimum_is_ratified_to_zero():
+    # If BOOK_TILT_MIN_QUOTE_DEPTH were ratified to 0, `denominator < min_depth` is False and a
+    # 0/0 tilt would otherwise emit; the explicit zero-denominator guard abstains instead.
+    zero_min = {flow_atoms.PARAM_BOOK_TILT_MIN_QUOTE_DEPTH: 0}
+    result = run_f17([depth("d1", 0, 0)], params=zero_min)
+    (event,) = abstentions(result.events)
+    assert event["reason_code"] == "F17_ZERO_DENOMINATOR"
+    assert features(result.events, "F17") == []
+    # a non-zero book at the same zero minimum still emits (the guard is zero-only, not a floor)
+    ok = run_f17([depth("d2", 3, 1)], params=zero_min)
+    (feat,) = features(ok.events, "F17")
+    assert feat["numerator"] == 2 and feat["denominator"] == 4

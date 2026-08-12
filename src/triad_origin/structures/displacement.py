@@ -126,6 +126,15 @@ def _bar_geometry(payload: dict) -> tuple[int, int, int, int]:
     low_ticks = common.require_int(payload.get("low_ticks"), "low_ticks")
     if low_ticks > high_ticks:
         raise common.StructureLawError("bar low_ticks exceeds high_ticks")
+    # F11 close-in-range validity: the FINALIZED close must lie within [low, high]. Without this a
+    # bar whose close is above high over-satisfies the close-location conjunct ((close-low) exceeds
+    # the true range), fabricating a displacement from invalid market data. (The bar's OWN open is
+    # deliberately NOT constrained here — the search's origin-relative body uses the ORIGIN open,
+    # and the module's goldens legitimately place a synthetic bar's open outside [low, high] to
+    # isolate the body-ratio conjunct; constraining `close` closes the audited exploit without
+    # touching that.)
+    if not (low_ticks <= close_ticks <= high_ticks):
+        raise common.StructureLawError("bar close_ticks outside [low_ticks, high_ticks]")
     return open_ticks, close_ticks, high_ticks, low_ticks
 
 

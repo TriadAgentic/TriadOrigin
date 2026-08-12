@@ -409,3 +409,15 @@ def test_restart_after_qualification_never_double_emits():
     assert len(qualified(head.events)) == 1
     tail = run([bar("b2", 102, 0, 20, 20, 0)], initial=head.final_state)
     assert tail.events == []
+
+
+def test_bar_close_above_high_is_refused():
+    # F11 close-in-range validity: a finalized bar whose close exceeds high is invalid market data
+    # and must be refused, never allowed to over-satisfy the close-location conjunct.
+    with pytest.raises(StructureLawError, match="close_ticks outside"):
+        run([origin("o", 0, 1000, atr=1), bar("b1", 1, 10, 25, 20, 0)], horizon=1)
+
+
+def test_bar_close_below_low_is_refused():
+    with pytest.raises(StructureLawError, match="close_ticks outside"):
+        run([origin("o", 0, 1000, atr=1), bar("b1", 1, 10, -5, 20, 0)], horizon=1)

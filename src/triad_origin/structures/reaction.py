@@ -193,17 +193,34 @@ class DepartureAndFirstTouch:
 
         if kind == "ZONE_REGISTERED":
             zone_id = _zone_id(payload)
-            if zone_id in zones:
-                return TransitionResult(state)  # already registered; ignore re-registration
             direction = common.require_direction(payload.get("direction"))
             z_near = common.require_int(payload.get("z_near_ticks"), "z_near_ticks")
             z_far = common.require_int(payload.get("z_far_ticks"), "z_far_ticks")
             knowledge_time_us = common.require_int(
                 payload.get("knowledge_time_us"), "knowledge_time_us")
-            zones[zone_id] = {
+            candidate = {
                 "direction": direction, "z_near_ticks": z_near, "z_far_ticks": z_far,
                 "knowledge_time_us": knowledge_time_us, "reaction_state": ELIGIBLE,
             }
+            existing = zones.get(zone_id)
+            if existing is not None:
+                # Idempotent re-registration is a harmless no-op; a re-registration under the SAME
+                # zone_id carrying DIFFERENT geometry/knowledge is a conflict — refuse it as a
+                # named abstention and preserve the frozen original, never silently overwrite or
+                # silently drop the conflicting re-registration.
+                frozen = {k: existing[k] for k in
+                          ("direction", "z_near_ticks", "z_far_ticks", "knowledge_time_us")}
+                incoming = {k: candidate[k] for k in
+                            ("direction", "z_near_ticks", "z_far_ticks", "knowledge_time_us")}
+                if frozen != incoming:
+                    return TransitionResult(state, (abstention(
+                        "F14_ZONE_REREGISTRATION_CONFLICT", formula=FORMULA_F14,
+                        detail="a zone_id re-registration carries geometry/knowledge differing "
+                               "from the frozen registration; the conflicting re-registration is "
+                               "refused and the original is preserved",
+                        refs={"zone_id": zone_id}),))
+                return TransitionResult(state)  # identical re-registration: idempotent no-op
+            zones[zone_id] = candidate
             return TransitionResult({"zones": zones})
 
         if kind == "DEPARTURE_CANDIDATE":
@@ -252,6 +269,11 @@ class DepartureAndFirstTouch:
             if observed_low > observed_high:
                 raise StructureLawError("observed_low_ticks exceeds observed_high_ticks")
             event_time_us = common.require_int(payload.get("event_time_us"), "event_time_us")
+            # F14 causality: a contact whose market event_time precedes the moment the zone became
+            # known cannot confirm a first-touch — that would consume a contact from before the
+            # zone existed as evidence. Ignore it (no state change, waiting for a causal contact).
+            if event_time_us < row["knowledge_time_us"]:
+                return TransitionResult(state)  # contact predates zone knowledge: not causal
             zone_lo = min(row["z_near_ticks"], row["z_far_ticks"])
             zone_hi = max(row["z_near_ticks"], row["z_far_ticks"])
             if not (observed_low <= zone_hi and zone_lo <= observed_high):

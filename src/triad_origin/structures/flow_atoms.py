@@ -378,6 +378,16 @@ class BookDepthTilt:
                        f"{min_depth}",
                 refs={"event_id": event_id, "denominator": denominator,
                       "min_depth": min_depth}),))
+        # F17 explicit zero-denominator guard. The insufficient-depth check above suppresses a zero
+        # denominator ONLY while the ratified minimum is >= 1. Should BOOK_TILT_MIN_QUOTE_DEPTH be
+        # ratified to 0 (or negative), `denominator < min_depth` is False and a 0/0 tilt would
+        # otherwise emit; abstain explicitly so the minimum can never admit a zero-denominator.
+        if denominator <= 0:
+            return TransitionResult(state=new_state, events=(common.abstention(
+                "F17_ZERO_DENOMINATOR", formula=FORMULA_F17,
+                detail="combined quote depth is zero; the tilt denominator would be zero and no "
+                       "ratified minimum may admit a zero-denominator division",
+                refs={"event_id": event_id, "denominator": denominator}),))
         event = {
             "event_kind": "FEATURE",
             "formula": FORMULA_F17,

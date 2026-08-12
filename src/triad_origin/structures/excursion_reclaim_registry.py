@@ -126,7 +126,7 @@ class ExcursionReclaimTracker:
                 return TransitionResult(state)  # no excursion this bar; silent non-emission
             levels[level_id] = {
                 "direction": direction, "level_ticks": level_ticks,
-                "reclaim_state": EXCURSED, "hold_count": 0,
+                "reclaim_state": EXCURSED, "hold_count": 0, "last_ordinal": -1,
             }
             return TransitionResult({"levels": levels})
 
@@ -136,6 +136,13 @@ class ExcursionReclaimTracker:
             if row is None or row["reclaim_state"] in _TERMINAL:
                 return TransitionResult(state)  # unexcursed or already-terminal: refused
             ordinal = common.require_int(payload["ordinal"], "ordinal")
+            if ordinal <= row.get("last_ordinal", -1):
+                # Strict-increasing ordinal: a duplicate (redelivered) or regressing ordinal must
+                # not advance the reclaim hold — only a later finalized bar can. The hold's
+                # "consecutive" law stays stream-consecutive (a non-qualifying close resets it), so
+                # a legitimate ordinal gap (e.g. 0 then 3) still confirms; only a repeat/regress of
+                # an already-processed ordinal is refused. Idempotent no-op.
+                return TransitionResult(state)
             close = common.require_int(payload["close_ticks"], "close_ticks")
             atr = payload.get("atr14_ticks")
             if atr is None:
@@ -146,6 +153,7 @@ class ExcursionReclaimTracker:
                 return TransitionResult(state, (event,))
             if ordinal > horizon:
                 row = dict(row)
+                row["last_ordinal"] = ordinal
                 row["reclaim_state"] = RECLAIM_EXPIRED
                 levels[level_id] = row
                 event = {
@@ -155,6 +163,7 @@ class ExcursionReclaimTracker:
                 return TransitionResult({"levels": levels}, (event,))
             buffer = common.evaluate_declared_rational(reclaim_rule, atr)
             row = dict(row)
+            row["last_ordinal"] = ordinal
             if not _reclaims(row["direction"], row["level_ticks"], close, buffer):
                 row["hold_count"] = 0
                 row["reclaim_state"] = EXCURSED

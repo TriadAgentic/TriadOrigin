@@ -310,3 +310,44 @@ class TestInvariance:
         assert resumed.final_state == whole.final_state
         dup = run(full + [full[-1]])
         assert dup.final_state == whole.final_state
+
+
+class TestF14Causality:
+    """F14 causal contact + re-registration conflict (audit-repair coverage)."""
+
+    def test_contact_before_zone_knowledge_is_ignored(self):
+        inputs = [
+            zone_registered("Z1", common.LONG, z_near=105, z_far=100, knowledge_time=5000),
+            departure("Z1", distance=5),
+            contact("Z1", low=105, high=110, event_time=1000),  # market time 1000 < knowledge 5000
+        ]
+        result = run(inputs)
+        assert [e for e in result.events if e.get("event_kind") == "REACTION_CONFIRMED"] == []
+
+    def test_contact_at_zone_knowledge_time_confirms(self):
+        inputs = [
+            zone_registered("Z1", common.LONG, z_near=105, z_far=100, knowledge_time=1000),
+            departure("Z1", distance=5),
+            contact("Z1", low=105, high=110, event_time=1000),  # == knowledge: causal, confirms
+        ]
+        result = run(inputs)
+        assert any(e.get("event_kind") == "REACTION_CONFIRMED" for e in result.events)
+
+    def test_conflicting_reregistration_is_refused_and_original_preserved(self):
+        inputs = [
+            zone_registered("Z1", common.LONG, z_near=105, z_far=100, knowledge_time=1000),
+            zone_registered("Z1", common.SHORT, z_near=200, z_far=210, knowledge_time=2000,
+                            event_id="reg_conflict"),
+        ]
+        result = run(inputs)
+        assert "F14_ZONE_REREGISTRATION_CONFLICT" in \
+            [e.get("reason_code") for e in result.events]
+        row = result.final_state["zones"]["Z1"]
+        assert (row["direction"], row["z_near_ticks"], row["z_far_ticks"],
+                row["knowledge_time_us"]) == (common.LONG, 105, 100, 1000)
+
+    def test_identical_reregistration_is_idempotent_no_conflict(self):
+        reg = zone_registered("Z1", common.LONG, z_near=105, z_far=100, knowledge_time=1000)
+        result = run([reg, dict(reg, event_id="reg_again")])
+        assert [e for e in result.events if e.get("reason_code")] == []
+        assert list(result.final_state["zones"]) == ["Z1"]
