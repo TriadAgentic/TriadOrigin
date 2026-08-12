@@ -1,0 +1,42 @@
+{
+  "authenticated": false,
+  "keys": [
+    {
+      "algorithm": "ed25519",
+      "identity": "UNSET_GENERATION_2_AUTHORITY_OWNER",
+      "key_id": "UNSET-generation-2-authority-owner",
+      "not_after_us": 1,
+      "not_before_us": 0,
+      "public_key_hex": "2222222222222222222222222222222222222222222222222222222222222222",
+      "revoked": true,
+      "role": "AUTHORITY_OWNER",
+      "scope": "DEC-AUTHORITY-BUNDLE-002,DEC-RECEIPT-PROFILE-002,DEC-B00-REPAIR-002"
+    },
+    {
+      "algorithm": "ed25519",
+      "identity": "UNSET_GENERATION_2_EVIDENCE_PRODUCER",
+      "key_id": "UNSET-generation-2-evidence-producer",
+      "not_after_us": 1,
+      "not_before_us": 0,
+      "public_key_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "revoked": true,
+      "role": "EVIDENCE_PRODUCER",
+      "scope": "B00R..B07"
+    },
+    {
+      "algorithm": "ed25519",
+      "identity": "UNSET_GENERATION_2_INDEPENDENT_COUNTERSIGNER",
+      "key_id": "UNSET-generation-2-independent-countersigner",
+      "not_after_us": 1,
+      "not_before_us": 0,
+      "public_key_hex": "1111111111111111111111111111111111111111111111111111111111111111",
+      "revoked": true,
+      "role": "INDEPENDENT_COUNTERSIGNER",
+      "scope": "B00R..B07"
+    }
+  ],
+  "registry_id": "triad-origin-receipt-trust/generation-2/1",
+  "registry_kind": "RECEIPT_TRUST_REGISTRY",
+  "schema": "triad.receipt_trust_registry.v1",
+  "schema_version": "1.0.0"
+}

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Validate the post-merge ``B00R_RECEIPT_ANCHOR`` and protected tag ruleset.
+"""Validate the post-merge ``B00R_RECEIPT_ANCHOR_G2`` and protected tag ruleset.
 
 This is intentionally a post-merge terminal gate.  A receipt PR can be reviewed before the anchor
 exists, but ``b00r_gate --mode receipt`` cannot return ``PASS_REPOSITORY_SAFE_HOLD`` until:
 
 * the checked-out commit is the expected receipt merge;
-* an annotated (not lightweight) ``B00R_RECEIPT_ANCHOR`` tag points to that commit and its message
+* an annotated (not lightweight) ``B00R_RECEIPT_ANCHOR_G2`` tag points to that commit and its message
   binds the canonical receipt path and SHA-256; and
 * a raw provider tag-ruleset capture is externally SHA-256 pinned and proves active exact-tag
   update/deletion restrictions with no bypass actors.
@@ -14,6 +14,7 @@ exists, but ``b00r_gate --mode receipt`` cannot return ``PASS_REPOSITORY_SAFE_HO
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 import hashlib
 import json
 import os
@@ -23,18 +24,41 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-TAG_NAME = "B00R_RECEIPT_ANCHOR"
-RECEIPT_PATH = "evidence/receipts/B00R.receipt.v3.json"
-DEFAULT_RULESET = "evidence/B00R/tag_ruleset.provider.json"
-PIN_ENV = "B00R_TAG_RULESET_SHA256"
+sys.path.insert(0, str(ROOT))
+
+try:  # importable both as `python tools/...` and as `from tools import ...`
+    from tools.github_ruleset_live import (  # type: ignore
+        LiveRulesetError, LiveRulesetUnavailable, fetch_anchor_tag_object_sha,
+        fetch_and_match_live_ruleset, fetch_and_verify_receipt_merge)
+except ModuleNotFoundError:  # pragma: no cover - direct script fallback
+    from github_ruleset_live import (  # type: ignore
+        LiveRulesetError, LiveRulesetUnavailable, fetch_anchor_tag_object_sha,
+        fetch_and_match_live_ruleset, fetch_and_verify_receipt_merge)
+
+TAG_NAME = "B00R_RECEIPT_ANCHOR_G2"
+RECEIPT_PATH = "evidence/receipts/B00R.g2.receipt.v3.json"
+DEFAULT_RULESET = "evidence/B00R_G2/tag_ruleset.provider.json"
+PIN_ENV = "B00R_G2_TAG_RULESET_SHA256"
 EXPECTED_SOURCE_TYPE = "Repository"
 EXPECTED_SOURCE = "TriadAgentic/TriadOrigin"
+PROVIDER_RULESET_FIELDS = {
+    "id", "name", "target", "source_type", "source", "current_user_can_bypass",
+    "enforcement", "node_id", "_links", "created_at", "updated_at", "conditions",
+    "bypass_actors", "rules",
+}
 HEX40_RE = re.compile(r"[0-9a-f]{40}")
 HEX64_RE = re.compile(r"[0-9a-f]{64}")
 
 
 class AnchorError(ValueError):
     """The receipt anchor is absent or does not prove immutable closure."""
+
+
+def _resolve_ruleset_pin(cli_pin: str | None, env_pin: str | None) -> str | None:
+    """Reject any CLI value that conflicts with the protected tag-ruleset pin."""
+    if cli_pin and env_pin and cli_pin != env_pin:
+        raise AnchorError("FAIL: CONFLICTING_CLI_AND_PROTECTED_TAG_RULESET_PINS")
+    return env_pin or cli_pin
 
 
 def _git(root: pathlib.Path, *args: str, blocked_if_missing: bool = False) -> bytes:
@@ -69,51 +93,119 @@ def _parse_tag(raw: bytes) -> tuple[dict[str, str], str]:
         if key in headers:
             raise AnchorError(f"FAIL: ANCHOR_TAG_HEADER_DUPLICATE: {key}")
         headers[key] = value
+    expected_headers = {"object", "type", "tag", "tagger"}
+    if set(headers) != expected_headers:
+        raise AnchorError(
+            "FAIL: ANCHOR_TAG_HEADER_SET_NOT_EXACT: "
+            f"missing={sorted(expected_headers - set(headers))} "
+            f"extra={sorted(set(headers) - expected_headers)}"
+        )
     return headers, message
 
 
 def _parse_anchor_message(message: str) -> dict[str, str]:
-    lines = message.rstrip("\n").splitlines()
-    if not lines or lines[0] != "TRIAD-B00R-RECEIPT-ANCHOR-V1":
-        raise AnchorError("FAIL: ANCHOR_MESSAGE_PROFILE_MISMATCH")
-    values: dict[str, str] = {}
-    for line in lines[1:]:
-        if "=" not in line:
-            raise AnchorError(f"FAIL: ANCHOR_MESSAGE_LINE_MALFORMED: {line!r}")
-        key, value = line.split("=", 1)
-        if key in values or key not in {"receipt_path", "receipt_sha256"}:
-            raise AnchorError(f"FAIL: ANCHOR_MESSAGE_FIELD_INVALID: {key!r}")
-        values[key] = value
-    if set(values) != {"receipt_path", "receipt_sha256"}:
-        raise AnchorError(f"FAIL: ANCHOR_MESSAGE_FIELDS_INCOMPLETE: {sorted(values)}")
-    return values
+    match = re.fullmatch(
+        r"TRIAD-B00R-RECEIPT-ANCHOR-G2-V1\n"
+        r"receipt_path=evidence/receipts/B00R\.g2\.receipt\.v3\.json\n"
+        r"receipt_sha256=([0-9a-f]{64})\n",
+        message,
+    )
+    if match is None:
+        raise AnchorError("FAIL: ANCHOR_MESSAGE_NOT_EXACT_CANONICAL_THREE_LINES")
+    return {"receipt_path": RECEIPT_PATH, "receipt_sha256": match.group(1)}
+
+
+def _loads_unique_object(data: bytes) -> dict:
+    def unique_object(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise AnchorError(f"FAIL: TAG_RULESET_DUPLICATE_KEY:{key}")
+            value[key] = item
+        return value
+    try:
+        document = json.loads(data, object_pairs_hook=unique_object)
+    except AnchorError:
+        raise
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise AnchorError(f"FAIL: TAG_RULESET_NOT_JSON:{exc}") from exc
+    if not isinstance(document, dict):
+        raise AnchorError("FAIL: TAG_RULESET_NOT_OBJECT")
+    return document
+
+
+def _receipt_observation_window(receipt_document: dict) -> tuple[int, int]:
+    payload = receipt_document.get("payload")
+    observed = payload.get("observed_at_us") if isinstance(payload, dict) else None
+    emitted = payload.get("emitted_at_us") if isinstance(payload, dict) else None
+    if (not isinstance(observed, int) or isinstance(observed, bool) or observed <= 0
+            or not isinstance(emitted, int) or isinstance(emitted, bool)
+            or emitted < observed):
+        raise AnchorError("FAIL: RECEIPT_OBSERVATION_WINDOW_INVALID")
+    return observed, emitted
 
 
 def _validate_ruleset(doc: dict) -> None:
     if not isinstance(doc, dict):
         raise AnchorError("FAIL: TAG_RULESET_NOT_OBJECT")
+    if set(doc) != PROVIDER_RULESET_FIELDS:
+        raise AnchorError(
+            "FAIL: TAG_RULESET_PROVIDER_FIELDS_MISMATCH: "
+            f"missing={sorted(PROVIDER_RULESET_FIELDS - set(doc))} "
+            f"extra={sorted(set(doc) - PROVIDER_RULESET_FIELDS)}"
+        )
     if doc.get("target") != "tag":
         raise AnchorError(f"FAIL: TAG_RULESET_WRONG_TARGET: {doc.get('target')!r}")
     if doc.get("enforcement") != "active":
         raise AnchorError(f"FAIL: TAG_RULESET_NOT_ACTIVE: {doc.get('enforcement')!r}")
     if not isinstance(doc.get("id"), int) or isinstance(doc.get("id"), bool) or doc["id"] <= 0:
         raise AnchorError("FAIL: TAG_RULESET_ID_INVALID")
+    name = doc.get("name")
+    if (not isinstance(name, str) or not name.strip()
+            or name.strip().upper() in {"DECLARATIVE", "TEMPLATE", "PLACEHOLDER"}):
+        raise AnchorError("FAIL: TAG_RULESET_NAME_INVALID")
     if doc.get("source_type") != EXPECTED_SOURCE_TYPE or doc.get("source") != EXPECTED_SOURCE:
         raise AnchorError(
             "FAIL: TAG_RULESET_SOURCE_MISMATCH: "
             f"source_type={doc.get('source_type')!r} source={doc.get('source')!r}"
         )
-    if doc.get("current_user_can_bypass") is not False:
+    if doc.get("current_user_can_bypass") != "never":
         raise AnchorError(
-            "FAIL: TAG_RULESET_CURRENT_USER_BYPASS_NOT_FALSE: "
+            "FAIL: TAG_RULESET_CURRENT_USER_BYPASS_NOT_NEVER: "
             f"{doc.get('current_user_can_bypass')!r}"
         )
+    node_id = doc.get("node_id")
+    if (not isinstance(node_id, str)
+            or re.fullmatch(r"RRS_[A-Za-z0-9_-]+", node_id) is None):
+        raise AnchorError("FAIL: TAG_RULESET_NODE_ID_INVALID")
+    links = doc.get("_links")
+    self_link = links.get("self") if isinstance(links, dict) else None
+    html_link = links.get("html") if isinstance(links, dict) else None
+    expected_self = (
+        f"https://api.github.com/repos/{EXPECTED_SOURCE}/rulesets/{doc['id']}"
+    )
+    expected_html = f"https://github.com/{EXPECTED_SOURCE}/rules/{doc['id']}"
+    if (not isinstance(links, dict) or set(links) != {"self", "html"}
+            or not isinstance(self_link, dict) or set(self_link) != {"href"}
+            or self_link.get("href") != expected_self
+            or not isinstance(html_link, dict) or set(html_link) != {"href"}
+            or html_link.get("href") != expected_html):
+        raise AnchorError("FAIL: TAG_RULESET_PROVIDER_LINKS_MISMATCH")
+    for field in ("created_at", "updated_at"):
+        value = doc.get(field)
+        if not isinstance(value, str) or re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?Z",
+            value,
+        ) is None:
+            raise AnchorError(f"FAIL: TAG_RULESET_TIMESTAMP_INVALID:{field}")
     conditions = doc.get("conditions")
     ref_name = conditions.get("ref_name") if isinstance(conditions, dict) else None
     include = ref_name.get("include") if isinstance(ref_name, dict) else None
     exclude = ref_name.get("exclude") if isinstance(ref_name, dict) else None
     expected_ref = f"refs/tags/{TAG_NAME}"
-    if include != [expected_ref] or exclude not in ([], None):
+    if (not isinstance(conditions, dict) or set(conditions) != {"ref_name"}
+            or not isinstance(ref_name, dict) or set(ref_name) != {"include", "exclude"}
+            or include != [expected_ref] or exclude != []):
         raise AnchorError(
             f"FAIL: TAG_RULESET_SCOPE_NOT_EXACT: include={include!r} exclude={exclude!r}"
         )
@@ -121,12 +213,31 @@ def _validate_ruleset(doc: dict) -> None:
     if bypass != []:
         raise AnchorError(f"FAIL: TAG_RULESET_BYPASS_ACTORS_PRESENT: {bypass!r}")
     rules = doc.get("rules")
-    if not isinstance(rules, list):
+    if (not isinstance(rules, list)
+            or any(
+                not isinstance(rule, dict)
+                or set(rule) not in ({"type"}, {"type", "parameters"})
+                or not isinstance(rule.get("type"), str)
+                or ("parameters" in rule and not isinstance(rule["parameters"], dict))
+                for rule in rules
+            )):
         raise AnchorError("FAIL: TAG_RULESET_RULES_NOT_ARRAY")
-    rule_types = {rule.get("type") for rule in rules if isinstance(rule, dict)}
-    missing = {"update", "deletion"} - rule_types
-    if missing:
-        raise AnchorError(f"FAIL: TAG_RULESET_IMMUTABILITY_RULE_MISSING: {sorted(missing)}")
+    if len(rules) != 2 or {rule["type"] for rule in rules} != {"update", "deletion"}:
+        raise AnchorError("FAIL: TAG_RULESET_RULE_SET_NOT_EXACT")
+    if any(set(rule) != {"type"} for rule in rules):
+        raise AnchorError("FAIL: TAG_RULESET_IMMUTABILITY_RULE_INVALID")
+
+
+def _ruleset_time_us(value: object, field: str) -> int:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise AnchorError(f"FAIL: TAG_RULESET_TIMESTAMP_INVALID:{field}")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+        if parsed.tzinfo is None:
+            raise ValueError("timezone absent")
+        return int(parsed.timestamp() * 1_000_000)
+    except (OverflowError, TypeError, ValueError) as exc:
+        raise AnchorError(f"FAIL: TAG_RULESET_TIMESTAMP_INVALID:{field}") from exc
 
 
 def _canonical_file(
@@ -153,14 +264,14 @@ def _canonical_file(
     return cursor
 
 
-def verify(
+def _verify_static_bundle(
     *,
     root: pathlib.Path,
     expected_head: str,
     receipt_path: pathlib.Path,
     ruleset_path: pathlib.Path,
     ruleset_pin: str | None,
-) -> str:
+) -> tuple[str, bytes, str]:
     root = root.resolve()
     if HEX40_RE.fullmatch(expected_head or "") is None:
         raise AnchorError(f"FAIL: EXPECTED_HEAD_NOT_CANONICAL_HEX40: {expected_head!r}")
@@ -178,12 +289,32 @@ def verify(
     committed_receipt = _git(root, "show", f"{expected_head}:{receipt_rel}")
     if committed_receipt != receipt_data:
         raise AnchorError("FAIL: RECEIPT_WORKTREE_DIFFERS_FROM_EXPECTED_HEAD")
+    try:
+        receipt_document = _loads_unique_object(receipt_data)
+        source_merge_sha = receipt_document["payload"]["source_merge_sha"]
+    except (KeyError, TypeError) as exc:
+        raise AnchorError("FAIL: RECEIPT_SOURCE_MERGE_IDENTITY_MALFORMED") from exc
+    if not isinstance(source_merge_sha, str) or HEX40_RE.fullmatch(source_merge_sha) is None:
+        raise AnchorError("FAIL: RECEIPT_SOURCE_MERGE_IDENTITY_MALFORMED")
+    receipt_observed_at_us, receipt_emitted_at_us = _receipt_observation_window(
+        receipt_document)
+    parent_row = _git(root, "rev-list", "--parents", "-n", "1", expected_head).decode().split()
+    if (len(parent_row) != 3 or parent_row[0] != expected_head
+            or parent_row[1] != source_merge_sha):
+        raise AnchorError("FAIL: RECEIPT_MERGE_NOT_EXACT_TWO_PARENT_SOURCE_MERGE")
+    if _git(root, "rev-parse", f"{expected_head}^{{tree}}").strip() != _git(
+            root, "rev-parse", f"{parent_row[2]}^{{tree}}").strip():
+        raise AnchorError("FAIL: RECEIPT_MERGE_TREE_DIFFERS_FROM_PR_HEAD")
 
     ref = f"refs/tags/{TAG_NAME}"
-    object_type = _git(root, "cat-file", "-t", ref, blocked_if_missing=True).decode().strip()
+    tag_object_sha = _git(
+        root, "rev-parse", "--verify", ref, blocked_if_missing=True).decode().strip()
+    if HEX40_RE.fullmatch(tag_object_sha) is None:
+        raise AnchorError("FAIL: ANCHOR_TAG_OBJECT_SHA_INVALID")
+    object_type = _git(root, "cat-file", "-t", tag_object_sha).decode().strip()
     if object_type != "tag":
         raise AnchorError(f"FAIL: ANCHOR_TAG_NOT_ANNOTATED: type={object_type!r}")
-    raw_tag = _git(root, "cat-file", "tag", ref)
+    raw_tag = _git(root, "cat-file", "tag", tag_object_sha)
     headers, message = _parse_tag(raw_tag)
     if headers.get("object") != expected_head or headers.get("type") != "commit":
         raise AnchorError(
@@ -197,7 +328,6 @@ def verify(
         raise AnchorError("FAIL: ANCHOR_RECEIPT_PATH_MISMATCH")
     if values["receipt_sha256"] != receipt_sha:
         raise AnchorError("FAIL: ANCHOR_RECEIPT_DIGEST_MISMATCH")
-
     if ruleset_pin is None or ruleset_pin == "":
         raise AnchorError(f"BLOCKED: EXTERNAL_TAG_RULESET_PIN_ABSENT: {PIN_ENV}")
     if HEX64_RE.fullmatch(ruleset_pin) is None or ruleset_pin == "0" * 64:
@@ -211,21 +341,96 @@ def verify(
         raise AnchorError("FAIL: TAG_RULESET_WORKTREE_DIFFERS_FROM_EXPECTED_HEAD")
     if hashlib.sha256(ruleset_bytes).hexdigest() != ruleset_pin:
         raise AnchorError("FAIL: TAG_RULESET_EXTERNAL_PIN_MISMATCH")
-    try:
-        ruleset = json.loads(ruleset_bytes)
-    except json.JSONDecodeError as exc:
-        raise AnchorError(f"FAIL: TAG_RULESET_NOT_JSON: {exc}") from exc
+    ruleset = _loads_unique_object(ruleset_bytes)
     _validate_ruleset(ruleset)
+    created_at_us = _ruleset_time_us(ruleset.get("created_at"), "created_at")
+    updated_at_us = _ruleset_time_us(ruleset.get("updated_at"), "updated_at")
+    if not created_at_us <= updated_at_us < receipt_observed_at_us <= receipt_emitted_at_us:
+        raise AnchorError("FAIL: TAG_RULESET_NOT_EFFECTIVE_BEFORE_RECEIPT_OBSERVATION")
+    return receipt_sha, ruleset_bytes, tag_object_sha
+
+
+def _verify_static(
+    *,
+    root: pathlib.Path,
+    expected_head: str,
+    receipt_path: pathlib.Path,
+    ruleset_path: pathlib.Path,
+    ruleset_pin: str | None,
+) -> str:
+    """Run the static anchor checks and return the bound receipt digest for unit callers."""
+    receipt_sha, _ruleset_bytes, _tag_object_sha = _verify_static_bundle(
+        root=root,
+        expected_head=expected_head,
+        receipt_path=receipt_path,
+        ruleset_path=ruleset_path,
+        ruleset_pin=ruleset_pin,
+    )
+    return receipt_sha
+
+
+def verify(
+    *,
+    root: pathlib.Path,
+    expected_head: str,
+    receipt_path: pathlib.Path,
+    ruleset_path: pathlib.Path,
+    ruleset_pin: str | None,
+    now_us: int,
+    github_token: str | None,
+    receipt_pr: int,
+) -> str:
+    """Run the complete terminal anchor gate, including a fresh authenticated provider GET."""
+    if not isinstance(now_us, int) or isinstance(now_us, bool) or now_us <= 0:
+        raise AnchorError("FAIL: NOW_US_INVALID")
+    receipt_sha, ruleset_bytes, tag_object_sha = _verify_static_bundle(
+        root=root,
+        expected_head=expected_head,
+        receipt_path=receipt_path,
+        ruleset_path=ruleset_path,
+        ruleset_pin=ruleset_pin,
+    )
+    receipt_proof = fetch_and_verify_receipt_merge(
+        receipt_pr,
+        expected_merge_sha=expected_head,
+        expected_codeowner="djordi10",
+        token=github_token,
+        now_us=now_us,
+    )
+    parent_row = _git(root, "rev-list", "--parents", "-n", "1", expected_head).decode().split()
+    if (len(parent_row) != 3 or parent_row[0] != expected_head
+            or parent_row[2] != receipt_proof.head_sha):
+        raise AnchorError("FAIL: RECEIPT_MERGE_NOT_EXACT_TWO_PARENT_PR_MERGE")
+    # Static verification already proved the first parent is the receipt-declared source merge.
+    receipt_git_time_us = int(
+        _git(root, "show", "-s", "--format=%ct", expected_head).decode().strip()
+    ) * 1_000_000
+    if receipt_proof.merged_at_us != receipt_git_time_us:
+        raise AnchorError("FAIL: RECEIPT_PR_PROVIDER_GIT_TIME_MISMATCH")
+    ruleset_document = _loads_unique_object(ruleset_bytes)
+    created_at_us = _ruleset_time_us(ruleset_document.get("created_at"), "created_at")
+    updated_at_us = _ruleset_time_us(ruleset_document.get("updated_at"), "updated_at")
+    if not created_at_us <= updated_at_us < receipt_proof.merged_at_us:
+        raise AnchorError("FAIL: TAG_RULESET_NOT_EFFECTIVE_BEFORE_RECEIPT_MERGE")
+    fetch_and_match_live_ruleset(
+        ruleset_bytes, token=github_token, now_us=now_us,
+        require_bypass_visibility=True)
+    live_tag_object_sha = fetch_anchor_tag_object_sha(
+        token=github_token, now_us=now_us)
+    if live_tag_object_sha != tag_object_sha:
+        raise AnchorError("FAIL: LIVE_ANCHOR_TAG_OBJECT_MISMATCH")
     return receipt_sha
 
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--expected-head", required=True)
+    parser.add_argument("--now-us", required=True, type=int)
     parser.add_argument("--root", default=str(ROOT))
     parser.add_argument("--receipt", default=RECEIPT_PATH)
     parser.add_argument("--ruleset", default=DEFAULT_RULESET)
     parser.add_argument("--ruleset-pin")
+    parser.add_argument("--receipt-pr", required=True, type=int)
     args = parser.parse_args(argv)
     root = pathlib.Path(args.root)
     receipt = pathlib.Path(args.receipt)
@@ -234,19 +439,34 @@ def main(argv: list[str]) -> int:
         receipt = root / receipt
     if not ruleset.is_absolute():
         ruleset = root / ruleset
-    pin = args.ruleset_pin if args.ruleset_pin is not None else os.environ.get(PIN_ENV)
     try:
+        pin = _resolve_ruleset_pin(args.ruleset_pin, os.environ.get(PIN_ENV))
         receipt_sha = verify(
             root=root,
             expected_head=args.expected_head,
             receipt_path=receipt,
             ruleset_path=ruleset,
             ruleset_pin=pin,
+            now_us=args.now_us,
+            github_token=os.environ.get("GITHUB_TOKEN"),
+            receipt_pr=args.receipt_pr,
         )
+    except LiveRulesetUnavailable as exc:
+        print(f"BLOCKED: LIVE_TAG_PROVIDER_UNAVAILABLE:{exc}")
+        return 1
+    except LiveRulesetError as exc:
+        if str(exc) == "LIVE_ANCHOR_TAG_REF_HTTP_STATUS:404":
+            print("BLOCKED: LIVE_ANCHOR_TAG_ABSENT")
+            return 1
+        print(str(exc), file=sys.stderr)
+        return 1
     except (AnchorError, OSError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
-    print(f"OK: {TAG_NAME} binds receipt merge {args.expected_head} and receipt {receipt_sha}")
+    print(
+        f"OK: {TAG_NAME} binds receipt merge {args.expected_head}, receipt {receipt_sha}, "
+        "and a live no-bypass tag ruleset"
+    )
     return 0
 
 

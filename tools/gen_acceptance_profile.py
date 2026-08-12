@@ -73,7 +73,7 @@ _REQUIRED_EVIDENCE = (
     {"id": "B01C-RECEIPT", "role": "b01c_receipt_v3_closure",
      "artifact": "evidence/receipts/B01C.receipt.v3.json",
      "status": "PENDING_B00R_ANCHOR",
-     "note": "no B01C receipt exists offline; closure requires the validated B00R_RECEIPT_ANCHOR"},
+     "note": "no B01C receipt exists offline; closure requires the validated B00R_RECEIPT_ANCHOR_G2"},
 )
 
 
@@ -88,7 +88,7 @@ def build_profile() -> dict:
         "permitted_result": governance.RESULT_PASS,
         "activation_result": governance.ACTIVATION_RESULT,
         "levers": dict(governance.SAFETY_POSTURE),
-        "predecessor_hard": "B00R_RECEIPT_ANCHOR",
+        "predecessor_hard": "B00R_RECEIPT_ANCHOR_G2",
         # owner/provider inputs are out-of-repo and B00R is unvalidated -> honest absence, never faked
         "owner_gated_inputs": {
             "b00r_receipt_anchor_id": None,
@@ -103,7 +103,7 @@ def build_profile() -> dict:
             "Offline-prep acceptance profile for B01C. Lists B01C-specific required evidence and its "
             "honest status. It is an immutable content-addressed preimage, not a contract/binding/"
             "receipt; it mutates no published bytes and claims no closure. B01C becomes authoritative "
-            "only from a validated B00R_RECEIPT_ANCHOR."),
+            "only from a validated B00R_RECEIPT_ANCHOR_G2."),
     }
     body["profile_digest"] = _digest_of(body)
     return body

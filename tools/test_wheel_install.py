@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -14,8 +16,30 @@ import venv
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 
-def _run(args: list[str], *, cwd: pathlib.Path) -> None:
-    completed = subprocess.run(args, cwd=cwd, text=True, capture_output=True, check=False)
+def _subprocess_env() -> dict[str, str]:
+    """Return an environment whose repository constraint survives cwd changes."""
+
+    env = os.environ.copy()
+    raw_constraint = env.get("PIP_CONSTRAINT")
+    if raw_constraint:
+        constraint = pathlib.Path(raw_constraint)
+        if not constraint.is_absolute():
+            constraint = ROOT / constraint
+        if not constraint.is_file():
+            raise RuntimeError(f"PIP_CONSTRAINT is not a file: {constraint}")
+        env["PIP_CONSTRAINT"] = str(constraint.resolve())
+    return env
+
+
+def _run(args: list[str], *, cwd: pathlib.Path, env: dict[str, str]) -> None:
+    completed = subprocess.run(
+        args,
+        cwd=cwd,
+        env=env,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
     if completed.returncode:
         raise RuntimeError(
             f"command failed ({completed.returncode}): {' '.join(args)}\n"
@@ -25,8 +49,18 @@ def _run(args: list[str], *, cwd: pathlib.Path) -> None:
 
 def main() -> int:
     try:
+        env = _subprocess_env()
         with tempfile.TemporaryDirectory(prefix="triad-origin-wheel-") as tmp_name:
             tmp = pathlib.Path(tmp_name)
+            source = tmp / "source"
+            shutil.copytree(
+                ROOT,
+                source,
+                ignore=shutil.ignore_patterns(
+                    ".git", ".pytest_cache", ".venv", "__pycache__", "*.egg-info",
+                    "build", "dist",
+                ),
+            )
             sdist_dir = tmp / "sdist"
             dist = tmp / "dist"
             _run(
@@ -38,7 +72,8 @@ def main() -> int:
                     "--dist-dir",
                     str(sdist_dir),
                 ],
-                cwd=ROOT,
+                cwd=source,
+                env=env,
             )
             sdists = sorted(sdist_dir.glob("triad_origin-*.tar.gz"))
             if len(sdists) != 1:
@@ -83,7 +118,8 @@ def main() -> int:
                     "--wheel-dir",
                     str(dist),
                 ],
-                cwd=ROOT,
+                cwd=source,
+                env=env,
             )
             wheels = sorted(dist.glob("triad_origin-*.whl"))
             if len(wheels) != 1:
@@ -105,6 +141,7 @@ def main() -> int:
                     str(wheels[0]),
                 ],
                 cwd=tmp,
+                env=env,
             )
             probe = f"""
 import hashlib
@@ -191,7 +228,7 @@ for schema_id in contracts.known_contracts():
     else:
         raise AssertionError(f'diagnostic accepted invalid golden for {{schema_id}}')
 """
-            _run([str(python), "-I", "-c", probe], cwd=tmp)
+            _run([str(python), "-I", "-c", probe], cwd=tmp, env=env)
     except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
         print(f"FAIL: isolated wheel smoke failed: {exc}", file=sys.stderr)
         return 1

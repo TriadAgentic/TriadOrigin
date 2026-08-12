@@ -14,17 +14,33 @@ It is not an E00–E10 monolith.
 
 ## Governing status
 
+Canonical machine milestone semantics and status are routed through
+[`docs/control/closure/`](docs/control/closure/). The files
+[`docs/plan/04_STATUS.md`](docs/plan/04_STATUS.md),
+[`docs/plan/05_RC2_CONFLICT_REGISTER.md`](docs/plan/05_RC2_CONFLICT_REGISTER.md),
+[`docs/plan/08_BUILD_CHECKLIST.md`](docs/plan/08_BUILD_CHECKLIST.md), and
+[`docs/plan/09_OPEN_QUESTIONS.md`](docs/plan/09_OPEN_QUESTIONS.md) are historical, generated, or
+input views and cannot override that registry. This C0 routing change does not claim that C0 is
+closed or signed.
+
+Within that directory, `closure_semantics.v1.json` is normative; the 1,250-row
+`closure_task_bindings.v1.json` and append-only `closure_status_events.v1.json` are canonical
+inputs; and `closure_status.v1.json`, `docs/plan/04_STATUS.md`, and
+`docs/plan/08_BUILD_CHECKLIST.md` are byte-exact generated projections. Validate with
+`python tools/closure_control.py --check`; regenerate only those three outputs with `--write`.
+
 - The merged foundation originated against `1.0.0-RC1` and failed the later repository audit.
 - The supplied `1.0.0-RC2` package is a `RATIFICATION_CANDIDATE_NOT_ARMED`; it is incomplete and
   internally contradictory.
 - Vendored [`docs/spec/`](docs/spec/) is therefore **historical RC1 provenance**, not sufficient
   authority for new detector work.
-- RC2 conflicts enter `SAFE_HOLD`. M3 and every detector milestone remain blocked until B00 closes
-  the package, compatibility, ownership, formula, parameter, and lifecycle decisions.
+- RC2 conflicts enter `SAFE_HOLD`. M3 and every detector milestone remain blocked until their
+  downstream package, compatibility, ownership, formula, parameter, and lifecycle gates close;
+  B00R does not close them.
 
-The controlled execution law is [`docs/plan/README.md`](docs/plan/README.md). Audited status is in
-[`docs/plan/04_STATUS.md`](docs/plan/04_STATUS.md), and release blockers are in
-[`docs/plan/05_RC2_CONFLICT_REGISTER.md`](docs/plan/05_RC2_CONFLICT_REGISTER.md).
+The controlled execution plan is [`docs/plan/README.md`](docs/plan/README.md). B00R is strictly the
+governance/evidence root; formula migration and capability implementation remain downstream
+blockers and are not closed by B00R. The operational posture remains `OFF/OFF/OFF/LIVE`.
 
 ## E02 boundary
 
@@ -48,7 +64,7 @@ tests/             Falsification and regression suites
 ## Required local gate
 
 ```bash
-PIP_CONSTRAINT=constraints/ci.txt python -m pip install -e '.[test]'
+PIP_CONSTRAINT="$PWD/constraints/ci.txt" python -m pip install -e '.[test]'
 PYTHONHASHSEED=0 python -m pytest
 PYTHONHASHSEED=1 python -m pytest
 python tools/collect_test_ids.py
@@ -60,8 +76,10 @@ python tools/verify_no_forbidden_capabilities.py
 ```
 
 Test count is descriptive, not acceptance evidence. A milestone also requires exact-head CI,
-resolved actionable findings, authenticated clean acceptance for that same immutable head, guarded
-squash merge, fresh-main reproduction, and an immutable receipt. For corrective R00, a persistent
+resolved actionable findings, authenticated clean acceptance for that same immutable head, the
+provider-enforced merge method required by its active receipt law, fresh-main reproduction, and an
+immutable receipt. B00R generation 2 specifically requires an ordinary two-parent merge; squash and
+rebase are forbidden. For corrective R00, a persistent
 connector PR-root `+1` is corroboration only; final-head acceptance requires its own fresh clean
 Codex artifact, an exact reviewed historical review/comment baseline, unedited top-level comments,
 and a complete timeline proving no later head/base mutation or review dismissal. Both acceptance

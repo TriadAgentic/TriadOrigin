@@ -17,8 +17,13 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 from triad_origin import governance  # noqa: E402
+try:  # importable both as ``python tools/...`` and as ``from tools import ...``
+    from tools.b00r_clean_runner import ALLOWED_EMPTY_PATHS  # type: ignore  # noqa: E402
+except ModuleNotFoundError:  # pragma: no cover - direct script fallback
+    from b00r_clean_runner import ALLOWED_EMPTY_PATHS  # type: ignore  # noqa: E402
 
 
 class ManifestClosureError(ValueError):
@@ -173,6 +178,11 @@ def main(argv: list[str]) -> int:
     closed_root = pathlib.Path(args.closed_root) if args.closed_root else None
     if closed_root is not None and not closed_root.is_absolute():
         closed_root = root / closed_root
+    allowed_empty_paths = (
+        ALLOWED_EMPTY_PATHS
+        if closed_root == root / "evidence" / "B00R_G2"
+        else frozenset()
+    )
 
     try:
         if args.build:
@@ -183,7 +193,8 @@ def main(argv: list[str]) -> int:
             entries = spec["entries"] if isinstance(spec, dict) else spec
             manifest = governance.build_evidence_manifest(root, entries)
             # Resolve sizes/digests/zero-byte law before writing anything.
-            governance.validate_evidence_manifest(manifest, root)
+            governance.validate_evidence_manifest(
+                manifest, root, allowed_empty_paths=allowed_empty_paths)
             text = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
             if closed_root is not None:
                 if not args.out:
@@ -217,7 +228,8 @@ def main(argv: list[str]) -> int:
         if not manifest_path.is_absolute():
             manifest_path = root / manifest_path
         manifest = _load_json(manifest_path, "MANIFEST")
-        governance.validate_evidence_manifest(manifest, root)
+        governance.validate_evidence_manifest(
+            manifest, root, allowed_empty_paths=allowed_empty_paths)
         if closed_root is not None:
             validate_closed_membership(
                 manifest,

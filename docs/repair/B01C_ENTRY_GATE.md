@@ -2,7 +2,7 @@
 
 **Milestone:** B01C (contract identity, binding capability, domain evidence)
 **Repository:** `TriadAgentic/TriadOrigin`
-**Predecessor (hard):** validated `B00R_RECEIPT_ANCHOR` — the receipt commit sealing the exact B00R
+**Predecessor (hard):** validated `B00R_RECEIPT_ANCHOR_G2` — the generation-2 receipt commit sealing the exact B00R
 source merge. **B01C may not become authoritative until that anchor validates.**
 **Posture (invariant):** `activation_result=DENIED_SAFE_HOLD`, OFF/OFF/OFF/LIVE.
 **Permitted result:** `PASS_REPOSITORY_SAFE_HOLD` only.
@@ -35,6 +35,25 @@ Handoff fields B01C's entry gate must recompute from the B00R closure bundle bef
 branch is authoritative: `b00r_receipt_anchor_id`, receipt merge commit/tree/time, receipt-v3 +
 trust-registry digests, ruleset id/digest/effective time + no-bypass proof, and the historical
 invalidation-manifest digest (`docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json`).
+
+The executable entry authorization is `tools/verify_b01c_entry.py`. Run it only from a clean,
+detached checkout of the exact generation-2 receipt merge:
+
+```bash
+python tools/verify_b01c_entry.py \
+  --expected-head "$RECEIPT_MERGE" \
+  --receipt-pr "$RECEIPT_PR" \
+  --now-us "$NOW_US" \
+  --pins "$PINS_JSON" \
+  --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" \
+  --anchor-ruleset-pin "$B00R_G2_TAG_RULESET_SHA256"
+```
+
+It derives the source merge from the canonical G2 receipt, reruns the complete terminal
+`b00r_gate.py --mode receipt`, requires the literal
+`B00R result: PASS_REPOSITORY_SAFE_HOLD`, and rechecks the exact clean HEAD afterward. Only
+`PASS_B01C_ENTRY_BASE:<RECEIPT_MERGE>` authorizes creating a B01C branch from that SHA. The tool does
+not create a branch and does not alter the OFF/OFF/OFF/LIVE safe-hold posture.
 
 ---
 
@@ -117,7 +136,13 @@ capability; all fail closed.
 
 - `tools/verify_binding_bundle.py --bundle <packaged-bundle> --authority <pinned-authority-preimage>`
 - `tools/run_contract_mutations.py --profile B01C --require-all-refused`
-- `tools/validate_b_receipt.py --receipt evidence/receipts/B01C.json --require-provider-evidence`
+- Run the unchanged receipt-v3 validator with the canonical positional receipt path:
+
+  ```bash
+  tools/validate_b_receipt.py --strict --milestone B01C \
+    <required authority/provider flags> \
+    evidence/receipts/B01C.receipt.v3.json
+  ```
   (consumer of the **unchanged** B00R receipt-v3 profile — no in-place edit)
 
 ## 5. Falsification families (staged, from the pack §7)
@@ -144,7 +169,7 @@ preimage.
 ## 7. Status
 
 - **Offline-prep produced:** this entry-gate + the WP-B01C-02..06 design/defect register.
-- **Blocked (owner-gated):** B01C cannot become authoritative until `B00R_RECEIPT_ANCHOR` validates.
+- **Blocked (owner-gated):** B01C cannot become authoritative until `B00R_RECEIPT_ANCHOR_G2` validates.
 - **Next engaged session:** implement WP-B01C-02 (schema closure) → WP-B01C-03 (fail-closed
   validator, with the test-lane migration) → WP-B01C-04 (sealed `ResolvedParameterBundle`) →
   WP-B01C-05 (projection verifier) → WP-B01C-06 (acceptance profile), each with its falsification

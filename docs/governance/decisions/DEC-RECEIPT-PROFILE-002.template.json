@@ -1,0 +1,37 @@
+{
+  "authenticated": false,
+  "authority_registry": "docs/governance/trust/receipt_trust_registry.g2.v1.json",
+  "decision": "RATIFY_B00R_GENERATION_2_RECEIPT_V3_PROFILE",
+  "decision_id": "DEC-RECEIPT-PROFILE-002",
+  "decision_kind": "GOVERNANCE_DECISION",
+  "effective_at_us": 0,
+  "failure_behavior": "NO_GENERATION_2_RECEIPT_MAY_RETURN_PASS",
+  "issuer": "UNSET_AUTHORITY_OWNER",
+  "schema": "triad.governance_decision.v1",
+  "schema_version": "1.0.0",
+  "scope": {
+    "canonicalization": "triad_origin.canonical.canonical_json (RFC8785-style sorted-key UTF-8)",
+    "clock_law": "observed_at_us > source_merge_time_us; emitted_at_us >= observed_at_us; zero future tolerance",
+    "closure_anchor_mechanism": "protected annotated tag B00R_RECEIPT_ANCHOR_G2 plus externally pinned active no-update/no-delete/no-bypass tag ruleset",
+    "envelope": "triad.evidence_receipt.v3 canonical-json",
+    "evidence_root": "evidence/B00R_G2",
+    "receipt_path": "evidence/receipts/B00R.g2.receipt.v3.json",
+    "repair_generation": 2,
+    "signature_algorithm": "ed25519",
+    "signer_roles": [
+      "EVIDENCE_PRODUCER",
+      "INDEPENDENT_COUNTERSIGNER"
+    ],
+    "signer_threshold": 2,
+    "trust_registry": "docs/governance/trust/receipt_trust_registry.g2.v1.json"
+  },
+  "signatures": [],
+  "subject_sha256s": {
+    "evidence_manifest_schema": "c68f4c088e5196749a7cc19ad0eb59d6026da708281e5c2d2d4ab1b52698aa6d",
+    "evidence_receipt_v3_schema": "f1ff2bfcddd6533ab1cdfbf9d304269c9db7808d14f006f76a53a3f1624c233e",
+    "trust_registry_schema": "2ca6f413452a7aee4c59e8796bdf1def03961def12dac8c7d7ed4eeb28aa4306"
+  },
+  "supersedes": [
+    "DEC-RECEIPT-PROFILE-001"
+  ]
+}

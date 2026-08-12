@@ -1,0 +1,362 @@
+{
+  "$id": "https://triad.invalid/schemas/closure-status-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "digest": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "canonicalizer": {
+          "const": "triad_origin.canonical.canonical_json"
+        },
+        "domain": {
+          "const": "triad.closure.status.artifact.v1"
+        },
+        "preimage_rule": {
+          "const": "canonical_json({domain,schema,version,payload})"
+        },
+        "value": {
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "canonicalizer",
+        "domain",
+        "preimage_rule",
+        "value"
+      ],
+      "type": "object"
+    },
+    "payload": {
+      "additionalProperties": false,
+      "properties": {
+        "activation_posture": {
+          "additionalProperties": false,
+          "properties": {
+            "paper_activation": {
+              "const": "OFF"
+            },
+            "shadow_activation": {
+              "const": "LIVE"
+            },
+            "venue_activation": {
+              "const": "OFF"
+            },
+            "venue_environment": {
+              "const": "OFF"
+            }
+          },
+          "required": [
+            "venue_environment",
+            "venue_activation",
+            "paper_activation",
+            "shadow_activation"
+          ],
+          "type": "object"
+        },
+        "classification": {
+          "const": "GENERATED_STATUS_NON_EVIDENCE"
+        },
+        "closed_claims": {
+          "maxItems": 0,
+          "type": "array"
+        },
+        "cryptographic_authentication": {
+          "const": "NOT_CLAIMED"
+        },
+        "current_work": {
+          "items": {
+            "pattern": "^(?:CONTROL_FREEZE::C0|ORIGIN_REPAIR::(?:B00R_G2|B01C|B02C|B03C|B04C|B05C|B06R|B07|B08|B09|B10)|ESTATE_CROSS_REPO::XC01|ESTATE_CLOSURE::BN)::sha256:(?!0{64}$)[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "generation_law": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "milestones": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "blocking_reasons": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "gate_state": {
+                "const": "BLOCKED"
+              },
+              "identity": {
+                "pattern": "^(?:CONTROL_FREEZE::C0|ORIGIN_REPAIR::(?:B00R_G2|B01C|B02C|B03C|B04C|B05C|B06R|B07|B08|B09|B10)|ESTATE_CROSS_REPO::XC01|ESTATE_CLOSURE::BN)::sha256:(?!0{64}$)[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "receipt_state": {
+                "enum": [
+                  "BLOCKED",
+                  "NOT_APPLICABLE"
+                ]
+              },
+              "runtime_state": {
+                "enum": [
+                  "NOT_APPLICABLE",
+                  "NOT_ATTESTED"
+                ]
+              },
+              "work_state": {
+                "enum": [
+                  "NOT_STARTED",
+                  "BASELINED_FAIL",
+                  "SOURCE_IN_PROGRESS",
+                  "SOURCE_READY",
+                  "SOURCE_MERGED",
+                  "RECEIPT_IN_PROGRESS",
+                  "RECEIPT_READY",
+                  "CLOSED"
+                ]
+              }
+            },
+            "required": [
+              "identity",
+              "work_state",
+              "gate_state",
+              "receipt_state",
+              "runtime_state",
+              "blocking_reasons"
+            ],
+            "type": "object"
+          },
+          "maxItems": 14,
+          "minItems": 14,
+          "type": "array"
+        },
+        "next_gate": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "open_blockers": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "blocker_id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "owner_identity": {
+                "pattern": "^(?:CONTROL_FREEZE::C0|ORIGIN_REPAIR::(?:B00R_G2|B01C|B02C|B03C|B04C|B05C|B06R|B07|B08|B09|B10)|ESTATE_CROSS_REPO::XC01|ESTATE_CLOSURE::BN)::sha256:(?!0{64}$)[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "provenance_kind": {
+                "enum": [
+                  "SEMANTICS_BLOCKER_CATALOG",
+                  "REVIEW_POLICY_SLOT",
+                  "MILESTONE_DEPENDENCY",
+                  "PATH_LAW",
+                  "TEST_LAYER"
+                ]
+              },
+              "provenance_ref": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "reason": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "severity": {
+                "enum": [
+                  "P0",
+                  "P1"
+                ]
+              },
+              "status": {
+                "const": "OPEN"
+              }
+            },
+            "required": [
+              "blocker_id",
+              "owner_identity",
+              "severity",
+              "status",
+              "reason",
+              "provenance_kind",
+              "provenance_ref"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "overall_state": {
+          "const": "SOURCE_IN_PROGRESS_BLOCKED_SAFE_HOLD"
+        },
+        "program": {
+          "const": "TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11"
+        },
+        "semantics_reference": {
+          "additionalProperties": false,
+          "properties": {
+            "digest_domain": {
+              "const": "triad.closure.semantics.artifact.v1"
+            },
+            "digest_sha256": {
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "path": {
+              "const": "docs/control/closure/closure_semantics.v1.json"
+            },
+            "schema": {
+              "const": "triad.closure.semantics.v1"
+            }
+          },
+          "required": [
+            "path",
+            "schema",
+            "digest_domain",
+            "digest_sha256"
+          ],
+          "type": "object"
+        },
+        "status_events_reference": {
+          "additionalProperties": false,
+          "properties": {
+            "chain_head_sha256": {
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "digest_domain": {
+              "const": "triad.closure.status_events.artifact.v1"
+            },
+            "digest_sha256": {
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "event_count": {
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "const": "docs/control/closure/closure_status_events.v1.json"
+            },
+            "schema": {
+              "const": "triad.closure.status_events.v1"
+            }
+          },
+          "required": [
+            "path",
+            "schema",
+            "digest_domain",
+            "digest_sha256",
+            "chain_head_sha256",
+            "event_count"
+          ],
+          "type": "object"
+        },
+        "task_binding_reference": {
+          "additionalProperties": false,
+          "properties": {
+            "changed_review_required_rows": {
+              "const": 94
+            },
+            "classified_target_task_count": {
+              "const": 1153
+            },
+            "digest_domain": {
+              "const": "triad.closure.task_binding.artifact.v1"
+            },
+            "digest_sha256": {
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "external_formula_receipt_task_count": {
+              "const": 42
+            },
+            "external_obligation_task_count": {
+              "const": 418
+            },
+            "path": {
+              "const": "docs/control/closure/closure_task_bindings.v1.json"
+            },
+            "row_count": {
+              "const": 1250
+            },
+            "schema": {
+              "const": "triad.closure.task_binding.v1"
+            },
+            "source_ledger_review_state": {
+              "const": "UNBOUND"
+            },
+            "target_allocation_review_state": {
+              "const": "UNBOUND"
+            },
+            "unallocated_task_count": {
+              "const": 97
+            },
+            "unchanged_review_subject_rows": {
+              "const": 1156
+            }
+          },
+          "required": [
+            "changed_review_required_rows",
+            "classified_target_task_count",
+            "digest_domain",
+            "digest_sha256",
+            "external_formula_receipt_task_count",
+            "external_obligation_task_count",
+            "path",
+            "row_count",
+            "schema",
+            "source_ledger_review_state",
+            "target_allocation_review_state",
+            "unallocated_task_count",
+            "unchanged_review_subject_rows"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "classification",
+        "program",
+        "semantics_reference",
+        "status_events_reference",
+        "task_binding_reference",
+        "generation_law",
+        "activation_posture",
+        "cryptographic_authentication",
+        "overall_state",
+        "current_work",
+        "milestones",
+        "open_blockers",
+        "closed_claims",
+        "next_gate"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "triad.closure.status.v1"
+    },
+    "version": {
+      "const": "1"
+    }
+  },
+  "required": [
+    "schema",
+    "version",
+    "digest",
+    "payload"
+  ],
+  "type": "object"
+}

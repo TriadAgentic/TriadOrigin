@@ -43,7 +43,7 @@ def test_honest_offline_posture():
     profile = json.loads(gap.PROFILE_PATH.read_text(encoding="utf-8"))
     assert profile["closure_claimed"] is False
     assert profile["milestone_status"] == "OFFLINE_PREP_UNRECEIPTED"
-    assert profile["predecessor_hard"] == "B00R_RECEIPT_ANCHOR"
+    assert profile["predecessor_hard"] == "B00R_RECEIPT_ANCHOR_G2"
     owner = profile["owner_gated_inputs"]
     for key, value in owner.items():
         assert value in (None, "UNAVAILABLE"), (key, value)

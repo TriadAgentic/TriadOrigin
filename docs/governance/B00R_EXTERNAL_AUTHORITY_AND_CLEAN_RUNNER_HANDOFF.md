@@ -1,790 +1,609 @@
-# B00R external-authority and clean-runner handoff
+# B00R generation-2 external-authority and clean-runner handoff
 
-**Milestone:** B00R — forward-only governance, evidence, and receipt root repair  
-**Repository:** `TriadAgentic/TriadOrigin`  
-**Execution boundary:** GitHub provider controls, separated signing workstations, and an ephemeral clean runner  
-**Trading/MCP box required:** **NO**  
-**Document status:** operator handoff; live identifiers must be filled from the provider immediately before execution  
-**Permitted terminal success:** `PASS_REPOSITORY_SAFE_HOLD`  
-**Required runtime posture throughout:** `venue_environment=OFF`, `venue_activation=OFF`, `paper_activation=OFF`, `shadow_activation=LIVE`
+**Milestone:** B00R generation 2 (`B00R_G2`)
 
-> B00R is a repository-authority milestone. Logging into a trading, execution, database, or MCP host
-> does not make any missing B00R control more authentic. Do not request box credentials, inspect
-> venue secrets, restart services, or alter runtime configuration for this work. Any instruction that
-> says B00R must be run on the trading box is a boundary error.
+**Audited start:** `76b5e4857f80f22f99385810037c5c66289ebd5f`
 
----
+**Only permitted terminal result:** `PASS_REPOSITORY_SAFE_HOLD`
 
-## 0. Boundary and acceptance matrix
+**Activation result:** `DENIED_SAFE_HOLD`
+**Lever invariant:** `venue_environment=OFF / venue_activation=OFF / paper_activation=OFF / shadow_activation=LIVE`
 
-| Work item | Execution surface | Trading/MCP box | Acceptance evidence |
-|---|---|---:|---|
-| Repaired engineering-head freeze and diagnostics | GitHub/local clean engineering runner | **Never** | Frozen head/tree plus deterministic diagnostic results |
-| Authority decisions, trust bootstrap, and receipt signing | Separated owner/signing workstations | **Never** | Canonical signed public artifacts plus externally protected digest pins |
-| Branch/tag rulesets and bypass rejection | Privileged repository-owner session outside PR CI | **Never** | Provider API capture, negative canary, external signature, external digest pin |
-| Final exact-head strict CI/review/guarded repair merge | GitHub | **Never** | Provider checks/reviews/threads/merge bound to the post-ceremony final head |
-| Hermetic reproduction | New ephemeral clean runner | **Never** | Fresh-clone identity, raw logs/results, artifact hashes, clean-tree proof |
-| B00R evidence and bare receipt | Receipt-only Git branch/PR | **Never** | Only `evidence/B00R/**` and `evidence/receipts/B00R.receipt.v3.json` |
-| Protected receipt anchor | GitHub protected annotated tag | **Never** | Immutable anchor object binding receipt merge and receipt digest |
-| MCP deployment or investigation-family activation | Separate MCP-host guide | **Not B00R** | Explicitly excluded from this document |
+This is an additive, forward-only correction. It does not rewrite the first B00R attempt, move its
+tag, manufacture a historical review, or make post-merge provider evidence predate a merge.
 
-The execution order is fixed: **freeze repaired engineering head and run diagnostics → use that exact
-verifier for owner ceremony → install active no-bypass branch/tag rulesets and capture privileged
-provider proof → incorporate any required public ceremony/proof artifacts and refreeze the final head
-→ exact-head strict CI → independent review → guarded repair merge → clean reproduction → bare
-receipt-only PR → guarded receipt merge → protected anchor**. PR CI may verify owner material but must
-not fabricate or self-attest it.
+The ceremony is repository-only. Do not log into, restart, configure, or deploy the trading estate,
+MCP server, database, venue adapter, or model host. Those systems cannot supply missing GitHub
+chronology or independent review.
 
-All `<ANGLE_BRACKET>` values are mandatory operator inputs, not shell syntax. Resolve them from the
-frozen head or provider, record them in Section 2, and review the expanded command before execution.
+## 1. Historical generation 1 is immutable false-green evidence
 
----
+The authoritative historical identities are recorded in
+`B00R_GENERATION_LEDGER.v1.json`:
 
-## 1. Outcome and non-goals
-
-This handoff closes only the residual controls that cannot be manufactured by the implementation
-author:
-
-1. a frozen repaired engineering head with deterministic diagnostics;
-2. authenticated authority decisions and an externally pinned trust root built with that verifier;
-3. active provider-proven GitHub rulesets with privileged no-bypass proof captured outside CI;
-4. exact-head strict CI, independent review, and guarded merge of the final post-ceremony repair head;
-5. hermetic reproduction of the repaired merge on a fresh runner;
-6. a single canonical bare receipt-only PR and protected immutable receipt anchor; and
-7. a complete evidence return bundle.
-
-It does **not**:
-
-- arm Origin, paper trading, venues, or an executor;
-- deploy to the TRIAD box;
-- read or write live databases, ledgers, queues, or credentials;
-- repair B01C or any later milestone;
-- rewrite historical R00/B00/B00C/B01–B07 receipts; or
-- turn a missing owner decision into an implementation default.
-
-Until every acceptance row in this guide passes, report `BLOCKED_SAFE_HOLD`, not “mostly complete.”
-
----
-
-## 2. Live execution record — fill before acting
-
-Never copy identifiers from an old guide. Query GitHub again and fill this record.
-
-| Field | Live value |
+| Object | Immutable identity |
 |---|---|
-| Repository | `TriadAgentic/TriadOrigin` |
-| Default branch | `main` |
-| Audited starting commit | `<AUDITED_START_SHA>` |
-| B00R repaired implementation PR | `<REPAIR_PR_NUMBER>` |
-| B00R repaired implementation PR URL | `<REPAIR_PR_URL>` |
-| Frozen engineering head/tree used for ceremony | `<ENGINEERING_FROZEN_HEAD_SHA>` / `<ENGINEERING_FROZEN_TREE_SHA>` |
-| Final repaired head SHA | `<REPAIR_FINAL_HEAD_SHA>` |
-| Final repaired tree SHA | `<REPAIR_FINAL_TREE_SHA>` |
-| Exact-head repair CI run / job | `<REPAIR_CI_RUN_ID>` / `<REPAIR_CI_JOB_ID>` |
-| Repaired merge SHA | `<REPAIR_MERGE_SHA>` |
-| Repaired merge tree SHA | `<REPAIR_MERGE_TREE_SHA>` |
-| Repaired merge time, UTC | `<REPAIR_MERGED_AT_UTC>` |
-| Receipt `source_merge_time_us` | `<git show -s --format=%ct REPAIR_MERGE_SHA> * 1000000` |
-| Authority-bundle decision pin | `AUTHORITY_BUNDLE_DECISION_SHA256=<DECISION_SHA256>` |
-| Receipt-profile decision pin | `RECEIPT_PROFILE_DECISION_SHA256=<DECISION_SHA256>` |
-| B00-repair decision pin | `B00_REPAIR_DECISION_SHA256=<DECISION_SHA256>` |
-| Receipt trust-registry pin | `RECEIPT_TRUST_REGISTRY_SHA256=<TRUST_REGISTRY_SHA256>` |
-| Normalized main-ruleset snapshot | `docs/governance/rulesets/main.ruleset.provider.json` |
-| Raw main-ruleset provider response | `docs/governance/rulesets/main.ruleset.provider.raw.json` |
-| Protected raw-provider SHA-256 | `MAIN_RULESET_EVIDENCE_SHA256=<RAW_PROVIDER_SHA256>` |
-| Trusted engineering/source `NOW_US` | `<POSITIVE_UNIX_TIME_MICROSECONDS + TRUSTED-SOURCE EVIDENCE>` |
-| Trusted receipt `NOW_US` | `<POSITIVE_UNIX_TIME_MICROSECONDS + TRUSTED-SOURCE EVIDENCE>` |
-| Protected tag-ruleset SHA-256 | `B00R_TAG_RULESET_SHA256=<TAG_RULESET_SHA256>` |
-| Receipt PR | `<RECEIPT_PR_NUMBER>` |
-| Final receipt head SHA | `<RECEIPT_FINAL_HEAD_SHA>` |
-| Receipt CI run / job | `<RECEIPT_CI_RUN_ID>` / `<RECEIPT_CI_JOB_ID>` |
-| Receipt merge SHA | `<RECEIPT_MERGE_SHA>` |
-| Receipt merge tree SHA | `<RECEIPT_MERGE_TREE_SHA>` |
-| Receipt merge time, UTC | `<RECEIPT_MERGED_AT_UTC>` |
-| Branch ruleset ID | `<MAIN_RULESET_ID>` |
-| Anchor/tag ruleset ID | `<ANCHOR_RULESET_ID>` |
-| Anchor identity | `B00R_RECEIPT_ANCHOR` (exact validator-required name) |
-| Anchor object/tag SHA | `<ANCHOR_OBJECT_SHA>` |
-| Receipt file SHA-256 | `<B00R_RECEIPT_SHA256>` |
+| Source PR | PR #31; head `6033e9e0812d3eb980cfbcb3928006226414c7e4`; merge `5b2a0edc6db99934fe6fbe6bb0fa582bf689a7cc`; merged `2026-08-10T12:37:25Z` |
+| Receipt PR | PR #32; head `462152e29d249ab3596f6025e1f4d568efab335c`; merge `76b5e4857f80f22f99385810037c5c66289ebd5f`; merged `2026-08-10T13:05:54Z` |
+| Receipt | `evidence/receipts/B00R.receipt.v3.json`; SHA-256 `f1328ceb29a8730be93f4fd47d295ac96ef514a747385ab500256d6fa52a7cca` |
+| Anchor | annotated tag `B00R_RECEIPT_ANCHOR`; tag object `0b2f0579a81e03988cca119ae7e4a0fbf888ad09`; target `76b5e4857f80f22f99385810037c5c66289ebd5f` |
+| Disposition | `MERGED_UNVERIFIED`; never a predecessor acceptance root |
 
-Stop if the live PR, branch, or head differs from the approved work order. A moved head invalidates
-prior CI, review, thread resolution, reproduction, signatures, and receipt assembly.
+Generation 1 remains non-closing for five independent reasons:
 
-### 2.1 Trusted-time law
+1. PR #31 has no submitted review.
+2. PR #32 has no submitted review.
+3. GitHub main ruleset `20641102` was created at `2026-08-10T13:47:11.736Z`, after both merges.
+4. The receipt sealed a hand-authored provider stub whose ruleset id is `"DECLARATIVE"`.
+5. The receipt declares `source_pr=27` while its `source_merge_sha` is PR #31's merge.
 
-Every strict authority, governance, source, receipt, and terminal gate receives an explicit positive
-Unix timestamp in microseconds through `--now-us`. `NOW_US` must come from the approved trusted time
-source available to the owner/controlled runner, and the value plus source evidence must be recorded.
-Do not derive it from a PR file, receipt field, provider snapshot, or untrusted job output. Use a fresh
-trusted value for each later execution; do not reuse a stale ceremony timestamp merely to stay inside
-a key-validity window.
+Retro-review cannot change pre-merge chronology. Never edit either generation-1 receipt/evidence
+namespace, never repoint `B00R_RECEIPT_ANCHOR`, and never relabel generation 1 as passed.
 
-Both source and receipt modes are exact-head operations. Supply `--expected-head` equal to the clean
-checkout's literal 40-hex `HEAD`; a moved head requires a fresh trusted time, gate run, review, and
-evidence record.
+### PR #33 is post-hoc evidence only
 
----
+PR #33 is open at head `0fc4edef83aa60ffe06d1d8356d798e492a6d98e` and has no submitted
+review. It contains a live capture and rejected administrative canaries for ruleset `20641102`.
+That proves a provider control existed after generation 1; it cannot repair either earlier merge.
 
-## 3. Role and separation matrix
+Its captured rule also is not the generation-2 canonical rule as written: it targets only
+`refs/heads/main` and permits `merge`, `squash`, and `rebase`. Generation 2 requires the exact main
+plus dedicated-canary target set and `allowed_merge_methods=["merge"]`. Treat PR #33 as a historical
+input to the correction, not as the corrective source or receipt PR. Issue #5 is open/reopened and
+must remain open until the generation-2 terminal gate passes; issue state cannot override these
+facts.
 
-One person may hold more than one operational role only where the ratified receipt profile allows it.
-The prohibited collisions below are hard failures.
+## 2. Generation-2 canonical identities
 
-| Role | Required act | Must be distinct from | Evidence returned |
-|---|---|---|---|
-| Authority owner | Ratifies the three root decisions and trust profile | Implementer acting alone | Signed decisions; authenticated identity |
-| Implementer | Produces the repaired engineering head | Sole reviewer, sole resolver, independent countersigner | GitHub PR authorship |
-| Repository administrator | Installs rulesets and protected pins; captures provider state | A self-asserted JSON author in place of GitHub | Provider API responses and canary rejection |
-| Independent reviewer | Reviews and approves the exact final head | Source/receipt PR author | Provider-authenticated review bound to SHA |
-| Evidence custodian | Reproduces the merge from a fresh clone | Uncontrolled author working tree | Runner identity, logs, results, hashes |
-| Evidence producer signer | Signs canonical receipt payload | Independent countersigner | Key ID, role, valid signature |
-| Independent countersigner | Independently checks and signs the same payload | Evidence producer and receipt PR author where profile requires | Distinct key ID/identity and signature |
-| Anchor custodian | Publishes immutable protected anchor | Unprotected local tag author alone | Provider tag object and tag-ruleset proof |
+| Role | Canonical identity |
+|---|---|
+| Policy | `docs/control/b00r_policy.v2.json` |
+| Generation ledger | `docs/governance/B00R_GENERATION_LEDGER.v1.json` |
+| Audited start | `76b5e4857f80f22f99385810037c5c66289ebd5f` |
+| Generation-2 authority decision | `docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json` |
+| Generation-2 receipt profile | `docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json` |
+| Generation-2 repair decision | `docs/governance/decisions/DEC-B00-REPAIR-002.json` |
+| G2 trust registry | `docs/governance/trust/receipt_trust_registry.g2.v1.json` |
+| Main ruleset index | `docs/governance/rulesets/main.ruleset.provider.json` |
+| Raw main ruleset response | `docs/governance/rulesets/main.ruleset.provider.raw.json` |
+| Evidence root | `evidence/B00R_G2/` |
+| Receipt | `evidence/receipts/B00R.g2.receipt.v3.json` |
+| Tag-ruleset capture | `evidence/B00R_G2/tag_ruleset.provider.json` |
+| Physical anchor | `B00R_RECEIPT_ANCHOR_G2` |
 
-Minimum separation gates:
+The required protected external pins are:
 
-- the exact-head approval cannot be authored by the PR author;
-- the two receipt signatures must resolve to distinct non-revoked keys and distinct identities;
-- the protected pins must originate outside the proposed Git tree;
-- provider control evidence must come from the provider API, not a hand-written substitute; and
-- the clean-runner result must come from a fresh checkout of the merge commit, not the author's dirty
-  workspace.
-
-Record the identities without exposing private email, access tokens, key seeds, or private keys:
-
-| Role | Provider/key identity | Operator initials | UTC time |
-|---|---|---|---|
-| Authority owner | `<IDENTITY>` | `<INITIALS>` | `<UTC>` |
-| Repository administrator | `<GITHUB_LOGIN>` | `<INITIALS>` | `<UTC>` |
-| Independent reviewer | `<GITHUB_LOGIN>` | `<INITIALS>` | `<UTC>` |
-| Evidence custodian | `<RUNNER_IDENTITY>` | `<INITIALS>` | `<UTC>` |
-| Evidence producer | `<KEY_ID>` | `<INITIALS>` | `<UTC>` |
-| Independent countersigner | `<KEY_ID>` | `<INITIALS>` | `<UTC>` |
-
----
-
-## 4. Freeze the repaired engineering head before owner ceremony
-
-The owner must not sign artifacts produced by a moving branch. Freeze the engineering-only candidate
-first, without yet claiming strict closure or merging it.
-
-1. Refresh the repair PR and record `<ENGINEERING_FROZEN_HEAD_SHA>` and
-   `<ENGINEERING_FROZEN_TREE_SHA>`.
-2. Confirm its base and ancestry match the approved forward-repair chain.
-3. Run all engineering diagnostics that do not require owner signatures, external pins, or provider
-   controls. Preserve raw results and exact command identities.
-4. Confirm the candidate contains the canonical verifier/schema/tooling the owner will use.
-5. Stop pushes while ceremony inputs are created from that exact head.
-
-Run the diagnostic source gate on that literal clean head with trusted time:
-
-```bash
-python tools/b00r_gate.py --mode source \
-  --expected-head <ENGINEERING_FROZEN_HEAD_SHA> \
-  --now-us <TRUSTED_ENGINEERING_NOW_US>
+```text
+AUTHORITY_BUNDLE_G2_DECISION_SHA256
+RECEIPT_PROFILE_G2_DECISION_SHA256
+B00R_G2_REPAIR_DECISION_SHA256
+RECEIPT_G2_TRUST_REGISTRY_SHA256
+MAIN_RULESET_EVIDENCE_SHA256
+B00R_G2_TAG_RULESET_SHA256
 ```
 
-Source mode is diagnostic and can never close B00R. Before owner inputs exist, deterministic rows may
-pass while authority/governance rows fail closed; that is expected. An omitted or mismatched exact
-head, or an omitted/untrusted `NOW_US`, is not an acceptable diagnostic run.
+`PINS_JSON` is an out-of-repository file containing **exactly the first four authority pins**.
+`validate_authority_root.py` rejects `MAIN_RULESET_EVIDENCE_SHA256` and
+`B00R_G2_TAG_RULESET_SHA256` as unknown authority subjects. Supply those two provider-object pins
+only through their dedicated CLI flags or protected environment variables.
 
-At this point, owner/provider rows may correctly report `BLOCKED`; strict CI has not yet run and the PR
-must not merge. If engineering bytes change, discard ceremony outputs derived from the old verifier,
-record a new frozen head, and repeat.
+`GITHUB_TOKEN` is a short-lived runtime credential for fixed-host provider revalidation. It is not
+an evidence pin. Never put it in argv, a file, a PR, a transcript, or a log.
 
----
+## 3. Separation of duties
 
-## 5. Owner signing and trust ceremony against the frozen verifier
+| Role | Required act | Forbidden substitution |
+|---|---|---|
+| Implementation author | Produces the corrective source head | Approving their own PR |
+| Repository administrator | Installs provider rulesets and performs the harmless canary | Hand-writing a provider response |
+| Independent CODEOWNER | Reviews and approves the exact bootstrap, source, and receipt heads, independently of each PR author | Review after merge, review of an earlier head, withdrawn approval, or comment-only review |
+| Evidence producer | Reproduces and signs the generation-2 receipt | Acting as the independent countersigner |
+| Independent countersigner | Independently checks and signs the same receipt preimage | Sharing the producer identity/key |
+| Anchor custodian | Publishes the protected annotated G2 tag | Moving or testing the generation-1 tag |
 
-Run this ceremony from a clean checkout detached at `<ENGINEERING_FROZEN_HEAD_SHA>`. Use the
-canonicalization, schemas, and validators in those frozen bytes. Do not let repair-PR CI manufacture
-or self-sign owner material.
+The generation-2 policy currently requires the sole critical-path CODEOWNER to be `@djordi10`.
+The repository must independently prove that this user has live repository access and is not the
+source PR author. CODEOWNERS text alone is not review evidence.
 
-### 5.1 Generate signer keys outside GitHub and CI
+### Base-branch CODEOWNERS bootstrap is mandatory
 
-Use the signing implementation ratified by `DEC-RECEIPT-PROFILE-001`. The intended profile is
-Ed25519 with threshold 2, but the frozen decision/schema is authoritative; do not silently substitute
-algorithm, canonicalization, threshold, or roles.
+GitHub evaluates CODEOWNERS from a pull request's base. The corrective PR cannot protect its own
+merge merely by changing `.github/CODEOWNERS` in its head. Before the final corrective source PR:
 
-For each signer:
+1. make the existing base owner/team valid so GitHub can enforce the bootstrap, and obtain
+   `@djordi10`'s independent exact-head approval on a CODEOWNERS-only PR that puts these exact bytes
+   on `main`;
+2. refresh the corrective branch from that bootstrap merge; and
+3. keep the bootstrap and correction separate—neither is a receipt or closure claim.
 
-1. generate the keypair on a controlled signing workstation or hardware-backed signer;
-2. keep the private seed/key non-exportable where possible;
-3. export only the public key and non-secret key ID;
-4. set explicit validity bounds;
-5. record the assigned role and distinct human identity; and
-6. test signing and verification on a disposable payload.
+The generation-2 receipt validator requires an ordinary two-parent source merge, requires its
+second parent to be the exact reviewed source head, and byte-compares CODEOWNERS at the first
+parent with the reviewed file. It also requires the receipt manifest to carry the bootstrap PR and
+approved-review provider records, proves the bootstrap changed only `.github/CODEOWNERS`, and
+matches the provider merge time to the local Git merge time. A direct commit, same-PR change,
+synthetic bootstrap, self-review, stale review, or post-merge review fails.
 
-Private keys/seeds are forbidden from Git, PRs, GitHub variables, CI, workflow artifacts, logs,
-screenshots, chat, and the evidence bundle.
+After the bootstrap merge, reserve `main` exclusively for this ceremony. The source merge's first
+parent must equal that bootstrap merge—not merely contain equivalent bytes—and the receipt merge's
+first parent must equal the source merge. Any intervening `main` merge breaks the chain; stop and
+restart the corrective sequence from a fresh reviewed bootstrap rather than layering a repair PR.
 
-### 5.2 Create canonical public ceremony artifacts
+## 4. Owner authority ceremony
 
-Starting from the merged templates, create the authenticated public trust registry and the three
-signed root decisions without changing their pinned subject bytes or scope unless the owner issues a
-new explicit decision:
+Start with the checked-in generation-2 templates. Publish authenticated decisions only at their
+canonical non-template paths:
 
-- `receipt_trust_registry.v1.json`;
-- `DEC-AUTHORITY-BUNDLE-001.json`;
-- `DEC-RECEIPT-PROFILE-001.json`; and
-- `DEC-B00-REPAIR-001.json`.
+- `DEC-AUTHORITY-BUNDLE-002.json`;
+- `DEC-RECEIPT-PROFILE-002.json`; and
+- `DEC-B00-REPAIR-002.json`.
 
-Materialize these public artifacts at the exact canonical paths declared by the frozen validator.
-They are public authority inputs, never private-key material. If they must be committed to the repair
-PR, that commit creates a **new** candidate head: record the new SHA/tree, rerun deterministic
-diagnostics, and treat it as `<REPAIR_FINAL_HEAD_SHA>`. Never pretend the earlier engineering head is
-still the final head.
+All three `002` decisions supersede their `001` counterparts only for generation 2. They do not
+mutate the generation-1 objects. Each decision must bind its declared subjects, be signed by a valid
+`AUTHORITY_OWNER` Ed25519 identity in the distinct externally pinned G2 trust registry, and carry a real
+effective time. Typing `authenticated:true` without a valid signature is a failure.
 
-The later receipt-only PR may add only `evidence/B00R/**` and the bare receipt path. It must not add or
-alter these canonical authority files. Therefore any required non-evidence authority path must be
-materialized in the repair PR before final strict CI.
+The existing generation-1 registry scopes its owner key only to `-001` decisions and is therefore
+incapable of authenticating generation 2. Materialize
+`receipt_trust_registry.g2.v1.template.json` as `receipt_trust_registry.g2.v1.json`, with owner scope
+covering `DEC-AUTHORITY-BUNDLE-002,DEC-RECEIPT-PROFILE-002,DEC-B00-REPAIR-002`, then externally pin
+those exact bytes as `RECEIPT_G2_TRUST_REGISTRY_SHA256`.
 
-For every trust key, prove key encoding, role, identity, validity window, revocation state, and signer
-separation. Sign only canonical bytes emitted by the merged code; never sign a visual rendering.
-
-### 5.3 Install the four exact external authority pins
-
-The repository copies cannot authenticate themselves. The owner signs the three decisions through the
-ratified trust registry, then an administrator installs these four SHA-256 values in an
-owner-controlled external store/protected provider environment:
-
-| Protected pin | Canonical pinned object |
-|---|---|
-| `AUTHORITY_BUNDLE_DECISION_SHA256` | `docs/governance/decisions/DEC-AUTHORITY-BUNDLE-001.json` |
-| `RECEIPT_PROFILE_DECISION_SHA256` | `docs/governance/decisions/DEC-RECEIPT-PROFILE-001.json` |
-| `B00_REPAIR_DECISION_SHA256` | `docs/governance/decisions/DEC-B00-REPAIR-001.json` |
-| `RECEIPT_TRUST_REGISTRY_SHA256` | `docs/governance/trust/receipt_trust_registry.v1.json` |
-
-Capture each variable name, scope, actor, UTC update time, provider object ID, and non-secret digest
-without dumping unrelated variables. A value derived from the same proposed Git bytes inside PR CI is
-not an external pin.
-
-If `--pins` is used, its JSON root must be an object containing exactly those four names and nonzero,
-lowercase 64-hex digests. Unknown or missing names fail this procedure. The file must resolve outside
-the Git repository. As an alternative, supply all four through protected environment variables and
-omit `--pins`; if a name exists in both places, the values must match. Do not put the pins file in the
-receipt evidence tree.
-
-Run the strict authority validator from the resulting final repair head, supplying the external pin
-through the approved input mechanism:
+Validate the exact source head with generation 2 selected:
 
 ```bash
 python tools/validate_authority_root.py --strict \
-  --pins <EXTERNAL_AUTHORITY_PINS_JSON_WITH_ALL_FOUR_PINS> \
-  --now-us <TRUSTED_SOURCE_NOW_US> \
-  --expected-head <REPAIR_FINAL_HEAD_SHA> \
+  --repair-generation 2 \
+  --pins "$PINS_JSON" \
+  --now-us "$NOW_US" \
+  --expected-head "$SOURCE_HEAD" \
   --git-root .
 ```
 
-Required result: decision signatures, scopes, subject digests, key validity, role separation, all four
-external pins, and exact-head Git binding pass. Preserve raw output and exit status.
+Any missing owner act is `BLOCKED` or `UNAVAILABLE`, never an inferred pass.
 
----
+## 5. Install the generation-2 main ruleset before the source merge
 
-## 6. Active GitHub rulesets, privileged bypass proof, strict CI, and guarded repair merge
-
-### 6.1 Install the `main` and anchor rulesets
-
-Before final strict CI/review/merge, the repository administrator installs an active ruleset targeting
-`refs/heads/main` with:
-
-- pull request required and direct push denied;
-- exact required context `<EXACT_REQUIRED_CONTEXT>` (expected `CI / test-and-verify`);
-- required checks bound to current base;
-- independent exact-head approval;
-- two approvals for receipt PRs if the ratified profile requires it;
-- stale approvals dismissed on push and last-push approval where supported;
-- all review conversations resolved;
-- CODEOWNERS approval on critical paths;
-- force-push and branch deletion denied;
-- no administrator, team, app, integration, or repository-role bypass; and
-- expected-head merge protection.
-
-Install a separate active ruleset targeting exactly `refs/tags/B00R_RECEIPT_ANCHOR` that denies update
-and deletion with no bypass. The main ruleset must be active before the repaired PR merge; the tag
-ruleset must be active early enough to capture and externally pin its canonical evidence before the
-receipt PR's final exact-head validation, and must remain active through anchor publication.
-
-The main branch ruleset may include a dedicated harmless branch canary for negative push/merge tests.
-The tag ruleset must target exactly `refs/tags/B00R_RECEIPT_ANCHOR`; do not widen it with a tag canary,
-and never mutation-test the real anchor.
-
-### 6.2 Capture bypass proof outside PR CI
-
-Ruleset existence and bypass behavior require privileges that an untrusted PR workflow must never
-possess. A privileged owner, in a separate authenticated session **outside PR CI**, must:
-
-1. query and save complete provider API objects for both rulesets;
-   - save the exact unmodified `GET /repos/.../rulesets/{id}` response for `main` as
-     `docs/governance/rulesets/main.ruleset.provider.raw.json`;
-   - derive the canonical normalized index as
-     `docs/governance/rulesets/main.ruleset.provider.json`; its
-     `provider.api_response_path` must name the raw path and its `api_response_sha256` must equal the
-     raw bytes' SHA-256;
-   - require canonical raw `created_at` and `updated_at` timestamps; normalized `effective_at_us`
-     must equal the raw `updated_at` instant converted to Unix microseconds, while `captured_at_us`
-     must be no later than trusted `NOW_US`;
-2. prove target, enforcement state, required context, review controls, and empty bypass list;
-3. attempt a noncompliant direct push/merge against the dedicated branch canary and preserve the
-   provider rejection, proving the same rule ID/conditions applied;
-4. capture the tag-ruleset provider object proving exact anchor scope, active enforcement,
-   `current_user_can_bypass:false`, an empty bypass list, and update/deletion restrictions; later
-   materialize it as `evidence/B00R/tag_ruleset.provider.json` in the receipt-only PR and externally
-   pin those exact bytes as `B00R_TAG_RULESET_SHA256`; do not probe the real anchor;
-5. leave `main` and the real anchor untouched; if the branch canary mutation unexpectedly succeeds,
-   mark the ruleset failed and preserve that harmless canary state as evidence; and
-6. record authenticated actor, provider request/object IDs, and UTC timestamps.
-
-PR CI may verify the returned proof but may not create, impersonate, or self-attest it.
-
-### 6.3 Externally pin the canonical raw ruleset evidence
-
-The privileged owner authenticates the provider capture and negative canary record outside GitHub
-Actions. The validator-enforced main-ruleset pin is the SHA-256 of the exact raw response bytes,
-installed as the protected external variable:
-
-`MAIN_RULESET_EVIDENCE_SHA256=<SHA256_OF_main.ruleset.provider.raw.json>`
-
-Do not invent a second protected digest or treat a PR-produced aggregate digest as provider
-authority. The external raw-provider pin, provider-authenticated objects, canary rejection, and final
-return-bundle checksum are the separate facts to preserve.
-
-The normalized and raw main-ruleset files are mandatory canonical committed source-phase artifacts.
-Their commit changes the head: refreeze the new SHA/tree and invalidate prior final-head CI/review.
-The raw provider response must remain byte-exact; exclude authorization headers/cookies rather than
-redacting the JSON body. Run the strict governance validator against the canonical pair, trusted time,
-exact head, and protected external pin:
+Before activating this ruleset, the repository administrator must create the dedicated canary ref
+at the fixed harmless pre-attempt commit:
 
 ```bash
-test -n "${MAIN_RULESET_EVIDENCE_SHA256:?protected provider pin missing}"
-python tools/validate_governance_snapshot.py --strict \
-  --snapshot docs/governance/rulesets/main.ruleset.provider.json \
-  --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json \
-  --now-us <TRUSTED_SOURCE_NOW_US> \
-  --expected-head <REPAIR_FINAL_HEAD_SHA> \
-  --git-root .
+CANARY_BEFORE_SHA=ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd
+git push origin "$CANARY_BEFORE_SHA:refs/heads/b00r-ruleset-canary"
 ```
 
-An owner-side invocation may supply `--provider-pin <EXTERNAL_RAW_PROVIDER_SHA256>` instead of the
-protected environment. If both exist, they must match. Computing either value inside PR CI from the
-same proposed raw file is not an external pin.
+Verify the provider ref resolves to exactly that SHA, then install the ruleset. This ordering is
+mandatory: with `do_not_enforce_on_create=false`, pull-request enforcement, and no bypass actors,
+trying to create the canary ref after activation is itself blocked and leaves no stable before-state
+for the negative update proof.
 
-If the provider cannot express or prove the required no-bypass controls, return
-`BLOCKED_PROVIDER_CONTROL_UNAVAILABLE`; do not replace them with prose or a CI-authored JSON file.
+The live GitHub provider object must satisfy all of these conditions simultaneously:
 
-### 6.4 Refreeze, run exact-head strict CI, independently review, and guarded-merge
+- positive integer id, provider-shaped source/link/timestamps, `enforcement=active`;
+- repository source exactly `TriadAgentic/TriadOrigin`;
+- include set exactly `{refs/heads/main, refs/heads/b00r-ruleset-canary}`;
+- exclusion list exactly empty;
+- `bypass_actors=[]` and `current_user_can_bypass="never"`;
+- pull request required with at least one approval;
+- stale approvals dismissed, CODEOWNER review required, last-push approval required, and every
+  conversation resolved;
+- `allowed_merge_methods=["merge"]` — squash and rebase are not permitted for the corrective train;
+- exactly one strict required check, provider `CheckRun.name=test-and-verify`, bound to GitHub Actions integration id
+  `15368`;
+- `do_not_enforce_on_create=false`, so creating the dedicated canary ref cannot evade the required
+  check rule;
+- deletion and non-fast-forward updates blocked.
 
-After every required public ceremony/provider artifact is materialized:
+Capture the exact raw bytes returned by the fixed provider endpoint into
+`docs/governance/rulesets/main.ruleset.provider.raw.json`. Derive the normalized index at
+`docs/governance/rulesets/main.ruleset.provider.json`; it is an index, not self-authenticating
+evidence. Externally pin the raw bytes as `MAIN_RULESET_EVIDENCE_SHA256`.
 
-1. record `<REPAIR_FINAL_HEAD_SHA>` and `<REPAIR_FINAL_TREE_SHA>`;
-2. prove every ceremony/proof artifact was generated by the separated owner and matches its external
-   signature/pin;
-3. run strict CI on that exact head, including authority, governance, deterministic engineering,
-   packaging, capability, and role gates;
-4. reject skipped, neutral, cancelled, stale-head, or workflow-only mandatory results;
-5. have an independent reviewer inspect the exact final diff and submit a provider-authenticated
-   approval bound to `<REPAIR_FINAL_HEAD_SHA>`;
-6. resolve every actionable thread with evidence and re-query all thread/review state;
-7. use expected-head guarded merge under the already active no-bypass main ruleset;
-8. if the head moves, invalidate CI/review and repeat this subsection; and
-9. record provider-returned `<REPAIR_MERGE_SHA>`, tree, actor, UTC time, strategy, PR number, and
-   ruleset evaluation, then prove `main` contains it.
+The ruleset `updated_at` instant, raw capture, normalized capture, and external pin must all predate
+the generation-2 source merge. Any later ruleset update invalidates the capture and requires a new
+capture, new pin, fresh exact-head CI, and fresh review.
 
-The exact-head source orchestrator invocation is:
+## 6. Run the dedicated negative canary before the source merge
+
+Use only the already-created `refs/heads/b00r-ruleset-canary`. Construct an empty fast-forward
+descendant of its fixed before commit (same tree, one new commit), attempt that direct update, and
+require GitHub to reject it under the same active ruleset. Keep the canary branch at its pre-attempt
+provider SHA; never probe `main` or either receipt anchor. A branch-creation rejection is not a
+substitute because it does not exercise the required update control against a stable ref.
+
+Preserve the exact canonical evidence for the later receipt PR:
+
+```text
+evidence/B00R_G2/provider_negative_canary.v1.json
+evidence/B00R_G2/provider_negative_canary.transcript.txt
+evidence/B00R_G2/provider_negative_canary.rule_suite.raw.json
+```
+
+The canonical record must bind the provider rule-suite id, actor, before/attempted-after commit
+identities, nonzero exit code, attempted time, ruleset id, transcript digest, and rule-suite digest.
+The provider rule suite must show an active `pull_request` rule failure for the same ruleset and
+canary ref. The ruleset update, rule-suite push, and canary attempt must all predate the source merge.
+
+If the push succeeds, stop with `BLOCKED_PROVIDER_CONTROL_UNAVAILABLE`. Do not delete the evidence
+of the failure and do not substitute a prose transcript.
+
+## 7. Freeze, test, review, and merge the corrective source
+
+The generation-2 source branch starts from audited start
+`76b5e4857f80f22f99385810037c5c66289ebd5f`. It may contain the policy, generation ledger,
+corrective validators, ruleset source-phase capture, and governance documentation. It must not
+contain `evidence/B00R_G2/**` or `evidence/receipts/B00R.g2.receipt.v3.json`.
+
+After every source-phase artifact is committed:
+
+1. freeze the literal 40-hex final source head and tree;
+2. require a clean worktree and no Git replace objects;
+3. run the full repository gate suite under `PYTHONHASHSEED=0` and `1`;
+4. require GitHub `test-and-verify` green on that exact head (the UI may display
+   `CI / test-and-verify`);
+5. obtain a submitted `APPROVED` review from the independent CODEOWNER on that exact head;
+6. resolve every actionable review thread;
+7. merge with GitHub's ordinary **merge** method under the active ruleset; and
+8. verify the source merge's first parent is the recorded bootstrap merge, its second parent is the
+   reviewed source head, its tree equals that head's tree, and provider `main` contains it.
+
+If the source head moves after approval, the approval and CI are stale. Repeat steps 1–6.
+
+Source-mode orchestration is diagnostic and deliberately returns overall `BLOCKED`; it cannot close
+B00R:
 
 ```bash
-test -n "${MAIN_RULESET_EVIDENCE_SHA256:?protected provider pin missing}"
 python tools/b00r_gate.py --mode source \
-  --expected-head <REPAIR_FINAL_HEAD_SHA> \
-  --now-us <TRUSTED_SOURCE_NOW_US> \
-  --pins <EXTERNAL_AUTHORITY_PINS_JSON_WITH_ALL_FOUR_PINS> \
-  --governance-snapshot docs/governance/rulesets/main.ruleset.provider.json \
-  --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json
+  --expected-head "$SOURCE_HEAD" \
+  --now-us "$NOW_US" \
+  --pins "$PINS_JSON" \
+  --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256"
 ```
 
-`source` mode deliberately terminates `BLOCKED` and cannot close B00R, even when every subordinate
-row passes. CI must assert that exact diagnostic contract rather than discard the nonzero exit or
-misreport it as closure. `receipt` mode is the only terminal closure mode.
+The subordinate rows must pass. The expected overall source result remains `BLOCKED` because the
+receipt merge and physical G2 anchor do not yet exist.
 
-This guarded repair merge is the positive control paired with the privileged negative canary. It is
-still not B00R closure; clean reproduction, bare receipt, guarded receipt merge, and anchor remain.
+### Exact review evidence required in the receipt
 
----
+The later receipt manifest must contain exactly one of each canonical provider record:
 
-## 7. Hermetic clean-runner reproduction
+```text
+evidence/B00R_G2/source_pr.provider.raw.json
+evidence/B00R_G2/source_pr.approved_review.provider.raw.json
+```
 
-Use a new ephemeral runner/VM with no author checkout, editable install, warmed caches, inherited
-Python path, or private workspace artifacts. The runner needs GitHub read access only long enough to
-clone the private repository.
+The source PR record must bind the actual generation-2 PR number, `main` base, repository identity,
+final source head, merge commit, author, merged state, and provider merge time. The approved-review
+record must bind:
 
-Record before testing:
+- one positive provider review id;
+- state exactly `APPROVED`;
+- `commit_id` exactly equal to the final source head;
+- reviewer different from the PR author;
+- reviewer exactly equal to the sole critical-path CODEOWNER;
+- `submitted_at` strictly before provider `merged_at`; and
+- a fresh live provider match plus live repository permission at terminal validation.
+
+A requested reviewer, issue comment, approval on another PR, retro-review, or approval after merge is
+not review evidence.
+
+## 8. Bounded clean-runner reproduction at the exact source merge
+
+Run the committed producer on a clean Linux host with a non-symlink system CPython 3.11 binary.
+Give it three absent, canonical, pairwise-disjoint paths under a fresh parent; it refuses an
+existing or symlinked clone, virtual environment, or output root:
 
 ```bash
-set -eu
-umask 077
-python --version
-python -m pip --version
-git --version
-uname -a
+SOURCE_MERGE=<EXACT_TWO_PARENT_SOURCE_MERGE_ON_LIVE_ORIGIN_MAIN>
+CAPTURE_PARENT="$(mktemp -d)"
+BOOTSTRAP_PYTHON="$(realpath "$(command -v python3.11)")"
+CONTROLLER_PYTHON="$BOOTSTRAP_PYTHON"
+test -f "$BOOTSTRAP_PYTHON" && test ! -L "$BOOTSTRAP_PYTHON"
+
+"$CONTROLLER_PYTHON" -I tools/b00r_clean_runner_capture.py \
+  --source-merge "$SOURCE_MERGE" \
+  --clone-root "$CAPTURE_PARENT/source" \
+  --venv-root "$CAPTURE_PARENT/venv" \
+  --output-root "$CAPTURE_PARENT/output" \
+  --python "$BOOTSTRAP_PYTHON"
 ```
 
-Clone and detach at the provider-returned repaired merge, not the PR branch:
+The producer itself performs the canonical public HTTPS `--no-local --no-tags` clone, proves the
+detached source is the current two-parent `origin/main`, loads its local verifier by compiling
+retained `.py` bytes without consulting bytecode caches, and refuses to proceed unless its own
+producer, verifier, and pytest-inventory bytes exactly equal their Git blobs at that merge. It
+creates the new isolated venv with system/user package injection and pip
+configuration disabled, installs the exact constraints plus a non-editable wheel built from the
+source Git archive, and
+preserves raw stdout, stderr, exit status, timestamps, runner/Git facts, installed import-surface
+file hashes, and test ids. It re-fetches `origin/main` before and after the real mainline rollback
+proof; any nonzero command or identity movement fails the capture. Controller and required-command
+Git calls suppress
+ambient global/system configuration, replacement objects, hooks, commit-graph acceleration, and
+multi-pack-index acceleration; each source boundary also performs a strict full object check.
+
+This is bounded clone/venv/output and declared-environment isolation, not complete host or
+toolchain attestation. The external trusted-computing base still includes the clean Linux host,
+kernel and filesystem, the base CPython 3.11 standard library/shared libraries, Git/TLS, and the
+package index/artifact supply path. The locally invoked launcher/controller up to the point where
+those executing profile bytes are bound to the canonical clone is also in that external TCB.
+Hostile or background processes, and within-command mutate/use/restore behavior, are outside this
+bounded controller: it does not claim an immutable mount or process-containment boundary.
+`constraints/ci.txt` pins its listed dependency versions, while bootstrapped `pip` remains observed
+rather than pinned; neither supplies platform wheel hashes or index provenance. The capture
+therefore records and signs the exact import-surface files it observed, closes that surface against
+unowned files, and revalidates those bytes as byte-identical before and after each required command.
+It does not claim that independently rebuilding those dependency artifacts from the version pins
+alone must reproduce their hashes.
+
+At minimum reproduce:
 
 ```bash
-git clone --no-tags <REPOSITORY_CLONE_URL> triad-origin-clean
-cd triad-origin-clean
-git checkout --detach <REPAIR_MERGE_SHA>
-test "$(git rev-parse HEAD)" = "<REPAIR_MERGE_SHA>"
-test -z "$(git status --porcelain)"
-git rev-parse HEAD
-git rev-parse 'HEAD^{tree}'
+PYTHONHASHSEED=0 python -m pytest
+PYTHONHASHSEED=1 python -m pytest
+python tools/collect_test_ids.py
+python tools/verify_manifest.py
+python tools/validate_contract_manifest.py
+python tools/verify_reproducible_build.py
+python tools/test_wheel_install.py
+python tools/verify_no_forbidden_capabilities.py
+python tools/e2e_audit.py
+python tools/build_ledger.py --verify
+python tools/validate_combined_dag.py
 ```
 
-Use the repository's committed pinned dependency snapshot and the exact install/build commands from
-the final workflow. Do not replace them with a floating `pip install` because it happens to pass.
-At minimum, capture the lock/constraint digest, Python implementation/version, platform, build-backend
-version, and every produced distribution digest.
+Both seed runs must collect identical test ids. A local dirty checkout, inherited virtual
+environment, developer cache, or self-reported summary is not a clean-runner reproduction.
 
-Run the complete controlled gate set from the merged tree, including both deterministic hash seeds:
+A successful producer returns literal `PASS_CAPTURE_ONLY` and leaves exactly:
 
-```bash
-<PINNED_INSTALL_COMMAND_FROM_FINAL_WORKFLOW>
-PYTHONHASHSEED=0 python -m pytest -p no:cacheprovider
-PYTHONHASHSEED=1 python -m pytest -p no:cacheprovider
-test -n "${MAIN_RULESET_EVIDENCE_SHA256:?protected provider pin missing}"
-python tools/b00r_gate.py --mode source \
-  --expected-head <REPAIR_MERGE_SHA> \
-  --now-us <TRUSTED_REPRODUCTION_NOW_US> \
-  --pins <EXTERNAL_AUTHORITY_PINS_JSON_WITH_ALL_FOUR_PINS> \
-  --governance-snapshot docs/governance/rulesets/main.ruleset.provider.json \
-  --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json
-<MANIFEST_AND_CONTRACT_GATE_COMMANDS_FROM_FINAL_WORKFLOW>
-<REPRODUCIBLE_SDIST_WHEEL_GATE_FROM_FINAL_WORKFLOW>
-<INSTALLED_DISTRIBUTION_ISOLATION_GATE_FROM_FINAL_WORKFLOW>
-<DARK_NEGATIVE_CAPABILITY_GATE_FROM_FINAL_WORKFLOW>
+```text
+$CAPTURE_PARENT/output/evidence/B00R_G2/clean_runner/   # canonical 50 files
+$CAPTURE_PARENT/output/clean_runner.spec-fragment.v1.json
 ```
 
-Acceptance requires:
+Copy only the `clean_runner/` subtree to the receipt worktree. Merge the fragment's 50 `entries`
+into the later `evidence/B00R_G2/spec.json`; never copy the fragment into the closed evidence root.
+`PASS_CAPTURE_ONLY` is not a receipt, signature authorization, or B00R closure. After all receipt
+evidence and payload bindings are materialized on the exact receipt head, run
+`tools/b00r_clean_runner.py verify` against that committed head. It independently validates the
+canonical 50-file bundle and derives every claim from the raw records. Do not construct or repair
+the bundle by hand.
 
-- clean checkout before and after the run, except declared evidence output outside the source tree;
-- identical collected test IDs across the two seeds;
-- zero failures, errors, skips, xfails, neutralized mandatory jobs, or collection drift unless the
-  ratified spec explicitly permits and counts them;
-- byte-reproducible artifacts where claimed;
-- installed-distribution bytes traceable to reviewed source bytes;
-- all contract/manifest families present and valid;
-- DARK scan clean; and
-- `activation_result=DENIED_SAFE_HOLD` with OFF/OFF/OFF/LIVE levers.
+## 9. Build the separate append-only receipt PR
 
-As in final source CI, the source orchestrator must report all expected subordinate rows accurately
-and terminal `BLOCKED`; the controlled reproduction harness asserts that diagnostic contract rather
-than treating source mode as closure.
+The receipt PR may add only:
 
-The evidence custodian exports raw logs and machine-readable results. A pasted “tests passed” line is
-not reproduction evidence.
-
----
-
-## 8. Closed evidence manifest
-
-After clean reproduction succeeds, create a new receipt worktree/branch directly from
-`<REPAIR_MERGE_SHA>`. Materialize only the ceremony/provider preimages and clean-runner outputs under
-`evidence/B00R/**`, then build the manifest using the merged project tools:
-
-```bash
-python tools/build_evidence_manifest.py \
-  --build evidence/B00R/spec.json \
-  --root . \
-  --closed-root evidence/B00R \
-  --out evidence/B00R/evidence_manifest.json
-
-python tools/build_evidence_manifest.py \
-  --verify evidence/B00R/evidence_manifest.json \
-  --root . \
-  --closed-root evidence/B00R \
-  --require-tracked
+```text
+evidence/B00R_G2/**
+evidence/receipts/B00R.g2.receipt.v3.json
 ```
 
-Every receipt claim must have a committed preimage or an explicitly typed provider-external preimage.
-The manifest must reject missing, duplicate, mutable, path-escaping, hash-mismatched, or undeclared
-members. Include raw command logs/results, provider evidence, review inventories, repaired-merge
-ancestry, toolchain snapshot, and distribution hashes. Future receipt-PR/merge facts are not inputs
-to this pre-merge manifest; the anchor binds them later. Do not include credentials or private keys.
+It must add at least:
 
-The strict receipt binding requires exactly one manifest entry for each role below, and the entry's
-SHA-256 must equal the corresponding receipt payload field:
+```text
+evidence/B00R_G2/evidence_manifest.json
+evidence/receipts/B00R.g2.receipt.v3.json
+```
 
-| Required manifest role | Receipt payload field |
+It may not modify any source, policy, decision, ruleset source-phase capture, historical receipt,
+generation-1 evidence, or tag. Mixed content is a hard failure.
+
+Materialize the clean-runner results, provider source PR/review records, canary bundle, authority
+preimages, rollback proof, configuration proof, and tag-ruleset capture below `evidence/B00R_G2/`.
+The provider review bundle must include all four canonical PR records:
+
+```text
+evidence/B00R_G2/codeowners_bootstrap_pr.provider.raw.json
+evidence/B00R_G2/codeowners_bootstrap_pr.approved_review.provider.raw.json
+evidence/B00R_G2/source_pr.provider.raw.json
+evidence/B00R_G2/source_pr.approved_review.provider.raw.json
+```
+
+The receipt build spec must declare `"role_unique": true` on exactly one entry for each of these
+twenty-five singleton roles; the manifest builder preserves the explicit boolean and the receipt
+validator rejects an absent, duplicated, or misspelled declaration:
+
+```text
+CODEOWNERS_BOOTSTRAP_PR_PROVIDER_RECORD
+CODEOWNERS_BOOTSTRAP_APPROVED_REVIEW_PROVIDER_RECORD
+SOURCE_PR_PROVIDER_RECORD
+SOURCE_PR_APPROVED_REVIEW_PROVIDER_RECORD
+PROVIDER_NEGATIVE_CANARY
+PROVIDER_NEGATIVE_CANARY_TRANSCRIPT
+PROVIDER_NEGATIVE_CANARY_RULE_SUITE
+WORKFLOW
+CONTRACT_MANIFEST
+TEST_MANIFEST
+CONFIG_BUNDLE
+ROLLBACK_PROOF
+TAG_RULESET_PROVIDER
+CLEAN_RUNNER_RUN
+CLEAN_RUNNER_SOURCE_IDENTITY
+CLEAN_RUNNER_SOURCE_TREE
+CLEAN_RUNNER_FACTS
+CLEAN_RUNNER_PACKAGE_SNAPSHOT
+CLEAN_RUNNER_TEST_IDS_SEED0
+CLEAN_RUNNER_TEST_IDS_SEED1
+CLEAN_RUNNER_PYTEST_RESULT_SEED0
+CLEAN_RUNNER_PYTEST_RESULT_SEED1
+CLEAN_RUNNER_ROLLBACK_STDOUT
+CLEAN_RUNNER_ROLLBACK_STDERR
+CLEAN_RUNNER_ROLLBACK_RC
+```
+
+The clean-runner and tag-ruleset singleton paths are exact:
+
+| Role | Canonical path |
 |---|---|
-| `WORKFLOW` | `workflow_sha256` |
-| `CONTRACT_MANIFEST` | `contract_manifest_sha256` |
-| `TEST_MANIFEST` | `test_manifest_sha256` |
-| `CONFIG_BUNDLE` | `config_bundle_sha256` |
-| `ROLLBACK_PROOF` | `rollback_proof_sha256` |
+| `WORKFLOW` | `evidence/B00R_G2/clean_runner/source/ci.yml` |
+| `CONTRACT_MANIFEST` | `evidence/B00R_G2/clean_runner/source/contracts.MANIFEST.sha256` |
+| `TEST_MANIFEST` | `evidence/B00R_G2/clean_runner/tests/test_manifest.v1.json` |
+| `CONFIG_BUNDLE` | `evidence/B00R_G2/clean_runner/config/config_bundle.v1.json` |
+| `ROLLBACK_PROOF` | `evidence/B00R_G2/clean_runner/rollback/rollback_proof.v1.json` |
+| `TAG_RULESET_PROVIDER` | `evidence/B00R_G2/tag_ruleset.provider.json` |
+| `CLEAN_RUNNER_RUN` | `evidence/B00R_G2/clean_runner/run.v1.json` |
+| `CLEAN_RUNNER_SOURCE_IDENTITY` | `evidence/B00R_G2/clean_runner/source/source_identity.v1.json` |
+| `CLEAN_RUNNER_SOURCE_TREE` | `evidence/B00R_G2/clean_runner/source/ls-tree.bin` |
+| `CLEAN_RUNNER_FACTS` | `evidence/B00R_G2/clean_runner/runner/runner_facts.v1.json` |
+| `CLEAN_RUNNER_PACKAGE_SNAPSHOT` | `evidence/B00R_G2/clean_runner/runner/installed_packages.v1.json` |
+| `CLEAN_RUNNER_TEST_IDS_SEED0` | `evidence/B00R_G2/clean_runner/tests/test_ids.seed0.txt` |
+| `CLEAN_RUNNER_TEST_IDS_SEED1` | `evidence/B00R_G2/clean_runner/tests/test_ids.seed1.txt` |
+| `CLEAN_RUNNER_PYTEST_RESULT_SEED0` | `evidence/B00R_G2/clean_runner/tests/pytest.seed0.v1.json` |
+| `CLEAN_RUNNER_PYTEST_RESULT_SEED1` | `evidence/B00R_G2/clean_runner/tests/pytest.seed1.v1.json` |
+| `CLEAN_RUNNER_ROLLBACK_STDOUT` | `evidence/B00R_G2/clean_runner/rollback/stdout.bin` |
+| `CLEAN_RUNNER_ROLLBACK_STDERR` | `evidence/B00R_G2/clean_runner/rollback/stderr.bin` |
+| `CLEAN_RUNNER_ROLLBACK_RC` | `evidence/B00R_G2/clean_runner/rollback/rc.txt` |
 
-Every path named by `evidence_ids` must be under `evidence/B00R/`. The manifest file itself is
-excluded from `evidence_ids` to avoid self-reference; every other tracked file under that namespace
-must appear exactly once. A missing, duplicate, extra, or out-of-namespace member fails closure.
+Repeated command stdout, stderr, and status roles must explicitly declare
+`"role_unique": false`. Only the verifier's thirteen exact raw-stream paths may be zero bytes;
+an empty near-match, different role, or different uniqueness declaration fails closed.
 
----
-
-## 9. Assemble and threshold-sign the canonical receipt
-
-The one canonical receipt path is:
-
-`evidence/receipts/B00R.receipt.v3.json`
-
-The receipt must use the schema and canonical signing function shipped in the exact repaired merge.
-Its closed payload binds:
-
-- milestone `B00R`, variant `ROOT`, and result `PASS_REPOSITORY_SAFE_HOLD`;
-- `repair_generation=1`, the audited start, repair-decision digest, and invalidation-manifest digest;
-- source PR, reviewed final source head, repair merge commit/tree/time, and repository/scope identity;
-- the closed evidence-manifest digest plus the five required role digests in Section 8;
-- `evidence_ids` and `evidence_sha256s` for clean-runner, provider-canary, strict CI, independent
-  review, authority, and other declared preimages under `evidence/B00R/`;
-- OFF/OFF/OFF/LIVE levers and `DENIED_SAFE_HOLD` activation result; and
-- valid internal chronology: engineering-head freeze precedes owner ceremony/provider proof; any
-  resulting artifact commit precedes final strict CI/review; guarded repair merge precedes clean
-  observation and receipt emission/signing.
-
-The strict validator separately authenticates the three decisions and trust registry with the four
-external authority pins and verifies the canonical normalized/raw main-ruleset files against
-`MAIN_RULESET_EVIDENCE_SHA256`. Do not add undeclared authority or aggregate-digest fields to the
-closed receipt schema.
-
-Set `payload.source_merge_time_us` from the Git commit itself, exactly:
+Build a closed manifest that names every regular file below that root except itself:
 
 ```bash
-SOURCE_MERGE_TIME_US="$(( $(git show -s --format=%ct <REPAIR_MERGE_SHA>) * 1000000 ))"
+python tools/build_evidence_manifest.py \
+  --build evidence/B00R_G2/spec.json \
+  --root . \
+  --closed-root evidence/B00R_G2 \
+  --out evidence/B00R_G2/evidence_manifest.json
 ```
 
-Do not use GitHub `mergedAt`, a fractional timestamp, local wall-clock time, or a copied guide value.
-Set `payload.final_source_head` to the reviewed final repair head. It must be the same commit as, or an
-ancestor of, `<REPAIR_MERGE_SHA>`, and its tree must equal the repair merge tree. The receipt checkout
-must contain enough Git history for the validator to resolve and prove both `<AUDITED_START_SHA>` and
-`<REPAIR_MERGE_SHA>`; a shallow checkout that omits either object is unacceptable.
+The bare canonical receipt must use:
 
-The bare receipt and evidence manifest must not list or hash the receipt itself. It also cannot contain
-its own future PR-head or merge SHA without creating a hash cycle. Receipt PR final-head, review, CI,
-merge, and provider chronology are proved after the receipt bytes exist and are bound by the protected
-closure anchor in Section 11.
+- milestone `B00R`, variant/root identity `B00R.g2`, and `repair_generation=2`;
+- receipt path `evidence/receipts/B00R.g2.receipt.v3.json`;
+- the actual generation-2 source PR number, final source head, source merge SHA/tree/time;
+- audited start `76b5e4857f80f22f99385810037c5c66289ebd5f`;
+- generation ledger and policy-v2 bindings;
+- the generation-2 authority and provider pins;
+- result `PASS_REPOSITORY_SAFE_HOLD` and activation `DENIED_SAFE_HOLD`; and
+- two valid Ed25519 signatures from distinct `EVIDENCE_PRODUCER` and
+  `INDEPENDENT_COUNTERSIGNER` identities over the same canonical preimage.
 
-Generate signing bytes using the repository function, with `signatures` omitted exactly as the schema
-requires. Each signer independently verifies the receipt preimages and then signs the **same** byte
-sequence. Append `{key_id, signature_hex}` without reserializing any other field.
+Before freezing or signing the final receipt head, install, capture, and externally pin the G2 tag
+ruleset. The receipt PR must then obtain current exact-head CI, required native review, and resolved
+threads, and merge by the sole permitted merge method under the live ruleset. Its merge first
+parent must equal the source merge; its second parent and tree must equal the reviewed receipt head.
+No intervening `main` merge is permitted. The receipt cannot bind its own future merge SHA; the
+physical anchor supplies that final post-merge binding.
 
-After the evidence and receipt are committed on the receipt branch, validate the literal clean final
-receipt head before review/merge. The external authority pins JSON must contain all four required
-authority digests; it is not a substitute trust registry. The protected runner injects the raw
-provider pin:
+Nonterminal receipt-PR CI may use `--nonterminal-provider-proof`. Its zero exit authenticates
+receipt content/head only: it skips privileged bypass/rule-suite/ref reads and every post-merge
+receipt-PR proof, so it is explicitly not closure and is insufficient by itself to authorize merge.
+
+Immediately before merging the receipt PR, run both privileged premerge proofs with an
+administrator token. First prove the protected tag ruleset, visible empty bypass set, exact receipt
+bytes, and chronology:
 
 ```bash
-test -n "${MAIN_RULESET_EVIDENCE_SHA256:?protected provider pin missing}"
-python tools/validate_b_receipt.py --strict --milestone B00R \
-  --pins <EXTERNAL_AUTHORITY_PINS_JSON_WITH_ALL_FOUR_PINS> \
-  --now-us <TRUSTED_RECEIPT_NOW_US> \
-  --manifest evidence/B00R/evidence_manifest.json \
-  --git-root . \
-  --expected-head <RECEIPT_FINAL_HEAD_SHA> \
+python tools/validate_b00r_tag_ruleset.py \
+  --expected-head "$RECEIPT_HEAD" \
+  --now-us "$NOW_US" \
+  --ruleset evidence/B00R_G2/tag_ruleset.provider.json \
+  --ruleset-pin "$B00R_G2_TAG_RULESET_SHA256" \
+  --receipt evidence/receipts/B00R.g2.receipt.v3.json \
+  --strict-live \
+  --require-bypass-visibility
+```
+
+Then prove the open receipt PR's exact source base and receipt head, latest independent
+CODEOWNER approval, latest successful workflow/check, live main ruleset with visible empty bypass,
+and unchanged canary:
+
+```bash
+python tools/validate_b_receipt.py \
+  --strict --milestone B00R --now-us "$NOW_US" \
+  --manifest evidence/B00R_G2/evidence_manifest.json \
+  --git-root . --expected-head "$RECEIPT_HEAD" \
   --governance-snapshot docs/governance/rulesets/main.ruleset.provider.json \
   --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json \
-  evidence/receipts/B00R.receipt.v3.json
+  --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" \
+  --pins "$PINS_JSON" \
+  --receipt-pr "$RECEIPT_PR" \
+  --premerge-provider-proof \
+  evidence/receipts/B00R.g2.receipt.v3.json
 ```
 
-An owner-side run may add `--provider-pin <EXTERNAL_RAW_PROVIDER_SHA256>` instead of relying on the
-protected environment; if both are set they must match. There is deliberately no `--trust` option:
-strict validation reconstructs trust from the externally pinned, Git-bound authority root.
+The `OK_PREMERGE:` result omits only facts that cannot yet exist: the receipt merge object,
+merged-at time, live-main ancestry, and physical anchor. Any subsequent head, review, check,
+ruleset, bypass, or canary change invalidates it and requires a fresh proof before merge.
 
-This is a **bare JSON receipt**. No DSSE file, wrapper, alternate envelope, alias, or second truth
-object is permitted. If the final merged role gate requires any different receipt path or envelope,
-stop with `BLOCKED_RECEIPT_LAYOUT_CONFLICT` and repair the source law in a new reviewed PR.
+Terminal validation after merge must omit that flag and must expose the live empty bypass
+set, rule suite, unchanged canary ref, exact source PR/review, and the receipt PR number. The
+terminal gate fetches that receipt PR, independently proves exact-head CODEOWNER approval and
+successful provider check `test-and-verify` before merge, and proves its two-parent merge is on live
+`main`.
+The receipt does not self-reference its future merge SHA; terminal provider/Git proof supplies that
+binding after merge.
+The terminal token must be able to read the ruleset bypass field, rule suite, canary and anchor refs,
+receipt reviews, workflow runs, and check runs; an ordinary restricted Actions token may be
+insufficient and must fail closed rather than downgrade proof.
 
----
+## 10. Publish and validate the new physical anchor
 
-## 10. Canonical receipt-only PR layout
+Before the receipt merge, install an active no-bypass tag ruleset targeting exactly
+`refs/tags/B00R_RECEIPT_ANCHOR_G2`, with no exclusions and both update and deletion blocked. Capture
+its raw provider object at `evidence/B00R_G2/tag_ruleset.provider.json` and externally pin those
+exact bytes as `B00R_G2_TAG_RULESET_SHA256`. Its provider `updated_at` must be strictly before the
+signed receipt's `observed_at_us` (and therefore before `emitted_at_us` and the later receipt merge).
 
-Create the receipt branch directly from `<REPAIR_MERGE_SHA>`. The allowed diff is closed:
+After the receipt merge, create one annotated tag object targeting the exact receipt merge. Its
+message is exactly:
 
 ```text
-evidence/
-├── B00R/
-│   ├── spec.json
-│   ├── evidence_manifest.json
-│   ├── tag_ruleset.provider.json
-│   ├── logs/
-│   ├── results/
-│   └── provider/
-└── receipts/
-    └── B00R.receipt.v3.json
+TRIAD-B00R-RECEIPT-ANCHOR-G2-V1
+receipt_path=evidence/receipts/B00R.g2.receipt.v3.json
+receipt_sha256=<SHA256_OF_EXACT_RECEIPT_BYTES>
 ```
 
-No source, tests, workflows, schemas, contracts, decisions, trust files, validator code, historical
-receipts, or unrelated documentation may change in this PR. Generated build products are allowed
-only when explicitly required and declared by the evidence manifest.
-
-Run the receipt-role/diff gate first. Then require:
-
-- receipt-mode CI on `<RECEIPT_FINAL_HEAD_SHA>`;
-- strict receipt and manifest verification;
-- exact-head independent approval;
-- every review thread resolved;
-- no stale approvals after the last push; and
-- expected-head guarded merge under the effective main ruleset.
-
-Record provider facts in Section 2. A receipt signed before its final content exists, or a receipt PR
-based on anything other than the exact repaired merge, fails.
-
----
-
-## 11. Protected closure anchor
-
-After the receipt merge, publish the exact annotated tag `B00R_RECEIPT_ANCHOR` under the already
-active exact-ref no-update/no-delete tag ruleset. It must be an annotated Git tag object, not a
-lightweight tag, and it must point directly to `<RECEIPT_MERGE_SHA>`.
-
-The annotated message profile is closed—no extra fields:
-
-```text
-TRIAD-B00R-RECEIPT-ANCHOR-V1
-receipt_path=evidence/receipts/B00R.receipt.v3.json
-receipt_sha256=<B00R_RECEIPT_SHA256>
-```
-
-Create it with the ordinary annotated-tag operation (`git tag -a`), not a command that claims a
-cryptographic tag signature. The implemented validator verifies the annotated object type, exact tag
-name, target receipt-merge commit, tagger presence, closed message profile, canonical receipt path and
-digest, plus the externally pinned protected tag-ruleset evidence. It does **not** verify a GPG, SSH,
-or other cryptographic signature on the tag. Do not describe the anchor as “signed” or claim a
-verified tag signature.
-
-The canonical tag-ruleset evidence, `evidence/B00R/tag_ruleset.provider.json`, must already be
-committed in the receipt merge and externally pinned by `B00R_TAG_RULESET_SHA256`; the anchor cannot
-retroactively add it. After publication, query the provider and save the tag reference, annotated tag
-object, target commit, and tag-ruleset evaluation only in the external return bundle. Do not modify
-the merged receipt/evidence bytes and do not probe update/deletion against the real anchor.
-
-Final validation from a clean checkout of the receipt merge:
+Create those exact bytes in a file and pass the file once:
 
 ```bash
-test -n "${MAIN_RULESET_EVIDENCE_SHA256:?protected provider pin missing}"
-test -n "${B00R_TAG_RULESET_SHA256:?protected tag-ruleset pin missing}"
+TAG_MESSAGE_FILE="$(mktemp)"
+printf '%s\n%s\n%s\n' \
+  'TRIAD-B00R-RECEIPT-ANCHOR-G2-V1' \
+  'receipt_path=evidence/receipts/B00R.g2.receipt.v3.json' \
+  "receipt_sha256=$RECEIPT_SHA256" > "$TAG_MESSAGE_FILE"
+git tag -a B00R_RECEIPT_ANCHOR_G2 "$RECEIPT_MERGE" -F "$TAG_MESSAGE_FILE"
+```
+
+Publish `B00R_RECEIPT_ANCHOR_G2` once. Never repoint it, never use a lightweight tag, and never test
+update/deletion against the real anchor. Do not use `-s`, repeated `-m`, reordered fields, a missing
+terminal newline, or extra blank lines; each changes the protected tag-object profile.
+
+Run the post-merge terminal gate from a clean checkout of the receipt merge:
+
+```bash
 python tools/b00r_gate.py --mode receipt \
-  --expected-head <RECEIPT_MERGE_SHA> \
-  --base-sha <REPAIR_MERGE_SHA> \
-  --now-us <TRUSTED_TERMINAL_NOW_US> \
-  --pins <EXTERNAL_AUTHORITY_PINS_JSON_WITH_ALL_FOUR_PINS> \
-  --receipt evidence/receipts/B00R.receipt.v3.json \
-  --manifest evidence/B00R/evidence_manifest.json \
-  --governance-snapshot docs/governance/rulesets/main.ruleset.provider.json \
-  --provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json \
-  --anchor-ruleset evidence/B00R/tag_ruleset.provider.json
+  --base-sha "$SOURCE_MERGE" \
+  --expected-head "$RECEIPT_MERGE" \
+  --receipt-pr "$RECEIPT_PR" \
+  --now-us "$NOW_US" \
+  --pins "$PINS_JSON" \
+  --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" \
+  --anchor-ruleset-pin "$B00R_G2_TAG_RULESET_SHA256"
 ```
 
-Only an all-green strict result permits `PASS_REPOSITORY_SAFE_HOLD`.
+Only this terminal sequence may return `PASS_REPOSITORY_SAFE_HOLD`.
 
----
+## 11. Stop conditions
 
-## 12. Evidence return bundle
+| Condition | Result |
+|---|---|
+| Generation-1 byte/tag mutation or retro-review claimed as closure | `FAIL_GENERATION_1_MUTATION` |
+| Ruleset/canary/review created after generation-2 source merge | `FAIL_CHRONOLOGY` |
+| Main ruleset permits squash/rebase or omits the dedicated canary target | `FAIL_RULESET_PROFILE` |
+| Source approval absent, self-authored, stale, or not exact-head | `BLOCKED_REVIEW_SAFE_HOLD` |
+| Source PR number/head/merge/provider time mismatch | `FAIL_SOURCE_PR_BINDING` |
+| CODEOWNERS bootstrap is direct, mixed-content, stale/self-reviewed, or time-mismatched | `FAIL_BOOTSTRAP_BINDING` |
+| Receipt PR contains mixed or historical content | `FAIL_RECEIPT_LAYOUT` |
+| Receipt merge lacks exact-head CI/review, ordinary merge shape, main ancestry, or matching provider/Git time | `FAIL_RECEIPT_PR_BINDING` |
+| Tag ruleset was installed or updated at/after receipt `observed_at_us` | `FAIL_TAG_RULESET_CHRONOLOGY` |
+| G2 anchor absent, lightweight, mutable, or points elsewhere | `BLOCKED_ANCHOR_SAFE_HOLD` |
+| Any owner pin, live provider proof, or trusted time unavailable | `BLOCKED_EXTERNAL_AUTHORITY` |
+| All generation-2 authority, repository, review, evidence, receipt, and anchor checks pass | `PASS_REPOSITORY_SAFE_HOLD` |
 
-Return one immutable, checksummed bundle with this minimum inventory:
-
-```text
-B00R_EXTERNAL_CLOSURE_<UTC>/
-├── 00_EXECUTION_RECORD.md
-├── 01_ROLE_SEPARATION.json
-├── 02_AUTHORITY_VALIDATION.log
-├── 03_PROTECTED_PIN_METADATA.json
-├── 04_TRUSTED_TIME_EVIDENCE.json
-├── provider/
-│   ├── main.ruleset.provider.raw.json
-│   ├── main.ruleset.provider.json
-│   ├── tag_ruleset.provider.json
-│   ├── canary_rejection.json
-│   ├── repair_pr.json
-│   ├── repair_checks.json
-│   ├── repair_reviews_and_threads.json
-│   ├── repair_merge.json
-│   ├── receipt_pr.json
-│   ├── receipt_checks.json
-│   ├── receipt_reviews_and_threads.json
-│   ├── receipt_merge.json
-│   └── anchor_objects.json
-├── clean_runner/
-│   ├── runner_identity.json
-│   ├── toolchain.txt
-│   ├── checkout_identity.txt
-│   ├── seed_0.log
-│   ├── seed_1.log
-│   ├── collected_ids.txt
-│   ├── repair_gate.log
-│   ├── artifact_gates.log
-│   └── artifact_sha256s.txt
-├── committed_preimages/
-│   ├── evidence_manifest.json
-│   └── B00R.receipt.v3.json
-├── 98_REDACTION_REPORT.md
-└── SHA256SUMS
-```
-
-Evidence requirements:
-
-- preserve the exact raw bytes of
-  `docs/governance/rulesets/main.ruleset.provider.raw.json`, the derived normalized
-  `docs/governance/rulesets/main.ruleset.provider.json`, and
-  `evidence/B00R/tag_ruleset.provider.json`; record the four authority pins,
-  `MAIN_RULESET_EVIDENCE_SHA256`, `B00R_TAG_RULESET_SHA256`, their scopes, actors, update times, and
-  provider object IDs in `03_PROTECTED_PIN_METADATA.json`;
-- record each trusted `NOW_US`, its approved source, collection actor, and evidence identifier in
-  `04_TRUSTED_TIME_EVIDENCE.json`;
-- preserve raw provider IDs, SHAs, UTC timestamps, conclusions, and exit codes;
-- redact bearer tokens, cookies, private keys, seeds, credential URLs, and unrelated secret values;
-- make redactions explicit in `98_REDACTION_REPORT.md` without destroying the claim being proved;
-- generate `SHA256SUMS` after the bundle is final; and
-- verify every checksum from a second clean location before return.
-
----
-
-## 13. Safe-hold outcome table
-
-| Observed state | Required result | Next action |
-|---|---|---|
-| All authority, provider, review, reproduction, receipt, and anchor gates pass | `PASS_REPOSITORY_SAFE_HOLD` | Permit B01C to branch only from the validated B00R receipt merge/anchor |
-| Deterministic repair gates pass but any owner/provider artifact is absent | `BLOCKED_SAFE_HOLD` | Obtain the missing external act; do not alter runtime |
-| Head, ancestry, tree, receipt, signature, or digest mismatch | `FAIL_SAFE_HOLD` | Preserve evidence; correct forward on a new immutable head |
-| Ruleset is inactive, bypassable, wrong-target, or installed after merge | `FAIL_GOVERNANCE_SAFE_HOLD` | Repair controls and repeat the controlled merge |
-| Review is stale, self-authored, or not bound to exact head | `BLOCKED_REVIEW_SAFE_HOLD` | Re-review the current head independently |
-| Clean runner cannot reproduce exact merged bytes/results | `FAIL_REPRODUCTION_SAFE_HOLD` | Diagnose repair/build drift; issue a new repair PR |
-| Receipt PR contains source or unrelated files | `FAIL_ROLE_SEPARATION_SAFE_HOLD` | Close/rebuild receipt branch from repaired merge with closed layout |
-| Anchor is mutable, missing, or points elsewhere | `BLOCKED_ANCHOR_SAFE_HOLD` | Install protection and publish a correct forward anchor |
-| Any effective activation differs from OFF/OFF/OFF/LIVE | `FAIL_POSTURE_VIOLATION` | Stop immediately; restore safe hold and investigate separately |
-
-No failure in this table authorizes access to the trading box. The repair surface remains GitHub,
-signing workstations, and the clean runner.
-
----
-
-## 14. Final operator sign-off
-
-- [ ] Live execution record is complete and provider-derived.
-- [ ] Role separation is proven with authenticated identities.
-- [ ] Private signing material never entered GitHub, CI, chat, or evidence.
-- [ ] Trust registry and three decisions validate against protected external pins.
-- [ ] `main` and anchor rulesets are active, correct-target, and no-bypass.
-- [ ] Engineering head was frozen before ceremony; any ceremony/proof commit produced a new recorded final head.
-- [ ] Owner ceremony and active no-bypass rulesets preceded final strict CI/review/guarded repair merge.
-- [ ] Privileged negative canaries were captured outside CI; guarded repair and receipt merges are positive ruleset proofs.
-- [ ] Repair CI, independent review, and all resolved threads bind the exact final repair head.
-- [ ] Fresh clean runner reproduced the repaired merge under both hash seeds and all artifact gates.
-- [ ] Closed evidence manifest verifies every declared preimage.
-- [ ] Exactly one canonical threshold-signed B00R receipt validates.
-- [ ] Receipt-only PR contains no source/unrelated changes and was guarded-merged.
-- [ ] Protected closure anchor binds the receipt merge and receipt digest.
-- [ ] Final strict receipt-mode gate returns `PASS_REPOSITORY_SAFE_HOLD`.
-- [ ] Evidence bundle is redacted, checksummed, independently verified, and returned.
-- [ ] No trading/MCP box credentials or runtime actions were requested or used.
-
-**Operator:** `<NAME / IDENTITY>`  
-**Independent reviewer:** `<NAME / IDENTITY>`  
-**Completed at (UTC):** `<UTC>`  
-**Final result:** `<PASS_REPOSITORY_SAFE_HOLD | BLOCKED_* | FAIL_*>`
+`B01C` remains frozen in every non-PASS row. When the terminal result passes, B01C may branch only
+from the exact generation-2 receipt merge commit named by the validated
+`B00R_RECEIPT_ANCHOR_G2`; it may not branch from generation 1, the corrective source merge, PR #33,
+or an offline-preparation branch.

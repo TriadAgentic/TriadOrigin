@@ -52,6 +52,25 @@ def test_neg001_gap_and_scope_rows_are_explicit_governance():
                             "gate": "G-1", "phase": "P-1"})[2] == "R8_GOVERNANCE_CLOSURE"
 
 
+@pytest.mark.parametrize("task_id,formula_refs", [
+    ("FORM-F24-01", "F24"),
+    ("FORM-F23-08", "F23"),
+    ("FORM-F01-01", "F07"),
+    ("FORM-F1-01", "F01"),
+])
+def test_neg001_formula_namespace_is_exact_and_has_no_default_route(task_id, formula_refs):
+    from tools import build_ledger as bl
+    with pytest.raises(bl.LedgerClassificationError, match="FORMULA_NAMESPACE_INVALID"):
+        bl.classify_rc3({
+            "id": task_id,
+            "row_class": "FORMULA_ATOMIC",
+            "formula_refs": formula_refs,
+            "node": "ORIGIN",
+            "gate": "",
+            "phase": "",
+        })
+
+
 # --- NEG-004 · same bundle id with changed bytes fails (immutability) -----------------------------
 def test_neg004_receipt_v3_immutable_schema_registered():
     # The v3 schema is a NEW additive identity; the historical v2 is preserved untouched.
@@ -117,7 +136,7 @@ def test_neg008_no_external_signatures_is_blocked():
     # A profile-required threshold with an empty signatures array can never PASS.
     result, reason = gov.validate_receipt_v3(
         receipt, milestone="B00R", trust=trust,
-        now_us=receipt["payload"]["emitted_at_us"])
+        now_us=receipt["payload"]["emitted_at_us"], expected_root_generation=1)
     assert result == "BLOCKED" and reason == "NO_EXTERNAL_SIGNATURES"
 
 
@@ -209,38 +228,187 @@ def test_neg011_evidence_manifest_rejects_symlink(tmp_path):
         gov.validate_evidence_manifest(manifest, tmp_path)
 
 
+@pytest.mark.parametrize(
+    ("unique_flags", "should_fail"),
+    [((True, False), True), ((False, True), True), ((None, False), True),
+     ((False, False), False)],
+)
+def test_evidence_manifest_duplicate_role_group_law(
+    tmp_path, unique_flags, should_fail
+):
+    (tmp_path / "evidence").mkdir()
+    entries = []
+    for index, flag in enumerate(unique_flags):
+        rel = f"evidence/{index}.json"
+        data = b"{}"
+        (tmp_path / rel).write_bytes(data)
+        entry = {
+            "path": rel,
+            "role": "SINGLETON",
+            "media_type": "application/json",
+            "size": len(data),
+            "sha256": sha256_hex(data),
+        }
+        if flag is not None:
+            entry["role_unique"] = flag
+        entries.append(entry)
+    manifest = {
+        "schema": "triad.evidence_manifest.v1",
+        "schema_version": "1.0.0",
+        "manifest_kind": "EVIDENCE_MANIFEST",
+        "entry_count": len(entries),
+        "entries": entries,
+    }
+    if not should_fail:
+        gov.validate_evidence_manifest(manifest, tmp_path)
+        return
+    with pytest.raises(gov.GovernanceError, match="EVIDENCE_DUPLICATE_ROLE: SINGLETON"):
+        gov.validate_evidence_manifest(manifest, tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("rel", "role", "role_unique", "allowed"),
+    [
+        (
+            "evidence/B00R_G2/clean_runner/commands/00-pytest-seed0/stderr.bin",
+            "CLEAN_RUNNER_COMMAND_STDERR", False, True,
+        ),
+        (
+            "evidence/B00R_G2/clean_runner/rollback/stdout.bin",
+            "CLEAN_RUNNER_ROLLBACK_STDOUT", True, True,
+        ),
+        (
+            "evidence/B00R_G2/clean_runner/commands/00-pytest-seed0/stderr.bin",
+            "UNRELATED", False, False,
+        ),
+        (
+            "evidence/B00R_G2/clean_runner/commands/00-pytest-seed0/stderr.bin",
+            "CLEAN_RUNNER_COMMAND_STDERR", True, False,
+        ),
+        (
+            "evidence/B00R_G2/clean_runner/not-a-command/stderr.bin",
+            "CLEAN_RUNNER_COMMAND_STDERR", False, False,
+        ),
+    ],
+)
+def test_evidence_manifest_empty_stream_exception_is_narrow(
+    tmp_path, rel, role, role_unique, allowed
+):
+    from tools.b00r_clean_runner import ALLOWED_EMPTY_PATHS
+
+    path = tmp_path / rel
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"")
+    entry = {
+        "path": rel,
+        "role": role,
+        "role_unique": role_unique,
+        "media_type": "application/octet-stream",
+        "size": 0,
+        "sha256": sha256_hex(b""),
+    }
+    manifest = {
+        "schema": "triad.evidence_manifest.v1",
+        "schema_version": "1.0.0",
+        "manifest_kind": "EVIDENCE_MANIFEST",
+        "entry_count": 1,
+        "entries": [entry],
+    }
+    if allowed:
+        gov.validate_evidence_manifest(
+            manifest, tmp_path, allowed_empty_paths=ALLOWED_EMPTY_PATHS)
+    else:
+        with pytest.raises(gov.GovernanceError, match="EVIDENCE_ZERO_SIZE"):
+            gov.validate_evidence_manifest(
+                manifest, tmp_path, allowed_empty_paths=ALLOWED_EMPTY_PATHS)
+
+
 # --- NEG-012 · evidence before source merge / future-dated fails ----------------------------------
 def test_neg012_chronology_order_and_future():
     receipt = _golden("triad.evidence_receipt.v3", "valid")
     # observed before merge
     bad = copy.deepcopy(receipt)
     bad["payload"]["observed_at_us"] = bad["payload"]["source_merge_time_us"] - 1
-    result, reason = gov.validate_receipt_v3(bad, milestone="B00R")
+    result, reason = gov.validate_receipt_v3(
+        bad, milestone="B00R", expected_root_generation=1)
     assert result == "FAIL" and reason.startswith("CHRONOLOGY_ORDER")
     # future-dated
     fut = copy.deepcopy(receipt)
-    result, reason = gov.validate_receipt_v3(fut, milestone="B00R", now_us=fut["payload"]["emitted_at_us"] - 1)
+    result, reason = gov.validate_receipt_v3(
+        fut, milestone="B00R", now_us=fut["payload"]["emitted_at_us"] - 1,
+        expected_root_generation=1)
     assert result == "FAIL" and reason == "CHRONOLOGY_FUTURE_EVIDENCE"
 
 
 # --- NEG-017 · source PR touching receipt / receipt PR touching source fails ----------------------
 def test_neg017_pr_role_mixed_fails():
     role, _ = gov.classify_changed_paths(
-        ["src/x.py", "evidence/receipts/B00R.receipt.v3.json"])
+        ["src/x.py", "evidence/receipts/B00R.g2.receipt.v3.json"])
     assert role == "MIXED"
     proc = _run(
         "tools/classify_milestone_pr.py",
         "src/x.py",
-        "evidence/receipts/B00R.receipt.v3.json",
+        "evidence/receipts/B00R.g2.receipt.v3.json",
     )
     assert proc.returncode == 1
 
 
 def test_neg017_pure_roles_pass():
-    assert gov.classify_changed_paths(["src/x.py"])[0] == "SOURCE"
+    assert gov.classify_changed_paths(["src/triad_origin/governance.py"])[0] == "SOURCE"
+    assert gov.classify_changed_paths(
+        ["evidence/receipts/B00R.g2.receipt.v3.json"]
+    )[0] == "RECEIPT"
     assert gov.classify_changed_paths(
         ["evidence/receipts/B00R.receipt.v3.json"]
-    )[0] == "RECEIPT"
+    )[0] == "INVALID"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "contracts/schemas/triad.execution_cmd.v2.schema.json",
+        "docs/spec_rc4/new_formula.html",
+        "src/triad_origin/contracts.py",
+        "src/triad_origin/structures/structure_state.py",
+        "src/triad_origin/control/lever_law.py",
+        "src/triad_origin/formulas.py",
+        "src/triad_origin/adapters/binance.py",
+        "deploy/triad-origin.yaml",
+        "ops/restart.sh",
+        "venue/binance.json",
+    ],
+)
+def test_neg017_b00r_source_scope_rejects_downstream_owned_paths(path):
+    role, reason = gov.classify_changed_paths([path])
+    assert role == "INVALID"
+    assert "outside frozen governance scope" in reason
+
+
+def test_neg017_b00r_source_scope_allows_only_c0_and_b00r_test_prefixes():
+    assert gov.classify_changed_paths(
+        ["docs/control/closure/closure_semantics.v1.json"]
+    )[0] == "SOURCE"
+    assert gov.classify_changed_paths(
+        ["tests/b00r/test_new_scope_guard.py"]
+    )[0] == "SOURCE"
+    assert gov.classify_changed_paths(["docs/closure/coordination.md"])[0] == "INVALID"
+    assert gov.classify_changed_paths(["tests/runtime/test_activation.py"])[0] == "INVALID"
+    assert gov.classify_changed_paths(["tests/b00r/../runtime/test_activation.py"])[0] == \
+        "INVALID"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "docs/control/closure/bad\nname.json",
+        "docs/control/closure/bad\tname.json",
+        "docs/control/closure/bad\x7fname.json",
+    ],
+)
+def test_neg017_package_classifier_rejects_control_character_paths(path):
+    role, reason = gov.classify_changed_paths([path])
+    assert role == "INVALID"
+    assert "unsafe changed path" in reason
 
 
 # --- NEG-018 · B01C without exact B00R anchor is blocked (successor variant) ----------------------
@@ -266,7 +434,8 @@ def test_neg022_safety_posture_drift_fails():
     receipt = _golden("triad.evidence_receipt.v3", "valid")
     bad = copy.deepcopy(receipt)
     bad["payload"]["levers"]["shadow_activation"] = "OFF"  # SHADOW must stay LIVE
-    result, reason = gov.validate_receipt_v3(bad, milestone="B00R")
+    result, reason = gov.validate_receipt_v3(
+        bad, milestone="B00R", expected_root_generation=1)
     assert result == "FAIL"
 
 
@@ -274,7 +443,8 @@ def test_neg022_result_enum_closed():
     receipt = _golden("triad.evidence_receipt.v3", "valid")
     bad = copy.deepcopy(receipt)
     bad["payload"]["result"] = "PASS"  # generic PASS is not a closure result
-    result, _ = gov.validate_receipt_v3(bad, milestone="B00R")
+    result, _ = gov.validate_receipt_v3(
+        bad, milestone="B00R", expected_root_generation=1)
     assert result == "FAIL"
 
 
@@ -307,8 +477,45 @@ def test_empty_provider_expansion_does_not_become_a_malformed_authority_pin():
     assert authority.load_external_pins(environ=empty_ci_environment) == {}
 
 
+def test_generation2_pin_file_must_contain_exactly_four_authority_pins(
+    tmp_path
+):
+    from tools import validate_authority_root as authority
+
+    subjects, _paths = authority._authority_profile(2)
+    names = [meta[0] for meta in subjects.values()]
+    complete = {name: chr(97 + index) * 64 for index, name in enumerate(names)}
+    pins = tmp_path / "pins.json"
+    pins.write_text(json.dumps(complete), encoding="utf-8")
+    assert authority.load_external_pins(
+        pins_path=pins, environ={}, repair_generation=2) == complete
+
+    partial = dict(complete)
+    missing_name = names[-1]
+    partial.pop(missing_name)
+    pins.write_text(json.dumps(partial), encoding="utf-8")
+    with pytest.raises(
+        authority.AuthorityRootError, match="EXTERNAL_PIN_FILE_KEY_SET_MISMATCH"
+    ):
+        authority.load_external_pins(
+            pins_path=pins,
+            environ={missing_name: complete[missing_name]},
+            repair_generation=2,
+        )
+
+    pins.write_text(json.dumps({**complete, "MAIN_RULESET_EVIDENCE_SHA256": "f" * 64}))
+    with pytest.raises(authority.AuthorityRootError, match="UNKNOWN_EXTERNAL_PIN_NAMES"):
+        authority.load_external_pins(pins_path=pins, environ={}, repair_generation=2)
+
+
 def test_decision_templates_are_unauthenticated():
-    for name in ("DEC-AUTHORITY-BUNDLE-001", "DEC-RECEIPT-PROFILE-001", "DEC-B00-REPAIR-001"):
+    for name in (
+        "DEC-AUTHORITY-BUNDLE-001",
+        "DEC-RECEIPT-PROFILE-001",
+        "DEC-B00-REPAIR-001",
+        "DEC-RECEIPT-PROFILE-002",
+        "DEC-B00-REPAIR-002",
+    ):
         doc = json.loads(
             (ROOT / f"docs/governance/decisions/{name}.template.json").read_text())
         assert gov.decision_is_authenticated(doc) is False
@@ -339,6 +546,7 @@ def test_b00r_gate_owner_commands_are_strict_and_use_one_canonical_receipt():
         provider_pin=None,
         anchor_ruleset=b00r_gate.CANONICAL_ANCHOR_RULESET,
         anchor_ruleset_pin=None,
+        receipt_pr=35,
     )
     gates = b00r_gate._owner_gates(args)
     commands = [gate.argv for gate in gates]
@@ -357,9 +565,84 @@ def test_b00r_gate_owner_commands_are_strict_and_use_one_canonical_receipt():
         if any(part.endswith("/validate_b_receipt.py") for part in command)
     ]
     assert len(receipt_commands) == 1
-    assert receipt_commands[0][-1] == "evidence/receipts/B00R.receipt.v3.json"
+    assert receipt_commands[0][-1] == b00r_gate.CANONICAL_RECEIPT
+    assert b00r_gate.CANONICAL_RECEIPT == "evidence/receipts/B00R.g2.receipt.v3.json"
     for flag in ("--now-us", "--manifest", "--git-root", "--expected-head",
-                 "--governance-snapshot", "--provider-raw"):
+                 "--governance-snapshot", "--provider-raw", "--receipt-pr"):
         assert flag in receipt_commands[0]
+    assert receipt_commands[0][receipt_commands[0].index("--receipt-pr") + 1] == "35"
     assert "--trust" not in receipt_commands[0]
     assert not any("dsse" in part.lower() for command in commands for part in command)
+
+
+@pytest.mark.parametrize(
+    ("mode_flag", "expected_mode", "expected_privileged"),
+    [
+        ("--nonterminal-provider-proof", "nonterminal", False),
+        ("--premerge-provider-proof", "premerge", True),
+    ],
+)
+def test_receipt_provider_proof_modes_are_separate_and_nonterminal(
+    monkeypatch, mode_flag, expected_mode, expected_privileged
+):
+    from tools import validate_b_receipt
+
+    captured = {}
+
+    def fake_strict(_receipt, **kwargs):
+        captured.update(kwargs)
+        return 0
+
+    monkeypatch.setattr(validate_b_receipt, "_strict", fake_strict)
+    receipt_pr_args = ["--receipt-pr", "35"] if expected_mode == "premerge" else []
+    result = validate_b_receipt.main([
+        "--strict",
+        "--milestone", "B00R",
+        "--now-us", "1000000",
+        "--manifest", "evidence/B00R_G2/evidence_manifest.json",
+        "--expected-head", "a" * 40,
+        "--governance-snapshot", "docs/governance/rulesets/main.ruleset.provider.json",
+        "--provider-raw", "docs/governance/rulesets/main.ruleset.provider.raw.json",
+        "--provider-pin", "b" * 64,
+        *receipt_pr_args,
+        mode_flag,
+        "evidence/receipts/B00R.g2.receipt.v3.json",
+    ])
+    assert result == 0
+    assert captured["provider_proof_mode"] == expected_mode
+    assert captured["require_live_rule_suite"] is expected_privileged
+    assert captured["require_live_canary_ref"] is expected_privileged
+    assert captured["require_bypass_visibility"] is expected_privileged
+    assert captured["receipt_pr"] == (35 if expected_mode == "premerge" else None)
+
+
+def test_receipt_provider_proof_modes_reject_ambiguous_terminal_inputs(capsys):
+    from tools import validate_b_receipt
+
+    common = [
+        "--strict", "--milestone", "B00R", "--now-us", "1000000",
+        "--manifest", "evidence/B00R_G2/evidence_manifest.json",
+        "--expected-head", "a" * 40,
+        "--governance-snapshot", "docs/governance/rulesets/main.ruleset.provider.json",
+        "--provider-raw", "docs/governance/rulesets/main.ruleset.provider.raw.json",
+        "--provider-pin", "b" * 64,
+        "evidence/receipts/B00R.g2.receipt.v3.json",
+    ]
+    assert validate_b_receipt.main([
+        *common[:-1], "--nonterminal-provider-proof", "--premerge-provider-proof", common[-1]
+    ]) == 2
+    assert "mutually exclusive" in capsys.readouterr().err
+    assert validate_b_receipt.main([
+        *common[:-1], "--premerge-provider-proof", common[-1]
+    ]) == 2
+    assert "premerge B00R strict mode requires" in capsys.readouterr().err
+    assert validate_b_receipt.main([
+        *common[:-1], "--nonterminal-provider-proof", "--receipt-pr", "35", common[-1]
+    ]) == 2
+    assert "nonterminal provider mode does not accept" in capsys.readouterr().err
+    nonroot = list(common)
+    nonroot[2] = "B01C"
+    assert validate_b_receipt.main([
+        *nonroot[:-1], "--premerge-provider-proof", "--receipt-pr", "35", nonroot[-1]
+    ]) == 2
+    assert "defined only for B00R" in capsys.readouterr().err

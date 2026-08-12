@@ -21,7 +21,10 @@ def main() -> int:
     # Clear configured addopts before disabling the terminal plugin. Repository ``-q`` is
     # implemented by that plugin and would otherwise make this controlled collector fail.
     result = pytest.main(
-        ["-o", "addopts=", "--collect-only", "-p", "no:terminal"],
+        [
+            "-o", "addopts=", "--collect-only", "-p", "no:terminal",
+            "-p", "no:cacheprovider",
+        ],
         plugins=[collector],
     )
     if result != pytest.ExitCode.OK:

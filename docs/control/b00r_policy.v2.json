@@ -1,0 +1,219 @@
+{
+  "schema": "triad.origin.b00r_policy.v2",
+  "schema_version": "2.0.0",
+  "milestone": "B00R",
+  "repair_generation": 2,
+  "audited_start_sha": "76b5e4857f80f22f99385810037c5c66289ebd5f",
+  "supersedes_policy": "docs/control/b00r_policy.v1.json",
+  "generation_ledger": "docs/governance/B00R_GENERATION_LEDGER.v1.json",
+  "required_result": "PASS_REPOSITORY_SAFE_HOLD",
+  "activation_result": "DENIED_SAFE_HOLD",
+  "levers": {
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "generation_1_disposition": "MERGED_UNVERIFIED",
+  "owner_gated_inputs": [
+    {
+      "id": "DEC-AUTHORITY-BUNDLE-002",
+      "template": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.template.json",
+      "authenticated_path": "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json",
+      "external_pin": "AUTHORITY_BUNDLE_G2_DECISION_SHA256"
+    },
+    {
+      "id": "DEC-RECEIPT-PROFILE-002",
+      "template": "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.template.json",
+      "authenticated_path": "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json",
+      "external_pin": "RECEIPT_PROFILE_G2_DECISION_SHA256"
+    },
+    {
+      "id": "DEC-B00-REPAIR-002",
+      "template": "docs/governance/decisions/DEC-B00-REPAIR-002.template.json",
+      "authenticated_path": "docs/governance/decisions/DEC-B00-REPAIR-002.json",
+      "external_pin": "B00R_G2_REPAIR_DECISION_SHA256"
+    },
+    {
+      "id": "receipt_trust_registry",
+      "template": "docs/governance/trust/receipt_trust_registry.g2.v1.template.json",
+      "authenticated_path": "docs/governance/trust/receipt_trust_registry.g2.v1.json",
+      "external_pin": "RECEIPT_G2_TRUST_REGISTRY_SHA256"
+    },
+    {
+      "id": "main_ruleset_evidence",
+      "normalized_path": "docs/governance/rulesets/main.ruleset.provider.json",
+      "raw_path": "docs/governance/rulesets/main.ruleset.provider.raw.json",
+      "external_pin": "MAIN_RULESET_EVIDENCE_SHA256"
+    },
+    {
+      "id": "independent_codeowner",
+      "path": ".github/CODEOWNERS",
+      "required_owner": "@djordi10",
+      "bootstrap_provider_records": [
+        "evidence/B00R_G2/codeowners_bootstrap_pr.provider.raw.json",
+        "evidence/B00R_G2/codeowners_bootstrap_pr.approved_review.provider.raw.json"
+      ],
+      "bootstrap_law": "dedicated CODEOWNERS-only ordinary two-parent PR merge to main with independent djordi10 exact-head approval before merge; this bootstrap merge is the literal first parent of the source merge"
+    }
+  ],
+  "pr_role_law": {
+    "source_pr": {
+      "composite_scope_binding": {
+        "track_id": "ORIGIN_REPAIR",
+        "milestone_id": "B00R_G2",
+        "scope_digest": "71b011d46c6a7ebd092bda6d2d303572c9a44508bd126ff9a50e2e5bad40eaf5",
+        "scope_digest_source": "docs/control/closure/closure_semantics.v1.json",
+        "status": "BOUND_CANONICAL",
+        "failure_behavior": "SOURCE_MERGE_FORBIDDEN_ON_SCOPE_BINDING_MISMATCH"
+      },
+      "allowed_exact_paths": [
+        ".github/workflows/ci.yml",
+        "CLAUDE.md",
+        "README.md",
+        "docs/control/README.md",
+        "docs/control/SOURCE_HASHES.sha256",
+        "docs/control/b00r_policy.v2.json",
+        "docs/control/build_ledger.json",
+        "docs/governance/B00R_EXTERNAL_AUTHORITY_AND_CLEAN_RUNNER_HANDOFF.md",
+        "docs/governance/B00R_GENERATION_LEDGER.v1.json",
+        "docs/governance/README.md",
+        "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json",
+        "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.template.json",
+        "docs/governance/decisions/DEC-B00-REPAIR-002.json",
+        "docs/governance/decisions/DEC-B00-REPAIR-002.template.json",
+        "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json",
+        "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.template.json",
+        "docs/governance/rulesets/main.ruleset.provider.json",
+        "docs/governance/rulesets/main.ruleset.provider.raw.json",
+        "docs/governance/rulesets/main.ruleset.provider.template.json",
+        "docs/governance/trust/receipt_trust_registry.g2.v1.json",
+        "docs/governance/trust/receipt_trust_registry.g2.v1.template.json",
+        "docs/plan/04_STATUS.md",
+        "docs/plan/08_BUILD_CHECKLIST.md",
+        "docs/plan/09_OPEN_QUESTIONS.md",
+        "docs/plan/README.md",
+        "docs/repair/B01C_ACCEPTANCE_PROFILE.v1.json",
+        "docs/repair/B01C_ENTRY_GATE.md",
+        "src/triad_origin/governance.py",
+        "tests/contracts/test_promotion_b01c.py",
+        "tests/test_b00c_control_closure.py",
+        "tests/test_ci_integrity.py",
+        "tests/test_wheel_distribution.py",
+        "tests/tools/test_acceptance_profile_b01c.py",
+        "tests/tools/test_closure_control.py",
+        "tests/tools/test_e2e_audit.py",
+        "tests/tools/test_validate_b_receipt_failclosed_b01c.py",
+        "tests/tools/test_verify_b01c_entry.py",
+        "tests/tools/test_verify_source_hashes.py",
+        "tools/b00r_clean_runner.py",
+        "tools/b00r_clean_runner_capture.py",
+        "tools/b00r_gate.py",
+        "tools/b00r_pytest_inventory.py",
+        "tools/build_evidence_manifest.py",
+        "tools/build_ledger.py",
+        "tools/classify_milestone_pr.py",
+        "tools/closure_control.py",
+        "tools/collect_test_ids.py",
+        "tools/e2e_audit.py",
+        "tools/gen_acceptance_profile.py",
+        "tools/github_ruleset_live.py",
+        "tools/test_wheel_install.py",
+        "tools/validate_authority_root.py",
+        "tools/validate_b00r_anchor.py",
+        "tools/validate_b00r_tag_ruleset.py",
+        "tools/validate_b_receipt.py",
+        "tools/validate_governance_snapshot.py",
+        "tools/verify_b01c_entry.py",
+        "tools/verify_codeowners.py",
+        "tools/verify_source_hashes.py"
+      ],
+      "allowed_prefixes": [
+        "docs/control/closure/",
+        "tests/b00r/"
+      ],
+      "default": "DENY_SOURCE_PATH_OUT_OF_SCOPE",
+      "must_not_contain": "generation-2 receipt or generation-2 receipt evidence",
+      "base_codeowners": "first parent equals the recorded reviewed CODEOWNERS-bootstrap merge and contains the exact sole-owner CODEOWNERS bytes",
+      "merge_law": "ordinary two-parent merge; second parent and merge tree equal the exact reviewed and CI-passing source head"
+    },
+    "receipt_pr": {
+      "may_add_only": [
+        "evidence/B00R_G2/**",
+        "evidence/receipts/B00R.g2.receipt.v3.json"
+      ],
+      "must_add": [
+        "evidence/B00R_G2/evidence_manifest.json",
+        "evidence/receipts/B00R.g2.receipt.v3.json"
+      ],
+      "terminal_provider_law": "ordinary two-parent PR merge to live main; first parent equals the receipt-declared source merge; second parent and merge tree equal the exact independently djordi10-reviewed and CI-passing receipt head; review, matching Actions workflow, and integration-bound check complete before merge; provider and Git merge times match",
+      "generation_1_evidence": "IMMUTABLE",
+      "mixed_content": "FAIL"
+    }
+  },
+  "main_sequence_law": "NO_INTERVENING_MAIN_MERGE: reviewed CODEOWNERS bootstrap merge -> reviewed corrective source merge -> reviewed append-only receipt merge",
+  "main_ruleset_law": {
+    "allowed_merge_methods": [
+      "merge"
+    ],
+    "bypass_actors": [],
+    "current_user_can_bypass": "never",
+    "do_not_enforce_on_create": false,
+    "excluded_refs": [],
+    "provider": "github",
+    "pull_request_required": true,
+    "required_status_check_context": "test-and-verify",
+    "required_status_check_integration_id": 15368,
+    "repository": "TriadAgentic/TriadOrigin",
+    "strict_required_status_checks_policy": true,
+    "target_refs": [
+      "refs/heads/main",
+      "refs/heads/b00r-ruleset-canary"
+    ]
+  },
+  "clean_runner_law": {
+    "profile": "TRIAD-B00R-G2-CLEAN-RUNNER-V1",
+    "source": "fresh canonical HTTPS clone at the exact two-parent source merge; detached clean checkout; no local clone optimization, tags, replace refs, alternates, shallow history, submodules, inherited venv, system site-packages, or package cache",
+    "commands": [
+      "pytest-seed0",
+      "pytest-seed1",
+      "collect-test-ids",
+      "verify-manifest",
+      "validate-contract-manifest",
+      "verify-reproducible-build",
+      "test-wheel-install",
+      "verify-no-forbidden-capabilities",
+      "e2e-audit",
+      "build-ledger",
+      "validate-combined-dag"
+    ],
+    "canonical_receipt_roles": {
+      "WORKFLOW": "evidence/B00R_G2/clean_runner/source/ci.yml",
+      "CONTRACT_MANIFEST": "evidence/B00R_G2/clean_runner/source/contracts.MANIFEST.sha256",
+      "TEST_MANIFEST": "evidence/B00R_G2/clean_runner/tests/test_manifest.v1.json",
+      "CONFIG_BUNDLE": "evidence/B00R_G2/clean_runner/config/config_bundle.v1.json",
+      "ROLLBACK_PROOF": "evidence/B00R_G2/clean_runner/rollback/rollback_proof.v1.json"
+    },
+    "semantic_proof": "exact closed 50-file namespace; source/tree/workflow/contract bytes; constrained installed-package inventory; exact argv/env/cwd/chronology/raw streams/return codes; identical seed inventories with no skip/xfail/xpass/failure/error; reproducible artifacts; safe-hold config; revert-to-first-parent rollback tree",
+    "authentication": "the two distinct receipt Ed25519 signers authenticate the ordered closed manifest and every clean-runner byte; no self-reported hardware ephemerality claim is accepted"
+  },
+  "receipt_premerge_law": {
+    "receipt_pr": "open and unmerged on main; base SHA equals the receipt-declared source merge; head SHA equals the exact clean receipt head; latest decisive independent CODEOWNER review is APPROVED; latest relevant GitHub Actions workflow and integration-bound test-and-verify check succeed",
+    "main_ruleset": "fresh live fixed-endpoint match with visible empty bypass_actors, unchanged canary ref, and authenticated failed canary rule suite",
+    "tag_ruleset": "committed canonical capture is externally pinned, active, exact-tag scoped, has only update and deletion rules, has visible empty bypass_actors, and was updated before receipt observed_at_us",
+    "result": "OK_PREMERGE only; cannot close B00R because receipt merge and physical annotated anchor do not yet exist"
+  },
+  "closure_anchor": {
+    "id": "B00R_RECEIPT_ANCHOR_G2",
+    "message_profile": "TRIAD-B00R-RECEIPT-ANCHOR-G2-V1",
+    "receipt_path": "evidence/receipts/B00R.g2.receipt.v3.json",
+    "evidence_root": "evidence/B00R_G2",
+    "tag_ruleset_path": "evidence/B00R_G2/tag_ruleset.provider.json",
+    "tag_ruleset_external_pin": "B00R_G2_TAG_RULESET_SHA256",
+    "tag_ruleset_chronology": "created_at <= updated_at < receipt observed_at_us <= emitted_at_us < receipt provider merged_at",
+    "tag_ruleset_capture_phase": "install, capture, and externally pin before the final receipt head is signed, reviewed, or merged",
+    "terminal_receipt_pr": "required positive provider PR number, revalidated live",
+    "b01c_base": "exact generation-2 receipt merge commit named by the validated anchor"
+  },
+  "stop_condition": "B01C_FROZEN_UNTIL_GENERATION_2_ANCHOR_VALIDATES"
+}

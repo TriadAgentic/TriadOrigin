@@ -62,6 +62,8 @@ SAFETY_POSTURE = {
     "shadow_activation": "LIVE",
 }
 ACTIVATION_RESULT = "DENIED_SAFE_HOLD"
+GITHUB_ACTIONS_INTEGRATION_ID = 15368
+REQUIRED_STATUS_CHECK_CONTEXT = "test-and-verify"
 
 # Trust-registry / decision vocabulary.
 SIGNER_ROLES = ("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER", "AUTHORITY_OWNER")
@@ -437,7 +439,11 @@ def validate_authenticated_decision(
         raise GovernanceError("DECISION_ISSUER_NOT_SIGNER_IDENTITY")
 
 
-def receipt_profile_from_decision(decision: dict) -> tuple[int, tuple[str, ...], str]:
+def receipt_profile_from_decision(
+    decision: dict,
+    *,
+    repair_generation: int = 2,
+) -> tuple[int, tuple[str, ...], str]:
     """Return the explicitly ratified receipt signature profile.
 
     B00R v3 is canonical JSON with embedded Ed25519 signatures.  A decision selecting DSSE or a
@@ -455,13 +461,29 @@ def receipt_profile_from_decision(decision: dict) -> tuple[int, tuple[str, ...],
     if scope.get("clock_law") != \
             "observed_at_us > source_merge_time_us; emitted_at_us >= observed_at_us; zero future tolerance":
         raise GovernanceError("RECEIPT_PROFILE_CLOCK_LAW_MISMATCH")
-    if scope.get("trust_registry") != \
-            "docs/governance/trust/receipt_trust_registry.v1.json":
+    trust_paths = {
+        1: "docs/governance/trust/receipt_trust_registry.v1.json",
+        2: "docs/governance/trust/receipt_trust_registry.g2.v1.json",
+    }
+    if scope.get("trust_registry") != trust_paths.get(repair_generation):
         raise GovernanceError("RECEIPT_PROFILE_TRUST_PATH_MISMATCH")
+    anchors = {
+        1: "B00R_RECEIPT_ANCHOR",
+        2: "B00R_RECEIPT_ANCHOR_G2",
+    }
+    anchor = anchors.get(repair_generation)
+    if anchor is None:
+        raise GovernanceError("RECEIPT_PROFILE_REPAIR_GENERATION_UNSUPPORTED")
     if scope.get("closure_anchor_mechanism") != \
-            ("protected annotated tag B00R_RECEIPT_ANCHOR plus externally pinned active "
+            (f"protected annotated tag {anchor} plus externally pinned active "
              "no-update/no-delete/no-bypass tag ruleset"):
         raise GovernanceError("RECEIPT_PROFILE_CLOSURE_ANCHOR_MISMATCH")
+    if repair_generation == 2 and (
+        scope.get("repair_generation") != 2
+        or scope.get("receipt_path") != "evidence/receipts/B00R.g2.receipt.v3.json"
+        or scope.get("evidence_root") != "evidence/B00R_G2"
+    ):
+        raise GovernanceError("RECEIPT_PROFILE_GENERATION_2_SCOPE_MISMATCH")
     if threshold != 2 or isinstance(threshold, bool):
         raise GovernanceError("RECEIPT_PROFILE_BAD_THRESHOLD")
     required_profile_roles = ["EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER"]
@@ -480,8 +502,42 @@ def _safe_relpath(path: str) -> bool:
         return False
     if path.startswith("/") or "\\" in path:
         return False
+    if any(ord(ch) < 32 or ord(ch) == 127 for ch in path):
+        return False
     parts = path.split("/")
     return ".." not in parts and "" not in parts and "." not in parts
+
+
+def _empty_evidence_stream_allowed(
+    rel: str,
+    entry: dict,
+    allowed_empty_paths: set[str] | frozenset[str],
+) -> bool:
+    """Allow only raw clean-runner process streams to truthfully be empty.
+
+    Empty semantic evidence remains forbidden.  A successful command or rollback can legitimately
+    emit no stderr/stdout, however, and adding marker bytes would falsify the captured stream.  The
+    clean-runner semantic validator independently requires every allowed path, role, digest, size,
+    command binding, and return code.
+    """
+    if rel not in allowed_empty_paths:
+        return False
+    role = entry.get("role")
+    role_unique = entry.get("role_unique")
+    command_stderr = re.fullmatch(
+        r"evidence/B00R_G2/clean_runner/commands/[0-9]{2}-[a-z0-9-]+/stderr\.bin",
+        rel)
+    if (command_stderr is not None
+            and role == "CLEAN_RUNNER_COMMAND_STDERR"
+            and role_unique is False):
+        return True
+    rollback_streams = {
+        "evidence/B00R_G2/clean_runner/rollback/stdout.bin":
+            "CLEAN_RUNNER_ROLLBACK_STDOUT",
+        "evidence/B00R_G2/clean_runner/rollback/stderr.bin":
+            "CLEAN_RUNNER_ROLLBACK_STDERR",
+    }
+    return rollback_streams.get(rel) == role and role_unique is True
 
 
 def validate_evidence_manifest(
@@ -490,6 +546,7 @@ def validate_evidence_manifest(
     *,
     expected_paths: set[str] | None = None,
     tracked_paths: set[str] | None = None,
+    allowed_empty_paths: set[str] | frozenset[str] | None = None,
 ) -> None:
     """Validate a closed evidence manifest against committed bytes.
 
@@ -498,6 +555,11 @@ def validate_evidence_manifest(
     """
     import pathlib
     root = pathlib.Path(root).resolve(strict=True)
+    if allowed_empty_paths is None:
+        allowed_empty_paths = frozenset()
+    if (not isinstance(allowed_empty_paths, (set, frozenset))
+            or any(not _safe_relpath(path) for path in allowed_empty_paths)):
+        raise GovernanceError("EVIDENCE_ALLOWED_EMPTY_PATHS_INVALID")
     validate_structure(manifest, "triad.evidence_manifest.v1")
     entries = manifest.get("entries")
     if not isinstance(entries, list) or not entries:
@@ -508,7 +570,7 @@ def validate_evidence_manifest(
     if declared_order != sorted(declared_order):
         raise GovernanceError("EVIDENCE_PATHS_NOT_CANONICAL_ORDER")
     seen_paths: set[str] = set()
-    seen_roles: set[str] = set()
+    seen_roles: dict[str, bool] = {}
     for entry in entries:
         rel = entry.get("path")
         if not _safe_relpath(rel):
@@ -519,9 +581,13 @@ def validate_evidence_manifest(
         if tracked_paths is not None and rel not in tracked_paths:
             raise GovernanceError(f"EVIDENCE_UNTRACKED_FILE: {rel}")
         role = entry.get("role")
-        if role in seen_roles and entry.get("role_unique", True):
+        role_unique = entry.get("role_unique", True)
+        # A role is repeatable only when every occurrence explicitly opts out of uniqueness.
+        # Checking only the later entry lets ``unique=true`` followed by ``unique=false`` evade
+        # the declaration made by the first record.
+        if role in seen_roles and (seen_roles[role] or role_unique):
             raise GovernanceError(f"EVIDENCE_DUPLICATE_ROLE: {role}")
-        seen_roles.add(role)
+        seen_roles.setdefault(role, role_unique)
         abspath = root / rel
         # Inspect exactly the candidate and its ancestors up to the evidence root.  Walking
         # ``Path.parents`` unbounded would inspect unrelated ancestors above ``root`` and could
@@ -545,7 +611,9 @@ def validate_evidence_manifest(
         if not abspath.is_file():
             raise GovernanceError(f"EVIDENCE_MISSING_FILE: {rel}")
         data = abspath.read_bytes()
-        if len(data) == 0:
+        if len(data) == 0 and not _empty_evidence_stream_allowed(
+            rel, entry, allowed_empty_paths
+        ):
             raise GovernanceError(f"EVIDENCE_ZERO_SIZE: {rel}")
         declared_size = entry.get("size")
         if declared_size is not None and declared_size != len(data):
@@ -574,6 +642,9 @@ def build_evidence_manifest(root, entries: list[dict]) -> dict:
     root = pathlib.Path(root)
     out = []
     for entry in sorted(entries, key=lambda e: e["path"]):
+        unknown = set(entry) - {"path", "role", "media_type", "role_unique"}
+        if unknown:
+            raise GovernanceError(f"EVIDENCE_SPEC_ENTRY_UNKNOWN_FIELDS:{sorted(unknown)}")
         rel = entry["path"]
         if not _safe_relpath(rel):
             raise GovernanceError(f"EVIDENCE_PATH_UNSAFE: {rel!r}")
@@ -582,13 +653,21 @@ def build_evidence_manifest(root, entries: list[dict]) -> dict:
             raise GovernanceError(f"EVIDENCE_NOT_A_TRACKED_FILE: {rel}")
         data = abspath.read_bytes()
         media = "application/json" if rel.endswith(".json") else "application/octet-stream"
-        out.append({
+        built_entry = {
             "path": rel,
             "role": entry["role"],
             "media_type": entry.get("media_type", media),
             "size": len(data),
             "sha256": sha256_hex(data),
-        })
+        }
+        # ``role_unique`` is receipt-binding law, not presentation metadata.  Several B00R G2
+        # provider records are required to carry the literal boolean ``true``; dropping it while
+        # resolving file bytes produces a manifest that passes the generic validator but is
+        # mechanically unusable by the strict receipt validator.  Preserve the caller's explicit
+        # declaration and let the manifest schema reject non-boolean values.
+        if "role_unique" in entry:
+            built_entry["role_unique"] = entry["role_unique"]
+        out.append(built_entry)
     return {
         "schema": "triad.evidence_manifest.v1",
         "schema_version": "1.0.0",
@@ -619,6 +698,7 @@ def validate_receipt_v3(
     required_roles: tuple[str, ...] = ("EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER"),
     now_us: int | None = None,
     verify_fn=None,
+    expected_root_generation: int = 2,
 ) -> tuple[str, str]:
     """Validate a receipt-v3 document. Return ``(result, reason)``.
 
@@ -657,7 +737,9 @@ def validate_receipt_v3(
     # Root vs non-root variant.
     is_root = milestone == ROOT_MILESTONE
     if is_root:
-        if payload.get("repair_generation") != 1:
+        if expected_root_generation not in (1, 2):
+            return "FAIL", "ROOT_REPAIR_GENERATION_UNSUPPORTED"
+        if payload.get("repair_generation") != expected_root_generation:
             return "FAIL", "ROOT_REPAIR_GENERATION_MISMATCH"
         if payload.get("variant") != "ROOT":
             return "FAIL", "ROOT_MILESTONE_NOT_ROOT_VARIANT"
@@ -806,15 +888,96 @@ def parse_source_hashes(text: str) -> dict[str, str]:
 
 # --- PR role classification ----------------------------------------------------------------------
 RECEIPT_PATH_PREFIXES = ("evidence/",)
-_CANONICAL_RECEIPT_RE = r"evidence/receipts/(B00R|B01C|B02C|B03C|B04C|B05C|B06R|B07)\.receipt\.v3\.json"
-# A source PR may touch anything EXCEPT the evidence namespace; a receipt PR may touch ONLY the
-# evidence namespace. Mixed content fails regardless of test results (``NEG-017``).
+_CANONICAL_RECEIPT_RE = (
+    r"evidence/receipts/(B00R\.g2|B01C|B02C|B03C|B04C|B05C|B06R|B07)"
+    r"\.receipt\.v3\.json"
+)
+# B00R G2 is a governance/evidence-root repair.  SOURCE is therefore a positive path grant, not
+# the complement of ``evidence/**``.  Only the C0 control namespace and the B00R falsification-test
+# namespace receive prefixes; package/executable paths are exact so downstream formula, contract,
+# binding, runtime, deployment, adapter, and venue work cannot be smuggled into the root repair.
+B00R_SOURCE_ALLOWED_EXACT_PATHS = frozenset({
+    ".github/workflows/ci.yml",
+    "CLAUDE.md",
+    "README.md",
+    "docs/control/README.md",
+    "docs/control/SOURCE_HASHES.sha256",
+    "docs/control/b00r_policy.v2.json",
+    "docs/control/build_ledger.json",
+    "docs/governance/B00R_EXTERNAL_AUTHORITY_AND_CLEAN_RUNNER_HANDOFF.md",
+    "docs/governance/B00R_GENERATION_LEDGER.v1.json",
+    "docs/governance/README.md",
+    "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json",
+    "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.template.json",
+    "docs/governance/decisions/DEC-B00-REPAIR-002.json",
+    "docs/governance/decisions/DEC-B00-REPAIR-002.template.json",
+    "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json",
+    "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.template.json",
+    "docs/governance/rulesets/main.ruleset.provider.json",
+    "docs/governance/rulesets/main.ruleset.provider.raw.json",
+    "docs/governance/rulesets/main.ruleset.provider.template.json",
+    "docs/governance/trust/receipt_trust_registry.g2.v1.json",
+    "docs/governance/trust/receipt_trust_registry.g2.v1.template.json",
+    "docs/plan/04_STATUS.md",
+    "docs/plan/08_BUILD_CHECKLIST.md",
+    "docs/plan/09_OPEN_QUESTIONS.md",
+    "docs/plan/README.md",
+    "docs/repair/B01C_ACCEPTANCE_PROFILE.v1.json",
+    "docs/repair/B01C_ENTRY_GATE.md",
+    "src/triad_origin/governance.py",
+    "tests/contracts/test_promotion_b01c.py",
+    "tests/test_b00c_control_closure.py",
+    "tests/test_ci_integrity.py",
+    "tests/test_wheel_distribution.py",
+    "tests/tools/test_acceptance_profile_b01c.py",
+    "tests/tools/test_closure_control.py",
+    "tests/tools/test_e2e_audit.py",
+    "tests/tools/test_validate_b_receipt_failclosed_b01c.py",
+    "tests/tools/test_verify_b01c_entry.py",
+    "tests/tools/test_verify_source_hashes.py",
+    "tools/b00r_clean_runner.py",
+    "tools/b00r_clean_runner_capture.py",
+    "tools/b00r_gate.py",
+    "tools/b00r_pytest_inventory.py",
+    "tools/build_evidence_manifest.py",
+    "tools/build_ledger.py",
+    "tools/classify_milestone_pr.py",
+    "tools/closure_control.py",
+    "tools/collect_test_ids.py",
+    "tools/e2e_audit.py",
+    "tools/gen_acceptance_profile.py",
+    "tools/github_ruleset_live.py",
+    "tools/test_wheel_install.py",
+    "tools/validate_authority_root.py",
+    "tools/validate_b00r_anchor.py",
+    "tools/validate_b00r_tag_ruleset.py",
+    "tools/validate_b_receipt.py",
+    "tools/validate_governance_snapshot.py",
+    "tools/verify_b01c_entry.py",
+    "tools/verify_codeowners.py",
+    "tools/verify_source_hashes.py",
+})
+B00R_SOURCE_ALLOWED_PREFIXES = (
+    "docs/control/closure/",
+    "tests/b00r/",
+)
+
+
+def b00r_source_path_allowed(path: str) -> bool:
+    """Return whether one path is in the frozen B00R G2 SOURCE domain."""
+    return (
+        path in B00R_SOURCE_ALLOWED_EXACT_PATHS
+        or any(path.startswith(prefix) for prefix in B00R_SOURCE_ALLOWED_PREFIXES)
+    )
 
 
 def classify_changed_paths(paths: list[str]) -> tuple[str, str]:
     """Return ``(role, reason)`` where role is ``SOURCE``, ``RECEIPT``, ``MIXED``, or ``EMPTY``."""
     if not paths:
         return "EMPTY", "no changed paths"
+    unsafe = sorted(path for path in paths if not _safe_relpath(path))
+    if unsafe:
+        return "INVALID", f"unsafe changed path: {unsafe[:2]}"
     receipt = [p for p in paths if any(p.startswith(pre) for pre in RECEIPT_PATH_PREFIXES)]
     source = [p for p in paths if p not in receipt]
     if receipt and source:
@@ -824,14 +987,18 @@ def classify_changed_paths(paths: list[str]) -> tuple[str, str]:
         if len(receipt_files) != 1 or re.fullmatch(_CANONICAL_RECEIPT_RE, receipt_files[0]) is None:
             return "INVALID", "receipt PR requires exactly one canonical *.receipt.v3.json"
         match = re.fullmatch(_CANONICAL_RECEIPT_RE, receipt_files[0])
-        milestone = match.group(1)
-        allowed_prefix = f"evidence/{milestone}/"
+        receipt_identity = match.group(1)
+        milestone = "B00R" if receipt_identity == "B00R.g2" else receipt_identity
+        allowed_prefix = "evidence/B00R_G2/" if milestone == "B00R" else f"evidence/{milestone}/"
         bad = [p for p in receipt if p != receipt_files[0] and not p.startswith(allowed_prefix)]
         if bad:
             return "INVALID", f"cross-milestone or historical evidence paths: {bad[:2]}"
         if any(p.endswith(".dsse.json") for p in receipt):
             return "INVALID", "DSSE filename unsupported by receipt-v3 canonical JSON profile"
         return "RECEIPT", f"milestone={milestone};receipt={receipt_files[0]}"
+    outside = sorted(path for path in source if not b00r_source_path_allowed(path))
+    if outside:
+        return "INVALID", f"B00R SOURCE path outside frozen governance scope: {outside[:2]}"
     return "SOURCE", f"{len(source)} source paths"
 
 
@@ -934,6 +1101,44 @@ def validate_governance_snapshot(
         return "FAIL", "GOVERNANCE_PROVIDER_RESPONSE_NOT_JSON"
     if not isinstance(raw, dict):
         return "FAIL", "GOVERNANCE_PROVIDER_RESPONSE_NOT_OBJECT"
+
+    # A protected digest can authenticate bytes, but it cannot turn a hand-written template into
+    # a GitHub API response. Require the stable provider identity fields emitted by
+    # GET /repos/{owner}/{repo}/rulesets/{ruleset_id}, and reject local commentary explicitly.
+    # This blocks the prior false-green where id="DECLARATIVE" plus a note saying enforcement was
+    # pending was pinned and then accepted as an active no-bypass provider control.
+    if "note" in raw or "note" in provider:
+        return "FAIL", "GOVERNANCE_PROVIDER_SYNTHETIC_METADATA"
+    raw_id = raw.get("id")
+    if (not isinstance(raw_id, int) or isinstance(raw_id, bool) or raw_id <= 0):
+        return "FAIL", "GOVERNANCE_RAW_RULESET_ID_NOT_PROVIDER_INTEGER"
+    raw_name = raw.get("name")
+    if (not isinstance(raw_name, str) or not raw_name.strip()
+            or raw_name.strip().upper() in {"DECLARATIVE", "TEMPLATE", "PLACEHOLDER"}):
+        return "FAIL", "GOVERNANCE_RAW_RULESET_NAME_NOT_PROVIDER"
+    if raw.get("source_type") != "Repository":
+        return "FAIL", "GOVERNANCE_RAW_SOURCE_TYPE_MISMATCH"
+    if raw.get("current_user_can_bypass") != "never":
+        return "FAIL", "GOVERNANCE_RAW_CURRENT_USER_BYPASS_NOT_NEVER"
+    # node_id/_links are useful corroboration but optional in GitHub's published REST schema.
+    # When present they must be provider-shaped and bind the same repository/ruleset identity.
+    node_id = raw.get("node_id")
+    if (node_id is not None
+            and (not isinstance(node_id, str)
+                 or re.fullmatch(r"RRS_[A-Za-z0-9_-]+", node_id) is None)):
+        return "FAIL", "GOVERNANCE_RAW_NODE_ID_NOT_PROVIDER"
+    links = raw.get("_links")
+    if links is not None:
+        self_link = links.get("self") if isinstance(links, dict) else None
+        html_link = links.get("html") if isinstance(links, dict) else None
+        expected_self = (
+            f"https://api.github.com/repos/TriadAgentic/TriadOrigin/rulesets/{raw_id}"
+        )
+        expected_html = f"https://github.com/TriadAgentic/TriadOrigin/rules/{raw_id}"
+        html_href = html_link.get("href") if isinstance(html_link, dict) else None
+        if (not isinstance(self_link, dict) or self_link.get("href") != expected_self
+                or html_href not in (None, expected_html)):
+            return "FAIL", "GOVERNANCE_RAW_PROVIDER_LINKS_MISMATCH"
     try:
         created_us = _parse_provider_utc_us(raw.get("created_at"))
         updated_us = _parse_provider_utc_us(raw.get("updated_at"))
@@ -957,9 +1162,19 @@ def validate_governance_snapshot(
     ref = conditions.get("ref_name", {})
     includes = ref.get("include") if isinstance(ref, dict) else None
     excludes = ref.get("exclude") if isinstance(ref, dict) else None
-    main_tokens = {"refs/heads/main", "~DEFAULT_BRANCH"}
-    if (not isinstance(includes, list) or not main_tokens.intersection(includes)
-            or not isinstance(excludes, list) or main_tokens.intersection(excludes)):
+    canary_ref = "refs/heads/b00r-ruleset-canary"
+    allowed_include_sets = (
+        {"refs/heads/main", canary_ref},
+    )
+    # GitHub applies exclusions after inclusions.  Requiring an empty exclusion list prevents a
+    # wildcard such as refs/heads/* from silently excluding main.  An explicit main ref is required;
+    # ~DEFAULT_BRANCH could silently retarget if the repository default changes. The harmless canary
+    # target is mandatory before the corrective source merge so the provider rejection can predate
+    # that merge; it cannot be bolted on later without invalidating the closure chronology.
+    if (not isinstance(includes, list)
+            or not all(isinstance(item, str) for item in includes)
+            or len(includes) != len(set(includes))
+            or set(includes) not in allowed_include_sets or excludes != []):
         return "FAIL", "GOVERNANCE_RAW_MAIN_TARGET_NOT_PROVEN"
     raw_rules = raw.get("rules")
     if not isinstance(raw_rules, list):
@@ -980,7 +1195,8 @@ def validate_governance_snapshot(
             or pr.get("dismiss_stale_reviews_on_push") is not True
             or pr.get("require_code_owner_review") is not True
             or pr.get("require_last_push_approval") is not True
-            or pr.get("required_review_thread_resolution") is not True):
+            or pr.get("required_review_thread_resolution") is not True
+            or pr.get("allowed_merge_methods") != ["merge"]):
         return "FAIL", "GOVERNANCE_RAW_REVIEW_CONTROLS_INCOMPLETE"
     if len(by_type.get("required_status_checks", [])) != 1:
         return "FAIL", "GOVERNANCE_RAW_STATUS_RULE_MISSING"
@@ -992,8 +1208,11 @@ def validate_governance_snapshot(
             or not isinstance(checks_raw[0], dict)):
         return "FAIL", "GOVERNANCE_RAW_STATUS_CHECKS_MALFORMED"
     contexts = [checks_raw[0].get("context")]
+    integration_id = checks_raw[0].get("integration_id")
     if (status.get("strict_required_status_checks_policy") is not True
-            or contexts != ["CI / test-and-verify"]):
+            or status.get("do_not_enforce_on_create") is not False
+            or contexts != [REQUIRED_STATUS_CHECK_CONTEXT]
+            or integration_id != GITHUB_ACTIONS_INTEGRATION_ID):
         return "FAIL", "GOVERNANCE_RAW_STATUS_CONTROL_MISMATCH"
     if len(by_type.get("deletion", [])) != 1 or len(by_type.get("non_fast_forward", [])) != 1:
         return "FAIL", "GOVERNANCE_RAW_HISTORY_CONTROLS_MISSING"
@@ -1001,7 +1220,7 @@ def validate_governance_snapshot(
     checks = (
         ("pull_request_required", ruleset.get("pull_request_required") is True),
         ("required_status_check",
-         ruleset.get("required_status_check") == "CI / test-and-verify"),
+         ruleset.get("required_status_check") == REQUIRED_STATUS_CHECK_CONTEXT),
         ("strict_required_status", ruleset.get("strict_required_status") is True),
         ("required_approvals", isinstance(ruleset.get("required_approvals"), int)
          and ruleset.get("required_approvals") >= 1),
@@ -1011,7 +1230,7 @@ def validate_governance_snapshot(
         ("block_force_push", ruleset.get("block_force_push") is True),
         ("block_deletions", ruleset.get("block_deletions") is True),
         ("no_bypass_actors", not ruleset.get("bypass_actors")),
-        ("targets_main", ruleset.get("target") in ("refs/heads/main", "~DEFAULT_BRANCH")),
+        ("targets_main", ruleset.get("target") == "refs/heads/main"),
         ("effective_time", isinstance(doc.get("effective_at_us"), int)),
         ("ruleset_id", str(raw.get("id")) == ruleset.get("ruleset_id")),
         ("raw_approvals", ruleset.get("required_approvals") == raw_approvals),

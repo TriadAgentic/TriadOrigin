@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -42,11 +43,15 @@ def stage(name: str, doc: str):
     return register
 
 
-def _run_tool(script: str, *args: str) -> None:
-    proc = subprocess.run(
+def _run_tool_result(script: str, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
         [sys.executable, str(ROOT / "tools" / script), *args],
         capture_output=True, text=True, cwd=ROOT,
     )
+
+
+def _run_tool(script: str, *args: str) -> None:
+    proc = _run_tool_result(script, *args)
     if proc.returncode != 0:
         raise AssertionError(
             f"tools/{script} {' '.join(args)} exited {proc.returncode}\n"
@@ -1257,16 +1262,20 @@ def b00r_governance_evidence_walk() -> None:
     # 1 · source-hash inventory recomputes and the RC3 composition manifest is consistent.
     _run_tool("verify_source_hashes.py")
 
-    # 2 · PR-role classifier: only the canonical bare receipt path is RECEIPT; the formerly
-    #     advertised DSSE name is INVALID, and mixing source+evidence fails closed.
-    assert gov.classify_changed_paths(["src/triad_origin/contracts.py"])[0] == "SOURCE"
+    # 2 · PR-role classifier: SOURCE is the positive B00R governance allowlist, not every path
+    #     outside evidence/.  Only the canonical bare receipt path is RECEIPT; the formerly
+    #     advertised DSSE name, downstream contract code, and mixed source/evidence are INVALID.
+    assert gov.classify_changed_paths(["src/triad_origin/governance.py"])[0] == "SOURCE"
+    assert gov.classify_changed_paths(["src/triad_origin/contracts.py"])[0] == "INVALID"
     assert gov.classify_changed_paths(
-        ["evidence/receipts/B00R.receipt.v3.json"])[0] == "RECEIPT"
+        ["evidence/receipts/B00R.g2.receipt.v3.json"])[0] == "RECEIPT"
+    assert gov.classify_changed_paths(
+        ["evidence/receipts/B00R.receipt.v3.json"])[0] == "INVALID"
     assert gov.classify_changed_paths(["evidence/receipts/B00R.dsse.json"])[0] == "INVALID"
     assert gov.classify_changed_paths(
         ["src/triad_origin/contracts.py",
-         "evidence/receipts/B00R.receipt.v3.json"])[0] == "MIXED"
-    _run_tool("classify_milestone_pr.py", "src/triad_origin/contracts.py")
+         "evidence/receipts/B00R.g2.receipt.v3.json"])[0] == "MIXED"
+    _run_tool("classify_milestone_pr.py", "src/triad_origin/governance.py")
 
     # 3 · the five governance schemas validate their valid golden and reject their invalid golden.
     for sid in ("triad.evidence_receipt.v3", "triad.receipt_trust_registry.v1",
@@ -1282,9 +1291,14 @@ def b00r_governance_evidence_walk() -> None:
             pass
 
     # 4 · receipt-v3 is fail-closed without an externally pinned trust registry (never PASS).
-    root_receipt = json.loads(
+    generation_one = json.loads(
         (ROOT / "contracts/golden/triad.evidence_receipt.v3/valid.json").read_text())
-    result, reason = gov.validate_receipt_v3(root_receipt, milestone="B00R")
+    result, reason = gov.validate_receipt_v3(
+        generation_one, milestone="B00R", expected_root_generation=1)
+    assert result == "BLOCKED", (result, reason)
+    generation_two = json.loads(json.dumps(generation_one))
+    generation_two["payload"]["repair_generation"] = 2
+    result, reason = gov.validate_receipt_v3(generation_two, milestone="B00R")
     assert result == "BLOCKED", (result, reason)
 
     # 5 · closed-scope and digest laws recursively reject empty/wildcard/placeholder.
@@ -1311,10 +1325,16 @@ def b00r_governance_evidence_walk() -> None:
         data = (ROOT / entry["path"]).read_bytes()
         assert sha256_hex(data) == entry["sha256"], entry["path"]
         assert entry["disposition"] in inv["disposition_vocabulary"]
+    generation_ledger = json.loads(
+        (ROOT / "docs/governance/B00R_GENERATION_LEDGER.v1.json").read_text())
+    generation_one = generation_ledger["generation_1"]
+    assert generation_one["disposition"] == "MERGED_UNVERIFIED"
+    old_receipt = ROOT / generation_one["receipt_path"]
+    assert sha256_hex(old_receipt.read_bytes()) == generation_one["receipt_sha256"]
 
     # 7 · the decision/trust/ruleset templates are fail-closed (unauthenticated), never a PASS.
     dec = json.loads(
-        (ROOT / "docs/governance/decisions/DEC-B00-REPAIR-001.template.json").read_text())
+        (ROOT / "docs/governance/decisions/DEC-B00-REPAIR-002.template.json").read_text())
     assert gov.decision_is_authenticated(dec) is False
     _run_tool("validate_authority_root.py")        # non-strict: UNAVAILABLE reported, exit 0
     _run_tool("validate_governance_snapshot.py")   # non-strict: UNAVAILABLE reported, exit 0
@@ -1375,6 +1395,35 @@ def b01c_contract_binding_promotion() -> None:
         assert sha256_hex(raw) == entry["sha256"], milestone
         result, _reason = gov.validate_receipt_v3(json.loads(raw), milestone=milestone)
         assert result == "FAIL", (milestone, result)
+
+
+@stage("c0_closure_control",
+       "C0 closure control: canonical projection is structurally valid but explicitly blocked; "
+       "closure-ready mode refuses the same open-blocker subject")
+def c0_closure_control() -> None:
+    structural = _run_tool_result("closure_control.py", "--check")
+    structural_output = f"{structural.stdout}\n{structural.stderr}".lower()
+    if structural.returncode != 0:
+        raise AssertionError(
+            "tools/closure_control.py --check did not validate the canonical control "
+            f"(exit {structural.returncode})\n{structural_output}"
+        )
+    if re.search(r"\b[1-9][0-9]* open blockers?\b", structural_output) is None:
+        raise AssertionError("C0 structural check did not report a positive open-blocker count")
+    if "no closure claim" not in structural_output:
+        raise AssertionError("C0 structural check omitted the explicit no-closure-claim marker")
+
+    closure_ready = _run_tool_result("closure_control.py", "--require-closure-ready")
+    ready_output = f"{closure_ready.stdout}\n{closure_ready.stderr}".lower()
+    if closure_ready.returncode != 2:
+        raise AssertionError(
+            "tools/closure_control.py --require-closure-ready must refuse the blocked subject "
+            f"with exit 2, got {closure_ready.returncode}\n{ready_output}"
+        )
+    if re.search(r"\bclosure[ _-]+not[ _-]+ready\b", ready_output) is None:
+        raise AssertionError("C0 closure-ready refusal omitted a clear CLOSURE_NOT_READY marker")
+    if re.search(r"\b[1-9][0-9]* open blockers?\b", ready_output) is None:
+        raise AssertionError("C0 closure-ready refusal omitted the positive open-blocker count")
 
 
 def main(argv: list[str]) -> int:

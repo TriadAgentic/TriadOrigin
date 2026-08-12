@@ -9,16 +9,16 @@ RC4 lever addendum bundle, 135 rows) into:
     ``ACTIVATION``) when it is not; and
   * an executability class describing *why* it landed there.
 
-The partition is REVIEWED_V2: the transparent, deterministic HEURISTIC_V1 rule table
+The current partition is CANDIDATE_V3: the transparent, deterministic rule table
 (corrected at B00C to the reconciled plan — F01/F07 are E01-owned, the four-plane
 substrate is B05, capsules/candidates are B06) applied in order (first match wins),
 plus a reviewed override file
 (``docs/control/build_ledger_overrides.json``) that takes precedence over every
-rule. Every row additionally carries a row-level reviewer/disposition record in
-``docs/control/build_ledger_review.v1.json`` (the B00C row review); ``--verify``
-fails if any task lacks a review row or the review disagrees with the partition.
-Each milestone PR re-reviews the slice it claims and moves misclassified rows via
-overrides + a fresh review row.
+rule. The historical row-level review in
+``docs/control/build_ledger_review.v1.json`` applies only to the exact frozen
+``REVIEWED_V2`` ledger under ``docs/control/closure/predecessors``. ``--verify``
+proves that historical relationship and reports every current row changed since
+that review subject; it never upgrades those rows to reviewed by implication.
 
 Nothing here marks a task complete. Task status remains NOT_STARTED until the
 owning milestone PR records evidence; completion claims live in milestone receipts,
@@ -32,8 +32,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pathlib
+import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -42,9 +44,12 @@ RC3_BUNDLE = CONTROL / "rc3_effective_control_bundle.json"
 RC4_BUNDLE = CONTROL / "rc4_control_bundle.json"
 OVERRIDES = CONTROL / "build_ledger_overrides.json"
 REVIEW = CONTROL / "build_ledger_review.v1.json"
+REVIEW_SUBJECT = CONTROL / "closure" / "predecessors" / "build_ledger.REVIEWED_V2.json"
 LEDGER = CONTROL / "build_ledger.json"
 
-LEDGER_VERSION = "REVIEWED_V3"
+LEDGER_VERSION = "CANDIDATE_V3"
+REVIEW_SUBJECT_VERSION = "REVIEWED_V2"
+REVIEW_SUBJECT_SHA256 = "78f6ce7254390997d54ce6732a46e138f24a56502677ba469dff22bf92f2b51e"
 
 # Allowed override destinations (in-repo milestones + named non-repo lanes). An override may not
 # invent a lane outside this closed set (B00R-D05 / SRC-004).
@@ -116,6 +121,13 @@ FORMULA_MILESTONE = {
     # Estate-owned economics (G6): contracts + golden vectors only in this repo.
     "F20": "B09", "F21": "B09", "F22": "B09", "F23": "B09",
 }
+FORMULA_IDS = tuple(f"F{number:02d}" for number in range(24))
+FORMULA_TASK_IDS = frozenset(
+    f"FORM-{formula_id}-{ordinal:02d}"
+    for formula_id in FORMULA_IDS
+    for ordinal in range(1, 8)
+)
+FORMULA_TASK_ID_RE = re.compile(r"FORM-(F(?:0[0-9]|1[0-9]|2[0-3]))-(0[1-7])\Z")
 
 WIRING_MILESTONE = {
     "W03": "B03", "W04": "B03", "W05": "B04", "W06": "B06",
@@ -179,13 +191,16 @@ def classify_rc3(task: dict) -> tuple[str, str, str]:
 
     if row_class == "FORMULA_ATOMIC":
         key = _formula_key(task)
-        if key and key in FORMULA_MILESTONE:
-            m = FORMULA_MILESTONE[key]
-            if m == ESTATE:
-                return m, "ESTATE_FORMULA", "R3_FORMULA_ESTATE"
-            lane = "IN_REPO_CODE" if m not in ("B09",) else "IN_REPO_CATALOG"
-            return m, lane, "R3_FORMULA"
-        return "B06", "IN_REPO_CODE", "R3_FORMULA_DEFAULT"
+        match = FORMULA_TASK_ID_RE.fullmatch(str(task.get("id", "")))
+        if match is None or key != match.group(1) or key not in FORMULA_MILESTONE:
+            raise LedgerClassificationError(
+                f"FORMULA_NAMESPACE_INVALID {task.get('id')!r}: expected exact FORM-F00..F23-01..07 "
+                f"with matching formula_refs, got {key!r}")
+        m = FORMULA_MILESTONE[key]
+        if m == ESTATE:
+            return m, "ESTATE_FORMULA", "R3_FORMULA_ESTATE"
+        lane = "IN_REPO_CODE" if m not in ("B09",) else "IN_REPO_CATALOG"
+        return m, lane, "R3_FORMULA"
 
     if row_class == "WIRING_ATOMIC":
         key = _wiring_key(task)
@@ -242,6 +257,19 @@ def classify_rc4(task: dict) -> tuple[str, str, str]:
 def build() -> dict:
     rc3 = json.loads(RC3_BUNDLE.read_text())
     rc4 = json.loads(RC4_BUNDLE.read_text())
+    declared_formula_ids = tuple(sorted(row.get("id") for row in rc3.get("formulas", [])))
+    if declared_formula_ids != FORMULA_IDS:
+        raise LedgerClassificationError(
+            f"FORMULA_REGISTRY_INVALID: expected {FORMULA_IDS!r}, got {declared_formula_ids!r}")
+    source_formula_task_ids = {
+        str(task.get("id")) for task in rc3.get("tasks", [])
+        if task.get("row_class") == "FORMULA_ATOMIC"
+    }
+    if source_formula_task_ids != FORMULA_TASK_IDS:
+        missing = sorted(FORMULA_TASK_IDS - source_formula_task_ids)
+        extra = sorted(source_formula_task_ids - FORMULA_TASK_IDS)
+        raise LedgerClassificationError(
+            f"FORMULA_TASK_SET_INVALID: missing={missing[:5]!r} extra={extra[:5]!r}")
     overrides: dict[str, dict] = {}
     if OVERRIDES.exists():
         overrides = json.loads(OVERRIDES.read_text()).get("overrides", {})
@@ -324,8 +352,16 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--status", action="store_true")
     parser.add_argument(
         "--review", metavar="PREVIOUS_LEDGER",
-        help="regenerate the row-level review record, diffing against a previous ledger")
+        help="refused: the historical REVIEWED_V2 review artifact is immutable")
     args = parser.parse_args(argv)
+
+    if args.review:
+        print(
+            "FAIL: build_ledger_review.v1.json is the immutable historical REVIEWED_V2 review; "
+            "a current candidate review requires a new independently authenticated artifact",
+            file=sys.stderr,
+        )
+        return 2
 
     ledger = build()
     rendered = json.dumps(ledger, indent=1, sort_keys=True) + "\n"
@@ -334,40 +370,6 @@ def main(argv: list[str]) -> int:
         print(f"build ledger {ledger['ledger_version']}: {ledger['task_count']} tasks")
         for milestone, count in ledger["milestone_counts"].items():
             print(f"  {milestone}: {count}")
-        return 0
-
-    if args.review:
-        previous = {row["id"]: row for row in
-                    json.loads(pathlib.Path(args.review).read_text())["tasks"]}
-        review_rows = []
-        for row in ledger["tasks"]:
-            prior = previous.get(row["id"])
-            if prior is None:
-                disposition = "REVIEWED_NEW"
-            elif prior["milestone"] == row["milestone"]:
-                disposition = "REVIEWED_ACCEPT"
-            else:
-                disposition = "REVIEWED_MOVED"
-            review_rows.append({
-                "id": row["id"],
-                "milestone": row["milestone"],
-                "previous_milestone": prior["milestone"] if prior else None,
-                "disposition": disposition,
-            })
-        record = {
-            "review_version": "build-ledger-review.v1",
-            "ledger_version": LEDGER_VERSION,
-            "reviewer": "claude-fable-5-build-session/B00C",
-            "review_basis": ("reconciled master plan §5/§7 + 10_MASTER_SPEC_ALIGNMENT_AUDIT "
-                             "applied row-class by row-class over the deterministic rule table; "
-                             "F01/F07 -> E01 estate lane, four-plane -> B05, "
-                             "capsules/candidates -> B06"),
-            "reviewed_at": "2026-08-09",
-            "row_count": len(review_rows),
-            "rows": review_rows,
-        }
-        REVIEW.write_text(json.dumps(record, indent=1, sort_keys=True) + "\n")
-        print(f"wrote {REVIEW} ({len(review_rows)} review rows)")
         return 0
 
     if args.verify:
@@ -381,30 +383,58 @@ def main(argv: list[str]) -> int:
             print("FAIL: row-level review record missing "
                   "(docs/control/build_ledger_review.v1.json)", file=sys.stderr)
             return 1
+        if not REVIEW_SUBJECT.exists():
+            print("FAIL: frozen REVIEWED_V2 review subject missing "
+                  "(docs/control/closure/predecessors/build_ledger.REVIEWED_V2.json)",
+                  file=sys.stderr)
+            return 1
+        subject_bytes = REVIEW_SUBJECT.read_bytes()
+        subject_sha256 = hashlib.sha256(subject_bytes).hexdigest()
+        if subject_sha256 != REVIEW_SUBJECT_SHA256:
+            print("FAIL: frozen REVIEWED_V2 review subject byte digest mismatch: "
+                  f"{subject_sha256} != {REVIEW_SUBJECT_SHA256}", file=sys.stderr)
+            return 1
+        subject = json.loads(subject_bytes)
         review = json.loads(REVIEW.read_text())
         reviewed = {row["id"]: row for row in review.get("rows", [])}
         if not review.get("reviewer"):
             print("FAIL: review record carries no reviewer identity", file=sys.stderr)
             return 1
+        if subject.get("ledger_version") != REVIEW_SUBJECT_VERSION:
+            print("FAIL: frozen review subject is not REVIEWED_V2", file=sys.stderr)
+            return 1
+        if review.get("ledger_version") != REVIEW_SUBJECT_VERSION:
+            print("FAIL: review record does not bind REVIEWED_V2", file=sys.stderr)
+            return 1
+        subject_rows = {row["id"]: row for row in subject.get("tasks", [])}
+        current_rows = {row["id"]: row for row in ledger["tasks"]}
         problems = []
-        for row in ledger["tasks"]:
+        if len(subject_rows) != 1250 or set(subject_rows) != set(current_rows):
+            problems.append("frozen review subject task IDs differ from current candidate")
+        for row in subject.get("tasks", []):
             rrow = reviewed.get(row["id"])
             if rrow is None:
-                problems.append(f"unreviewed task {row['id']}")
+                problems.append(f"historical review omits subject task {row['id']}")
             elif rrow["milestone"] != row["milestone"]:
                 problems.append(
-                    f"review disagrees with partition for {row['id']}: "
+                    f"historical review disagrees with REVIEWED_V2 for {row['id']}: "
                     f"{rrow['milestone']} != {row['milestone']}")
-        extra = set(reviewed) - {row["id"] for row in ledger["tasks"]}
+        extra = set(reviewed) - set(subject_rows)
         if extra:
-            problems.append(f"review rows for unknown tasks: {sorted(extra)[:5]}")
+            problems.append(f"historical review rows for unknown subject tasks: {sorted(extra)[:5]}")
         if problems:
             for problem in problems[:10]:
                 print(f"FAIL: {problem}", file=sys.stderr)
             print(f"FAIL: {len(problems)} review defects", file=sys.stderr)
             return 1
-        print(f"OK: build ledger current ({ledger['task_count']} tasks; "
-              f"{len(reviewed)} reviewed rows)")
+        changed_ids = sorted(
+            task_id for task_id in current_rows
+            if current_rows[task_id] != subject_rows[task_id]
+        )
+        unchanged = len(current_rows) - len(changed_ids)
+        print(f"OK: build ledger {LEDGER_VERSION} structurally current "
+              f"({ledger['task_count']} tasks); historical REVIEWED_V2 subject authenticated "
+              f"({unchanged} unchanged rows; {len(changed_ids)} changed rows require review)")
         return 0
 
     LEDGER.write_text(rendered)

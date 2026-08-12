@@ -2,10 +2,12 @@
 """Fail-closed B00R changed-path role classifier.
 
 CI classification is derived from two immutable Git commit SHAs, never a branch name or a
-best-effort fallback.  A SOURCE change may not touch ``evidence/**``.  A B00R RECEIPT change must
-be append-only, contain exactly the canonical bare receipt
-``evidence/receipts/B00R.receipt.v3.json``, and may otherwise add files only below
-``evidence/B00R/**``.  Historical receipts, deletions, renames, mixed source/evidence changes, and
+best-effort fallback.  A SOURCE change may touch only the positive B00R G2 governance/C0 path
+grant and may never touch ``evidence/**``.  A B00R RECEIPT change must be append-only and contain
+exactly the canonical bare receipt
+``evidence/receipts/B00R.g2.receipt.v3.json``, and may otherwise add files only below
+``evidence/B00R_G2/**``.  Generation-1/historical receipts, deletions, renames, mixed
+source/evidence changes, and
 the formerly advertised-but-unimplemented ``*.dsse.json`` envelope all fail closed.
 
 Legacy positional/``--paths-file`` input remains for local falsification tests.  CI must use
@@ -26,14 +28,88 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 HEX40_RE = re.compile(r"[0-9a-f]{40}")
 EXPECTED_MILESTONE = "B00R"
-EXPECTED_RECEIPT = "evidence/receipts/B00R.receipt.v3.json"
-EXPECTED_MANIFEST = "evidence/B00R/evidence_manifest.json"
-RECEIPT_EVIDENCE_PREFIX = "evidence/B00R/"
+EXPECTED_RECEIPT = "evidence/receipts/B00R.g2.receipt.v3.json"
+EXPECTED_MANIFEST = "evidence/B00R_G2/evidence_manifest.json"
+RECEIPT_EVIDENCE_PREFIX = "evidence/B00R_G2/"
 HISTORICAL_RECEIPTS = frozenset(
     f"evidence/receipts/{name}.json"
     for name in ("R00", "B00", "B00C", "B01", "B01R", "B02", "B03", "B04", "B05", "B06", "B07")
 )
+HISTORICAL_RECEIPTS = HISTORICAL_RECEIPTS | {
+    "evidence/receipts/B00R.receipt.v3.json",
+}
 ALLOWED_RECEIPT_STATUSES = frozenset({"A"})
+
+# B00R G2 is a governance/evidence-root repair, not a generic source milestone.  Keep this a
+# positive list: a newly introduced production, contract, formula, binding, runtime, deployment,
+# adapter, or venue path is out of scope until a later milestone explicitly owns it.  The C0
+# namespace and B00R test namespace are the only prefix grants; executable and package paths are
+# always named exactly.
+ALLOWED_SOURCE_EXACT_PATHS = frozenset({
+    ".github/workflows/ci.yml",
+    "CLAUDE.md",
+    "README.md",
+    "docs/control/SOURCE_HASHES.sha256",
+    "docs/control/README.md",
+    "docs/control/b00r_policy.v2.json",
+    "docs/control/build_ledger.json",
+    "docs/governance/B00R_EXTERNAL_AUTHORITY_AND_CLEAN_RUNNER_HANDOFF.md",
+    "docs/governance/B00R_GENERATION_LEDGER.v1.json",
+    "docs/governance/README.md",
+    "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.json",
+    "docs/governance/decisions/DEC-AUTHORITY-BUNDLE-002.template.json",
+    "docs/governance/decisions/DEC-B00-REPAIR-002.json",
+    "docs/governance/decisions/DEC-B00-REPAIR-002.template.json",
+    "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.json",
+    "docs/governance/decisions/DEC-RECEIPT-PROFILE-002.template.json",
+    "docs/governance/rulesets/main.ruleset.provider.json",
+    "docs/governance/rulesets/main.ruleset.provider.raw.json",
+    "docs/governance/rulesets/main.ruleset.provider.template.json",
+    "docs/governance/trust/receipt_trust_registry.g2.v1.json",
+    "docs/governance/trust/receipt_trust_registry.g2.v1.template.json",
+    "docs/plan/04_STATUS.md",
+    "docs/plan/08_BUILD_CHECKLIST.md",
+    "docs/plan/09_OPEN_QUESTIONS.md",
+    "docs/plan/README.md",
+    "docs/repair/B01C_ACCEPTANCE_PROFILE.v1.json",
+    "docs/repair/B01C_ENTRY_GATE.md",
+    "src/triad_origin/governance.py",
+    "tests/contracts/test_promotion_b01c.py",
+    "tests/test_ci_integrity.py",
+    "tests/test_b00c_control_closure.py",
+    "tests/test_wheel_distribution.py",
+    "tests/tools/test_acceptance_profile_b01c.py",
+    "tests/tools/test_closure_control.py",
+    "tests/tools/test_e2e_audit.py",
+    "tests/tools/test_validate_b_receipt_failclosed_b01c.py",
+    "tests/tools/test_verify_b01c_entry.py",
+    "tests/tools/test_verify_source_hashes.py",
+    "tools/b00r_clean_runner.py",
+    "tools/b00r_clean_runner_capture.py",
+    "tools/b00r_gate.py",
+    "tools/b00r_pytest_inventory.py",
+    "tools/build_evidence_manifest.py",
+    "tools/build_ledger.py",
+    "tools/classify_milestone_pr.py",
+    "tools/closure_control.py",
+    "tools/collect_test_ids.py",
+    "tools/e2e_audit.py",
+    "tools/gen_acceptance_profile.py",
+    "tools/github_ruleset_live.py",
+    "tools/test_wheel_install.py",
+    "tools/validate_authority_root.py",
+    "tools/validate_b00r_anchor.py",
+    "tools/validate_b00r_tag_ruleset.py",
+    "tools/validate_b_receipt.py",
+    "tools/validate_governance_snapshot.py",
+    "tools/verify_b01c_entry.py",
+    "tools/verify_codeowners.py",
+    "tools/verify_source_hashes.py",
+})
+ALLOWED_SOURCE_PREFIXES = (
+    "docs/control/closure/",
+    "tests/b00r/",
+)
 
 
 class ClassificationError(ValueError):
@@ -64,6 +140,14 @@ def _safe_path(path: str) -> bool:
     return all(part not in ("", ".", "..") for part in parts)
 
 
+def source_path_allowed(path: str) -> bool:
+    """Return whether one path belongs to the frozen B00R G2 SOURCE domain."""
+    return (
+        path in ALLOWED_SOURCE_EXACT_PATHS
+        or any(path.startswith(prefix) for prefix in ALLOWED_SOURCE_PREFIXES)
+    )
+
+
 def classify_changes(changes: list[Change]) -> Classification:
     """Classify an authenticated Git change set under the closed B00R role law."""
     if not changes:
@@ -85,6 +169,13 @@ def classify_changes(changes: list[Change]) -> Classification:
             f"{[c.path for c in source[:2]]} & {[c.path for c in evidence[:2]]}"
         )
     if source:
+        outside = sorted(
+            f"{change.status}:{change.path}"
+            for change in source
+            if not source_path_allowed(change.path)
+        )
+        if outside:
+            raise ClassificationError(f"SOURCE_PATH_OUT_OF_SCOPE: {outside}")
         return Classification("SOURCE", f"{len(source)} source paths")
 
     # Evidence-only changes are not automatically receipts.  They must satisfy the complete,
@@ -172,6 +263,10 @@ def changes_from_git(repo: pathlib.Path, base_sha: str, head_sha: str) -> list[C
     merge_base = _git(repo, "merge-base", base, head).decode().strip()
     if HEX40_RE.fullmatch(merge_base) is None:
         raise ClassificationError(f"MERGE_BASE_INVALID: {merge_base!r}")
+    if merge_base != base:
+        raise ClassificationError(
+            f"BASE_SHA_NOT_ANCESTOR: merge base {merge_base} != base {base}"
+        )
     raw = _git(repo, "diff", "--name-status", "--no-renames", "-z", merge_base, head, "--")
     fields = raw.split(b"\0")
     if fields and fields[-1] == b"":

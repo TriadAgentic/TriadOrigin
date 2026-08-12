@@ -61,27 +61,31 @@ def test_ci_has_no_branch_specific_receipt_skip_and_is_role_aware():
     assert "changed_paths.txt" not in workflow
     assert "HEAD~1" not in workflow
     assert "git fetch" not in workflow
-    # The stable required context is the job name (surfaced as "CI / test-and-verify").
-    assert "test-and-verify:" in workflow
+    # GitHub rulesets bind CheckRun.name. With no explicit job-level name, that provider identity
+    # is the job key `test-and-verify`; the UI's `CI / test-and-verify` label is not the context.
+    assert "  test-and-verify:\n    runs-on:" in workflow
+    assert 'name: "CI / test-and-verify"' not in workflow
 
 
 def test_ci_receipt_closure_is_exactly_one_canonical_strict_validation():
     workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert workflow.count("tools/validate_b_receipt.py") == 1
-    assert "B00R.receipt.v3.json" not in workflow  # classifier owns the canonical path output
+    # The classifier owns the canonical path output; neither generation is hard-coded here.
+    assert "B00R.receipt.v3.json" not in workflow
+    assert "B00R.g2.receipt.v3.json" not in workflow
     assert "steps.milestone_role.outputs.receipt_path" in workflow
     assert "steps.milestone_role.outputs.manifest_path" in workflow
     assert "steps.event_facts.outputs.head_sha" in workflow
     for flag in ("--now-us", "--manifest", "--git-root", "--expected-head",
                  "--governance-snapshot", "--provider-raw", "--provider-pin"):
         assert flag in workflow
-    assert "--closed-root evidence/B00R" in workflow
+    assert "--closed-root evidence/B00R_G2" in workflow
     assert "--require-tracked" in workflow
     assert "*.receipt.v3.json" not in workflow
     assert ".dsse.json" not in workflow
     assert "for r in" not in workflow
     assert "found=0" not in workflow
-    assert "B00R_RECEIPT_ANCHOR" in workflow
+    assert "B00R_RECEIPT_ANCHOR_G2" in workflow
     assert "does not claim terminal" in workflow
 
 
@@ -91,11 +95,11 @@ def test_ci_never_ignores_owner_validators_and_wires_external_pins():
     assert "python tools/validate_authority_root.py --strict" in workflow
     assert "python tools/validate_governance_snapshot.py --strict" in workflow
     assert "name: Strict source authority control" in workflow
-    assert "name: Strict source provider control" in workflow
+    assert "name: Nonterminal source provider revalidation" in workflow
     assert "name: Strict B00R authority control" in workflow
-    assert "name: Strict B00R provider control" in workflow
+    assert "name: Nonterminal B00R provider revalidation" in workflow
     assert "name: Mark deterministic engineering complete" in workflow
-    assert workflow.count("steps.engineering_complete.outcome == 'success'") == 5
+    assert workflow.count("steps.engineering_complete.outcome == 'success'") == 6
     assert "Source safe-hold governance report" not in workflow
     owner_offset = workflow.index("name: Concrete critical-path CODEOWNERS identity")
     for completed_first in (
@@ -109,19 +113,23 @@ def test_ci_never_ignores_owner_validators_and_wires_external_pins():
         assert workflow.index(completed_first) < owner_offset
     assert "--snapshot docs/governance/rulesets/main.ruleset.provider.json" in workflow
     assert "--provider-raw docs/governance/rulesets/main.ruleset.provider.raw.json" in workflow
-    assert "name: Resolve trusted owner-validation time" in workflow
-    assert "NOW_US: ${{ steps.owner_time.outputs.now_us }}" in workflow
+    assert "name: Resolve trusted owner-validation time" not in workflow
+    assert "NOW_US: ${{ steps.owner_time.outputs.now_us }}" not in workflow
     assert "NOW_US: ${{ steps.event_facts.outputs.now_us }}" not in workflow
-    assert workflow.count('--expected-head "$EXPECTED_HEAD"') == 5
+    assert workflow.count('NOW_US="$(date -u +%s)000000"') == 8
+    assert workflow.count('--expected-head "$EXPECTED_HEAD"') == 8
     assert workflow.count("--git-root .") == 5
+    assert workflow.count("--repair-generation 2") == 2
     for name in (
-        "AUTHORITY_BUNDLE_DECISION_SHA256",
-        "RECEIPT_PROFILE_DECISION_SHA256",
-        "B00_REPAIR_DECISION_SHA256",
-        "RECEIPT_TRUST_REGISTRY_SHA256",
+        "AUTHORITY_BUNDLE_G2_DECISION_SHA256",
+        "RECEIPT_PROFILE_G2_DECISION_SHA256",
+        "B00R_G2_REPAIR_DECISION_SHA256",
+        "RECEIPT_G2_TRUST_REGISTRY_SHA256",
         "MAIN_RULESET_EVIDENCE_SHA256",
     ):
         assert f"{name}: ${{{{ vars.{name} }}}}" in workflow
+    assert "RECEIPT_PROFILE_DECISION_SHA256:" not in workflow
+    assert "B00_REPAIR_DECISION_SHA256:" not in workflow
 
 
 def test_ci_constraint_snapshot_is_exact_and_unique():

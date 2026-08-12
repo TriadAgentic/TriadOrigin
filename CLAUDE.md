@@ -1,9 +1,11 @@
 # CLAUDE.md — TRIAD ORIGIN E02-V7 repository law
 
-Read [`docs/plan/README.md`](docs/plan/README.md),
-[`docs/plan/04_STATUS.md`](docs/plan/04_STATUS.md), and
-[`docs/plan/05_RC2_CONFLICT_REGISTER.md`](docs/plan/05_RC2_CONFLICT_REGISTER.md) before changing
-this repository.
+Read [`docs/control/closure/`](docs/control/closure/) and
+[`docs/plan/README.md`](docs/plan/README.md) before changing this repository. The canonical
+machine semantics and status route is `docs/control/closure/`. The plan views
+`docs/plan/04_STATUS.md`, `docs/plan/05_RC2_CONFLICT_REGISTER.md`,
+`docs/plan/08_BUILD_CHECKLIST.md`, and `docs/plan/09_OPEN_QUESTIONS.md` are retained as
+historical, generated, or input material; none may override that registry.
 
 ## Current authority and stop condition
 
@@ -19,20 +21,32 @@ UTC session levels are E01-owned — ORIGIN consumes/validates, never authors**;
 substrate (B05) precedes any candidate publisher (B06); F20 consumes one already-selected signed
 policy (no environment/rollout input); no guessed ordinal↔semantic capsule mapping; every
 `BLOCKING_OWNER_DECISION` / `BLOCKING_RESEARCH_DECISION` / `PROPOSED_*` parameter stays
-fail-closed data with named abstention. Decisions live in `docs/plan/09_OPEN_QUESTIONS.md` — a
-**disposition register** with per-row due-before milestones, never resolved silently in code.
+fail-closed data with named abstention. Decision inputs are captured in
+`docs/plan/09_OPEN_QUESTIONS.md` with per-row due-before milestones, never resolved silently in
+code; they govern machine status only after compilation into `docs/control/closure/`.
 
-**Updated 2026-08-10 (B00R forward-repair).** No B00–B07 milestone is legitimately closed; the old
+**Updated 2026-08-11 (B00R generation-2 forward repair).** No B00–B07 milestone is legitimately closed; the old
 chain is invalid at its root. Repair is **forward-only** from `B00R` (the governance/receipt/evidence
 root). Historical R00/B00/B00C/B01–B07 receipts are preserved byte-unchanged and additively
 dispositioned (`docs/governance/B00_B07_INVALIDATION_MANIFEST.v1.json`); they are never edited into a
-retroactive pass. The B00R engineering is built and green (receipt-v3 + governance schemas,
+retroactive pass. The B00R generation-2 corrective source remains a draft (receipt-v3 + governance schemas,
 `src/triad_origin/governance.py`, the `tools/*` governance validators, `tools/b00r_gate.py`, the
-fail-closed `docs/governance/` templates, and `tests/b00r/`); its closure is **owner-gated** and
+fail-closed `docs/governance/` templates, and `tests/b00r/`); deterministic engineering success is
+necessary but non-closing. Closure is **owner-gated** and
 fail-closes to `BLOCKED`/`UNAVAILABLE` until the owner authenticates the three root decisions, pins the
 trust registry externally, installs the no-bypass `main` ruleset, and threshold-signs receipt-v3. The
 only permitted B00R result is `PASS_REPOSITORY_SAFE_HOLD`; B01C stays frozen until the exact
-`B00R_RECEIPT_ANCHOR` validates. Safety posture is invariant `DENIED_SAFE_HOLD`, OFF/OFF/OFF/LIVE.
+`B00R_RECEIPT_ANCHOR_G2` validates. The generation-1 `B00R_RECEIPT_ANCHOR` is historical evidence,
+never a B01C predecessor. Safety posture is invariant `DENIED_SAFE_HOLD`, OFF/OFF/OFF/LIVE.
+
+**C0 routing constraint.** Routing canonical semantics/status through `docs/control/closure/`
+does not itself close or sign C0. B00R is governance-only: it cannot certify formula migration,
+capability implementation, cross-estate wiring, runtime readiness, or activation. Those remain
+downstream blockers. The invariant operational posture is `OFF/OFF/OFF/LIVE`.
+The canonical C0 input set is the semantics registry, exact legacy-task binding sidecar, and
+semantics-anchored append-only status-event chain. Status JSON plus plan files 04 and 08 are
+mechanical projections and fail validation on manual drift; `closure_control.py --write` may
+regenerate only those projections.
 
 Authority order:
 
