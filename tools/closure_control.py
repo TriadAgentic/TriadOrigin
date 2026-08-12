@@ -17,6 +17,7 @@ import json
 import pathlib
 import re
 import sys
+from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
@@ -37,6 +38,9 @@ TASK_BINDING_REL = pathlib.Path("docs/control/closure/closure_task_bindings.v1.j
 B00R_POLICY_REL = pathlib.Path("docs/control/b00r_policy.v2.json")
 BUILD_LEDGER_REL = pathlib.Path("docs/control/build_ledger.json")
 BUILD_LEDGER_REVIEW_REL = pathlib.Path("docs/control/build_ledger_review.v1.json")
+BUILD_LEDGER_REVIEW_SUBJECT_REL = pathlib.Path(
+    "docs/control/closure/predecessors/build_ledger.REVIEWED_V2.json"
+)
 STATUS_DOC_REL = pathlib.Path("docs/plan/04_STATUS.md")
 CHECKLIST_DOC_REL = pathlib.Path("docs/plan/08_BUILD_CHECKLIST.md")
 
@@ -95,12 +99,45 @@ EXPECTED_DECISION_RULES: Mapping[str, str] = {
 }
 EXPECTED_CONFLICTS = tuple(f"C-{number:02d}" for number in range(1, 15))
 EXPECTED_TEST_LAYERS = tuple(f"T{number}" for number in range(13))
+NOT_APPLICABLE_CONTROL_FREEZE_RECEIPT = "NOT_APPLICABLE_CONTROL_FREEZE"
+EXPECTED_B10_TERMINAL_CONTROL_SHA256 = (
+    "5e785b9c6f04d5f2c0e41731950c822b2dff4e797ee0f93905349adfec63d31f"
+)
+EXPECTED_B10_ACCEPTANCE_PROFILE_SHA256 = (
+    "58008b7c9ca69309c07cd7b6a030fdb35f7bd1c1f1ab2375197b5db5df514ca0"
+)
+EXPECTED_MILESTONE_PATH_LAWS_SHA256 = (
+    "9f3fcb3109152cb3059a741de61a566dc91dd7f59760d1ce9b24aab65cd4a872"
+)
+EXPECTED_REVIEW_SUBJECT_SHA256 = (
+    "78f6ce7254390997d54ce6732a46e138f24a56502677ba469dff22bf92f2b51e"
+)
+EXPECTED_REVIEW_SUBJECT_COMMIT = "b641edcf7e921e93030f681ae3e6339933f2bcc8"
+EXPECTED_FORMULA_IDS = tuple(f"F{number:02d}" for number in range(24))
+EXPECTED_INTERNAL_FORMULA_MILESTONES: Mapping[str, str] = {
+    "F00": "B02C",
+    **{f"F{number:02d}": "B03C" for number in range(2, 10) if number != 7},
+    **{f"F{number:02d}": "B04C" for number in range(10, 18)},
+    "F18": "B06R",
+    "F19": "B06R",
+}
+# formula -> (owner engine, owner receipt slot, receipt milestone, conformance milestone)
+EXPECTED_EXTERNAL_FORMULA_LAW: Mapping[str, tuple[str, str, str, str]] = {
+    "F01": ("E01", "B02C-E01-F01", "B02C", "B02C"),
+    "F07": ("E01", "B03C-E01-F07", "B03C", "B03C"),
+    "F20": ("E08", "XC01-E08-F20", "XC01", "B09"),
+    "F21": ("E09", "XC01-E09-F21-F22", "XC01", "B09"),
+    "F22": ("E09", "XC01-E09-F21-F22", "XC01", "B09"),
+    "F23": ("E10", "XC01-E10-F23", "XC01", "B09"),
+}
 EXPECTED_BLOCKER_SPECS: Mapping[str, tuple[str, str, str, str]] = {
     "B00R-G2-AUTHORITY-PINS": ("B00R_G2", "P0", "four authenticated G2 authority pins are absent", "D-02"),
     "B00R-G2-CANARY": ("B00R_G2", "P0", "rejected negative canary is NOT_ATTESTED", "T6"),
     "B00R-G2-EXACT-HEAD-REVIEW": ("B00R_G2", "P0", "B00R G2 exact-head review is UNBOUND", "review_policy:SOURCE_REVIEWER"),
     "B00R-G2-RECEIPT-ANCHOR": ("B00R_G2", "P0", "evidence-only receipt merge and protected anchor are absent", "T7"),
     "B00R-G2-RULESET": ("B00R_G2", "P0", "real live provider ruleset capture and external pin are NOT_ATTESTED", "T6"),
+    "B02C-E01-OWNER-RECEIPT": ("B02C", "P0", "E01 F01 owner-repository receipt slot is UNBOUND and NOT_ATTESTED", "B02C_ACCEPTANCE_PROFILE_V1"),
+    "B03C-E01-OWNER-RECEIPT": ("B03C", "P0", "E01 F07 owner-repository receipt slot is UNBOUND and NOT_ATTESTED", "B03C_ACCEPTANCE_PROFILE_V1"),
     "B05-AUTHORIZATION": ("B05C", "P0", "deployment and restart remain unauthorized", "D-08"),
     "B05-CREDENTIAL-ROTATION": ("B05C", "P0", "D-09 credential rotation is NOT_ATTESTED", "D-09"),
     "B05-PHYSICAL-ISOLATION-SOAK": ("B05C", "P0", "physical four-plane isolation and 24-hour SHADOW soak are NOT_ATTESTED", "T8:T9"),
@@ -110,7 +147,9 @@ EXPECTED_BLOCKER_SPECS: Mapping[str, tuple[str, str, str, str]] = {
     "B10-TWO-AUDITS": ("B10", "P0", "two distinct B10 auditor slots and adjudicator are UNBOUND", "b10_terminal_control"),
     "BN-FRESH-AGGREGATE": ("BN", "P0", "fresh identical-subject runtime and money-ledger aggregate is NOT_ATTESTED", "D-05:T8:T10"),
     "C0-EXACT-HEAD-REVIEW": ("C0", "P0", "C0 exact-head source review is UNBOUND", "review_policy:SOURCE_REVIEWER"),
+    "C0-CURRENT-LEDGER-REVIEW": ("C0", "P0", "current CANDIDATE_V3 ledger has 94 rows changed since the frozen REVIEWED_V2 subject", "closure_task_bindings.v1.json:review_coverage"),
     "C0-OWNER-AUTH": ("C0", "P0", "C0 owner authentication is UNBOUND", "review_policy:C0_OWNER_AUTHENTICATOR"),
+    "C0-TARGET-ALLOCATION-REVIEW": ("C0", "P0", "current task target allocations have no independently authenticated review", "closure_task_bindings.v1.json:target_allocation_review_state"),
     "LEGACY_B00_REALLOCATION_REQUIRED": ("C0", "P0", "legacy B00 tasks require explicit owner reallocation", "closure_task_bindings.v1.json"),
     "XC01-OWNER-RECEIPTS": ("XC01", "P0", "owner-repository receipt slots are UNBOUND and NOT_ATTESTED", "XC01_ACCEPTANCE_PROFILE_V1"),
 }
@@ -352,6 +391,20 @@ def _require_sorted_unique_strings(values: Any, label: str, *, allow_empty: bool
         _fail("SET_FIELD_NOT_CANONICAL", f"{label} must be sorted and unique")
 
 
+def _require_canonical_repo_relative_path(value: Any, label: str) -> str:
+    if not isinstance(value, str) or not value or "\\" in value:
+        _fail("PROFILE_REQUIRED_ARTIFACT_PATH_INVALID", label)
+    path = pathlib.PurePosixPath(value)
+    if (
+        path.is_absolute()
+        or not path.parts
+        or ".." in path.parts
+        or path.as_posix() != value
+    ):
+        _fail("PROFILE_REQUIRED_ARTIFACT_PATH_INVALID", label)
+    return value
+
+
 def validate_schema(schema: Mapping[str, Any], instance: Any, label: str) -> None:
     """Self-check and apply an exact Draft 2020-12 schema, failing closed if unavailable."""
 
@@ -470,6 +523,12 @@ def validate_milestones(semantics: Mapping[str, Any]) -> dict[tuple[str, str], M
         previous_identity = identity
 
     _validate_dependency_dag(rows, set(by_identity))
+    aggregate_path_laws = {
+        f"{row['scope']['track_id']}::{row['scope']['milestone_id']}": row["path_law"]
+        for row in rows
+    }
+    if _sha256_canonical(aggregate_path_laws) != EXPECTED_MILESTONE_PATH_LAWS_SHA256:
+        _fail("MILESTONE_PATH_LAW_DIGEST_MISMATCH", "aggregate path-law mapping")
     xc01_identity = by_key[("ESTATE_CROSS_REPO", "XC01")]["identity"]
     b08_identity = by_key[("ORIGIN_REPAIR", "B08")]["identity"]
     b10_identity = by_key[("ORIGIN_REPAIR", "B10")]["identity"]
@@ -571,6 +630,13 @@ def validate_profiles(
             _fail("PROFILE_PREDECESSOR_MISSING", profile_id)
         if any(identity not in known_identities for identity in profile["prerequisite_identities"]):
             _fail("PROFILE_PREREQUISITE_UNKNOWN", profile_id)
+        required_artifacts = profile.get("required_artifacts")
+        if not isinstance(required_artifacts, list):
+            _fail("PROFILE_REQUIRED_ARTIFACT_PATH_INVALID", profile_id)
+        for index, artifact in enumerate(required_artifacts):
+            _require_canonical_repo_relative_path(
+                artifact, f"{profile_id}.required_artifacts[{index}]"
+            )
         for field in (
             "owned_scope",
             "excluded_scope",
@@ -599,14 +665,23 @@ def validate_profiles(
             _fail("PROFILE_ADOPTION_MANIFEST_MISMATCH", profile_id)
 
         owner_slots = profile.get("owner_repo_receipt_slots")
-        if milestone_id == "XC01":
-            expected_slots = {
+        expected_slots_by_milestone: Mapping[str, Mapping[str, tuple[str, tuple[str, ...]]]] = {
+            "B02C": {
+                "B02C-E01-F01": ("E01", ("F01",)),
+            },
+            "B03C": {
+                "B03C-E01-F07": ("E01", ("F07",)),
+            },
+            "XC01": {
                 "XC01-E08-F20": ("E08", ("F20",)),
                 "XC01-E09-F21-F22": ("E09", ("F21", "F22")),
                 "XC01-E10-F23": ("E10", ("F23",)),
-            }
-            if not isinstance(owner_slots, list) or len(owner_slots) != 3:
-                _fail("XC01_OWNER_RECEIPT_SLOT_SET_MISMATCH", repr(owner_slots))
+            },
+        }
+        expected_slots = expected_slots_by_milestone.get(milestone_id)
+        if expected_slots is not None:
+            if not isinstance(owner_slots, list) or len(owner_slots) != len(expected_slots):
+                _fail("OWNER_RECEIPT_SLOT_SET_MISMATCH", f"{milestone_id}:{owner_slots!r}")
             actual_slots = {
                 slot.get("receipt_slot_id"): (
                     slot.get("owner_engine"), tuple(slot.get("formula_ids", ()))
@@ -614,24 +689,33 @@ def validate_profiles(
                 for slot in owner_slots
             }
             if actual_slots != expected_slots:
-                _fail("XC01_OWNER_RECEIPT_SLOT_SET_MISMATCH", repr(actual_slots))
+                _fail("OWNER_RECEIPT_SLOT_SET_MISMATCH", f"{milestone_id}:{actual_slots!r}")
             for slot in owner_slots:
                 if (
                     slot.get("provider_binding_state") != "UNBOUND"
                     or slot.get("attestation_state") != "NOT_ATTESTED"
                 ):
-                    _fail("XC01_OWNER_RECEIPT_SLOT_OVERCLAIM", slot["receipt_slot_id"])
-            required_tokens = {"WAVE-C-001", "WAVE-C-005", "WAVE-C-006", "E08", "E09", "E10", "F20", "F21", "F22", "F23"}
-            profile_text = canonical_json(profile).decode("utf-8")
-            missing = sorted(token for token in required_tokens if token not in profile_text)
-            if missing:
-                _fail("XC01_ACCEPTANCE_REQUIREMENT_MISSING", repr(missing))
-            if "proxy" not in profile["failure_policy"].lower() and not any(
-                "proxy" in value.lower() for value in profile["excluded_scope"]
-            ):
-                _fail("XC01_PROXY_EVIDENCE_LAW_MISSING", profile_id)
+                    _fail("OWNER_RECEIPT_SLOT_OVERCLAIM", slot["receipt_slot_id"])
+            if milestone_id == "XC01":
+                required_tokens = {
+                    "WAVE-C-001", "WAVE-C-005", "WAVE-C-006", "E08", "E09", "E10",
+                    "F20", "F21", "F22", "F23",
+                }
+                profile_text = canonical_json(profile).decode("utf-8")
+                missing = sorted(token for token in required_tokens if token not in profile_text)
+                if missing:
+                    _fail("XC01_ACCEPTANCE_REQUIREMENT_MISSING", repr(missing))
+                if "proxy" not in profile["failure_policy"].lower() and not any(
+                    "proxy" in value.lower() for value in profile["excluded_scope"]
+                ):
+                    _fail("XC01_PROXY_EVIDENCE_LAW_MISSING", profile_id)
         elif owner_slots is not None:
-            _fail("OWNER_RECEIPT_SLOTS_OUTSIDE_XC01", profile_id)
+            _fail("OWNER_RECEIPT_SLOTS_OUTSIDE_OWNER_MILESTONE", profile_id)
+        if (
+            profile_id == "B10_ACCEPTANCE_PROFILE_V1"
+            and _sha256_canonical(profile) != EXPECTED_B10_ACCEPTANCE_PROFILE_SHA256
+        ):
+            _fail("B10_ACCEPTANCE_PROFILE_DIGEST_MISMATCH", profile_id)
 
 
 def validate_test_matrix(
@@ -650,12 +734,20 @@ def validate_test_matrix(
         _fail("TEST_MATRIX_MILESTONE_SET_OR_ORDER_MISMATCH", repr(matrix_identities))
 
     rows_by_identity = {row["milestone_identity"]: row for row in matrix}
+    milestones_by_identity = {row["identity"]: row for row in milestones.values()}
     for identity, row in rows_by_identity.items():
         if set(row["layers"]) != set(EXPECTED_TEST_LAYERS):
             _fail("TEST_MATRIX_LAYER_SET_MISMATCH", identity)
         modes = tuple(row["layers"].values())
         if all(mode == "NOT_APPLICABLE" for mode in modes):
             _fail("TEST_MATRIX_EMPTY_ROW", identity)
+        receipt_layer_not_applicable = row["layers"]["T7"] == "NOT_APPLICABLE"
+        receipt_path_not_applicable = (
+            milestones_by_identity[identity]["path_law"]["source_receipt"]
+            == NOT_APPLICABLE_CONTROL_FREEZE_RECEIPT
+        )
+        if receipt_layer_not_applicable != receipt_path_not_applicable:
+            _fail("RECEIPT_APPLICABILITY_MISMATCH", identity)
 
     for milestone_id in EXPECTED_PROFILE_IDS:
         track_id = "ESTATE_CROSS_REPO" if milestone_id == "XC01" else "ORIGIN_REPAIR"
@@ -808,34 +900,36 @@ def validate_review_policy(
     rows = policy.get("milestone_slots", [])
     if [row.get("milestone_identity") for row in rows] != expected_identities:
         _fail("REVIEW_SLOT_MILESTONE_SET_OR_ORDER_MISMATCH", "milestone_slots")
+    test_layers = {
+        row["milestone_identity"]: row["layers"]
+        for row in semantics["payload"]["test_layer_matrix"]
+    }
     for row in rows:
         identity = row["milestone_identity"]
         roles = [slot.get("role_id") for slot in row.get("slots", [])]
-        if len(roles) != len(set(roles)) or not {"SOURCE_REVIEWER", "RECEIPT_REVIEWER"} <= set(roles):
+        milestone = next(item for item in milestones.values() if item["identity"] == identity)
+        milestone_id = milestone["scope"]["milestone_id"]
+        expected_slot_roles = {"SOURCE_REVIEWER"}
+        if test_layers[identity]["T7"] != "NOT_APPLICABLE":
+            expected_slot_roles.add("RECEIPT_REVIEWER")
+        if milestone_id == "C0":
+            expected_slot_roles.add("C0_OWNER_AUTHENTICATOR")
+        if milestone_id == "B10":
+            expected_slot_roles.update({
+                "B10_RUNTIME_SIDE_EFFECT_AUDITOR",
+                "B10_SEMANTIC_SOURCE_AUDITOR",
+                "B10_ADJUDICATOR",
+            })
+        if len(roles) != len(set(roles)) or set(roles) != expected_slot_roles:
             _fail("REVIEW_SLOT_ROLE_SET_INVALID", identity)
         for slot in row["slots"]:
             if slot.get("binding_state") != "UNBOUND" or slot.get("provider_binding") is not None:
                 _fail("REVIEW_SLOT_PREMATURE_BINDING", f"{identity}:{slot.get('role_id')}")
             hint = slot.get("eligible_hint")
-            milestone_id = next(
-                item["scope"]["milestone_id"]
-                for item in milestones.values()
-                if item["identity"] == identity
-            )
             if hint is not None and not (
                 milestone_id == "B00R_G2" and slot["role_id"] == "SOURCE_REVIEWER" and hint == "djordi10"
             ):
                 _fail("REVIEW_ELIGIBLE_HINT_INVALID", f"{identity}:{slot['role_id']}")
-        if identity == milestones[("CONTROL_FREEZE", "C0")]["identity"] and "C0_OWNER_AUTHENTICATOR" not in roles:
-            _fail("C0_OWNER_AUTHENTICATION_SLOT_MISSING", identity)
-        if identity == milestones[("ORIGIN_REPAIR", "B10")]["identity"]:
-            required = {
-                "B10_RUNTIME_SIDE_EFFECT_AUDITOR",
-                "B10_SEMANTIC_SOURCE_AUDITOR",
-                "B10_ADJUDICATOR",
-            }
-            if not required <= set(roles):
-                _fail("B10_REVIEW_ROLE_SET_INCOMPLETE", repr(roles))
 
     bn_dependencies = set(milestones[("ESTATE_CLOSURE", "BN")]["dependency_identities"])
     if milestones[("ESTATE_CROSS_REPO", "XC01")]["identity"] not in bn_dependencies:
@@ -906,6 +1000,48 @@ def validate_b10_terminal_control(
 
     for task_id in graph:
         visit(task_id)
+    expected_criterion_consumption = {criterion_id: 1 for criterion_id in criterion_ids}
+    task_criterion_consumption = Counter(
+        criterion_id for row in tasks for criterion_id in row["criterion_ids"]
+    )
+    if dict(task_criterion_consumption) != expected_criterion_consumption:
+        _fail("B10_TASK_CRITERION_CONSUMPTION_MISMATCH", repr(task_criterion_consumption))
+    expected_verification_consumption = {
+        verification_id: 1 for verification_id in verification_ids
+    }
+    task_verification_consumption = Counter(
+        verification_id for row in tasks for verification_id in row["verification_ids"]
+    )
+    if dict(task_verification_consumption) != expected_verification_consumption:
+        _fail(
+            "B10_TASK_VERIFICATION_CONSUMPTION_MISMATCH",
+            repr(task_verification_consumption),
+        )
+    verification_criterion_consumption = Counter(
+        criterion_id for row in verifications for criterion_id in row["criterion_ids"]
+    )
+    if dict(verification_criterion_consumption) != expected_criterion_consumption:
+        _fail(
+            "B10_VERIFICATION_CRITERION_CONSUMPTION_MISMATCH",
+            repr(verification_criterion_consumption),
+        )
+    dependency_targets = {
+        dependency for dependencies in graph.values() for dependency in dependencies
+    }
+    terminal_tasks = task_ids - dependency_targets
+    if len(terminal_tasks) != 1:
+        _fail("B10_TERMINAL_TASK_SET_MISMATCH", repr(sorted(terminal_tasks)))
+    terminal_task = next(iter(terminal_tasks))
+    reaches_terminal: set[str] = set()
+    pending = [terminal_task]
+    while pending:
+        task_id = pending.pop()
+        if task_id in reaches_terminal:
+            continue
+        reaches_terminal.add(task_id)
+        pending.extend(graph[task_id])
+    if reaches_terminal != task_ids:
+        _fail("B10_TERMINAL_TASK_REACHABILITY_MISMATCH", repr(sorted(reaches_terminal)))
     roles = [row.get("role_id") for row in control.get("audit_roles", [])]
     expected_roles = ["B10_RUNTIME_SIDE_EFFECT_AUDITOR", "B10_SEMANTIC_SOURCE_AUDITOR"]
     if roles != expected_roles or len(set(roles)) != 2:
@@ -926,30 +1062,81 @@ def validate_b10_terminal_control(
         or receipt_law.get("required_anchor") != b10_path_law["anchor"]
     ):
         _fail("B10_RECEIPT_ANCHOR_LAW_MISMATCH", repr(receipt_law))
+    if _sha256_canonical(control) != EXPECTED_B10_TERMINAL_CONTROL_SHA256:
+        _fail("B10_TERMINAL_CONTROL_DIGEST_MISMATCH", "b10_terminal_control")
 
 
-def _expected_task_target(task: Mapping[str, Any], milestones: Mapping[tuple[str, str], Mapping[str, Any]]) -> dict[str, str]:
-    legacy = task["milestone"]
+def _formula_task_identity(task: Mapping[str, Any]) -> tuple[str, int] | None:
+    task_id = str(task.get("id", ""))
+    match = re.fullmatch(r"FORM-(F[0-9]{2})-([0-9]{2})", task_id)
+    if match is None:
+        if task_id.startswith("FORM-") or task.get("row_class") == "FORMULA_ATOMIC":
+            _fail("FORMULA_TASK_NAMESPACE_INVALID", task_id)
+        return None
+    formula_id = match.group(1)
+    ordinal = int(match.group(2))
+    if formula_id not in EXPECTED_FORMULA_IDS or ordinal not in range(1, 8):
+        _fail("FORMULA_TASK_NAMESPACE_INVALID", task_id)
+    return formula_id, ordinal
+
+
+def _expected_task_target(
+    task: Mapping[str, Any], milestones: Mapping[tuple[str, str], Mapping[str, Any]]
+) -> dict[str, Any]:
     identity_by_id = {key[1]: row["identity"] for key, row in milestones.items()}
+    formula_identity = _formula_task_identity(task)
+    if formula_identity is not None:
+        formula_id, _ = formula_identity
+        if formula_id in EXPECTED_EXTERNAL_FORMULA_LAW:
+            owner, slot, receipt_milestone, conformance_milestone = (
+                EXPECTED_EXTERNAL_FORMULA_LAW[formula_id]
+            )
+            return {
+                "attestation_state": "NOT_ATTESTED",
+                "conformance_milestone_identity": identity_by_id[conformance_milestone],
+                "formula_id": formula_id,
+                "kind": "FORMULA_EXTERNAL_OWNER_RECEIPT",
+                "owner_engine": owner,
+                "owner_receipt_slot_id": slot,
+                "provider_binding_state": "UNBOUND",
+                "receipt_milestone_identity": identity_by_id[receipt_milestone],
+            }
+        milestone_id = EXPECTED_INTERNAL_FORMULA_MILESTONES.get(formula_id)
+        if milestone_id is None:
+            _fail("FORMULA_OWNER_LAW_MISSING", formula_id)
+        return {
+            "consumer_milestone_identities": (
+                [identity_by_id["B06R"]] if formula_id == "F14" else []
+            ),
+            "formula_id": formula_id,
+            "implementation_milestone_identity": identity_by_id[milestone_id],
+            "kind": "FORMULA_IMPLEMENTATION",
+            "owner_engine": "E02",
+        }
+
+    legacy = task["milestone"]
     if legacy == "B00":
-        return {"disposition_id": "LEGACY_B00_REALLOCATION_REQUIRED", "kind": "BLOCKING_DISPOSITION"}
+        return {
+            "disposition_id": "LEGACY_B00_REALLOCATION_REQUIRED",
+            "kind": "BLOCKING_DISPOSITION",
+        }
     if legacy == "RESEARCH":
         return {"future_track": "FUTURE_EXPANSION", "kind": "FUTURE_EXPANSION"}
     if legacy in {"ESTATE", "OPERATOR"}:
-        return {"kind": "XC01", "milestone_identity": identity_by_id["XC01"]}
+        return {
+            "kind": "EXTERNAL_OBLIGATION",
+            "owner_binding_state": "UNBOUND",
+            "owner_lane": legacy,
+        }
     legacy_map = {
         "B01": "B01C", "B02": "B02C", "B03": "B03C", "B04": "B04C",
-        "B05": "B05C", "B07": "B07", "B08": "B08",
+        "B05": "B05C", "B06": "B06R", "B07": "B07", "B08": "B08", "B09": "B09",
     }
-    if legacy == "B06":
-        target = "B04C" if re.fullmatch(r"FORM-F14-[0-9]+", task["id"]) else "B06R"
-        return {"kind": "CURRENT_COMPOSITE_MILESTONE", "milestone_identity": identity_by_id[target]}
-    if legacy == "B09":
-        if re.fullmatch(r"FORM-F(?:20|21|22|23)-[0-9]+", task["id"]):
-            return {"kind": "XC01", "milestone_identity": identity_by_id["XC01"]}
-        return {"kind": "CURRENT_COMPOSITE_MILESTONE", "milestone_identity": identity_by_id["B09"]}
     if legacy in legacy_map:
-        return {"kind": "CURRENT_COMPOSITE_MILESTONE", "milestone_identity": identity_by_id[legacy_map[legacy]]}
+        return {
+            "kind": "CURRENT_COMPOSITE_MILESTONE",
+            "milestone_identity": identity_by_id[legacy_map[legacy]],
+        }
     _fail("TASK_BINDING_LEGACY_MILESTONE_UNKNOWN", repr(legacy))
 
 
@@ -962,29 +1149,105 @@ def validate_task_bindings(
     payload = document["payload"]
     ledger_path = root / BUILD_LEDGER_REL
     review_path = root / BUILD_LEDGER_REVIEW_REL
+    review_subject_path = root / BUILD_LEDGER_REVIEW_SUBJECT_REL
     ledger_bytes = ledger_path.read_bytes()
     review_bytes = review_path.read_bytes()
+    review_subject_bytes = review_subject_path.read_bytes()
     if payload["source_ledger"]["byte_sha256"] != hashlib.sha256(ledger_bytes).hexdigest():
         _fail("TASK_BINDING_LEDGER_BYTE_DIGEST_MISMATCH", BUILD_LEDGER_REL.as_posix())
-    if payload["reviewed_rows"]["byte_sha256"] != hashlib.sha256(review_bytes).hexdigest():
+    if payload["legacy_review_artifact"]["byte_sha256"] != hashlib.sha256(review_bytes).hexdigest():
         _fail("TASK_BINDING_REVIEW_BYTE_DIGEST_MISMATCH", BUILD_LEDGER_REVIEW_REL.as_posix())
+    subject_sha256 = hashlib.sha256(review_subject_bytes).hexdigest()
+    if (
+        subject_sha256 != EXPECTED_REVIEW_SUBJECT_SHA256
+        or payload["review_subject_ledger"]["byte_sha256"] != subject_sha256
+    ):
+        _fail(
+            "TASK_BINDING_REVIEW_SUBJECT_BYTE_DIGEST_MISMATCH",
+            BUILD_LEDGER_REVIEW_SUBJECT_REL.as_posix(),
+        )
     ledger = load_json_object(ledger_path)
     review = load_json_object(review_path)
+    review_subject = load_json_object(review_subject_path)
     tasks = ledger.get("tasks", [])
     review_rows = review.get("rows", [])
-    if len(tasks) != 1250 or len(review_rows) != 1250:
-        _fail("TASK_BINDING_SOURCE_ROW_COUNT_MISMATCH", f"{len(tasks)}/{len(review_rows)}")
+    subject_rows = review_subject.get("tasks", [])
+    if len(tasks) != 1250 or len(review_rows) != 1250 or len(subject_rows) != 1250:
+        _fail(
+            "TASK_BINDING_SOURCE_ROW_COUNT_MISMATCH",
+            f"{len(tasks)}/{len(review_rows)}/{len(subject_rows)}",
+        )
+    if (
+        ledger.get("ledger_version") != "CANDIDATE_V3"
+        or review.get("ledger_version") != "REVIEWED_V2"
+        or review_subject.get("ledger_version") != "REVIEWED_V2"
+        or payload["source_ledger"]["ledger_version"] != "CANDIDATE_V3"
+        or payload["legacy_review_artifact"]["reviewed_ledger_version"] != "REVIEWED_V2"
+        or payload["review_subject_ledger"]["ledger_version"] != "REVIEWED_V2"
+        or payload["review_subject_ledger"]["source_commit"] != EXPECTED_REVIEW_SUBJECT_COMMIT
+    ):
+        _fail("TASK_BINDING_REVIEW_VERSION_MISMATCH", "candidate/review subject")
     source_by_id = {row.get("id"): row for row in tasks}
     review_by_id = {row.get("id"): row for row in review_rows}
-    if len(source_by_id) != 1250 or set(source_by_id) != set(review_by_id):
-        _fail("TASK_BINDING_SOURCE_ID_SET_MISMATCH", "source/review IDs")
+    subject_by_id = {row.get("id"): row for row in subject_rows}
+    if (
+        len(source_by_id) != 1250
+        or set(source_by_id) != set(review_by_id)
+        or set(source_by_id) != set(subject_by_id)
+    ):
+        _fail("TASK_BINDING_SOURCE_ID_SET_MISMATCH", "source/review/subject IDs")
+
+    changed_ids = sorted(
+        task_id for task_id in source_by_id
+        if source_by_id[task_id] != subject_by_id[task_id]
+    )
+    unallocated_ids = sorted(
+        task_id for task_id, task in source_by_id.items() if task["milestone"] == "B00"
+    )
+    expected_review_coverage = {
+        "changed_row_count": 94,
+        "changed_task_ids_sha256": _sha256_canonical(changed_ids),
+        "current_ledger_review_state": "UNBOUND",
+        "target_allocation_review_state": "UNBOUND",
+        "unchanged_row_count": 1156,
+    }
+    if len(changed_ids) != 94 or payload["review_coverage"] != expected_review_coverage:
+        _fail("TASK_BINDING_REVIEW_COVERAGE_MISMATCH", repr(payload["review_coverage"]))
+    if len(unallocated_ids) != 97:
+        _fail("TASK_BINDING_UNALLOCATED_SET_MISMATCH", str(len(unallocated_ids)))
+    expected_dispositions = [
+        {
+            "disposition_id": "C0-CURRENT-LEDGER-REVIEW",
+            "reason": "94 current ledger rows differ from the frozen REVIEWED_V2 review subject.",
+            "severity": "P0",
+            "status": "OPEN",
+        },
+        {
+            "disposition_id": "C0-TARGET-ALLOCATION-REVIEW",
+            "reason": "Current target allocations have no independently authenticated review.",
+            "severity": "P0",
+            "status": "OPEN",
+        },
+        {
+            "disposition_id": "LEGACY_B00_REALLOCATION_REQUIRED",
+            "reason": (
+                "Legacy B00 tasks require explicit owner reallocation and may not be assigned "
+                "to C0 or B00R G2."
+            ),
+            "severity": "P0",
+            "status": "OPEN",
+        },
+    ]
+    if payload["blocking_dispositions"] != expected_dispositions:
+        _fail("TASK_BINDING_DISPOSITION_SET_MISMATCH", "blocking_dispositions")
 
     _, milestones, _ = _milestone_maps(semantics)
     rows = payload.get("rows", [])
     row_ids = [row.get("legacy_task_id") for row in rows]
     if len(rows) != 1250 or len(set(row_ids)) != 1250 or row_ids != sorted(source_by_id):
         _fail("TASK_BINDING_EXACTLY_ONCE_SET_MISMATCH", f"{len(rows)} rows")
-    formula_owners: dict[str, set[str]] = {f"F{number:02d}": set() for number in range(24)}
+    formula_ordinals: dict[str, set[int]] = {formula_id: set() for formula_id in EXPECTED_FORMULA_IDS}
+    target_kind_counts: Counter[str] = Counter()
     forbidden_identities = {
         milestones[("CONTROL_FREEZE", "C0")]["identity"],
         milestones[("ORIGIN_REPAIR", "B00R_G2")]["identity"],
@@ -993,26 +1256,64 @@ def validate_task_bindings(
         task_id = row["legacy_task_id"]
         task = source_by_id[task_id]
         review_row = review_by_id[task_id]
+        subject_row = subject_by_id[task_id]
         if row["legacy_milestone"] != task["milestone"]:
             _fail("TASK_BINDING_LEGACY_MILESTONE_MISMATCH", task_id)
         if row["source_row_digest"] != _sha256_canonical(task):
             _fail("TASK_BINDING_SOURCE_ROW_DIGEST_MISMATCH", task_id)
-        if row["review_row_digest"] != _sha256_canonical(review_row):
+        if row["legacy_review_row_digest"] != _sha256_canonical(review_row):
             _fail("TASK_BINDING_REVIEW_ROW_DIGEST_MISMATCH", task_id)
+        if row["review_subject_row_digest"] != _sha256_canonical(subject_row):
+            _fail("TASK_BINDING_REVIEW_SUBJECT_ROW_DIGEST_MISMATCH", task_id)
+        expected_review_state = (
+            "CHANGED_REVIEW_REQUIRED"
+            if task_id in changed_ids
+            else "UNCHANGED_SINCE_REVIEW_SUBJECT"
+        )
+        if row["source_review_state"] != expected_review_state:
+            _fail("TASK_BINDING_ROW_REVIEW_STATE_MISMATCH", task_id)
+        if row["target_allocation_review_state"] != "UNBOUND":
+            _fail("TASK_BINDING_TARGET_REVIEW_OVERCLAIM", task_id)
         expected_target = _expected_task_target(task, milestones)
         if row["target"] != expected_target:
             _fail("TASK_BINDING_TARGET_MISMATCH", f"{task_id}: {row['target']!r}")
-        if row["target"].get("milestone_identity") in forbidden_identities:
+        if any(
+            identity in canonical_json(row["target"]).decode("utf-8")
+            for identity in forbidden_identities
+        ):
             _fail("TASK_BINDING_C0_B00R_FORBIDDEN", task_id)
-        match = re.fullmatch(r"FORM-(F(?:0[0-9]|1[0-9]|2[0-3]))-[0-9]+", task_id)
-        if match:
-            target = row["target"].get("milestone_identity") or row["target"].get("future_track")
-            formula_owners[match.group(1)].add(str(target))
-    missing_or_ambiguous = {
-        formula: sorted(owners) for formula, owners in formula_owners.items() if len(owners) != 1
+        target_kind_counts[row["target"]["kind"]] += 1
+        formula_identity = _formula_task_identity(task)
+        if formula_identity is not None:
+            formula_ordinals[formula_identity[0]].add(formula_identity[1])
+    expected_ordinals = set(range(1, 8))
+    invalid_formula_sets = {
+        formula_id: sorted(ordinals)
+        for formula_id, ordinals in formula_ordinals.items()
+        if ordinals != expected_ordinals
     }
-    if missing_or_ambiguous:
-        _fail("FORMULA_TASK_OWNER_NOT_UNIQUE", repr(missing_or_ambiguous))
+    if invalid_formula_sets:
+        _fail("FORMULA_TASK_SET_NOT_EXACT", repr(invalid_formula_sets))
+    expected_kind_counts = {
+        "BLOCKING_DISPOSITION": 97,
+        "CURRENT_COMPOSITE_MILESTONE": 563,
+        "EXTERNAL_OBLIGATION": 418,
+        "FORMULA_EXTERNAL_OWNER_RECEIPT": 42,
+        "FORMULA_IMPLEMENTATION": 126,
+        "FUTURE_EXPANSION": 4,
+    }
+    if dict(target_kind_counts) != expected_kind_counts:
+        _fail("TASK_BINDING_TARGET_KIND_COUNT_MISMATCH", repr(target_kind_counts))
+    expected_allocation_summary = {
+        "classified_target_task_count": 1153,
+        "external_formula_receipt_task_count": 42,
+        "external_obligation_task_count": 418,
+        "target_allocation_review_state": "UNBOUND",
+        "unallocated_task_count": 97,
+        "unallocated_task_ids_sha256": _sha256_canonical(unallocated_ids),
+    }
+    if payload["allocation_summary"] != expected_allocation_summary:
+        _fail("TASK_BINDING_ALLOCATION_SUMMARY_MISMATCH", repr(payload["allocation_summary"]))
     validate_no_secrets(document, "closure task bindings")
     return digest
 
@@ -1172,10 +1473,29 @@ def derive_status_projection(
         row["milestone_identity"]: row["slots"]
         for row in semantics["payload"]["review_policy"]["milestone_slots"]
     }
+    test_layers = {
+        row["milestone_identity"]: row["layers"]
+        for row in semantics["payload"]["test_layer_matrix"]
+    }
+    runtime_applicability: dict[str, bool] = {}
+    receipt_applicability: dict[str, bool] = {}
     for row in rows:
         identity = row["identity"]
         milestone_id = row["scope"]["milestone_id"]
+        layers = test_layers[identity]
+        runtime_applicable = layers["T8"] != "NOT_APPLICABLE"
+        receipt_layer_not_applicable = layers["T7"] == "NOT_APPLICABLE"
+        receipt_path_not_applicable = (
+            row["path_law"]["source_receipt"] == NOT_APPLICABLE_CONTROL_FREEZE_RECEIPT
+        )
+        if receipt_layer_not_applicable != receipt_path_not_applicable:
+            _fail("RECEIPT_APPLICABILITY_MISMATCH", identity)
+        receipt_applicable = not receipt_layer_not_applicable
+        runtime_applicability[identity] = runtime_applicable
+        receipt_applicability[identity] = receipt_applicable
         for slot in slot_rows[identity]:
+            if slot["role_id"] == "RECEIPT_REVIEWER" and not receipt_applicable:
+                continue
             if slot["binding_state"] == "UNBOUND":
                 add_blocker(
                     f"REVIEW-SLOT::{milestone_id}::{slot['role_id']}", identity, "P0",
@@ -1188,15 +1508,17 @@ def derive_status_projection(
                 f"PREDECESSOR::{milestone_id}", identity, "P0",
                 "exact predecessor is not CLOSED", "MILESTONE_DEPENDENCY", predecessor,
             )
-        add_blocker(
-            f"RECEIPT::{milestone_id}", identity, "P0",
-            "required evidence-only receipt is not merged", "PATH_LAW", row["path_law"]["source_receipt"],
-        )
-        add_blocker(
-            f"ANCHOR::{milestone_id}", identity, "P0",
-            "required protected anchor is not published", "PATH_LAW", row["path_law"]["anchor"],
-        )
-        if milestone_id != "C0":
+        if receipt_applicable:
+            add_blocker(
+                f"RECEIPT::{milestone_id}", identity, "P0",
+                "required evidence-only receipt is not merged", "PATH_LAW",
+                row["path_law"]["source_receipt"],
+            )
+            add_blocker(
+                f"ANCHOR::{milestone_id}", identity, "P0",
+                "required protected anchor is not published", "PATH_LAW", row["path_law"]["anchor"],
+            )
+        if runtime_applicable:
             add_blocker(
                 f"RUNTIME::{milestone_id}", identity, "P0",
                 "applicable identical-subject runtime proof is NOT_ATTESTED", "TEST_LAYER", "T8",
@@ -1211,7 +1533,6 @@ def derive_status_projection(
     status_rows = []
     for row in rows:
         identity = row["identity"]
-        milestone_id = row["scope"]["milestone_id"]
         reasons = sorted(reasons_by_owner[identity])
         if not reasons:
             _fail("DERIVED_FALSE_GREEN_MILESTONE", identity)
@@ -1219,8 +1540,12 @@ def derive_status_projection(
             "blocking_reasons": reasons,
             "gate_state": "BLOCKED",
             "identity": identity,
-            "receipt_state": "BLOCKED",
-            "runtime_state": "NOT_APPLICABLE" if milestone_id == "C0" else "NOT_ATTESTED",
+            "receipt_state": (
+                "BLOCKED" if receipt_applicability[identity] else "NOT_APPLICABLE"
+            ),
+            "runtime_state": (
+                "NOT_ATTESTED" if runtime_applicability[identity] else "NOT_APPLICABLE"
+            ),
             "work_state": work_states[identity],
         })
     current_work = [row["identity"] for row in rows if work_states[row["identity"]] == "SOURCE_IN_PROGRESS"]
@@ -1247,9 +1572,33 @@ def derive_status_projection(
             "path": STATUS_EVENTS_REL.as_posix(), "schema": STATUS_EVENTS_SCHEMA,
         },
         "task_binding_reference": {
+            "changed_review_required_rows": task_bindings["payload"]["review_coverage"][
+                "changed_row_count"
+            ],
+            "classified_target_task_count": task_bindings["payload"]["allocation_summary"][
+                "classified_target_task_count"
+            ],
             "digest_domain": TASK_BINDING_DOMAIN, "digest_sha256": task_bindings_digest,
+            "external_formula_receipt_task_count": task_bindings["payload"][
+                "allocation_summary"
+            ]["external_formula_receipt_task_count"],
+            "external_obligation_task_count": task_bindings["payload"]["allocation_summary"][
+                "external_obligation_task_count"
+            ],
             "path": TASK_BINDING_REL.as_posix(), "row_count": len(task_bindings["payload"]["rows"]),
             "schema": TASK_BINDING_SCHEMA,
+            "source_ledger_review_state": task_bindings["payload"]["review_coverage"][
+                "current_ledger_review_state"
+            ],
+            "target_allocation_review_state": task_bindings["payload"]["review_coverage"][
+                "target_allocation_review_state"
+            ],
+            "unallocated_task_count": task_bindings["payload"]["allocation_summary"][
+                "unallocated_task_count"
+            ],
+            "unchanged_review_subject_rows": task_bindings["payload"]["review_coverage"][
+                "unchanged_row_count"
+            ],
         },
     }
     document: dict[str, Any] = {
@@ -1339,21 +1688,60 @@ def validate_status(
     if tuple(payload["current_work"]) != expected_identities[:2]:
         _fail("STATUS_CURRENT_WORK_MISMATCH", repr(payload["current_work"]))
 
+    test_layers = {
+        row["milestone_identity"]: row["layers"]
+        for row in semantics["payload"]["test_layer_matrix"]
+    }
+    blockers = payload["open_blockers"]
+    blocker_ids = [row["blocker_id"] for row in blockers]
+    blocker_id_set = set(blocker_ids)
     for index, row in enumerate(status_rows):
+        milestone = rows[index]
+        milestone_id = milestone["scope"]["milestone_id"]
+        layers = test_layers[row["identity"]]
         expected_work_state = "SOURCE_IN_PROGRESS" if index < 2 else "NOT_STARTED"
-        expected_runtime_state = "NOT_APPLICABLE" if index == 0 else "NOT_ATTESTED"
+        runtime_applicable = layers["T8"] != "NOT_APPLICABLE"
+        expected_runtime_state = "NOT_ATTESTED" if runtime_applicable else "NOT_APPLICABLE"
         if row["work_state"] != expected_work_state:
             _fail("STATUS_WORK_STATE_MISMATCH", row["identity"])
-        if row["gate_state"] != "BLOCKED" or row["receipt_state"] != "BLOCKED":
+        expected_receipt_state = (
+            "NOT_APPLICABLE" if layers["T7"] == "NOT_APPLICABLE" else "BLOCKED"
+        )
+        if row["gate_state"] != "BLOCKED" or row["receipt_state"] != expected_receipt_state:
             _fail("STATUS_GATE_NOT_BLOCKED", row["identity"])
         if row["runtime_state"] != expected_runtime_state:
             _fail("STATUS_RUNTIME_STATE_MISMATCH", row["identity"])
         _require_sorted_unique_strings(row["blocking_reasons"], f"{row['identity']}.blocking_reasons")
+        runtime_blocker = f"RUNTIME::{milestone_id}"
+        runtime_membership = (
+            runtime_blocker in blocker_id_set,
+            runtime_blocker in row["blocking_reasons"],
+        )
+        if runtime_membership != (runtime_applicable, runtime_applicable):
+            _fail("STATUS_RUNTIME_BLOCKER_APPLICABILITY_MISMATCH", row["identity"])
+
+        receipt_layer_not_applicable = layers["T7"] == "NOT_APPLICABLE"
+        receipt_path_not_applicable = (
+            milestone["path_law"]["source_receipt"]
+            == NOT_APPLICABLE_CONTROL_FREEZE_RECEIPT
+        )
+        if receipt_layer_not_applicable != receipt_path_not_applicable:
+            _fail("RECEIPT_APPLICABILITY_MISMATCH", row["identity"])
+        receipt_applicable = not receipt_layer_not_applicable
+        receipt_blockers = (
+            f"RECEIPT::{milestone_id}",
+            f"ANCHOR::{milestone_id}",
+            f"REVIEW-SLOT::{milestone_id}::RECEIPT_REVIEWER",
+        )
+        if any(
+            (blocker_id in blocker_id_set) != receipt_applicable
+            or (blocker_id in row["blocking_reasons"]) != receipt_applicable
+            for blocker_id in receipt_blockers
+        ):
+            _fail("STATUS_RECEIPT_BLOCKER_APPLICABILITY_MISMATCH", row["identity"])
 
     if payload["closed_claims"]:
         _fail("CLOSED_CLAIM_WHILE_BLOCKED", repr(payload["closed_claims"]))
-    blockers = payload["open_blockers"]
-    blocker_ids = [row["blocker_id"] for row in blockers]
     if len(blocker_ids) != len(set(blocker_ids)):
         _fail("DUPLICATE_OPEN_BLOCKER", repr(blocker_ids))
     known_identities = set(expected_identities)
@@ -1509,20 +1897,31 @@ def main(argv: Iterable[str] | None = None) -> int:
         help="mechanically regenerate closure_status.v1.json and the two documented projections",
     )
     parser.add_argument(
+        "--require-closure-ready",
+        action="store_true",
+        help="validate structurally, then exit 2 unless the derived open-blocker count is zero",
+    )
+    parser.add_argument(
         "--root",
         type=pathlib.Path,
         default=ROOT,
         help=argparse.SUPPRESS,
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
-    if args.check and args.write:
-        parser.error("--check and --write are mutually exclusive")
+    if sum((args.check, args.write, args.require_closure_ready)) > 1:
+        parser.error("--check, --write, and --require-closure-ready are mutually exclusive")
     try:
         root = args.root.resolve()
         result = write_generated_outputs(root) if args.write else check_all(root)
     except ClosureControlError as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         return 1
+    if args.require_closure_ready and result["open_blockers"]:
+        print(
+            f"CLOSURE_NOT_READY: {result['open_blockers']} open blockers; no closure claim",
+            file=sys.stderr,
+        )
+        return 2
     print(
         "OK: C0 closure control canonical; "
         f"{result['milestones']} milestones; {result['decisions']} decisions; "

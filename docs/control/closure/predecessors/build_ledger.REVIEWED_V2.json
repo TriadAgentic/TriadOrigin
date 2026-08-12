@@ -1,5 +1,5 @@
 {
- "ledger_version": "CANDIDATE_V3",
+ "ledger_version": "REVIEWED_V2",
  "milestone_counts": {
   "B00": 97,
   "B01": 48,
@@ -2833,7 +2833,7 @@
    "node": "Estate",
    "phase": "P-1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2845,7 +2845,7 @@
    "node": "Estate",
    "phase": "P-1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2857,7 +2857,7 @@
    "node": "All services",
    "phase": "P-1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2869,7 +2869,7 @@
    "node": "All nodes",
    "phase": "P-1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2881,7 +2881,7 @@
    "node": "Legacy control",
    "phase": "P-1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2893,7 +2893,7 @@
    "node": "Accounts",
    "phase": "P-1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2905,7 +2905,7 @@
    "node": "Specification",
    "phase": "P-1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2917,7 +2917,7 @@
    "node": "Build",
    "phase": "P-1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2929,7 +2929,7 @@
    "node": "E06",
    "phase": "P0",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2941,7 +2941,7 @@
    "node": "E07/E08",
    "phase": "P0",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2953,7 +2953,7 @@
    "node": "E09/E10",
    "phase": "P0",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2965,7 +2965,7 @@
    "node": "Authority",
    "phase": "P0",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2977,7 +2977,7 @@
    "node": "Runtime",
    "phase": "P0",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -2989,7 +2989,7 @@
    "node": "Authority",
    "phase": "P0",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3001,7 +3001,7 @@
    "node": "Lane registry",
    "phase": "P0",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3025,7 +3025,7 @@
    "node": "MCP",
    "phase": "P0",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3037,7 +3037,7 @@
    "node": "MCP",
    "phase": "P0",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3049,7 +3049,7 @@
    "node": "MCP LAN",
    "phase": "P0",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3061,7 +3061,7 @@
    "node": "E00/E09",
    "phase": "P1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3073,7 +3073,7 @@
    "node": "E00",
    "phase": "P1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3085,7 +3085,7 @@
    "node": "E00",
    "phase": "P1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3097,7 +3097,7 @@
    "node": "Order book",
    "phase": "P1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3109,7 +3109,7 @@
    "node": "Bars",
    "phase": "P1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3121,7 +3121,7 @@
    "node": "Scheduler",
    "phase": "P1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3133,7 +3133,7 @@
    "node": "Rate limits",
    "phase": "P1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3145,7 +3145,7 @@
    "node": "Clocks",
    "phase": "P1",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3157,7 +3157,7 @@
    "node": "Kernel",
    "phase": "P2",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3169,7 +3169,7 @@
    "node": "Semantics",
    "phase": "P2",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3181,7 +3181,7 @@
    "node": "Semantics",
    "phase": "P2",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3193,7 +3193,7 @@
    "node": "Capsules",
    "phase": "P3",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3205,7 +3205,7 @@
    "node": "Capsules",
    "phase": "P3",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3217,7 +3217,7 @@
    "node": "Capsules",
    "phase": "P3",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3229,7 +3229,7 @@
    "node": "Traceability",
    "phase": "P4",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3241,7 +3241,7 @@
    "node": "Holdout",
    "phase": "P4",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3253,7 +3253,7 @@
    "node": "Economics",
    "phase": "P4",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3265,7 +3265,7 @@
    "node": "Maker simulation",
    "phase": "P4",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3289,7 +3289,7 @@
    "node": "Logger",
    "phase": "P5",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3301,7 +3301,7 @@
    "node": "Scorecards",
    "phase": "P5",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3313,7 +3313,7 @@
    "node": "MCP",
    "phase": "P5",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3325,7 +3325,7 @@
    "node": "MCP",
    "phase": "P5",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -3337,7 +3337,7 @@
    "node": "MCP",
    "phase": "P5",
    "row_class": "GAP_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -5737,7 +5737,7 @@
    "node": "Release",
    "phase": "P0",
    "row_class": "ATOMIC_RC3_OVERLAY_CONTROL",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -9901,7 +9901,7 @@
    "node": "Baseline",
    "phase": "P-1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -9913,7 +9913,7 @@
    "node": "Baseline",
    "phase": "P-1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -9925,7 +9925,7 @@
    "node": "Baseline",
    "phase": "P-1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -9937,7 +9937,7 @@
    "node": "Authority",
    "phase": "P-1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -9949,7 +9949,7 @@
    "node": "Authority",
    "phase": "P-1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -9973,7 +9973,7 @@
    "node": "Data ownership",
    "phase": "P-1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10069,7 +10069,7 @@
    "node": "Identity",
    "phase": "P0",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10081,7 +10081,7 @@
    "node": "Authority",
    "phase": "P0",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10093,7 +10093,7 @@
    "node": "Authority",
    "phase": "P0",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10117,7 +10117,7 @@
    "node": "Storage",
    "phase": "P0",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10129,7 +10129,7 @@
    "node": "Rollback",
    "phase": "P0",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10141,7 +10141,7 @@
    "node": "Ingress",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10153,7 +10153,7 @@
    "node": "Ingress",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10165,7 +10165,7 @@
    "node": "Ingress",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10177,7 +10177,7 @@
    "node": "Ingress",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10189,7 +10189,7 @@
    "node": "Ingress",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10201,7 +10201,7 @@
    "node": "Ingress",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10213,7 +10213,7 @@
    "node": "Order book",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10225,7 +10225,7 @@
    "node": "Order book",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10237,7 +10237,7 @@
    "node": "Metadata",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10249,7 +10249,7 @@
    "node": "Replay",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10261,7 +10261,7 @@
    "node": "Replay",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10273,7 +10273,7 @@
    "node": "Replay",
    "phase": "P1",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10285,7 +10285,7 @@
    "node": "Kernel",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10297,7 +10297,7 @@
    "node": "Kernel",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10309,7 +10309,7 @@
    "node": "Kernel",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10321,7 +10321,7 @@
    "node": "Kernel",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10333,7 +10333,7 @@
    "node": "Kernel",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10345,7 +10345,7 @@
    "node": "Semantics",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10357,7 +10357,7 @@
    "node": "Semantics",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10369,7 +10369,7 @@
    "node": "Semantics",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10381,7 +10381,7 @@
    "node": "Semantics",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10393,7 +10393,7 @@
    "node": "Semantics",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10405,7 +10405,7 @@
    "node": "Semantics",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10417,7 +10417,7 @@
    "node": "Capsule host",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10429,7 +10429,7 @@
    "node": "Candidate",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10441,7 +10441,7 @@
    "node": "Readiness",
    "phase": "P2",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10453,7 +10453,7 @@
    "node": "Capsules",
    "phase": "P3",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10465,7 +10465,7 @@
    "node": "Capsules",
    "phase": "P3",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10477,7 +10477,7 @@
    "node": "Capsules",
    "phase": "P3",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10489,7 +10489,7 @@
    "node": "Capsules",
    "phase": "P3",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10501,7 +10501,7 @@
    "node": "Capsules",
    "phase": "P3",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10549,7 +10549,7 @@
    "node": "Paired replay",
    "phase": "P4",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10561,7 +10561,7 @@
    "node": "Paired replay",
    "phase": "P4",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10573,7 +10573,7 @@
    "node": "Adversarial",
    "phase": "P4",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10585,7 +10585,7 @@
    "node": "Statistics",
    "phase": "P4",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10597,7 +10597,7 @@
    "node": "Statistics",
    "phase": "P4",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10609,7 +10609,7 @@
    "node": "Execution simulation",
    "phase": "P4",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10621,7 +10621,7 @@
    "node": "Dark launch",
    "phase": "P5",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10633,7 +10633,7 @@
    "node": "Dark launch",
    "phase": "P5",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10645,7 +10645,7 @@
    "node": "Dark launch",
    "phase": "P5",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },
@@ -10657,7 +10657,7 @@
    "node": "Dark launch",
    "phase": "P5",
    "row_class": "RC1_SCOPE_CLOSURE",
-   "rule": "R8_GOVERNANCE_CLOSURE",
+   "rule": "R8_DEFAULT",
    "source": "RC3_EFFECTIVE",
    "status": "NOT_STARTED"
   },

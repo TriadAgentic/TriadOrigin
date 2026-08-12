@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -42,11 +43,15 @@ def stage(name: str, doc: str):
     return register
 
 
-def _run_tool(script: str, *args: str) -> None:
-    proc = subprocess.run(
+def _run_tool_result(script: str, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
         [sys.executable, str(ROOT / "tools" / script), *args],
         capture_output=True, text=True, cwd=ROOT,
     )
+
+
+def _run_tool(script: str, *args: str) -> None:
+    proc = _run_tool_result(script, *args)
     if proc.returncode != 0:
         raise AssertionError(
             f"tools/{script} {' '.join(args)} exited {proc.returncode}\n"
@@ -1390,6 +1395,35 @@ def b01c_contract_binding_promotion() -> None:
         assert sha256_hex(raw) == entry["sha256"], milestone
         result, _reason = gov.validate_receipt_v3(json.loads(raw), milestone=milestone)
         assert result == "FAIL", (milestone, result)
+
+
+@stage("c0_closure_control",
+       "C0 closure control: canonical projection is structurally valid but explicitly blocked; "
+       "closure-ready mode refuses the same open-blocker subject")
+def c0_closure_control() -> None:
+    structural = _run_tool_result("closure_control.py", "--check")
+    structural_output = f"{structural.stdout}\n{structural.stderr}".lower()
+    if structural.returncode != 0:
+        raise AssertionError(
+            "tools/closure_control.py --check did not validate the canonical control "
+            f"(exit {structural.returncode})\n{structural_output}"
+        )
+    if re.search(r"\b[1-9][0-9]* open blockers?\b", structural_output) is None:
+        raise AssertionError("C0 structural check did not report a positive open-blocker count")
+    if "no closure claim" not in structural_output:
+        raise AssertionError("C0 structural check omitted the explicit no-closure-claim marker")
+
+    closure_ready = _run_tool_result("closure_control.py", "--require-closure-ready")
+    ready_output = f"{closure_ready.stdout}\n{closure_ready.stderr}".lower()
+    if closure_ready.returncode != 2:
+        raise AssertionError(
+            "tools/closure_control.py --require-closure-ready must refuse the blocked subject "
+            f"with exit 2, got {closure_ready.returncode}\n{ready_output}"
+        )
+    if re.search(r"\bclosure[ _-]+not[ _-]+ready\b", ready_output) is None:
+        raise AssertionError("C0 closure-ready refusal omitted a clear CLOSURE_NOT_READY marker")
+    if re.search(r"\b[1-9][0-9]* open blockers?\b", ready_output) is None:
+        raise AssertionError("C0 closure-ready refusal omitted the positive open-blocker count")
 
 
 def main(argv: list[str]) -> int:

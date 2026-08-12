@@ -6,13 +6,12 @@ Safety baseline: `OFF / OFF / OFF / LIVE`. No deployment, restart, MCP enablemen
 
 ## `CONTROL_FREEZE::C0::sha256:3a2152de236540099955b21e9efef846775d1aee0d15af86eafabecb954cc230`
 
-- [ ] `ANCHOR::C0` — required protected anchor is not published (provenance: `PATH_LAW:C0_CONTROL_DIGEST`)
+- [ ] `C0-CURRENT-LEDGER-REVIEW` — current CANDIDATE_V3 ledger has 94 rows changed since the frozen REVIEWED_V2 subject (provenance: `SEMANTICS_BLOCKER_CATALOG:closure_task_bindings.v1.json:review_coverage`)
 - [ ] `C0-EXACT-HEAD-REVIEW` — C0 exact-head source review is UNBOUND (provenance: `SEMANTICS_BLOCKER_CATALOG:review_policy:SOURCE_REVIEWER`)
 - [ ] `C0-OWNER-AUTH` — C0 owner authentication is UNBOUND (provenance: `SEMANTICS_BLOCKER_CATALOG:review_policy:C0_OWNER_AUTHENTICATOR`)
+- [ ] `C0-TARGET-ALLOCATION-REVIEW` — current task target allocations have no independently authenticated review (provenance: `SEMANTICS_BLOCKER_CATALOG:closure_task_bindings.v1.json:target_allocation_review_state`)
 - [ ] `LEGACY_B00_REALLOCATION_REQUIRED` — legacy B00 tasks require explicit owner reallocation (provenance: `SEMANTICS_BLOCKER_CATALOG:closure_task_bindings.v1.json`)
-- [ ] `RECEIPT::C0` — required evidence-only receipt is not merged (provenance: `PATH_LAW:NOT_APPLICABLE_CONTROL_FREEZE`)
 - [ ] `REVIEW-SLOT::C0::C0_OWNER_AUTHENTICATOR` — C0_OWNER_AUTHENTICATOR provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:CONTROL_FREEZE::C0::sha256:3a2152de236540099955b21e9efef846775d1aee0d15af86eafabecb954cc230:C0_OWNER_AUTHENTICATOR`)
-- [ ] `REVIEW-SLOT::C0::RECEIPT_REVIEWER` — RECEIPT_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:CONTROL_FREEZE::C0::sha256:3a2152de236540099955b21e9efef846775d1aee0d15af86eafabecb954cc230:RECEIPT_REVIEWER`)
 - [ ] `REVIEW-SLOT::C0::SOURCE_REVIEWER` — SOURCE_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:CONTROL_FREEZE::C0::sha256:3a2152de236540099955b21e9efef846775d1aee0d15af86eafabecb954cc230:SOURCE_REVIEWER`)
 
 ## `ORIGIN_REPAIR::B00R_G2::sha256:71b011d46c6a7ebd092bda6d2d303572c9a44508bd126ff9a50e2e5bad40eaf5`
@@ -27,7 +26,6 @@ Safety baseline: `OFF / OFF / OFF / LIVE`. No deployment, restart, MCP enablemen
 - [ ] `RECEIPT::B00R_G2` — required evidence-only receipt is not merged (provenance: `PATH_LAW:evidence/receipts/B00R.g2.receipt.v3.json`)
 - [ ] `REVIEW-SLOT::B00R_G2::RECEIPT_REVIEWER` — RECEIPT_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B00R_G2::sha256:71b011d46c6a7ebd092bda6d2d303572c9a44508bd126ff9a50e2e5bad40eaf5:RECEIPT_REVIEWER`)
 - [ ] `REVIEW-SLOT::B00R_G2::SOURCE_REVIEWER` — SOURCE_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B00R_G2::sha256:71b011d46c6a7ebd092bda6d2d303572c9a44508bd126ff9a50e2e5bad40eaf5:SOURCE_REVIEWER`)
-- [ ] `RUNTIME::B00R_G2` — applicable identical-subject runtime proof is NOT_ATTESTED (provenance: `TEST_LAYER:T8`)
 
 ## `ORIGIN_REPAIR::B01C::sha256:7d6e36d32db8e3eee19aa6fd446bdc48644f70916ef09d939f113f19c5a6db5e`
 
@@ -36,30 +34,31 @@ Safety baseline: `OFF / OFF / OFF / LIVE`. No deployment, restart, MCP enablemen
 - [ ] `RECEIPT::B01C` — required evidence-only receipt is not merged (provenance: `PATH_LAW:evidence/receipts/B01C.receipt.v3.json`)
 - [ ] `REVIEW-SLOT::B01C::RECEIPT_REVIEWER` — RECEIPT_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B01C::sha256:7d6e36d32db8e3eee19aa6fd446bdc48644f70916ef09d939f113f19c5a6db5e:RECEIPT_REVIEWER`)
 - [ ] `REVIEW-SLOT::B01C::SOURCE_REVIEWER` — SOURCE_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B01C::sha256:7d6e36d32db8e3eee19aa6fd446bdc48644f70916ef09d939f113f19c5a6db5e:SOURCE_REVIEWER`)
-- [ ] `RUNTIME::B01C` — applicable identical-subject runtime proof is NOT_ATTESTED (provenance: `TEST_LAYER:T8`)
 
-## `ORIGIN_REPAIR::B02C::sha256:b39df55b17320f8638d440ecada4dcfd35ff631fb9006f5a5acdce33207bda27`
+## `ORIGIN_REPAIR::B02C::sha256:c7362e128a8d249ad1075769a314baacd5d7993a62e2b374ed22ea8eb7b3e5bf`
 
 - [ ] `ANCHOR::B02C` — required protected anchor is not published (provenance: `PATH_LAW:B02C_RECEIPT_ANCHOR`)
+- [ ] `B02C-E01-OWNER-RECEIPT` — E01 F01 owner-repository receipt slot is UNBOUND and NOT_ATTESTED (provenance: `SEMANTICS_BLOCKER_CATALOG:B02C_ACCEPTANCE_PROFILE_V1`)
 - [ ] `PREDECESSOR::B02C` — exact predecessor is not CLOSED (provenance: `MILESTONE_DEPENDENCY:ORIGIN_REPAIR::B01C::sha256:7d6e36d32db8e3eee19aa6fd446bdc48644f70916ef09d939f113f19c5a6db5e`)
 - [ ] `RECEIPT::B02C` — required evidence-only receipt is not merged (provenance: `PATH_LAW:evidence/receipts/B02C.receipt.v3.json`)
-- [ ] `REVIEW-SLOT::B02C::RECEIPT_REVIEWER` — RECEIPT_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B02C::sha256:b39df55b17320f8638d440ecada4dcfd35ff631fb9006f5a5acdce33207bda27:RECEIPT_REVIEWER`)
-- [ ] `REVIEW-SLOT::B02C::SOURCE_REVIEWER` — SOURCE_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B02C::sha256:b39df55b17320f8638d440ecada4dcfd35ff631fb9006f5a5acdce33207bda27:SOURCE_REVIEWER`)
+- [ ] `REVIEW-SLOT::B02C::RECEIPT_REVIEWER` — RECEIPT_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B02C::sha256:c7362e128a8d249ad1075769a314baacd5d7993a62e2b374ed22ea8eb7b3e5bf:RECEIPT_REVIEWER`)
+- [ ] `REVIEW-SLOT::B02C::SOURCE_REVIEWER` — SOURCE_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B02C::sha256:c7362e128a8d249ad1075769a314baacd5d7993a62e2b374ed22ea8eb7b3e5bf:SOURCE_REVIEWER`)
 - [ ] `RUNTIME::B02C` — applicable identical-subject runtime proof is NOT_ATTESTED (provenance: `TEST_LAYER:T8`)
 
-## `ORIGIN_REPAIR::B03C::sha256:fb31fc7a907297c0efe67d88e926ed744c2d7753536d3ddf858ada6778a0b8ec`
+## `ORIGIN_REPAIR::B03C::sha256:e27e4fd37d6dbf04159477a9fdb1ffa6f5d2838eb109085f1ccde09980a8ae24`
 
 - [ ] `ANCHOR::B03C` — required protected anchor is not published (provenance: `PATH_LAW:B03C_RECEIPT_ANCHOR`)
-- [ ] `PREDECESSOR::B03C` — exact predecessor is not CLOSED (provenance: `MILESTONE_DEPENDENCY:ORIGIN_REPAIR::B02C::sha256:b39df55b17320f8638d440ecada4dcfd35ff631fb9006f5a5acdce33207bda27`)
+- [ ] `B03C-E01-OWNER-RECEIPT` — E01 F07 owner-repository receipt slot is UNBOUND and NOT_ATTESTED (provenance: `SEMANTICS_BLOCKER_CATALOG:B03C_ACCEPTANCE_PROFILE_V1`)
+- [ ] `PREDECESSOR::B03C` — exact predecessor is not CLOSED (provenance: `MILESTONE_DEPENDENCY:ORIGIN_REPAIR::B02C::sha256:c7362e128a8d249ad1075769a314baacd5d7993a62e2b374ed22ea8eb7b3e5bf`)
 - [ ] `RECEIPT::B03C` — required evidence-only receipt is not merged (provenance: `PATH_LAW:evidence/receipts/B03C.receipt.v3.json`)
-- [ ] `REVIEW-SLOT::B03C::RECEIPT_REVIEWER` — RECEIPT_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B03C::sha256:fb31fc7a907297c0efe67d88e926ed744c2d7753536d3ddf858ada6778a0b8ec:RECEIPT_REVIEWER`)
-- [ ] `REVIEW-SLOT::B03C::SOURCE_REVIEWER` — SOURCE_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B03C::sha256:fb31fc7a907297c0efe67d88e926ed744c2d7753536d3ddf858ada6778a0b8ec:SOURCE_REVIEWER`)
+- [ ] `REVIEW-SLOT::B03C::RECEIPT_REVIEWER` — RECEIPT_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B03C::sha256:e27e4fd37d6dbf04159477a9fdb1ffa6f5d2838eb109085f1ccde09980a8ae24:RECEIPT_REVIEWER`)
+- [ ] `REVIEW-SLOT::B03C::SOURCE_REVIEWER` — SOURCE_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B03C::sha256:e27e4fd37d6dbf04159477a9fdb1ffa6f5d2838eb109085f1ccde09980a8ae24:SOURCE_REVIEWER`)
 - [ ] `RUNTIME::B03C` — applicable identical-subject runtime proof is NOT_ATTESTED (provenance: `TEST_LAYER:T8`)
 
 ## `ORIGIN_REPAIR::B04C::sha256:f9f42e48fc0a642b16a2512854a39acd595e9f45070db4580db487eaaca274c2`
 
 - [ ] `ANCHOR::B04C` — required protected anchor is not published (provenance: `PATH_LAW:B04C_RECEIPT_ANCHOR`)
-- [ ] `PREDECESSOR::B04C` — exact predecessor is not CLOSED (provenance: `MILESTONE_DEPENDENCY:ORIGIN_REPAIR::B03C::sha256:fb31fc7a907297c0efe67d88e926ed744c2d7753536d3ddf858ada6778a0b8ec`)
+- [ ] `PREDECESSOR::B04C` — exact predecessor is not CLOSED (provenance: `MILESTONE_DEPENDENCY:ORIGIN_REPAIR::B03C::sha256:e27e4fd37d6dbf04159477a9fdb1ffa6f5d2838eb109085f1ccde09980a8ae24`)
 - [ ] `RECEIPT::B04C` — required evidence-only receipt is not merged (provenance: `PATH_LAW:evidence/receipts/B04C.receipt.v3.json`)
 - [ ] `REVIEW-SLOT::B04C::RECEIPT_REVIEWER` — RECEIPT_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B04C::sha256:f9f42e48fc0a642b16a2512854a39acd595e9f45070db4580db487eaaca274c2:RECEIPT_REVIEWER`)
 - [ ] `REVIEW-SLOT::B04C::SOURCE_REVIEWER` — SOURCE_REVIEWER provider identity is UNBOUND (provenance: `REVIEW_POLICY_SLOT:ORIGIN_REPAIR::B04C::sha256:f9f42e48fc0a642b16a2512854a39acd595e9f45070db4580db487eaaca274c2:SOURCE_REVIEWER`)

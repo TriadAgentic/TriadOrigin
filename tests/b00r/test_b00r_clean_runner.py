@@ -282,8 +282,8 @@ def _build_valid_bundle(
             b"OK: E02 runtime has no network, credential, or venue-order capability\n"
         ),
         "e2e-audit": b"".join(
-            f"PASS stage-{index:02d}: ok\n".encode() for index in range(24)
-        ) + b"E2E AUDIT: all 24 stages passed\n",
+            f"PASS stage-{index:02d}: ok\n".encode() for index in range(25)
+        ) + b"E2E AUDIT: all 25 stages passed\n",
         "build-ledger": b"OK: build ledger current (1 tasks; review current)\n",
         "validate-combined-dag": "OK: combined DAG valid — 1 task\n".encode(),
     }

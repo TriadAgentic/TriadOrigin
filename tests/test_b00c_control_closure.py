@@ -10,14 +10,15 @@ Proves the reconciled-plan corrections hold against the vendored machine law:
     a P0 defect) and 32 refusal codes and 17 timing bounds;
   * the combined RC3+RC4 DAG validator passes, and each of its hard-fail checks actually fails
     on a poisoned input;
-  * the build ledger carries a row-level review record covering every task, and --verify fails
-    without it;
+  * the historical build-ledger review is bound to its exact frozen REVIEWED_V2 subject, never
+    silently promoted to the current candidate, and --verify fails without either artifact;
   * the hardened gate-receipt PASS semantics refuse stale windows, wildcard/empty scope,
     placeholder digests, non-independent approvers, open blockers, and missing rollback proof.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import pathlib
 import re
@@ -146,12 +147,22 @@ class TestCombinedDagValidator:
 
 
 class TestLedgerReviewRecord:
-    def test_review_covers_every_task(self):
+    def test_review_covers_exact_frozen_v2_subject(self):
         review = json.loads((CONTROL / "build_ledger_review.v1.json").read_text())
+        subject_path = CONTROL / "closure/predecessors/build_ledger.REVIEWED_V2.json"
+        subject = json.loads(subject_path.read_text())
+        assert hashlib.sha256(subject_path.read_bytes()).hexdigest() == (
+            "78f6ce7254390997d54ce6732a46e138f24a56502677ba469dff22bf92f2b51e"
+        )
+        assert subject["ledger_version"] == review["ledger_version"] == "REVIEWED_V2"
+        assert LEDGER["ledger_version"] == "CANDIDATE_V3"
         assert review["reviewer"]
         reviewed = {row["id"] for row in review["rows"]}
-        assert reviewed == {row["id"] for row in LEDGER["tasks"]}
-        assert review["row_count"] == len(LEDGER["tasks"])
+        assert reviewed == {row["id"] for row in subject["tasks"]}
+        assert review["row_count"] == len(subject["tasks"])
+        subject_rows = {row["id"]: row for row in subject["tasks"]}
+        candidate_rows = {row["id"]: row for row in LEDGER["tasks"]}
+        assert sum(candidate_rows[k] != subject_rows[k] for k in candidate_rows) == 94
 
     def test_review_dispositions_closed_vocabulary(self):
         review = json.loads((CONTROL / "build_ledger_review.v1.json").read_text())
@@ -174,6 +185,22 @@ class TestLedgerReviewRecord:
             capture_output=True, text=True)
         assert result.returncode == 1
         assert "review record missing" in result.stderr
+
+    def test_verify_fails_without_frozen_review_subject(self, tmp_path):
+        import shutil
+        tree = tmp_path / "tree"
+        (tree / "docs").mkdir(parents=True)
+        shutil.copytree(CONTROL, tree / "docs" / "control")
+        (tree / "docs/control/closure/predecessors/build_ledger.REVIEWED_V2.json").unlink()
+        tool_dir = tree / "tools"
+        tool_dir.mkdir()
+        (tool_dir / "build_ledger.py").write_text(
+            (ROOT / "tools" / "build_ledger.py").read_text())
+        result = subprocess.run(
+            [PY, str(tool_dir / "build_ledger.py"), "--verify"],
+            capture_output=True, text=True)
+        assert result.returncode == 1
+        assert "frozen REVIEWED_V2 review subject missing" in result.stderr
 
 
 def _gate_receipt_event(**payload_patch):

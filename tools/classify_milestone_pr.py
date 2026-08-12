@@ -50,7 +50,9 @@ ALLOWED_SOURCE_EXACT_PATHS = frozenset({
     "CLAUDE.md",
     "README.md",
     "docs/control/SOURCE_HASHES.sha256",
+    "docs/control/README.md",
     "docs/control/b00r_policy.v2.json",
+    "docs/control/build_ledger.json",
     "docs/governance/B00R_EXTERNAL_AUTHORITY_AND_CLEAN_RUNNER_HANDOFF.md",
     "docs/governance/B00R_GENERATION_LEDGER.v1.json",
     "docs/governance/README.md",
@@ -74,16 +76,20 @@ ALLOWED_SOURCE_EXACT_PATHS = frozenset({
     "src/triad_origin/governance.py",
     "tests/contracts/test_promotion_b01c.py",
     "tests/test_ci_integrity.py",
+    "tests/test_b00c_control_closure.py",
     "tests/test_wheel_distribution.py",
     "tests/tools/test_acceptance_profile_b01c.py",
     "tests/tools/test_closure_control.py",
+    "tests/tools/test_e2e_audit.py",
     "tests/tools/test_validate_b_receipt_failclosed_b01c.py",
     "tests/tools/test_verify_b01c_entry.py",
+    "tests/tools/test_verify_source_hashes.py",
     "tools/b00r_clean_runner.py",
     "tools/b00r_clean_runner_capture.py",
     "tools/b00r_gate.py",
     "tools/b00r_pytest_inventory.py",
     "tools/build_evidence_manifest.py",
+    "tools/build_ledger.py",
     "tools/classify_milestone_pr.py",
     "tools/closure_control.py",
     "tools/collect_test_ids.py",
@@ -257,6 +263,10 @@ def changes_from_git(repo: pathlib.Path, base_sha: str, head_sha: str) -> list[C
     merge_base = _git(repo, "merge-base", base, head).decode().strip()
     if HEX40_RE.fullmatch(merge_base) is None:
         raise ClassificationError(f"MERGE_BASE_INVALID: {merge_base!r}")
+    if merge_base != base:
+        raise ClassificationError(
+            f"BASE_SHA_NOT_ANCESTOR: merge base {merge_base} != base {base}"
+        )
     raw = _git(repo, "diff", "--name-status", "--no-renames", "-z", merge_base, head, "--")
     fields = raw.split(b"\0")
     if fields and fields[-1] == b"":

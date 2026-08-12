@@ -35,12 +35,49 @@
     "payload": {
       "additionalProperties": false,
       "properties": {
+        "allocation_summary": {
+          "additionalProperties": false,
+          "properties": {
+            "classified_target_task_count": {
+              "const": 1153
+            },
+            "external_formula_receipt_task_count": {
+              "const": 42
+            },
+            "external_obligation_task_count": {
+              "const": 418
+            },
+            "target_allocation_review_state": {
+              "const": "UNBOUND"
+            },
+            "unallocated_task_count": {
+              "const": 97
+            },
+            "unallocated_task_ids_sha256": {
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "classified_target_task_count",
+            "external_formula_receipt_task_count",
+            "external_obligation_task_count",
+            "target_allocation_review_state",
+            "unallocated_task_count",
+            "unallocated_task_ids_sha256"
+          ],
+          "type": "object"
+        },
         "blocking_dispositions": {
           "items": {
             "additionalProperties": false,
             "properties": {
               "disposition_id": {
-                "const": "LEGACY_B00_REALLOCATION_REQUIRED"
+                "enum": [
+                  "C0-CURRENT-LEDGER-REVIEW",
+                  "C0-TARGET-ALLOCATION-REVIEW",
+                  "LEGACY_B00_REALLOCATION_REQUIRED"
+                ]
               },
               "reason": {
                 "minLength": 1,
@@ -61,32 +98,31 @@
             ],
             "type": "object"
           },
-          "maxItems": 1,
-          "minItems": 1,
+          "maxItems": 3,
+          "minItems": 3,
           "type": "array"
         },
         "classification": {
           "const": "NORMATIVE_TASK_BINDING_SAFE_HOLD"
         },
-        "mapping_law": {
-          "minLength": 1,
-          "type": "string"
-        },
-        "program": {
-          "const": "TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11"
-        },
-        "reviewed_rows": {
+        "legacy_review_artifact": {
           "additionalProperties": false,
           "properties": {
             "byte_sha256": {
               "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
               "type": "string"
             },
+            "classification": {
+              "const": "HISTORICAL_ONLY"
+            },
             "path": {
               "const": "docs/control/build_ledger_review.v1.json"
             },
             "review_version": {
               "const": "build-ledger-review.v1"
+            },
+            "reviewed_ledger_version": {
+              "const": "REVIEWED_V2"
             },
             "row_count": {
               "const": 1250
@@ -96,7 +132,74 @@
             "path",
             "byte_sha256",
             "review_version",
+            "reviewed_ledger_version",
+            "classification",
             "row_count"
+          ],
+          "type": "object"
+        },
+        "mapping_law": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "program": {
+          "const": "TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11"
+        },
+        "review_coverage": {
+          "additionalProperties": false,
+          "properties": {
+            "changed_row_count": {
+              "const": 94
+            },
+            "changed_task_ids_sha256": {
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "current_ledger_review_state": {
+              "const": "UNBOUND"
+            },
+            "target_allocation_review_state": {
+              "const": "UNBOUND"
+            },
+            "unchanged_row_count": {
+              "const": 1156
+            }
+          },
+          "required": [
+            "changed_row_count",
+            "changed_task_ids_sha256",
+            "current_ledger_review_state",
+            "target_allocation_review_state",
+            "unchanged_row_count"
+          ],
+          "type": "object"
+        },
+        "review_subject_ledger": {
+          "additionalProperties": false,
+          "properties": {
+            "byte_sha256": {
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "ledger_version": {
+              "const": "REVIEWED_V2"
+            },
+            "path": {
+              "const": "docs/control/closure/predecessors/build_ledger.REVIEWED_V2.json"
+            },
+            "row_count": {
+              "const": 1250
+            },
+            "source_commit": {
+              "const": "b641edcf7e921e93030f681ae3e6339933f2bcc8"
+            }
+          },
+          "required": [
+            "path",
+            "byte_sha256",
+            "ledger_version",
+            "row_count",
+            "source_commit"
           ],
           "type": "object"
         },
@@ -108,13 +211,23 @@
                 "minLength": 1,
                 "type": "string"
               },
+              "legacy_review_row_digest": {
+                "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+                "type": "string"
+              },
               "legacy_task_id": {
                 "minLength": 1,
                 "type": "string"
               },
-              "review_row_digest": {
+              "review_subject_row_digest": {
                 "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
                 "type": "string"
+              },
+              "source_review_state": {
+                "enum": [
+                  "CHANGED_REVIEW_REQUIRED",
+                  "UNCHANGED_SINCE_REVIEW_SUBJECT"
+                ]
               },
               "source_row_digest": {
                 "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
@@ -142,17 +255,108 @@
                   {
                     "additionalProperties": false,
                     "properties": {
-                      "kind": {
-                        "const": "XC01"
+                      "consumer_milestone_identities": {
+                        "items": {
+                          "pattern": "^(?:ORIGIN_REPAIR::(?:B01C|B02C|B03C|B04C|B05C|B06R|B07|B08|B09)|ESTATE_CROSS_REPO::XC01)::sha256:(?!0{64}$)[0-9a-f]{64}$",
+                          "type": "string"
+                        },
+                        "maxItems": 1,
+                        "type": "array",
+                        "uniqueItems": true
                       },
-                      "milestone_identity": {
+                      "formula_id": {
+                        "pattern": "^F(?:0[0-9]|1[0-9]|2[0-3])$",
+                        "type": "string"
+                      },
+                      "implementation_milestone_identity": {
+                        "pattern": "^(?:ORIGIN_REPAIR::(?:B01C|B02C|B03C|B04C|B05C|B06R|B07|B08|B09)|ESTATE_CROSS_REPO::XC01)::sha256:(?!0{64}$)[0-9a-f]{64}$",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "const": "FORMULA_IMPLEMENTATION"
+                      },
+                      "owner_engine": {
+                        "const": "E02"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "formula_id",
+                      "owner_engine",
+                      "implementation_milestone_identity",
+                      "consumer_milestone_identities"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "attestation_state": {
+                        "const": "NOT_ATTESTED"
+                      },
+                      "conformance_milestone_identity": {
+                        "pattern": "^(?:ORIGIN_REPAIR::(?:B01C|B02C|B03C|B04C|B05C|B06R|B07|B08|B09)|ESTATE_CROSS_REPO::XC01)::sha256:(?!0{64}$)[0-9a-f]{64}$",
+                        "type": "string"
+                      },
+                      "formula_id": {
+                        "pattern": "^F(?:01|07|20|21|22|23)$",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "const": "FORMULA_EXTERNAL_OWNER_RECEIPT"
+                      },
+                      "owner_engine": {
+                        "enum": [
+                          "E01",
+                          "E08",
+                          "E09",
+                          "E10"
+                        ]
+                      },
+                      "owner_receipt_slot_id": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "provider_binding_state": {
+                        "const": "UNBOUND"
+                      },
+                      "receipt_milestone_identity": {
                         "pattern": "^(?:ORIGIN_REPAIR::(?:B01C|B02C|B03C|B04C|B05C|B06R|B07|B08|B09)|ESTATE_CROSS_REPO::XC01)::sha256:(?!0{64}$)[0-9a-f]{64}$",
                         "type": "string"
                       }
                     },
                     "required": [
                       "kind",
-                      "milestone_identity"
+                      "formula_id",
+                      "owner_engine",
+                      "owner_receipt_slot_id",
+                      "receipt_milestone_identity",
+                      "conformance_milestone_identity",
+                      "provider_binding_state",
+                      "attestation_state"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "const": "EXTERNAL_OBLIGATION"
+                      },
+                      "owner_binding_state": {
+                        "const": "UNBOUND"
+                      },
+                      "owner_lane": {
+                        "enum": [
+                          "ESTATE",
+                          "OPERATOR"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "owner_lane",
+                      "owner_binding_state"
                     ],
                     "type": "object"
                   },
@@ -189,13 +393,19 @@
                     "type": "object"
                   }
                 ]
+              },
+              "target_allocation_review_state": {
+                "const": "UNBOUND"
               }
             },
             "required": [
               "legacy_task_id",
               "legacy_milestone",
               "source_row_digest",
-              "review_row_digest",
+              "review_subject_row_digest",
+              "legacy_review_row_digest",
+              "source_review_state",
+              "target_allocation_review_state",
               "target"
             ],
             "type": "object"
@@ -212,7 +422,7 @@
               "type": "string"
             },
             "ledger_version": {
-              "const": "REVIEWED_V3"
+              "const": "CANDIDATE_V3"
             },
             "path": {
               "const": "docs/control/build_ledger.json"
@@ -231,13 +441,16 @@
         }
       },
       "required": [
-        "classification",
-        "program",
-        "source_ledger",
-        "reviewed_rows",
-        "mapping_law",
+        "allocation_summary",
         "blocking_dispositions",
-        "rows"
+        "classification",
+        "legacy_review_artifact",
+        "mapping_law",
+        "program",
+        "review_coverage",
+        "review_subject_ledger",
+        "rows",
+        "source_ledger"
       ],
       "type": "object"
     },

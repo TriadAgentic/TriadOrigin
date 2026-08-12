@@ -52,6 +52,25 @@ def test_neg001_gap_and_scope_rows_are_explicit_governance():
                             "gate": "G-1", "phase": "P-1"})[2] == "R8_GOVERNANCE_CLOSURE"
 
 
+@pytest.mark.parametrize("task_id,formula_refs", [
+    ("FORM-F24-01", "F24"),
+    ("FORM-F23-08", "F23"),
+    ("FORM-F01-01", "F07"),
+    ("FORM-F1-01", "F01"),
+])
+def test_neg001_formula_namespace_is_exact_and_has_no_default_route(task_id, formula_refs):
+    from tools import build_ledger as bl
+    with pytest.raises(bl.LedgerClassificationError, match="FORMULA_NAMESPACE_INVALID"):
+        bl.classify_rc3({
+            "id": task_id,
+            "row_class": "FORMULA_ATOMIC",
+            "formula_refs": formula_refs,
+            "node": "ORIGIN",
+            "gate": "",
+            "phase": "",
+        })
+
+
 # --- NEG-004 · same bundle id with changed bytes fails (immutability) -----------------------------
 def test_neg004_receipt_v3_immutable_schema_registered():
     # The v3 schema is a NEW additive identity; the historical v2 is preserved untouched.

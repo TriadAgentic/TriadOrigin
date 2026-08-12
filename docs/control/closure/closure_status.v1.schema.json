@@ -104,7 +104,10 @@
                 "type": "string"
               },
               "receipt_state": {
-                "const": "BLOCKED"
+                "enum": [
+                  "BLOCKED",
+                  "NOT_APPLICABLE"
+                ]
               },
               "runtime_state": {
                 "enum": [
@@ -265,12 +268,24 @@
         "task_binding_reference": {
           "additionalProperties": false,
           "properties": {
+            "changed_review_required_rows": {
+              "const": 94
+            },
+            "classified_target_task_count": {
+              "const": 1153
+            },
             "digest_domain": {
               "const": "triad.closure.task_binding.artifact.v1"
             },
             "digest_sha256": {
               "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
               "type": "string"
+            },
+            "external_formula_receipt_task_count": {
+              "const": 42
+            },
+            "external_obligation_task_count": {
+              "const": 418
             },
             "path": {
               "const": "docs/control/closure/closure_task_bindings.v1.json"
@@ -280,14 +295,34 @@
             },
             "schema": {
               "const": "triad.closure.task_binding.v1"
+            },
+            "source_ledger_review_state": {
+              "const": "UNBOUND"
+            },
+            "target_allocation_review_state": {
+              "const": "UNBOUND"
+            },
+            "unallocated_task_count": {
+              "const": 97
+            },
+            "unchanged_review_subject_rows": {
+              "const": 1156
             }
           },
           "required": [
-            "path",
-            "schema",
+            "changed_review_required_rows",
+            "classified_target_task_count",
             "digest_domain",
             "digest_sha256",
-            "row_count"
+            "external_formula_receipt_task_count",
+            "external_obligation_task_count",
+            "path",
+            "row_count",
+            "schema",
+            "source_ledger_review_state",
+            "target_allocation_review_state",
+            "unallocated_task_count",
+            "unchanged_review_subject_rows"
           ],
           "type": "object"
         }

@@ -336,6 +336,27 @@ def test_git_classifier_rejects_all_zero_push_before_sha(tmp_path):
         classifier.changes_from_git(repo, "0" * 40, head)
 
 
+def test_git_classifier_rejects_diverged_base_that_is_not_head_ancestor(tmp_path):
+    repo = tmp_path / "repo"
+    common = _init_repo(repo)
+    main_branch = _git(repo, "branch", "--show-current")
+    (repo / "src" / "base-only.txt").write_text("base\n", encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "base-only commit")
+    diverged_base = _git(repo, "rev-parse", "HEAD")
+
+    _git(repo, "checkout", "-qb", "diverged-head", common)
+    (repo / "docs" / "control").mkdir(parents=True)
+    (repo / "docs" / "control" / "README.md").write_text("head\n", encoding="utf-8")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "diverged head")
+    head = _git(repo, "rev-parse", "HEAD")
+    assert _git(repo, "branch", "--show-current") != main_branch
+
+    with pytest.raises(classifier.ClassificationError, match="BASE_SHA_NOT_ANCESTOR"):
+        classifier.changes_from_git(repo, diverged_base, head)
+
+
 def _write_closed_evidence(root: pathlib.Path) -> tuple[pathlib.Path, pathlib.Path]:
     closed = root / "evidence" / "B00R_G2"
     closed.mkdir(parents=True)

@@ -15,8 +15,9 @@ anything.
 | `rc4_control_bundle.json` | RC4 lever addendum law: four-plane law, lever law, shadow law, 32 refusals, 17 timings, 135 LEV tasks, 125 verifications, supersessions, engine census |
 | `rc4_addendum_builder.py` | RC4 document builder (provenance) |
 | `SOURCE_HASHES.sha256` | SHA-256 pins for every vendored control/spec/report artifact |
-| `build_ledger.json` | Generated partition of all 1,250 tasks into build milestones / named lanes — regenerate with `python tools/build_ledger.py`; CI runs `--verify` |
+| `build_ledger.json` | Generated `CANDIDATE_V3` partition of all 1,250 tasks into build milestones / named lanes — regenerate with `python tools/build_ledger.py`; CI runs `--verify` |
 | `build_ledger_overrides.json` | Reviewed reclassifications (take precedence over the heuristic rules) |
+| `closure/predecessors/build_ledger.REVIEWED_V2.json` | Exact frozen byte subject of the historical B00C row review; current-row drift is computed against this file |
 
 Extraction provenance: the RC3 artifacts were extracted from the `<script type="application/json">`
 blocks embedded in `docs/spec_rc3/…RC3.html` (ids `rc3-overlay-schema`, `rc3-normative-overlay`,
@@ -26,10 +27,13 @@ blocks embedded in `docs/spec_rc3/…RC3.html` (ids `rc3-overlay-schema`, `rc3-n
 
 ## B00C · row review + combined DAG (2026-08-09)
 
-The ledger is `REVIEWED_V2`: the reconciled plan's corrections are applied to the rule table
-(F01/F07 → E01 estate lane; four-plane substrate → B05; capsules/candidates → B06), and every
-one of the 1,250 rows carries a reviewer/disposition record in `build_ledger_review.v1.json`
-(`--verify` fails without full coverage/agreement). `tools/validate_combined_dag.py` validates
+The historical ledger is `REVIEWED_V2`: the reconciled plan's corrections are applied to the rule
+table (F01/F07 → E01 estate lane; four-plane substrate → B05; capsules/candidates → B06), and every
+one of its 1,250 rows carries a reviewer/disposition record in `build_ledger_review.v1.json`.
+That review is byte-bound to `closure/predecessors/build_ledger.REVIEWED_V2.json`; it does not
+review the current `CANDIDATE_V3` ledger or its target allocations. `--verify` fails if the frozen
+subject/review relationship is incomplete and reports current drift as review-required.
+`tools/validate_combined_dag.py` validates
 the combined RC3+RC4 composition: referential closure, cycle freedom, one scheduling owner per
 task, source-authority preservation, reviewed inversion classes, and cross-lane blocker
 visibility. Neither artifact marks any task complete.

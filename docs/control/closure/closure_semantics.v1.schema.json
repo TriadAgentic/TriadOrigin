@@ -729,7 +729,7 @@
         },
         "formula_ids": {
           "items": {
-            "pattern": "^F(?:20|21|22|23)$",
+            "pattern": "^F(?:01|07|20|21|22|23)$",
             "type": "string"
           },
           "minItems": 1,
@@ -738,6 +738,7 @@
         },
         "owner_engine": {
           "enum": [
+            "E01",
             "E08",
             "E09",
             "E10"
@@ -747,7 +748,7 @@
           "const": "UNBOUND"
         },
         "receipt_slot_id": {
-          "pattern": "^XC01-E(?:08-F20|09-F21-F22|10-F23)$",
+          "pattern": "^(?:B02C-E01-F01|B03C-E01-F07|XC01-E08-F20|XC01-E09-F21-F22|XC01-E10-F23)$",
           "type": "string"
         }
       },
@@ -797,7 +798,11 @@
           "if": {
             "properties": {
               "profile_id": {
-                "const": "XC01_ACCEPTANCE_PROFILE_V1"
+                "enum": [
+                  "B02C_ACCEPTANCE_PROFILE_V1",
+                  "B03C_ACCEPTANCE_PROFILE_V1",
+                  "XC01_ACCEPTANCE_PROFILE_V1"
+                ]
               }
             }
           },
@@ -886,7 +891,7 @@
             "$ref": "#/$defs/ownerReceiptSlot"
           },
           "maxItems": 3,
-          "minItems": 3,
+          "minItems": 1,
           "type": "array"
         },
         "prerequisite_identities": {
