@@ -8,6 +8,12 @@ pipeline. Its fixed claim is `DIAGNOSTIC_READ_ONLY_NO_AUTHORITY` and its authori
 money path, activate a plane, admit a candidate, size risk, send an order, merge code, or deploy
 anything.
 
+The complete acquisition, schema, topology, conservation, GUI, validation, deployment, rollback,
+and merge procedure is in [`INTEGRATION_GUIDE.md`](INTEGRATION_GUIDE.md). The intentionally
+incomplete [`status_only_input.v1.json`](examples/status_only_input.v1.json) fixture is the safe
+first integration test; it demonstrates honest missing evidence and must not be used as runtime
+proof.
+
 The repository's current safe baseline is:
 
 | Dimension | Baseline |
@@ -110,6 +116,13 @@ The HTML renderer verifies `content_digest` before rendering and rejects a repor
 digest creation. The HTML view is a convenience; candidate traces, route identities, terminal
 evidence references, and zero proofs remain in the JSON companion artifact.
 
+The adjusted HTML uses the useful visual grammar of the legacy dense matrix and target-topology
+poster while correcting their semantics. It renders one canonical E00--E10 stage card, groups the
+two E09 paths, shows asserted Kairos/E03 and Logos/E06 mappings separately from E05, keeps all four
+populations separate, and derives every headline count from report rows. It has no JavaScript,
+external font/CDN, endpoint, browser storage, form, or network connection. It never reproduces the
+legacy board's generic `LIVE` or premature `PROMOTE` claims.
+
 ## CLI
 
 From the repository root:
@@ -118,6 +131,12 @@ From the repository root:
 PYTHONPATH=src python tools/generate_full_pipeline_scorecard.py evidence.json
 PYTHONPATH=src python tools/generate_full_pipeline_scorecard.py evidence.json \
   --json-output scorecard.json --html-output scorecard.html
+
+# Safe first render: intentionally WITHHELD/STATUS_ONLY evidence
+PYTHONPATH=src python tools/generate_full_pipeline_scorecard.py \
+  docs/scorecard/examples/status_only_input.v1.json --diagnostic-only \
+  --json-output /tmp/triad-scorecard.json \
+  --html-output /tmp/triad-scorecard.html
 ```
 
 Without `--json-output`, canonical JSON is written to standard output. A successfully built

@@ -1,0 +1,137 @@
+{
+  "schema": "triad.origin.full_pipeline_scorecard.input.v1",
+  "report_id": "scorecard:example:status-only",
+  "as_of_us": 1786464000000000,
+  "components": [
+    {
+      "component_id": "unbound:e00:raw-ingress",
+      "stage": "E00",
+      "role": "raw fact ingress",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": []
+    },
+    {
+      "component_id": "unbound:e01:canonical-state",
+      "stage": "E01",
+      "role": "canonical-state producer",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": []
+    },
+    {
+      "component_id": "triad-origin-e02",
+      "stage": "E02",
+      "role": "feature structure and candidate producer",
+      "mapping_status": "RATIFIED",
+      "mapping_evidence_refs": [
+        "README.md#e02-boundary",
+        "docs/SPEC_INDEX.md#e02-ownership-map"
+      ],
+      "authority_claims": []
+    },
+    {
+      "component_id": "triad-kairos",
+      "stage": "E03",
+      "role": "advisory forecast provider",
+      "mapping_status": "OPERATOR_ASSERTED_UNATTESTED",
+      "mapping_evidence_refs": [],
+      "authority_claims": []
+    },
+    {
+      "component_id": "unbound:e04:specialists",
+      "stage": "E04",
+      "role": "typed advisory specialists only",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": []
+    },
+    {
+      "component_id": "unbound:e05:fusion-coordinator",
+      "stage": "E05",
+      "role": "fan-out join and calibration only",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": []
+    },
+    {
+      "component_id": "triad-logos",
+      "stage": "E06",
+      "role": "advisory language and knowledge provider",
+      "mapping_status": "OPERATOR_ASSERTED_UNATTESTED",
+      "mapping_evidence_refs": [],
+      "authority_claims": []
+    },
+    {
+      "component_id": "unbound:e07:decision-policy",
+      "stage": "E07",
+      "role": "sole admission and policy authority",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": []
+    },
+    {
+      "component_id": "unbound:e08:risk-governance",
+      "stage": "E08",
+      "role": "sole sizing reservation and allow deny authority",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": []
+    },
+    {
+      "component_id": "unbound:e09:execution",
+      "stage": "E09",
+      "role": "sole venue actor and reconciliation owner",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": []
+    },
+    {
+      "component_id": "unbound:e10:outcomes-learning",
+      "stage": "E10",
+      "role": "outcome attribution and learning authority",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": []
+    }
+  ],
+  "posture": {
+    "desired": {
+      "venue_environment": "OFF",
+      "venue_activation": "OFF",
+      "paper_activation": "OFF",
+      "shadow_activation": "LIVE"
+    },
+    "observed": null,
+    "freshness": "UNKNOWN",
+    "reconciliation": "UNRECONCILED",
+    "attestation": "MISSING",
+    "side_effect_census_complete": null,
+    "evidence_refs": [
+      "example:no-authoritative-posture-evidence"
+    ]
+  },
+  "stages": [],
+  "edges": [],
+  "cohort": {
+    "cohort_id": "cohort:example:empty",
+    "window_start_us": 1786463940000000,
+    "window_end_us": 1786463999999999,
+    "source_watermark": "source:example:empty",
+    "source_cut_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+    "complete": true,
+    "candidate_ids": [],
+    "zero_proof": {
+      "query_digest": "2222222222222222222222222222222222222222222222222222222222222222",
+      "source_cut_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+      "source_completeness": "COMPLETE",
+      "watermark": "source:example:empty"
+    },
+    "evidence_refs": [
+      "example:closed-empty-cohort-receipt"
+    ]
+  },
+  "evaluations": [],
+  "terminals": [],
+  "metrics": []
+}

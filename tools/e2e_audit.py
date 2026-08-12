@@ -1399,7 +1399,7 @@ def b01c_contract_binding_promotion() -> None:
 
 @stage("full_pipeline_scorecard",
        "Read-only E00-E10 diagnostic: event-time routing, terminal conservation, honest "
-       "assertion cap, content digest, and HTML projection")
+       "assertion cap, content digest, and offline adjusted HTML evidence console")
 def full_pipeline_scorecard() -> None:
     from triad_origin.scorecard import (
         build_scorecard_from_dict,
@@ -1492,6 +1492,19 @@ def full_pipeline_scorecard() -> None:
     rendered = render_scorecard_html(first)
     if first["content_digest"] not in rendered or "WITHHELD" not in rendered:
         raise AssertionError("HTML projection omitted immutable identity or publication state")
+    if rendered.count('data-stage-card="') != 11:
+        raise AssertionError("adjusted GUI did not render exactly one E00-E10 stage card")
+    if any(marker in rendered.lower() for marker in ("<script", "http://", "https://", "<form")):
+        raise AssertionError("adjusted GUI acquired script, network, or form capability")
+    if "connect-src 'none'" not in rendered or "script-src 'none'" not in rendered:
+        raise AssertionError("adjusted GUI omitted its offline content-security policy")
+    if "PROMOTE</" in rendered or "Kronos" in rendered:
+        raise AssertionError("adjusted GUI revived a misleading legacy label")
+    if (
+        'Conservation result</span>\n      <span class="badge UNRECONCILED"'
+        not in rendered
+    ):
+        raise AssertionError("empty-cohort conservation rendered as a positive proof")
 
 
 @stage("c0_closure_control",
