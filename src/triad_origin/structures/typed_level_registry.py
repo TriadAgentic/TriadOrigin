@@ -246,6 +246,24 @@ class FractalPivot:
     window (any tie rejects); mirror for ``pivot_low``. Publishes only when the second right bar
     finalizes. An incomplete right window yields no pivot (silent non-emission per the formula
     row); a detected ``bar_seq`` gap resets the window cleanly; out-of-order input refuses.
+
+    v1 ERRATUM (TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F04 — RATIFY_WITH_THIS_REPAIR;
+    ``swing.fractal.closed.v1`` is RETAINED, code unchanged where already strict):
+
+    (a) STRICT_UNIQUE is the v1 tie law — the already-bound law of registry rows
+        FPB-0012/FPB-0013 (strict ``>`` for high, ``<`` for low; ANY tie rejects). Any
+        earliest/latest tie variant is a NEW research identity
+        (``swing.fractal.closed.v2-tie-earliest`` etc.), never a silent change here.
+    (b) SIMULTANEOUS_PIVOT = BOTH_EMIT — a bar that is simultaneously the strict unique
+        window max-high AND the strict unique window min-low emits BOTH ``pivot_high(i)``
+        and ``pivot_low(i)`` as separate typed atoms with distinct identity material
+        (``kind`` always differs, and ``level_ticks`` always differ: a zero-range candidate
+        cannot be strictly outside valid bars on both sides). Emission order is pinned
+        deterministic: ``pivot_high`` before ``pivot_low``.
+
+    Availability stays the close of bar ``i+R`` (never backdated to ``i``). Registry rows
+    FPB-0012/FPB-0013 keep their ``PROPOSED_RC2_MUST_RATIFY`` status — this erratum ratifies
+    the tie/simultaneous LAW, not the L=R=2 values.
     """
 
     def initial_state(self) -> State:

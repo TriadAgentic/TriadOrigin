@@ -277,6 +277,68 @@ class TestFractalPivot:
 
 
 # ---------------------------------------------------------------------------------------------
+# R-F04 v1 erratum (TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12): STRICT_UNIQUE + BOTH_EMIT
+# ---------------------------------------------------------------------------------------------
+
+
+class TestFractalPivotErratumRF04:
+    def test_both_emit_simultaneous_strict_hmax_and_lmin_yields_both_atoms(self):
+        # A huge-range bar amid flat bars: strict unique window max-high AND min-low at once.
+        highs = [10, 11, 15, 11, 10]
+        lows = [9, 8, 2, 8, 9]
+        bars = [bar(index, high, low, seq=index)
+                for index, (high, low) in enumerate(zip(highs, lows))]
+        result = transition.run(tlr.FractalPivot(), bars, F04_PARAMS)
+        levels = typed_levels(result)
+        assert levels == [
+            {
+                "event_kind": tlr.TYPED_LEVEL, "formula": "F04", "kind": tlr.PIVOT_HIGH,
+                "level_ticks": 15, "origin_event_id": "b2", "origin_bar_seq": 2,
+                "confirmed_by_event_id": "b4",
+            },
+            {
+                "event_kind": tlr.TYPED_LEVEL, "formula": "F04", "kind": tlr.PIVOT_LOW,
+                "level_ticks": 2, "origin_event_id": "b2", "origin_bar_seq": 2,
+                "confirmed_by_event_id": "b4",
+            },
+        ]
+        # Distinct identity material: the two simultaneous atoms differ in kind AND level;
+        # emission order is pinned deterministic (pivot_high before pivot_low).
+        assert levels[0]["kind"] != levels[1]["kind"]
+        assert levels[0]["level_ticks"] != levels[1]["level_ticks"]
+        # Right-edge law untouched: nothing before bar i+R finalizes.
+        early = transition.run(tlr.FractalPivot(), bars[:4], F04_PARAMS)
+        assert typed_levels(early) == []
+
+    def test_tie_in_lows_rejects_pivot_low_while_strict_high_still_publishes(self):
+        highs = [8, 9, 12, 11, 10]
+        lows = [5, 4, 1, 1, 6]  # candidate low 1 ties the right-side low 1: STRICT_UNIQUE rejects
+        bars = [bar(index, high, low, seq=index)
+                for index, (high, low) in enumerate(zip(highs, lows))]
+        result = transition.run(tlr.FractalPivot(), bars, F04_PARAMS)
+        levels = typed_levels(result)
+        assert [event["kind"] for event in levels] == [tlr.PIVOT_HIGH]
+        assert levels[0]["level_ticks"] == 12
+
+    def test_tie_in_highs_rejects_pivot_high_while_strict_low_still_publishes(self):
+        highs = [8, 9, 12, 12, 10]  # candidate high 12 ties the right-side high 12
+        lows = [5, 4, 1, 3, 6]
+        bars = [bar(index, high, low, seq=index)
+                for index, (high, low) in enumerate(zip(highs, lows))]
+        result = transition.run(tlr.FractalPivot(), bars, F04_PARAMS)
+        levels = typed_levels(result)
+        assert [event["kind"] for event in levels] == [tlr.PIVOT_LOW]
+        assert levels[0]["level_ticks"] == 1
+
+    def test_erratum_is_recorded_on_the_v1_machine_docstring(self):
+        doc = tlr.FractalPivot.__doc__ or ""
+        assert "R-F04" in doc
+        assert "STRICT_UNIQUE" in doc
+        assert "BOTH_EMIT" in doc
+        assert "PROPOSED_RC2_MUST_RATIFY" in doc
+
+
+# ---------------------------------------------------------------------------------------------
 # Version discipline (§1.5): the retired v1 DC machine carries the banner — nothing else does
 # ---------------------------------------------------------------------------------------------
 
