@@ -1,4 +1,13 @@
-"""F08 refusal-interface + F09 break-detector battery: GV-008, mirror, invariance, payloads."""
+"""F08 refusal-interface + F09 break-detector battery: GV-008, mirror, invariance, payloads.
+
+RETIRED-VERSION REPLAY EVIDENCE (Formula Repair §1.5, B03C): the F09 half of this battery pins
+``break.bar_close.v1`` — now ``RETIRED_DEFECTIVE`` (see the :class:`BreakDetector` class banner)
+and superseded by ``break.bar_close.v2`` (``tests/structures/test_break_v2.py``). The v1 bytes
+and behavior are deliberately UNCHANGED (replay of history produced under v1; SHADOW rows keep
+their version tag forever — never-blend), so these tests keep pinning the v1 machine exactly as
+it was, including its retired per-``(level_id, direction)`` dedup defect. F08 and the payload
+builders remain live law.
+"""
 
 from __future__ import annotations
 
@@ -101,6 +110,28 @@ def test_f08_refusal_is_prefix_and_restart_invariant():
         ProtectedSwingStructure(), inputs[2:], {}, initial=head.final_state)
     assert head.events + tail.events == full.events
     assert tail.final_state == full.final_state
+
+
+# --- §1.5 withdrawal discipline: the v1 detector is retired-in-place, never edited ----------------
+
+
+def test_v1_break_detector_carries_the_retired_defective_banner():
+    doc = BreakDetector.__doc__
+    assert doc is not None
+    assert doc.lstrip().startswith("RETIRED_DEFECTIVE{")
+    assert "TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12" in doc  # the defect_ref
+    assert "break.bar_close.v2" in doc  # names its successor
+    # The banner is CLASS-level only: the module still hosts live law (F08 + the payload
+    # builders), so neither the module docstring nor F08 may read as withdrawn.
+    assert not structure_state.__doc__.lstrip().startswith("RETIRED_DEFECTIVE")
+    assert "RETIRED_DEFECTIVE" not in ProtectedSwingStructure.__doc__
+
+
+def test_v2_successor_module_exists_and_is_a_distinct_identity():
+    from triad_origin.structures import break_v2
+
+    assert break_v2.V2_FORMULA_VERSION == "break.bar_close.v2"
+    assert break_v2.FORMULA_F09 == structure_state.FORMULA_F09 == "F09"
 
 
 # --- F09: GV-008 + boundaries --------------------------------------------------------------------
