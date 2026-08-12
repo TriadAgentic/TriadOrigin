@@ -1397,6 +1397,103 @@ def b01c_contract_binding_promotion() -> None:
         assert result == "FAIL", (milestone, result)
 
 
+@stage("full_pipeline_scorecard",
+       "Read-only E00-E10 diagnostic: event-time routing, terminal conservation, honest "
+       "assertion cap, content digest, and HTML projection")
+def full_pipeline_scorecard() -> None:
+    from triad_origin.scorecard import (
+        build_scorecard_from_dict,
+        render_scorecard_html,
+        verify_report_digest,
+    )
+    from triad_origin.scorecard.conservation import derive_routes, reconcile_terminals
+    from triad_origin.scorecard.model import (
+        DecisionState,
+        Evaluation,
+        Posture,
+        TerminalKind,
+        TerminalRecord,
+    )
+
+    # Conservation derives maturity and population from immutable event-time facts.  The current
+    # header posture cannot retroactively reroute this evaluation.
+    event_posture = Posture("OFF", "OFF", "OFF", "LIVE")
+    evaluation = Evaluation(
+        evaluation_id="e2e:evaluation:1",
+        candidate_id="e2e:candidate:1",
+        decision_state=DecisionState.ACCEPTED,
+        route_revision="e2e:route:1",
+        observed_at_us=100,
+        maturity_deadline_us=200,
+        event_posture=event_posture,
+    )
+    routes = derive_routes((evaluation,), 1_000)
+    if len(routes) != 1 or routes[0].population.value != "SHADOW" or not routes[0].matured:
+        raise AssertionError("OFF/OFF/OFF/LIVE accepted evaluation did not mature to SHADOW")
+    terminal = TerminalRecord(
+        terminal_id="e2e:terminal:1",
+        population_instance_id=routes[0].population_instance_id,
+        kind=TerminalKind.ACCEPTED_NOT_EXECUTED,
+        payload_digest="9" * 64,
+        reason_code=None,
+        evidence_refs=("e2e:evidence:terminal:1",),
+    )
+    conservation = reconcile_terminals((evaluation,), routes, (terminal,))
+    if not conservation.reconciled or conservation.reconciled_terminal_count != 1:
+        raise AssertionError("one matured route with one lawful terminal did not conserve")
+
+    # The diagnostic-v1 boundary accepts an explicit empty cohort only with a completeness proof,
+    # but missing topology/posture evidence remains WITHHELD and caller assertions can never FULL.
+    document = {
+        "schema": "triad.origin.full_pipeline_scorecard.input.v1",
+        "report_id": "e2e:scorecard:withheld",
+        "as_of_us": 1_000,
+        "components": [],
+        "cohort": {
+            "cohort_id": "e2e:cohort:empty",
+            "window_start_us": 0,
+            "window_end_us": 500,
+            "source_watermark": "e2e:source:500",
+            "source_cut_digest": "1" * 64,
+            "complete": True,
+            "candidate_ids": [],
+            "zero_proof": {
+                "query_digest": "2" * 64,
+                "source_cut_digest": "3" * 64,
+                "source_completeness": "COMPLETE",
+                "watermark": "e2e:source:500",
+            },
+            "evidence_refs": ["e2e:evidence:cohort:empty"],
+        },
+        "posture": {
+            "desired": event_posture.to_dict(),
+            "observed": None,
+            "freshness": "UNKNOWN",
+            "reconciliation": "UNRECONCILED",
+            "attestation": "MISSING",
+            "side_effect_census_complete": None,
+            "evidence_refs": ["e2e:evidence:posture:missing"],
+        },
+        "stages": [],
+        "edges": [],
+        "evaluations": [],
+        "terminals": [],
+        "metrics": [],
+    }
+    first = build_scorecard_from_dict(document)
+    second = build_scorecard_from_dict(document)
+    if first != second:
+        raise AssertionError("scorecard projection is not deterministic")
+    if first["publication"]["outcome"] != "WITHHELD":
+        raise AssertionError("missing evidence escaped the fail-publication gate")
+    if first["authority_effect"] != "NONE" or first["evidence_trust"] != "UNAUTHENTICATED_ASSERTIONS":
+        raise AssertionError("diagnostic projection acquired or implied authority")
+    verify_report_digest(first)
+    rendered = render_scorecard_html(first)
+    if first["content_digest"] not in rendered or "WITHHELD" not in rendered:
+        raise AssertionError("HTML projection omitted immutable identity or publication state")
+
+
 @stage("c0_closure_control",
        "C0 closure control: canonical projection is structurally valid but explicitly blocked; "
        "closure-ready mode refuses the same open-blocker subject")

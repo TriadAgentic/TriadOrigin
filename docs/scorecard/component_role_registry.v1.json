@@ -1,0 +1,206 @@
+{
+  "schema": "triad.origin.scorecard.component_role_registry.v1",
+  "version": 1,
+  "as_of_date": "2026-08-12",
+  "claim": "DIAGNOSTIC_READ_ONLY_NO_AUTHORITY",
+  "authority_effect": "NONE",
+  "activation_effect": "NONE",
+  "ownership_effect": "NONE",
+  "baseline_posture": {
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "mapping_semantics": {
+    "RATIFIED": "Component-to-stage mapping is backed by cited governed repository evidence; this does not prove activation or grant authority.",
+    "OPERATOR_ASSERTED_UNATTESTED": "Component-to-stage mapping is an operator assertion without a ratifying estate artifact and cannot support FULL publication.",
+    "UNBOUND": "No component identity is assigned to the stage by this repository; this is a publication blocker.",
+    "CONFLICT": "Supplied mapping evidence conflicts; this is a publication blocker."
+  },
+  "entries": [
+    {
+      "stage": "E00",
+      "component_id": "unbound:e00:raw-ingress",
+      "product_name": null,
+      "repository": null,
+      "role": "raw fact ingress",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "main",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "stage": "E01",
+      "component_id": "unbound:e01:canonical-state",
+      "product_name": null,
+      "repository": null,
+      "role": "canonical-state producer",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "main",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "stage": "E02",
+      "component_id": "triad-origin-e02",
+      "product_name": "TRIAD ORIGIN V7",
+      "repository": "TriadAgentic/TriadOrigin",
+      "role": "feature/structure/candidate producer",
+      "mapping_status": "RATIFIED",
+      "mapping_evidence_refs": [
+        "README.md#e02-boundary",
+        "docs/SPEC_INDEX.md#e02-ownership-map"
+      ],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "main",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "stage": "E03",
+      "component_id": "triad-kairos",
+      "product_name": "Kairos",
+      "repository": "TriadAgentic/TriadKairos",
+      "role": "advisory forecast only",
+      "mapping_status": "OPERATOR_ASSERTED_UNATTESTED",
+      "mapping_evidence_refs": [],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "main",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "stage": "E04",
+      "component_id": "unbound:e04:specialists",
+      "product_name": null,
+      "repository": null,
+      "role": "typed advisory specialists only",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "main",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "stage": "E05",
+      "component_id": "unbound:e05:fusion-coordinator",
+      "product_name": null,
+      "repository": null,
+      "role": "fan-out/join/calibration only",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "main",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "stage": "E06",
+      "component_id": "triad-logos",
+      "product_name": "Logos",
+      "repository": "TriadAgentic/TriadLogos",
+      "role": "advisory language/knowledge only",
+      "mapping_status": "OPERATOR_ASSERTED_UNATTESTED",
+      "mapping_evidence_refs": [],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "main",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "stage": "E07",
+      "component_id": "unbound:e07:decision-policy",
+      "product_name": null,
+      "repository": null,
+      "role": "sole admission and policy authority",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "main",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "stage": "E08",
+      "component_id": "unbound:e08:risk-governance",
+      "product_name": null,
+      "repository": null,
+      "role": "sole sizing/reservation/allow-deny authority",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "main",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "stage": "E09",
+      "component_id": "unbound:e09:execution",
+      "product_name": null,
+      "repository": null,
+      "role": "sole venue actor",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "new_exposure",
+          "expected_state": "OFF"
+        },
+        {
+          "path": "reconciliation",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    },
+    {
+      "stage": "E10",
+      "component_id": "unbound:e10:outcomes-learning",
+      "product_name": null,
+      "repository": null,
+      "role": "outcome/attribution/learning authority",
+      "mapping_status": "UNBOUND",
+      "mapping_evidence_refs": [],
+      "authority_claims": [],
+      "expected_paths": [
+        {
+          "path": "main",
+          "expected_state": "ACTIVE"
+        }
+      ]
+    }
+  ]
+}
