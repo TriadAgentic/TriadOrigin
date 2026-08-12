@@ -312,3 +312,56 @@ def test_feature_snapshot_refuses_acausal_time_order_and_unknown_status():
         features.build_feature_snapshot_payload(**_snapshot_kwargs(publication_time_us=0))
     with pytest.raises(StructureLawError):
         features.build_feature_snapshot_payload(**_snapshot_kwargs(warmup_status="DONE"))
+
+
+# --- GV-F05-01 — the missing direct F05 golden (Formula Repair spec §D.5, milestone B03C) --------
+def test_gv_f05_01_direct_golden_upper_and_lower():
+    """N=3, highs [10,12,11] over bars t-3..t-1 → upper_t = 12; lows [9,9,10] → lower_t = 9.
+
+    Equal lows (9 at t-3 and t-2): the extreme VALUE is the value — 9 — per the tie law (identity
+    carries the earliest source; the emitted feature is the value, unchanged by the tie). The
+    current bar t is excluded by construction: its high 15 must not change upper_t.
+    """
+    inputs = [
+        bar(0, 9, 10, 9, 10),    # t-3: high 10, low 9
+        bar(1, 10, 12, 9, 11),   # t-2: high 12, low 9  (equal low with t-3)
+        bar(2, 11, 11, 10, 10),  # t-1: high 11, low 10
+        bar(3, 12, 15, 12, 14),  # t: high 15 — MUST NOT enter upper_t
+    ]
+    result = run_ext(inputs, window=3)
+    final = result.events[-1]
+    assert final["event_kind"] == "FEATURE"
+    assert final["formula"] == "F05"
+    assert final["bar_index"] == 3
+    assert final["upper_ticks"] == 12   # not 15 — current bar excluded
+    assert final["lower_ticks"] == 9    # the tied extreme value
+    assert final["dependency_range"] == {"first_bar_index": 0, "last_bar_index": 2}
+
+
+def test_gv_f05_01_warmup_two_prior_bars_is_null():
+    """With only 2 prior bars the feature is NULL (a named warm-up abstention, never a value)."""
+    inputs = [bar(0, 9, 10, 9, 10), bar(1, 10, 12, 9, 11), bar(2, 11, 11, 10, 10)]
+    result = run_ext(inputs, window=3)
+    final = result.events[-1]
+    assert final["event_kind"] == "NAMED_ABSTENTION"
+    assert final["reason_code"] == "F05_WARMUP"
+
+
+def test_gv_f05_01_gap_in_window_is_null():
+    """A gap inside the trailing window voids it: the next emission is NULL, never a blend."""
+    inputs = [
+        bar(0, 9, 10, 9, 10),
+        bar(1, 10, 12, 9, 11),
+        bar(2, 11, 11, 10, 10),
+        bar(4, 12, 15, 12, 14),  # bar 3 missing — gap
+    ]
+    result = run_ext(inputs, window=3)
+    final = result.events[-1]
+    assert final["event_kind"] == "NAMED_ABSTENTION"
+    # The gap resets the window, so the abstention reads as a fresh warm-up — a NULL, never a
+    # value blended across the gap (the D.5 law is "gap in window → NULL"; the reason code names
+    # the post-reset warm-up state).
+    assert final["reason_code"] == "F05_WARMUP"
+    assert not any(
+        e.get("event_kind") == "FEATURE" and e.get("bar_index") == 4 for e in result.events
+    )
