@@ -1,10 +1,10 @@
 # TRIAD / UPONLY — B00-to-BN Closure Marathon Plan
 
 **Classification:** `COORDINATION_ONLY_NON_EVIDENCE`  
-**Plan version:** `2026-08-11.4`
+**Plan version:** `2026-08-12.1`
 **Status:** `CONFIRMED_EXECUTING`  
 **Execution start:** 2026-08-11  
-**Current work:** owner/provider authority blockers, exact-head review, and `C0-OPS`
+**Current work:** publish reconstructed C0 source candidate, then bind provider CI and external gates
 **Invariant posture:** `OFF/OFF/OFF/LIVE`  
 **B00R–B10 permitted result:** `PASS_REPOSITORY_SAFE_HOLD`  
 **BN permitted result:** `PASS_TERMINAL_SAFE_HOLD`
@@ -259,6 +259,29 @@ Step 26 failed with `UNAVAILABLE: SNAPSHOT_UNAUTHENTICATED (owner/provider evide
 terminal interpretation is `ENGINEERING_GREEN / C0_AND_B00R_BLOCKED`. The status projection retains
 103 open blockers and zero closure claims. Provider ruleset truth is `NOT_ATTESTED`; protected
 authority pins and exact-head GitHub review are absent.
+
+### 4.5 Reconstructed candidate and next provider transition
+
+The final reconstructed source candidate is the unreferenced GitHub commit
+`f814cd664fd456a8ec757ed5600cab4e262a530f`, tree
+`eab49e3399e1ed20b4a4741e2c568eae89c7977a`, parent `76eb4db7…`. Its 73-path main diff classifies
+SOURCE. Before any PR ref movement, local exact-tree validation passed 2,068 tests at hash seeds
+101 and 202, 2,068 unique test IDs, 116 source pins / 100 required artifacts, 25/25 E2E stages,
+the 1,250-task / 2,383-edge DAG, installed-wheel and DARK checks, and deterministic packaging.
+
+The candidate freezes the historical review boundary instead of relabeling it: the immutable
+`REVIEWED_V2` ledger is the only historically reviewed subject, while current `CANDIDATE_V3` has
+1,156 unchanged rows and 94 review-required rows. Target allocations remain `UNBOUND`; 97 B00 rows
+are explicitly unallocated. The generated view reports 102 blockers and no closure; strict closure
+readiness exits 2. The classifier now rejects a base that is not an actual ancestor of head, and
+every present path in its positive source grant is byte-pinned except the self-referential inventory
+file itself.
+
+Next, append checkpoint 0004 and fast-forward the PR branch to this exact commit. Treat the resulting
+GitHub Actions run as the first provider result for the candidate. Do not request or count review
+for an earlier head. Owner-authenticated G2 subjects, live main-plus-canary ruleset proof, rejected
+canary evidence, qualified independent approval by `djordi10`, source merge, clean reproduction,
+separate receipt, tag protection, protected anchor, and terminal gate all remain mandatory.
 
 ## 5. C0 — control and semantic freeze
 

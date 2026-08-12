@@ -4,7 +4,7 @@
 **Program:** `TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11`  
 **Prepared:** 2026-08-11  
 **Execution authorized:** 2026-08-11 by owner confirmation of D-01 through D-09  
-**Current phase:** `C0_SOURCE_ENGINEERING_GREEN_PROVIDER_BLOCKED + B00R_G2_SOURCE_TRAIN`
+**Current phase:** `C0_RECONSTRUCTED_SOURCE_CANDIDATE_STAGED + B00R_G2_SOURCE_TRAIN`
 **Permitted closure result:** `PASS_REPOSITORY_SAFE_HOLD`  
 **Activation posture:** `venue_environment=OFF`, `venue_activation=OFF`, `paper_activation=OFF`, `shadow_activation=LIVE`
 
@@ -157,6 +157,37 @@ generated status remains safe-hold with 103 open blockers and zero closed claims
 truth is `NOT_ATTESTED`, protected pins and exact-head GitHub approval are absent, and no closure is
 earned by the engineering-green result.
 
+### 4.5 Reconstructed source candidate staged before ref movement
+
+The lost unpublished repair overlay was independently reconstructed from the exact published PR
+head without rewriting history. GitHub now contains an unreferenced, normal forward commit object
+`f814cd664fd456a8ec757ed5600cab4e262a530f` whose sole parent is `76eb4db7…` and whose tree is
+`eab49e3399e1ed20b4a4741e2c568eae89c7977a`. At this checkpoint the PR #34 branch still points to
+`76eb4db7…`; the candidate is therefore not yet a provider source head and has no exact-head CI or
+GitHub approval.
+
+The main-to-candidate diff remains SOURCE-only with 73 paths. Local validation on the exact
+candidate tree passed:
+
+| Check | Result |
+|---|---|
+| Dual full pytest | 2,068 passed with `PYTHONHASHSEED=101`; 2,068 passed with seed 202. |
+| Collected tests | 2,068 unique IDs. |
+| Source inventory | 116 byte pins; 100 required artifacts; the classifier grant and inventory share one positive law. |
+| Historical review boundary | Frozen `REVIEWED_V2` subject authenticated; current ledger is `CANDIDATE_V3`; 1,156 rows unchanged and 94 require review. |
+| Ledger and DAG | 1,250 tasks; 2,383 hard edges; acyclic; one scheduling owner. |
+| Reproducible package | sdist `8fa96556b474623dfc079abd0cd37f0ba55aec2637d1ac701b2ccd64963871d4`; wheel `5f12afb181847d200f2adea6658ca2ef980bb565d08b59bd91416af1568fd6d2`. |
+| DARK / installed wheel / contracts | PASS; 148 contract artifacts and 44 goldens verified. |
+| End-to-end audit | 25/25 stages passed, including structural closure check plus strict refusal. |
+| Closure projection | 102 open blockers; `OFF/OFF/OFF/LIVE`; no closure claim; strict readiness exits 2. |
+
+The reconstruction also rejects a diverged PR base, exact-but-out-of-range formula IDs, orphaned or
+reused B10 criteria/verifications, C0 receipt blockers when T7 is not applicable, and runtime
+blockers when T8 is not applicable. It distinguishes implementation owner, external obligation,
+receipt lane, and consumer conformance; 97 legacy B00 rows remain explicitly unallocated instead
+of being counted as owned. None of those engineering results supplies authority pins, provider
+ruleset truth, independent exact-head approval, a merge, receipt, or anchor.
+
 ## 5. C0 controlling reconciliation
 
 The earlier closure audit instructed the team to repair capability and formulas before freezing PR
@@ -227,7 +258,7 @@ are descriptive. One unresolved P0/P1 controls the verdict.
 
 | Milestone | Current state | Immediate blocking result |
 |---|---|---|
-| C0 | `SOURCE_ENGINEERING_GREEN_PROVIDER_BLOCKED` | Corrective source, exact-head engineering, and independent semantic review passed; authority/provider CI failed closed, exact-head GitHub approval and cryptographic owner authentication are absent, and 103 blockers remain. No closure. |
+| C0 | `SOURCE_CANDIDATE_ENGINEERING_GREEN_PROVIDER_UNPUBLISHED` | Reconstructed forward candidate passes dual-seed and 25-stage local validation with 102 blockers and no closure; PR ref movement, exact-head CI, GitHub approval, authority pins, and provider authentication remain absent. |
 | B00R G2 | `BASELINED_FAIL` | Authority pins, real ruleset capture, negative canary, review, source merge, receipt, tag rule, anchor, terminal gate. |
 | B01C | `BLOCKED_PREDECESSOR` | G2 anchor plus RC5, contract/binding/capability correction. |
 | B02C–B04C | `BLOCKED_PREDECESSOR` | Correct ancestry, signed bindings, formula fixes and goldens. |

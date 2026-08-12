@@ -1,0 +1,182 @@
+{
+  "schema": "triad.closure.coordination_checkpoint.v1",
+  "checkpoint_id": "0004_C0_RECONSTRUCTED_SOURCE_CANDIDATE_STAGED",
+  "classification": "COORDINATION_ONLY_NON_EVIDENCE",
+  "recorded_at_utc": "2026-08-12T00:28:09Z",
+  "supersedes": "0003_C0_SOURCE_ENGINEERING_GREEN_PROVIDER_BLOCKED",
+  "program": "TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11",
+  "phase": "C0_RECONSTRUCTED_SOURCE_CANDIDATE_STAGED_BEFORE_PROVIDER_REF_MOVEMENT",
+  "activation_posture": {
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "subjects": {
+    "repository": "TriadAgentic/TriadOrigin",
+    "main_sha": "ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd",
+    "source_pr": 34,
+    "source_head_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+    "source_tree_sha": "eab49e3399e1ed20b4a4741e2c568eae89c7977a",
+    "source_path_count": 73,
+    "source_pr_state": "OPEN_DRAFT_REMOTE_PREDECESSOR",
+    "source_pr_draft": true,
+    "source_pr_body_updated": false,
+    "source_review_count": 0,
+    "source_review_thread_count": 0,
+    "source_requested_reviewer_count": 0,
+    "source_ci_run_id": null,
+    "source_ci_run_number": null,
+    "source_ci_job_id": null,
+    "source_ci_status": "NOT_RUN_CANDIDATE_UNPUBLISHED",
+    "source_ci_log_sha256": "NOT_CAPTURED_COORDINATION_BASELINE",
+    "source_ci_log_character_count": null,
+    "source_ci_log_utf8_byte_count": null,
+    "prior_source_head_sha": "76eb4db7f80580d5f451966d359e56ac3baa9179",
+    "source_head_validation": "LOCAL_EXACT_TREE_ENGINEERING_GREEN_PROVIDER_UNPUBLISHED_NO_REVIEW_NO_CLOSURE",
+    "coordination_parent_sha": "144b40b9d15f6c66c5c14f956231c820cb3d8b6f",
+    "canary_sha": "ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd",
+    "receipt_pr": null,
+    "receipt_merge_sha": null,
+    "anchor": null
+  },
+  "tests": [
+    {
+      "id": "RECONSTRUCTED_SOURCE_CLASSIFICATION_73_PATHS",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "python tools/classify_milestone_pr.py over exact main-to-candidate path set",
+      "environment": "Local staged tree reproduced as remote tree eab49e3399e1ed20b4a4741e2c568eae89c7977a; positive SOURCE grant",
+      "result": "PASS",
+      "actual": "PR role SOURCE with 73 paths; base must be an actual ancestor of head",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "RECONSTRUCTED_FULL_PYTEST_SEED_101",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=101 python -m pytest -p no:cacheprovider",
+      "environment": "Isolated local CPython 3.12.13; exact candidate tree; no runtime activation",
+      "result": "PASS",
+      "actual": "2,068 passed in 150.69 seconds",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "RECONSTRUCTED_FULL_PYTEST_SEED_202",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=202 python -m pytest -p no:cacheprovider",
+      "environment": "Isolated local CPython 3.12.13; exact candidate tree; no runtime activation",
+      "result": "PASS",
+      "actual": "2,068 passed in 149.50 seconds",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "RECONSTRUCTED_SOURCE_HISTORY_CONTRACTS",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "verify_source_hashes; verify_historical_evidence; verify_manifest; validate_contract_manifest",
+      "environment": "Exact candidate tree; classifier grant and source inventory share one law",
+      "result": "PASS",
+      "actual": "116 pins and 100 required artifacts; 11 historical receipt blobs; 148 contract artifacts",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "RECONSTRUCTED_REPRODUCIBLE_PACKAGE",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "python tools/verify_reproducible_build.py and python tools/test_wheel_install.py",
+      "environment": "Exact candidate tree; isolated deterministic builds and installed-wheel smoke",
+      "result": "PASS",
+      "actual": "sdist 8fa96556b474623dfc079abd0cd37f0ba55aec2637d1ac701b2ccd64963871d4; wheel 5f12afb181847d200f2adea6658ca2ef980bb565d08b59bd91416af1568fd6d2; 148 artifacts and 44 goldens",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "RECONSTRUCTED_LEDGER_DAG_AND_REVIEW_BOUNDARY",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "python tools/build_ledger.py --verify and python tools/validate_combined_dag.py",
+      "environment": "Exact candidate tree; frozen historical review subject loaded independently",
+      "result": "PASS",
+      "actual": "CANDIDATE_V3 has 1,250 tasks; REVIEWED_V2 authentic; 1,156 unchanged and 94 review-required; DAG 2,383 edges and acyclic",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "RECONSTRUCTED_DARK_AND_E2E_25",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "python tools/verify_no_forbidden_capabilities.py and python tools/e2e_audit.py",
+      "environment": "Exact candidate tree; no deployment, venue, credential, or order capability",
+      "result": "PASS",
+      "actual": "DARK boundary passed; deterministic end-to-end audit passed 25 of 25 stages",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    },
+    {
+      "id": "RECONSTRUCTED_C0_CLOSURE_REFUSAL",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "python tools/closure_control.py --check; python tools/closure_control.py --require-closure-ready",
+      "environment": "Exact candidate tree; structural and strict readiness modes evaluated separately",
+      "result": "PASS",
+      "actual": "Structural validation passed with 102 blockers and no closure claim; strict readiness exited 2 with CLOSURE_NOT_READY",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    }
+  ],
+  "defects": [
+    {
+      "id": "C0_HISTORICAL_REVIEW_SUBJECT_ALIAS",
+      "severity": "P0",
+      "owner": "C0_NORM",
+      "status": "FIXED_UNVERIFIED",
+      "actual": "Candidate freezes REVIEWED_V2 as the only historical review subject and marks current CANDIDATE_V3 drift and allocations unreviewed; provider validation remains absent"
+    },
+    {
+      "id": "C0_APPLICABILITY_AND_CLOSURE_CHECK_FALSE_GREEN",
+      "severity": "P0",
+      "owner": "C0_NORM",
+      "status": "FIXED_UNVERIFIED",
+      "actual": "T7/T8 now control receipt/runtime blockers and strict readiness exits nonzero with 102 blockers; provider validation remains absent"
+    },
+    {
+      "id": "C0_TASK_OWNER_AND_FORMULA_NAMESPACE_COLLAPSE",
+      "severity": "P0",
+      "owner": "C0_NORM",
+      "status": "FIXED_UNVERIFIED",
+      "actual": "Implementation, external obligation, receipt, and conformance axes are distinct; F00-F23 and ordinals 01-07 are exact; 97 B00 tasks stay unallocated"
+    },
+    {
+      "id": "C0_CONTROL_GRAPH_SOURCE_INVENTORY_AND_ANCESTRY_FALSE_GREEN",
+      "severity": "P0",
+      "owner": "C0_NORM_AND_B00R_G2",
+      "status": "FIXED_UNVERIFIED",
+      "actual": "B10 graph/text controls, path-law digest, complete source grant pinning, and base-as-ancestor classification pass locally; provider validation remains absent"
+    },
+    {
+      "id": "RECONSTRUCTED_SOURCE_PROVIDER_SUBJECT_UNPUBLISHED",
+      "severity": "P0",
+      "owner": "B00R_G2_SOURCE",
+      "status": "BLOCKED",
+      "actual": "Candidate commit exists without a branch ref; it has no exact-head Actions check or GitHub review"
+    },
+    {
+      "id": "G2_AUTHORITY_PROVIDER_REVIEW_RECEIPT_ANCHOR_ABSENT",
+      "severity": "P0",
+      "owner": "B00R_G2_EXTERNAL_GATES",
+      "status": "BLOCKED",
+      "actual": "Four G2 pins, authenticated ruleset and rejected canary, djordi10 exact-head approval, source merge, receipt, tag rule, anchor, and terminal gate remain absent"
+    }
+  ],
+  "blockers": [
+    "PR 34 still points to predecessor 76eb4db; candidate f814cd664 has no provider CI or exact-head review",
+    "Generated C0 status retains 102 open blockers and zero closed claims",
+    "Current CANDIDATE_V3 row drift and every target allocation remain review-required or UNBOUND",
+    "All four protected G2 authority decision and trust-registry pins are absent",
+    "Real GitHub main-plus-canary ruleset state and dedicated rejected canary are NOT_ATTESTED",
+    "Qualified independent GitHub approval by djordi10 of the exact source head is absent",
+    "Source merge, clean reproduction, evidence-only receipt, tag rule, protected anchor, and terminal gate are absent",
+    "Preserve OFF/OFF/OFF/LIVE; deployment, restart, MCP enablement, arming, order/cancel, venue mutation, and promotion remain unauthorized"
+  ],
+  "open_blocker_count": 102,
+  "closed_claims": [],
+  "next_gate": "Fast-forward PR 34 to exact candidate f814cd664, bind its GitHub Actions result, then complete owner pins, provider ruleset and canary proof, and independent exact-head review before any merge",
+  "documents": {
+    "master_path": "docs/closure/00_TRIAD_CLOSURE_MASTER.md",
+    "master_sha256": "a49fc8586830c0f25f47aca2dd893959f806ffc38ddf233ca778fe5e12d18e43",
+    "plan_path": "docs/closure/01_TRIAD_B00_BN_MARATHON_PLAN.md",
+    "plan_sha256": "a1e0186f5654b44f8a86f96d9b4b15c029f850d6d7d2cde5270ccd62bfed6127"
+  },
+  "secrets_scan": "PASS",
+  "authoritative_refs_unchanged": true
+}
