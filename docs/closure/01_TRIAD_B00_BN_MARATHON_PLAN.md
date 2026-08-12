@@ -1,10 +1,10 @@
 # TRIAD / UPONLY — B00-to-BN Closure Marathon Plan
 
 **Classification:** `COORDINATION_ONLY_NON_EVIDENCE`  
-**Plan version:** `2026-08-12.1`
+**Plan version:** `2026-08-12.2`
 **Status:** `CONFIRMED_EXECUTING`  
 **Execution start:** 2026-08-11  
-**Current work:** publish reconstructed C0 source candidate, then bind provider CI and external gates
+**Current work:** owner-signed G2 subjects, provider ruleset/canary proof, and exact-head review
 **Invariant posture:** `OFF/OFF/OFF/LIVE`  
 **B00R–B10 permitted result:** `PASS_REPOSITORY_SAFE_HOLD`  
 **BN permitted result:** `PASS_TERMINAL_SAFE_HOLD`
@@ -282,6 +282,25 @@ GitHub Actions run as the first provider result for the candidate. Do not reques
 for an earlier head. Owner-authenticated G2 subjects, live main-plus-canary ruleset proof, rejected
 canary evidence, qualified independent approval by `djordi10`, source merge, clean reproduction,
 separate receipt, tag protection, protected anchor, and terminal gate all remain mandatory.
+
+### 4.6 Published candidate provider result
+
+Checkpoint 0004 was published at coordination commit `738e5daceeced25738d11e5a83f98bc83c4a7b4f`
+before the source ref moved. PR #34 was then fast-forwarded normally to exact head `f814cd664…`,
+tree `eab49e339…`, and its body was rebound to that subject.
+
+GitHub Actions run `31550610151` (#155), job `93972315305`, completed `FAILURE` after every
+deterministic source stage and live CODEOWNERS passed. Hosted Python 3.11 passed 2,068 tests at each
+hash seed; the 116/100 source inventory, 25/25 E2E walk, reproducible artifacts, installed wheel,
+DARK boundary, CANDIDATE_V3 review boundary, and combined DAG all passed. The external failures are
+exactly the absent authority-bundle pin and unauthenticated provider snapshot. Receipt/anchor steps
+were correctly skipped.
+
+Do not rerun or merge in a loop. The next head must be created only after the owner supplies the
+three authenticated `002` decision objects plus G2 trust registry and their exact four external
+pins, while the repository administrator installs and captures the required main-plus-canary
+merge-only ruleset and rejected canary. Then regenerate all byte pins, rerun exact-head CI, request
+`djordi10`, and require that same final head to receive approval with every thread resolved.
 
 ## 5. C0 — control and semantic freeze
 

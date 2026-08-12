@@ -4,7 +4,7 @@
 **Program:** `TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11`  
 **Prepared:** 2026-08-11  
 **Execution authorized:** 2026-08-11 by owner confirmation of D-01 through D-09  
-**Current phase:** `C0_RECONSTRUCTED_SOURCE_CANDIDATE_STAGED + B00R_G2_SOURCE_TRAIN`
+**Current phase:** `C0_SOURCE_ENGINEERING_GREEN_EXTERNAL_GATES_BLOCKED + B00R_G2_SOURCE_TRAIN`
 **Permitted closure result:** `PASS_REPOSITORY_SAFE_HOLD`  
 **Activation posture:** `venue_environment=OFF`, `venue_activation=OFF`, `paper_activation=OFF`, `shadow_activation=LIVE`
 
@@ -187,6 +187,28 @@ blockers when T8 is not applicable. It distinguishes implementation owner, exter
 receipt lane, and consumer conformance; 97 legacy B00 rows remain explicitly unallocated instead
 of being counted as owned. None of those engineering results supplies authority pins, provider
 ruleset truth, independent exact-head approval, a merge, receipt, or anchor.
+
+### 4.6 Exact-head provider run 155
+
+The source branch was fast-forwarded normally to `f814cd664fd456a8ec757ed5600cab4e262a530f` only
+after checkpoint 0004 was published. PR #34 remains open and draft with 73 SOURCE paths, zero
+submitted reviews, zero review threads, and zero requested reviewers.
+
+GitHub Actions run `31550610151` (#155), job `93972315305`, completed `FAILURE`. Steps 1–20,
+deterministic engineering step 23, and live CODEOWNERS step 24 passed. Hosted Python 3.11 passed
+2,068 tests at both hash seeds, 116 source pins / 100 required artifacts, 25/25 E2E stages,
+reproducible packaging, installed-wheel, DARK, ledger, and DAG checks. CODEOWNERS bound 17 critical
+patterns to `@djordi10` with admin permission.
+
+Only the expected external source gates failed:
+
+- step 25: `UNAVAILABLE_AUTHORITY_ROOT: authority_bundle:EXTERNAL_PIN_ABSENT:AUTHORITY_BUNDLE_G2_DECISION_SHA256`;
+- step 26: `UNAVAILABLE: SNAPSHOT_UNAUTHENTICATED (owner/provider evidence absent) (main.ruleset.provider.json)`.
+
+The decoded job log is 351,008 characters / 351,020 UTF-8 bytes with SHA-256
+`07567f65e6091537d0df124edf0792479eca6712a743e751b0641a8cf16257fc`. Receipt-only and terminal
+steps were skipped. This is exact-head engineering green and external-gate blocked, not a source
+PASS and not permission to merge.
 
 ## 5. C0 controlling reconciliation
 

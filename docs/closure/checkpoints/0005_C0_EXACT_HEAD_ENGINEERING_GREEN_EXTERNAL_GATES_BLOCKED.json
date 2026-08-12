@@ -1,0 +1,175 @@
+{
+  "schema": "triad.closure.coordination_checkpoint.v1",
+  "checkpoint_id": "0005_C0_EXACT_HEAD_ENGINEERING_GREEN_EXTERNAL_GATES_BLOCKED",
+  "classification": "COORDINATION_ONLY_NON_EVIDENCE",
+  "recorded_at_utc": "2026-08-12T00:44:53Z",
+  "supersedes": "0004_C0_RECONSTRUCTED_SOURCE_CANDIDATE_STAGED",
+  "program": "TRIAD_B00_BN_CLOSURE_MARATHON_2026_08_11",
+  "phase": "C0_EXACT_HEAD_ENGINEERING_GREEN_AUTHORITY_PROVIDER_BLOCKED",
+  "activation_posture": {
+    "venue_environment": "OFF",
+    "venue_activation": "OFF",
+    "paper_activation": "OFF",
+    "shadow_activation": "LIVE"
+  },
+  "subjects": {
+    "repository": "TriadAgentic/TriadOrigin",
+    "main_sha": "ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd",
+    "source_pr": 34,
+    "source_head_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+    "source_tree_sha": "eab49e3399e1ed20b4a4741e2c568eae89c7977a",
+    "source_path_count": 73,
+    "source_pr_state": "OPEN_DRAFT",
+    "source_pr_draft": true,
+    "source_pr_body_updated": true,
+    "source_review_count": 0,
+    "source_review_thread_count": 0,
+    "source_requested_reviewer_count": 0,
+    "source_ci_run_id": 31550610151,
+    "source_ci_run_number": 155,
+    "source_ci_job_id": 93972315305,
+    "source_ci_status": "COMPLETED_FAILURE_ENGINEERING_GREEN_EXTERNAL_GATES_BLOCKED",
+    "source_ci_log_sha256": "07567f65e6091537d0df124edf0792479eca6712a743e751b0641a8cf16257fc",
+    "source_ci_log_character_count": 351008,
+    "source_ci_log_utf8_byte_count": 351020,
+    "prior_source_head_sha": "76eb4db7f80580d5f451966d359e56ac3baa9179",
+    "source_head_validation": "EXACT_HEAD_ENGINEERING_GREEN_AUTHORITY_PROVIDER_BLOCKED_ZERO_REVIEWS_NO_CLOSURE",
+    "coordination_parent_sha": "738e5daceeced25738d11e5a83f98bc83c4a7b4f",
+    "canary_sha": "ba495ba90e0e4eff50ed75d2443f9cc12ce6ddcd",
+    "receipt_pr": null,
+    "receipt_merge_sha": null,
+    "anchor": null
+  },
+  "tests": [
+    {
+      "id": "PROVIDER_RUN_155_EXACT_HEAD_BINDING",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "GitHub Actions run 31550610151 job 93972315305 steps 1 through 7",
+      "environment": "GitHub-hosted Ubuntu; Python 3.11; exact PR 34 event head",
+      "result": "PASS",
+      "actual": "Checkout, event-head binding, immutable event facts, 73-path SOURCE classification, Python setup, and toolchain install passed",
+      "evidence_sha256": "07567f65e6091537d0df124edf0792479eca6712a743e751b0641a8cf16257fc"
+    },
+    {
+      "id": "PROVIDER_RUN_155_PYTEST_SEED_0",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "PYTHONHASHSEED=0 python -m pytest -p no:cacheprovider",
+      "environment": "GitHub-hosted Ubuntu; Python 3.11; exact PR 34 head",
+      "result": "PASS",
+      "actual": "2,068 passed in 240.58 seconds",
+      "evidence_sha256": "07567f65e6091537d0df124edf0792479eca6712a743e751b0641a8cf16257fc"
+    },
+    {
+      "id": "PROVIDER_RUN_155_PYTEST_SEED_1",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "PYTHONHASHSEED=1 python -m pytest -p no:cacheprovider",
+      "environment": "GitHub-hosted Ubuntu; Python 3.11; exact PR 34 head",
+      "result": "PASS",
+      "actual": "2,068 passed in 234.13 seconds",
+      "evidence_sha256": "07567f65e6091537d0df124edf0792479eca6712a743e751b0641a8cf16257fc"
+    },
+    {
+      "id": "PROVIDER_RUN_155_DETERMINISTIC_ENGINEERING",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "GitHub Actions steps 10 through 23",
+      "environment": "Exact source head; source/history/contracts/package/wheel/DARK/E2E/ledger/DAG gates",
+      "result": "PASS",
+      "actual": "2,068 IDs; 116 pins and 100 required artifacts; 11 historical blobs; 148 contracts; reproducible package; 25/25 E2E; CANDIDATE_V3 review boundary; 1,250-task DAG",
+      "evidence_sha256": "07567f65e6091537d0df124edf0792479eca6712a743e751b0641a8cf16257fc"
+    },
+    {
+      "id": "PROVIDER_RUN_155_CODEOWNERS",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "GitHub Actions step 24 concrete critical-path CODEOWNERS identity",
+      "environment": "Live GitHub CODEOWNERS and repository-role check",
+      "result": "PASS",
+      "actual": "17 critical patterns bind live @djordi10 with admin repository permission",
+      "evidence_sha256": "07567f65e6091537d0df124edf0792479eca6712a743e751b0641a8cf16257fc"
+    },
+    {
+      "id": "PROVIDER_RUN_155_SOURCE_AUTHORITY",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "GitHub Actions step 25 strict source authority control",
+      "environment": "Protected external pin environment and authenticated G2 subject paths",
+      "result": "FAIL",
+      "actual": "UNAVAILABLE_AUTHORITY_ROOT: authority_bundle:EXTERNAL_PIN_ABSENT:AUTHORITY_BUNDLE_G2_DECISION_SHA256",
+      "evidence_sha256": "07567f65e6091537d0df124edf0792479eca6712a743e751b0641a8cf16257fc"
+    },
+    {
+      "id": "PROVIDER_RUN_155_SOURCE_PROVIDER",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "GitHub Actions step 26 nonterminal source provider revalidation",
+      "environment": "Committed normalized/raw ruleset pair and provider authentication law",
+      "result": "FAIL",
+      "actual": "UNAVAILABLE: SNAPSHOT_UNAUTHENTICATED (owner/provider evidence absent) (main.ruleset.provider.json)",
+      "evidence_sha256": "07567f65e6091537d0df124edf0792479eca6712a743e751b0641a8cf16257fc"
+    },
+    {
+      "id": "PROVIDER_PR34_EXACT_HEAD_REVIEWS",
+      "subject_sha": "f814cd664fd456a8ec757ed5600cab4e262a530f",
+      "command": "GitHub provider PR metadata, submitted-review list, and review-thread list",
+      "environment": "Open draft PR 34 after run 155 completion",
+      "result": "BLOCKED",
+      "actual": "Zero submitted reviews, zero review threads, and zero requested reviewers",
+      "evidence_sha256": "NOT_CAPTURED_COORDINATION_BASELINE"
+    }
+  ],
+  "defects": [
+    {
+      "id": "C0_RECONSTRUCTED_SOURCE_ENGINEERING",
+      "severity": "P0",
+      "owner": "C0_NORM",
+      "status": "FIXED_UNVERIFIED",
+      "actual": "Exact-head hosted engineering and CODEOWNERS passed; authority, provider, review, and cryptographic owner gates remain open"
+    },
+    {
+      "id": "G2_AUTHORITY_PINS_AND_SUBJECTS_ABSENT",
+      "severity": "P0",
+      "owner": "B00R_G2_AUTHORITY_CEREMONY",
+      "status": "BLOCKED",
+      "actual": "Three authenticated 002 decisions, G2 trust registry, and their exact four external pins are absent"
+    },
+    {
+      "id": "G2_PROVIDER_RULESET_AND_CANARY_UNATTESTED",
+      "severity": "P0",
+      "owner": "B00R_G2_PROVIDER_ADMIN",
+      "status": "BLOCKED",
+      "actual": "Committed snapshot remains unauthenticated; live main-plus-canary merge-only ruleset capture and rejected canary are absent"
+    },
+    {
+      "id": "G2_EXACT_HEAD_REVIEW_ABSENT",
+      "severity": "P0",
+      "owner": "B00R_G2_INDEPENDENT_REVIEW",
+      "status": "BLOCKED",
+      "actual": "No submitted djordi10 approval exists for exact head f814cd664"
+    },
+    {
+      "id": "G2_SOURCE_MERGE_RECEIPT_AND_ANCHOR_ABSENT",
+      "severity": "P0",
+      "owner": "B00R_G2_SOURCE_AND_RECEIPT",
+      "status": "BLOCKED",
+      "actual": "Source remains draft/unmerged; clean reproduction, separate receipt, tag rule, protected anchor, and terminal gate are absent"
+    }
+  ],
+  "blockers": [
+    "Run 155 is engineering green but failed strict source authority and provider gates",
+    "Generated C0 status retains 102 open blockers and zero closed claims",
+    "Three signed 002 decisions, G2 trust registry, and their exact four protected pins are absent",
+    "Main-plus-canary merge-only ruleset capture and rejected canary proof are absent",
+    "The browser settings session is signed out; no provider ruleset mutation was attempted",
+    "Qualified independent djordi10 approval of exact final source head is absent",
+    "Source merge, clean reproduction, evidence-only receipt, tag rule, protected anchor, and terminal gate are absent",
+    "Preserve OFF/OFF/OFF/LIVE; deployment, restart, MCP enablement, arming, order/cancel, venue mutation, and promotion remain unauthorized"
+  ],
+  "open_blocker_count": 102,
+  "closed_claims": [],
+  "next_gate": "Owner signs and externally pins the exact G2 subjects; repository admin installs and captures the declared main-plus-canary ruleset and rejected canary; then regenerate pins, publish one final source head, rerun CI, and request djordi10",
+  "documents": {
+    "master_path": "docs/closure/00_TRIAD_CLOSURE_MASTER.md",
+    "master_sha256": "e19b910581143aa78c0d1a9546da94c723700659eeae351c89474777cc083c91",
+    "plan_path": "docs/closure/01_TRIAD_B00_BN_MARATHON_PLAN.md",
+    "plan_sha256": "7c9d679122d2e6a11ea2fc9b69936485cd43c48ced5149ef6c6b7b71b5f797bb"
+  },
+  "secrets_scan": "PASS",
+  "authoritative_refs_unchanged": false
+}
