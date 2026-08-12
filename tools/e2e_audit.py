@@ -1426,6 +1426,89 @@ def c0_closure_control() -> None:
         raise AssertionError("C0 closure-ready refusal omitted the positive open-blocker count")
 
 
+@stage("b02c_security_boundary",
+       "B02C security boundary: E01 envelope validators quarantine invalid inputs; a forged "
+       "sealed bundle refuses at content acceptance; the C.3 entrypoint ratchet holds; absent "
+       "--authority is never a green PASS")
+def b02c_security_boundary() -> None:
+    # C.3 static gate — the fail-closed ratchet over the production formula surface.
+    _run_tool("verify_formula_entrypoints.py")
+
+    # C.2 absence law — no --authority preimage is NONZERO with the one stdout token.
+    proc = _run_tool_result("verify_binding_bundle.py")
+    if proc.returncode == 0 or proc.stdout.strip() != "UNAVAILABLE_AUTHORITY":
+        raise AssertionError(
+            "verify_binding_bundle without --authority must refuse UNAVAILABLE_AUTHORITY "
+            f"(exit {proc.returncode}; stdout {proc.stdout!r})"
+        )
+
+    # Part A §1.1 / C.3 envelope walk — valid inputs validate, invalid inputs quarantine.
+    from triad_origin import e01_interface as e01
+
+    good_bar = {
+        "bar_identity": "e2e-bar-1", "metadata_revision": "r1",
+        "open_ticks": 10, "high_ticks": 12, "low_ticks": 9, "close_ticks": 11,
+        "base_volume": 5, "quote_volume": 55, "trade_count": 3,
+    }
+    validated = e01.require_valid_bar(good_bar)
+    assert type(validated).__name__ == "ValidatedBar"
+    try:
+        e01.require_valid_bar({**good_bar, "low_ticks": 13})  # low > min(open, close)
+    except e01.QuarantineInvalidBar:
+        pass
+    else:
+        raise AssertionError("an invalid-geometry bar reached ValidatedBar")
+    trade = {"trade_id": "t-1", "revision": "r1", "event_time_us": 1_000, "aggressor_side": "BUY"}
+    e01.validate_trade(trade)
+    try:
+        e01.validate_trade({k: v for k, v in trade.items() if k != "aggressor_side"})
+    except e01.QuarantineInvalidTrade:
+        pass
+    else:
+        raise AssertionError("a trade without an aggressor flag validated")
+    book = {
+        "sequence": 7, "event_time_us": 1_000,
+        "best_bid_price_ticks": 100, "best_bid_qty_steps": 5,
+        "best_ask_price_ticks": 101, "best_ask_qty_steps": 4,
+    }
+    e01.validate_book_update(book, prior_seq=6, now_us=2_000, freshness_bound_us=10_000)
+    try:
+        crossed = {**book, "best_bid_price_ticks": 102}
+        e01.validate_book_update(crossed, prior_seq=6, now_us=2_000, freshness_bound_us=10_000)
+    except e01.QuarantineInvalidBookUpdate:
+        pass
+    else:
+        raise AssertionError("a crossed book validated")
+
+    # C.1 acceptance law — a fabricated sealed shape refuses at require_bundle (content law),
+    # long before any formula; type identity buys nothing.
+    from triad_origin import bindings, transition
+
+    forged = {
+        "schema_version": "sealed-bundle.v2",
+        "scope": {"repository": "TriadOrigin", "environment": "OFF"},
+        "rows": [{"binding_id": "B-XXX", "parameter_id": "PAR-000", "formula_id": "F00",
+                  "semantic_slot": "forged", "declared_value": 1, "status": "ACTIVE"}],
+        "canonical_root_digest": "0" * 64,
+        "trust_registry_digest": "0" * 64,
+        "signer_set": [], "signatures": [],
+        "valid_from": 0, "valid_to": 2**62,
+        "formula_coverage": {f"F{i:02d}": "ACTIVE" for i in range(24)},
+        "row_preimage_digests": [],
+    }
+    ctx = bindings.VerificationContext(
+        trust={}, trust_registry_bytes=b"{}", now_us=1,
+        process_scope={"repository": "TriadOrigin", "environment": "OFF"},
+        verify_fn=None, expected_digest_pin=None,
+    )
+    try:
+        transition.require_bundle(forged, "PAR-000", formula_id="F00", ctx=ctx)
+    except (bindings.SealedBundleRejected, bindings.CapabilityForgeryError):
+        pass
+    else:
+        raise AssertionError("a forged sealed bundle reached acceptance")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")
