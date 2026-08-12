@@ -1,17 +1,27 @@
 {
-  "authenticated": false,
-  "effective_at_us": 1786320000000000,
+  "schema": "triad.governance_snapshot.v1",
+  "schema_version": "1.0.0",
+  "snapshot_kind": "GOVERNANCE_SNAPSHOT",
+  "authenticated": true,
+  "effective_at_us": 1786526446092000,
   "provider": {
-    "api_response_path": "docs/governance/rulesets/main.ruleset.provider.raw.json",
-    "api_response_sha256": "cd70034cb3f8785b7122d147ed356cd00404482434e4091208f52313fe57f224",
-    "captured_at_us": 1786352038201600,
     "name": "github",
-    "note": "INVALIDATED DECLARATIVE STUB: not provider evidence and never closure-capable. Replace only with a privileged live GitHub ruleset API response after enforcement is active.",
-    "repository": "TriadAgentic/TriadOrigin"
+    "repository": "TriadAgentic/TriadOrigin",
+    "captured_at_us": 1786526989961315,
+    "api_response_path": "docs/governance/rulesets/main.ruleset.provider.raw.json",
+    "api_response_sha256": "d5d76c7071d3cc3e6e6fe0ae0ed6c77e45a002675ab159584c201c835d8ea156"
   },
   "ruleset": {
-    "block_deletions": true,
+    "ruleset_id": "20641102",
+    "target": "refs/heads/main",
+    "pull_request_required": true,
+    "required_status_check": "test-and-verify",
+    "strict_required_status": true,
+    "required_approvals": 1,
+    "dismiss_stale_reviews": true,
+    "require_conversation_resolution": true,
     "block_force_push": true,
+    "block_deletions": true,
     "bypass_actors": [],
     "codeowners_required_paths": [
       ".github/",
@@ -31,17 +41,6 @@
       "tools/verify_codeowners.py",
       "tools/verify_historical_evidence.py",
       "tools/verify_source_hashes.py"
-    ],
-    "dismiss_stale_reviews": true,
-    "pull_request_required": true,
-    "require_conversation_resolution": true,
-    "required_approvals": 1,
-    "required_status_check": "test-and-verify",
-    "ruleset_id": "DECLARATIVE",
-    "strict_required_status": true,
-    "target": "refs/heads/main"
-  },
-  "schema": "triad.governance_snapshot.v1",
-  "schema_version": "1.0.0",
-  "snapshot_kind": "GOVERNANCE_SNAPSHOT"
+    ]
+  }
 }
