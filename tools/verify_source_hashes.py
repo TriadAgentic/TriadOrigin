@@ -52,6 +52,7 @@ REQUIRED_MEMBERSHIP = [
     "docs/control/build_ledger.json",
     "docs/control/build_ledger_overrides.json",
     "docs/control/build_ledger_review.v1.json",
+    "docs/control/build_ledger_review.v2.json",
     "docs/control/closure/closure_semantics.v1.schema.json",
     "docs/control/closure/closure_semantics.v1.json",
     "docs/control/closure/closure_status.v1.schema.json",
