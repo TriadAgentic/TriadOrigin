@@ -229,6 +229,56 @@ fabricated or presumed. This report is an audit record; it arms nothing and merg
 
 ---
 
+## 8 · R-03 cross-check (2026-08-13) — three findings, one self-correction, one reviewer answer
+
+`TRIAD_REVISION_RECORD_R-03_2026-08-13` is vendored in `docs/repair/`; the full per-item
+disposition is `docs/plan/DECISIONS-REQUIRED.md` §II·G. What the cross-check itself established,
+because two of R-03's own claims were marked inference in its §8 attestation:
+
+**§2 / M-1 — confirmed, and stronger than inferred.** R-03 deduced from `mergeable_state=unstable`
+that the combined check is not required, and asked for the branch-protection settings to be read
+directly. Read: `TriadLearning main` is **`protected: false`** — there is no branch protection at
+all, not merely a non-required check. And the estate is ASYMMETRIC: `TriadOrigin main` reads
+`protected: true` (with `b00r-ruleset-canary` also `true` — the internal control showing a ruleset
+in this org does set the flag). The repo under `DENIED_SAFE_HOLD` is protected; the repo carrying
+the live measurement code is not. `WO-P` escalates accordingly.
+
+**§3 / M-2 — confirmed and worse.** The 281 ruff findings are exact, and `mypy` fails
+independently with 42 errors in 5 files — two independently red steps, so the prescribed lint-only
+baseline would have left the check exactly as uninformative. The remedy was built covering both
+(`TriadLearning tools/lint_ratchet.py`), and two claims in R-03 §3 are corrected: the cited
+"estate's OWN existing CI-ratchet law … already applied to the param census" does not exist as
+described, and the baseline cannot honestly be wired into CI from this container because it was
+generated with tool versions `uv.lock` does not pin for the runner.
+
+**§5 — accepted, repaired, and returned with an erratum.** The miscalibration is real and was
+repaired under LAW-9 agent authority by passing the observation rather than adding a formula
+(`min_n_for_power` was already R-03's exact expression — a second derivation would have created
+the estate's own re-deriver drift class). Zero tests flipped. The erratum: R-03's §5 table rows for
+30/35/38 % are `round()` of values its own `ceil()` formula puts higher, and its `0.84` power-z is
+less precise than the module's `0.8416`; the shipped bars are the conservative ones, and a
+required-sample bar is never rounded down.
+
+**§6 — answered with evidence for the D-7 reviewer, verdict left to the reviewer.** 58 of the 137
+pinned paths are not admitted by the gen-2 SOURCE grant, but the merge introduced **zero** of them
+(parents 133 + 120, merge 137 = exactly the union, merge-only empty, all 58 already in parentA), so
+no D-3b widening is forced by the conflict resolution. Pinning and granting are structurally
+disjoint here: the grant is a pure positive allowlist with no exclusion rules, and
+`verify_source_hashes` asserts only grant ⊆ pinned.
+
+**M-4 (new, from this cross-check).** The gen-2 grant admits 4 `docs/plan/` and 2 `docs/repair/`
+paths, so the classifier returns False for the decision register, the repair README, this report and
+every vendored revision record — **every repair-record commit trips `SOURCE_PATH_OUT_OF_SCOPE` by
+construction.** Recorded for D-3b's widening rather than worked around.
+
+**§4 / M-3 — the checkpoint seal stays owed and owner-gated.** Performing it unbid would contradict
+the very call R-03 §1 recorded as correct.
+
+Nothing in this section arms, merges, widens, or signs anything. Posture unchanged
+**OFF/OFF/OFF/LIVE** · `DENIED_SAFE_HOLD`.
+
+---
+
 *Prepared as a READ-ONLY audit. Every disposition above resolves to CLOSED / WITHDRAWN /
 OWNER_GATED / CHECK_ONLY / ON_BOX / OUT_OF_ORIGIN / STANDING_LAW; the only genuinely-open Origin
 disposition, WO-J, is an owner-gated amendment, not an agent repair.*
