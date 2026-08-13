@@ -516,7 +516,6 @@ def structures_walk() -> None:
 def structure_flow_walk() -> None:
     from triad_origin import transition
     from triad_origin.structures import common
-    from triad_origin.structures.displacement import QualifiedDisplacement
     from triad_origin.structures.excursion_reclaim_registry import (
         CONFIRMED as RECLAIM_CONFIRMED, ExcursionReclaimTracker)
     from triad_origin.structures.flow_atoms import BookDepthTilt, TradeFlowImbalance
@@ -538,22 +537,63 @@ def structure_flow_walk() -> None:
     if not [e for e in fvg_run.events if e.get("event_kind") == ZONE_FORMED]:
         raise AssertionError("F10 GV-009 gap did not form")
 
-    # 2 · F11 displacement — GV-010: ATR_before=10 => D_ticks=15; move 15 qualifies.
-    disp_inputs = [
-        {"event_id": "d_origin", "kind": "ORIGIN", "payload": {
-            "origin_bar_index": 0, "origin_open_ticks": 1000, "atr14_before_origin_ticks": 10}},
-        {"event_id": "d1", "kind": "BAR", "payload": {
-            "bar_index": 1, "open_ticks": 1000, "high_ticks": 1015, "low_ticks": 992,
-            "close_ticks": 1015}},
-    ]
-    disp_run = transition.run(
-        QualifiedDisplacement(), disp_inputs,
-        {"displacement_horizon": 3, "displacement_min_move_rule": common.DECLARED_DISPLACEMENT_MIN_MOVE,
-         "body_fraction_rule": common.DECLARED_DISPLACEMENT_BODY_FRACTION,
-         "close_location_rule": common.DECLARED_DISPLACEMENT_CLOSE_LOCATION})
-    qualified = [e for e in disp_run.events if e.get("event_kind") == "DISPLACEMENT_QUALIFIED"]
+    # 2 · F11 displacement — GV-010 on the R-F11 in-place C.3 surface (the raw
+    #     QualifiedDisplacement machine is DELETED): ATR_before=10 => D_ticks=15; move 15
+    #     qualifies. The four F11 rows are BLOCKED in the genuine registry (honest-dark), so
+    #     SELF_TEST fixture surgery mints the caps; PAR-158's declared rule byte-string carries
+    #     '*' (the C.1 sentinel), so its cap is minted with a sentinel-free stand-in and the
+    #     verified handle's value swapped to the declared rule (acceptance ran in full).
+    import dataclasses as _dc
+
+    from triad_origin import e01_interface as e01
+    from triad_origin.structures import displacement as disp
+
+    forge = _capability_forge()
+    f11_updates: dict = {}
+    for row_id, par in (("FPB-0021", "PAR-046"), ("FPB-0065", "PAR-157"),
+                        ("FPB-0066", "PAR-158"), ("FPB-0067", "PAR-159")):
+        f11_updates[row_id] = {
+            "lifecycle_status": "ACTIVE", "cardinality": "EXACTLY_ONE",
+            "migration_state": "NOT_APPLICABLE",
+            "semantic_slot": f"f11_{par.lower().replace('-', '_')}_E2E",
+            "condition": "E2E SELF_TEST stand-in for the F11 ratification ceremony",
+            "activation_scope": f"E2E;F11;{par};displacement walk only",
+            "precedence": "TEST_FIXTURE",
+            "consumer": "ORIGIN(F11)",
+            "consuming_wiring_ids": "W03",
+            "disposition_reason": "E2E SELF_TEST posture; the repository rows stay BLOCKED.",
+        }
+    f11_updates["FPB-0066"]["declared_value"] = (
+        "E2E-TRANSPORT max(5,ceil(ATR14_before_origin 3/2)) (sentinel-free)")
+    f11_bundle = forge["fixture_bundle"](f11_updates)
+    f11_caps = {
+        par: transition.require_bundle(f11_bundle, par, formula_id="F11", ctx=forge["ctx"])
+        for par in (disp.PARAMETER_BODY_FRACTION, disp.PARAMETER_HORIZON,
+                    disp.PARAMETER_MIN_MOVE, disp.PARAMETER_CLOSE_LOCATION)
+    }
+    f11_caps[disp.PARAMETER_MIN_MOVE] = _dc.replace(
+        f11_caps[disp.PARAMETER_MIN_MOVE], value=common.DECLARED_DISPLACEMENT_MIN_MOVE)
+
+    def f11_bar(identity, o, h, low, c):
+        return e01.require_valid_bar({
+            "bar_identity": identity, "metadata_revision": "r1",
+            "open_ticks": o, "high_ticks": h, "low_ticks": low, "close_ticks": c,
+            "base_volume": 1, "quote_volume": 1, "trade_count": 1,
+        })
+
+    disp_state = disp.initial_state()
+    origin_result = disp.evaluate(
+        f11_caps, f11_bar("d_origin", 1000, 1001, 999, 1000), disp_state,
+        role=disp.ROLE_ORIGIN, bar_index=0, atr14_before_origin_ticks=10)
+    bar_result = disp.evaluate(
+        f11_caps, f11_bar("d1", 1000, 1015, 992, 1015), origin_result.state,
+        role="BAR", bar_index=1)
+    qualified = [e for e in (*origin_result.events, *bar_result.events)
+                 if e.get("event_kind") == "DISPLACEMENT_QUALIFIED"]
     if not qualified:
-        raise AssertionError("F11 GV-010 displacement did not qualify")
+        raise AssertionError("F11 GV-010 displacement did not qualify on the v2 surface")
+    if qualified[0].get("origin_bar_identity") != "d_origin":
+        raise AssertionError(f"GV-010 origin identity wrong: {qualified[0]!r}")
 
     # 3 · F13 excursion/reclaim — GV-011: two consecutive qualifying closes confirm.
     reclaim_run = transition.run(

@@ -39,7 +39,7 @@ STRUCTURES = SRC / "structures"
 # trial_registry, candidate_publisher, capsules, common, structure_state plumbing) are outside
 # C.3's "formula modules" scope and keep the shared transition machinery.
 FORMULA_MODULE_NAMES = (
-    "displacement.py",            # F11
+    "displacement.py",            # F11 (R-F11 in-place conversion — must scan clean)
     "excursion_reclaim_registry.py",  # F13 (v1, retired R-F13)
     "excursion_reclaim_v2.py",    # F13 machine (R-F13, converted — must scan clean)
     "excursion_reclaim_registry_v2.py",  # F13 v2 registry face (converted)
@@ -65,7 +65,6 @@ ROOT_FORMULA_MODULE_NAMES = (
 # Fail-closed ratchet: modules awaiting their §1.6 repair commit. REMOVE each entry in the same
 # commit series that converts the module; an entry whose module scans clean is a build failure.
 LEGACY_UNCONVERTED: set[str] = {
-    "displacement.py",
     "reaction.py",
     "flow_atoms.py",
     "fvg_registry.py",
