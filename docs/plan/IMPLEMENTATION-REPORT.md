@@ -82,6 +82,19 @@ credential/receipt fabricated.
   the B03C golden home (`tests/formulas/test_f02_f09_goldens_b03c.py`, 8→15), each through the same
   acceptance path as its structure battery; dual-seed green.
 
+## Gap register + repair work order cross-check (2026-08-13)
+Owner-supplied `TRIAD_ORIGIN_V7_GAP_REGISTER` (`GAP-01…GAP-50`) + `TRIAD_REPAIR_WORK_ORDER`
+(`WO-00…WO-Q`), **vendored verbatim** in `docs/repair/` with the full gap-by-gap disposition at
+`docs/repair/GAP-CROSSCHECK-2026-08-13.md`. The scope wall governs: TriadOrigin is **E02 only**, so
+RC3 law 07 + this repo's `CLAUDE.md` make ~34 of the 50 gaps (the E07 economic layer, E09 venue
+drift, the DTBNK/estate bank + measurement debt, cross-repo governance) **out of Origin by
+construction** — the register's own CORRECTION-01 says the economic gate must be built at E07, never
+E02. Disposition: **1 CLOSED-IN-ORIGIN** (GAP-11/ERR-01, done), **6 OWNER-GATED recorded**
+(GAP-12/ERR-02, GAP-13/D-17, GAP-04+46/D-11, GAP-50/D-22, GAP-39/D-16, plus the D-2 binding/TBD
+set), **~34 OUT-OF-ORIGIN** (named to their estate node), **~9 ON-BOX/operator**. No Origin formula
+byte was changed to match a non-ratified proposal; every gap is placed, none silently dropped; no
+signature/pin/credential/receipt fabricated.
+
 ## Final gate
 12 required checks: pytest seed 0 + seed 1, collect_test_ids, verify_manifest,
 validate_contract_manifest, verify_reproducible_build, test_wheel_install,

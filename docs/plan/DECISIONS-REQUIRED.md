@@ -120,6 +120,45 @@ three P0s (D-12/D-13/D-11) first, then D-6, then D-21+D-17, then B00R root closu
 the merge chain (D-3b/D-1/D-7), then D-16, D-2, D-18, D-14, D-15, D-19/D-20, then D-4/D-5/D-8/D-9/D-10,
 then O-1/O-2.
 
+### II·F · The gap register + repair work order (GAP-01…GAP-50 / WO-00…WO-Q)
+
+The owner supplied `TRIAD_ORIGIN_V7_GAP_REGISTER_2026-08-13` + `TRIAD_REPAIR_WORK_ORDER_2026-08-13`
+(vendored verbatim in `docs/repair/`). The **full gap-by-gap disposition** is
+`docs/repair/GAP-CROSSCHECK-2026-08-13.md`. The scope wall holds: TriadOrigin is E02 only, so the
+economic layer (E07), venue drift (E09/executor), the bank/measurement debt (DTBNK/estate), and the
+governance/on-box acts are **out of Origin by construction** (RC3 law 07 + this repo's `CLAUDE.md`;
+the register's own CORRECTION-01 says the economic gate must be built at E07, never E02). The mapping
+onto this register:
+
+| Gap(s) | This register | Disposition |
+|---|---|---|
+| GAP-11 | **D-21 (ERR-01)** | ✅ CLOSED-IN-ORIGIN (F10 predicates + property test) |
+| GAP-12 | **D-21 (ERR-02)** | OWNER-GATED — code faithful to the vendored CORRECTED LAW; the redefinition is a signed spec change |
+| GAP-13 | **D-17 (ERR-03)** | OWNER-GATED — A/B/C, behaviour unchanged |
+| GAP-04, GAP-46 | **D-11** | OWNER-GATED — F18 uses the ratified PAR-061 `2/1`; WO-C's remove-generation-floor is an owner redesign |
+| GAP-01, GAP-02, GAP-03 | **D-12, D-13** | OUT-OF-ORIGIN (E07 admission / cost model / stop-width) |
+| GAP-05…GAP-10 | (executor / on-box) | OUT-OF-ORIGIN (E09/venue) + WO-00 on-box probe |
+| GAP-14, GAP-15, GAP-45 | **D-14** | OUT-OF-ORIGIN (engine/E09) + owner (Law 14) |
+| GAP-17, GAP-18 | **D-18** | ON-BOX reconciler + estate |
+| GAP-19…GAP-29, GAP-43/44/47/49 | (DTBNK/MC/Intelligence/bank) | OUT-OF-ORIGIN measurement |
+| GAP-30, GAP-31 | **D-3, D-3b** | OWNER / CODEOWNER on-box |
+| GAP-32, GAP-33, GAP-34, GAP-38 | **D-2** | OWNER `PROPOSED_MUST_RATIFY` / TBDs |
+| GAP-35 | **D-4** | CORRECTED — topology file received + registered (`PENDING_SIGNATURE`) |
+| GAP-36, GAP-37 | **O-1 (+ dead-man webhook)** | OWNER physical secrets / rotation |
+| GAP-39 | **D-16** | OWNER capsule-ordering |
+| GAP-48 | (Origin lib built) | BUILT-IN-ORIGIN (`control/comparator.py`); running it is on-box (WO-D) |
+| GAP-50 | **D-22 (below)** | OWNER-GATED capsule mapping |
+
+#### **D-22 · Sign the `capsules.py` ↔ RC2 CAP-01…CAP-05 mapping** — P2 · semantic (GAP-50 / WO-D task D2)
+
+| Field | Content |
+|---|---|
+| **The finding** | `capsules.py` carries 5 semantic entry-convention IDs bound by name + evidence; the RC1/RC2 **ordinal** mapping (`PAR-174…PAR-178`) is **explicitly refused, not guessed** (`rc2_ordinal_disclaimer`). Until a signed mapping exists, the comparator (GAP-48) can only align Origin candidates to engine detectors by geometry, not by semantic identity. |
+| **Origin scope** | Origin owns `capsules.py` and does the right thing (refuses to guess). Recorded refusing-in-place — an agent does **not** guess a single mapping row. | 
+| **What only you can do** | Sign the `CAP-01…CAP-05` mapping table (name + evidence per row); where evidence is insufficient a row reads `UNRESOLVED_SEMANTIC_OWNER_REQUIRED` — evidence, never coverage. | 
+| **Blocks** | Semantic-identity alignment in the comparator run (WO-D). | 
+| **Status** | OPEN |
+
 ---
 
 ## Where the mechanisms live (so you can verify each refusal yourself)
