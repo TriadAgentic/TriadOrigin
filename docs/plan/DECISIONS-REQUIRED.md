@@ -40,6 +40,14 @@ loudly and names the refusal — it does not guess.
 | **O-2** | **CO-12** forensic salvage of the off-clone refs (`7dbab10` post-g2-integration, `ef88414` B08, `d6795cb` status, the dirty worktrees) | These are absent from the GitHub clone — they live only on the box; the preserve-as-patch-candidates law forbids reconstructing them by invention | ON-BOX GUIDE §O-2 |
 | **O-3** | **B00R** external trust-registry pin + `main` ruleset install + threshold-sign on a clean runner | The cryptographic half of D-3 | ON-BOX GUIDE §O-3 |
 
+## D2 · Linkage & status closures (CO-06 / CO-09 — semantic-owner + signed-event)
+
+| # | Decision | What I built (refusing in place) | What only you / a semantic owner can do | Blocks |
+|---|----------|----------------------------------|-----------------------------------------|--------|
+| **D-8** | **CO-06 RC3-LINK-BLOCK-002** — the 17 `SEM-*` verification rows whose `linked_task_ids` point at the nonexistent `CTL-G2/G3-03`. The finding FORBIDS an inferred blanket replacement | Each of the 17 rows is individually **retired from the effective linkage** and marked `EDGE_UNRESOLVED_PRESERVED` / `effective_status=UNRESOLVED_SEMANTIC_OWNER_REQUIRED` (evidence, never coverage; excluded from the B09 conformance denominator). I did **not** guess the obvious `CTL-G2-03;CTL-G3-03` mapping — it is explicitly disallowed | A **semantic owner** selects the exact existing task ids for each SEM row in a **signed event** | those 17 rows entering the B09 unique conformance denominator |
+| **D-9** | **CO-06 RC3-LINK-BLOCK-001 / -003** — the 182 composite `G2/G3` gate rows + the 408 preserved RC1 rows | The overlay **materializes** the typed multi-gate edges (all members validated) and attributes task/gate edges; status `MATERIALIZED_AWAITING_SIGNED_CLOSURE`. The RC3 finding is **never mutated in place** | A **signed `RESOLVED` event** per RC3's closure rule flips the two findings from OPEN_BLOCKER | RC3 linkage findings reading RESOLVED (the materialization itself is complete + gate-green) |
+| **D-10** | **CO-09 provider run id** — the status projections embed the real git HEAD they were generated against, but the authenticated provider (CI/Actions) run id is `AUTHORITY_OPEN` (offline) | The head is a **real** 40-hex sha (`--stamp-context`); the run-id slot is the typed `AUTHORITY_OPEN` placeholder, **never fabricated** | Re-stamp on an authenticated CI runner so the provider run id is a real value (or leave it AUTHORITY_OPEN) | a fully provider-attested status header (the head half is already truthful) |
+
 ## D · Part E — the owner-service corrections (NEVER implemented in Origin)
 
 Part E (F20–F23 + GV-018) corrects **E08/E09/E10** owner services and is recorded in
