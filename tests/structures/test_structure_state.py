@@ -122,8 +122,13 @@ def test_v1_break_detector_carries_the_retired_defective_banner():
     assert "TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12" in doc  # the defect_ref
     assert "break.bar_close.v2" in doc  # names its successor
     # The banner is CLASS-level only: the module still hosts live law (F08 + the payload
-    # builders), so neither the module docstring nor F08 may read as withdrawn.
-    assert not structure_state.__doc__.lstrip().startswith("RETIRED_DEFECTIVE")
+    # builders), so neither the module docstring nor F08 may read as withdrawn. The check is
+    # a full-substring wall, not startswith: the C.3 static gate's ``module_is_retired`` is a
+    # substring test over the MODULE docstring, and a module that reads as wholly retired
+    # would exempt the live F08 surfaces from the scan AND demand a ``structure_state_v*.py``
+    # successor — this module must keep scanning under its LEGACY_UNCONVERTED pin (the gate's
+    # own "typed_level_registry / structure_state pattern").
+    assert "RETIRED_DEFECTIVE" not in structure_state.__doc__
     assert "RETIRED_DEFECTIVE" not in ProtectedSwingStructure.__doc__
 
 

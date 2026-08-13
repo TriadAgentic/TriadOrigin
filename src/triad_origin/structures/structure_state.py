@@ -2,10 +2,14 @@
 golden vector GV-008), plus the structure_atom/structure_transition payload builders.
 
 NOTE (Formula Repair §1.5, B03C): the F09 v1 detector below (:class:`BreakDetector`,
-``break.bar_close.v1``) is retired — see its class-level ``RETIRED_DEFECTIVE`` banner; the
-repaired surface is ``break.bar_close.v2`` in :mod:`triad_origin.structures.break_v2`. This
-module is NOT bannered as a whole: F08 (:class:`ProtectedSwingStructure`) and the payload
-builders remain live law, and the v1 bytes/logic are unchanged (replay of v1 history).
+``break.bar_close.v1``) is retired — see its class-level withdrawal banner; the repaired
+surface is ``break.bar_close.v2`` in :mod:`triad_origin.structures.break_v2`. This module is
+NOT bannered as a whole — deliberately, at the word level too: the C.3 static gate
+(``tools/verify_formula_entrypoints.py``) treats a module whose MODULE docstring carries the
+withdrawal marker as wholly retired, and this module still hosts live law (F08
+:class:`ProtectedSwingStructure` + the payload builders), so it must keep scanning under its
+``LEGACY_UNCONVERTED`` pin (the gate's own "typed_level_registry / structure_state pattern —
+one machine retired, siblings live"). The v1 bytes/logic are unchanged (replay of v1 history).
 
 **F08 (:class:`ProtectedSwingStructure`) is a REFUSAL INTERFACE, loudly and deliberately.** The
 RC3 formula row reads "NO IMPLEMENTATION AUTHORIZED until exact reducer version is ratified"

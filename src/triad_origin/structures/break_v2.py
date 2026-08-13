@@ -80,8 +80,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .. import exact
-from ..bindings import CapabilityForgeryError, VerifiedCapability
+# ``bindings`` is referenced as a MODULE (the swing_dc_v2 house pattern), never by importing
+# its classes: the exact-type capability check must track the LIVE module identity, so a
+# module reload (the sealed-bundle "reload launders nothing" drill) can never split the class
+# identity between the minting path (``transition.require_bundle``) and this boundary.
+from .. import bindings, exact
 from ..canonical import CanonicalError, canonical_json, loads_canonical
 from ..e01_interface import ValidatedBar
 from ..transition import MissingParameterError, TransitionResult
@@ -232,17 +235,17 @@ def _validated_caps(caps: object) -> tuple:
             "F09 v2 fails closed (no code default)")
     for key in sorted(caps):
         cap = caps[key]
-        if type(cap) is not VerifiedCapability:
-            raise CapabilityForgeryError(
+        if type(cap) is not bindings.VerifiedCapability:
+            raise bindings.CapabilityForgeryError(
                 f"caps[{key!r}] must be a VerifiedCapability minted by require_bundle, got "
                 f"{type(cap).__name__} — a hand-built parameter cannot enter a production "
                 "formula path")
         if cap.formula_id != FORMULA_F09:
-            raise CapabilityForgeryError(
+            raise bindings.CapabilityForgeryError(
                 f"caps[{key!r}] was minted for formula {cap.formula_id!r}; F09 v2 spends only "
                 "F09 capabilities")
         if cap.parameter_id != key:
-            raise CapabilityForgeryError(
+            raise bindings.CapabilityForgeryError(
                 f"caps[{key!r}] carries parameter_id {cap.parameter_id!r}; the key and the "
                 "capability identity must agree")
     return (
