@@ -6,9 +6,9 @@ _Mechanical projection. Do not edit; run `python tools/closure_control.py --writ
 - Activation posture: `OFF / OFF / OFF / LIVE`
 - Open blockers: `102`
 - Closed claims: `0`
-- Generated against provider head: `GIT_HEAD_SHA1:2a82c6b3b376110d63ea94ed5aa98cb90419bd5c`
+- Generated against provider head: `GIT_HEAD_SHA1:8a2acfcc6ed4e9431b68ac4d35d5b09082282bee`
 - Provider run id: `AUTHORITY_OPEN` (no authenticated provider run id offline)
-- Generation context: `docs/control/closure/closure_generation_context.v1.json` (sha256 `59caf13dbedfa91bd9557e09ec1b2523c624bed22b48674fa171b02bb8f0666a`)
+- Generation context: `docs/control/closure/closure_generation_context.v1.json` (sha256 `7aaeed32c64faaffd876468eaef9b725ee49d3a68b917327db128aa2811d1948`)
 
 ## Milestones
 
