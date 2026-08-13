@@ -1975,6 +1975,15 @@ def b06r_cluster_goldens() -> None:
     assert sorted(comp["member_candidate_ids"]) == ["P", "Q"]
 
 
+@stage("co06_linkage_repair",
+       "CO-06: the additive verification-linkage repair overlay recomputes byte-identically from "
+       "the frozen RC1/RC3/RC4 (+RC5) masters, leaves zero effective dangling references, and "
+       "reproduces the B09 unique-set base 1,648 without the blind-summation 2,056 — read-only "
+       "over the masters, arms nothing")
+def co06_linkage_repair() -> None:
+    _run_tool("gen_linkage_repair.py", "--check")
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")

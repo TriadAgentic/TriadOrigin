@@ -51,6 +51,7 @@ REQUIRED_MEMBERSHIP = [
     "docs/control/rc5_conflict_report.json",
     "docs/control/rc5_bundle.schema.json",
     "docs/control/formula_repair_overlay.v1.json",
+    "docs/control/linkage_repair_overlay.v1.json",
     "docs/control/b00r_policy.v1.json",
     "docs/control/b00r_policy.v2.json",
     "docs/control/binding_registry.v2.json",
