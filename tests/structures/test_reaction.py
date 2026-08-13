@@ -1,4 +1,13 @@
-"""F14 departure/first-touch battery: GV-012, the three departure conjuncts, mirror, invariance."""
+"""F14 departure/first-touch battery: GV-012, the three departure conjuncts, mirror, invariance.
+
+RETIRED-HISTORY POSTURE (TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F14): this battery pins
+the RETIRED ``reaction.first_touch.v1`` bytes for replay of rows produced under v1 (never-blend
+across formula versions, §1.5) — including the v1-only behaviors the v2 law outlaws
+(equality-at-knowledge confirms, caller-precomputed ``DEPARTURE_CANDIDATE`` eligibility,
+abstention-shaped re-registration conflict, silent pre-departure/duplicate-contact ignores).
+The corrected law is pinned by ``tests/structures/test_reaction_v2.py``; nothing here is a
+statement of current law.
+"""
 
 from __future__ import annotations
 

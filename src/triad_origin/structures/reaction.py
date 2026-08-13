@@ -1,5 +1,20 @@
 """F14 — departure and first retest/touch (golden vector GV-012).
 
+.. warning::
+
+   ``RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F14}``
+
+   This module is ``reaction.first_touch.v1`` and is **retired**: a contact at (not strictly
+   after) zone knowledge could confirm (the inclusive-at-equality contact guard); the
+   ``DEPARTURE_CANDIDATE`` entrypoint accepts caller-precomputed departure/count/time facts
+   (fabricatable eligibility); no TTL/auto-expiry exists; and a conflicting re-registration is
+   answered with an abstention event rather than a typed ``REJECT_CONFLICT``. It is superseded
+   by :mod:`triad_origin.structures.reaction_v2` (``reaction.first_touch.v2`` — computed
+   causality, strict ``T_know < T_depart < T_contact`` order, computed departure, RETEST TTL,
+   atomic CAS consumption, typed conflict refusal). The bytes and behaviour of this module are
+   preserved unchanged for replay of rows produced under v1 (never-blend applies across formula
+   versions); do not edit the logic below in place and do not delete this module.
+
 Exact RC3 formula text (``rc3_effective_control_bundle.json`` formula F14,
 ``semantic_version "reaction.first_touch.v1"``): *"Departure satisfied when directional distance
 from near edge reaches dep_ticks and min_depart_events/time. First contact is earliest later
