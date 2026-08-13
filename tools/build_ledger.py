@@ -44,12 +44,33 @@ RC3_BUNDLE = CONTROL / "rc3_effective_control_bundle.json"
 RC4_BUNDLE = CONTROL / "rc4_control_bundle.json"
 OVERRIDES = CONTROL / "build_ledger_overrides.json"
 REVIEW = CONTROL / "build_ledger_review.v1.json"
+REVIEW_V2 = CONTROL / "build_ledger_review.v2.json"
 REVIEW_SUBJECT = CONTROL / "closure" / "predecessors" / "build_ledger.REVIEWED_V2.json"
 LEDGER = CONTROL / "build_ledger.json"
 
 LEDGER_VERSION = "CANDIDATE_V3"
 REVIEW_SUBJECT_VERSION = "REVIEWED_V2"
 REVIEW_SUBJECT_SHA256 = "78f6ce7254390997d54ce6732a46e138f24a56502677ba469dff22bf92f2b51e"
+
+# CO-05 ledger-review rebinding. The v1 review binds only the frozen REVIEWED_V2 subject and the
+# v1 --verify compares only ID + milestone, so 94 rows whose `rule` field drifted
+# (R8_DEFAULT -> R8_GOVERNANCE_CLOSURE) escaped re-review. The v2 review binds (a) the exact
+# SHA-256 of the full CURRENT ledger bytes and (b) a per-row digest over every safety-significant
+# field of each row; --verify recomputes and compares both. Mutating any single row field without a
+# fresh (re-pinned) v2 review changes a digest and fails the build.
+REVIEW_V2_VERSION = "build-ledger-review.v2"
+# The safety-significant fields of a ledger row. The per-row digest is taken over the WHOLE row
+# (sorted keys), which is a superset of these — so a mutation to any field, named here or not,
+# changes the digest. This tuple documents the exact set the current ledger rows carry; --verify
+# fails closed if a row's key set ever differs from it (an added/removed field is itself a change
+# that must be re-reviewed).
+REVIEW_V2_SAFETY_SIGNIFICANT_FIELDS = (
+    "id", "source", "row_class", "gate", "phase", "node",
+    "milestone", "exec_class", "rule", "status",
+)
+REVIEW_V2_ROW_DIGEST_ALGORITHM = (
+    "sha256(json.dumps(row, sort_keys=True, separators=(',', ':')))"
+)
 
 # Allowed override destinations (in-repo milestones + named non-repo lanes). An override may not
 # invent a lane outside this closed set (B00R-D05 / SRC-004).
@@ -254,6 +275,165 @@ def classify_rc4(task: dict) -> tuple[str, str, str]:
     return target, "ESTATE_LEVER" if target == ESTATE else "LIVE_STAGE", "L1_GATE"
 
 
+# --------------------------------------------------------------------------------------------------
+# CO-05: ledger-review rebinding (make a stale review impossible)
+# --------------------------------------------------------------------------------------------------
+
+def row_digest(row: dict) -> str:
+    """SHA-256 over the whole row (sorted keys, compact separators).
+
+    Deterministic and independent of dict insertion order. Covers every field of the row — a
+    superset of ``REVIEW_V2_SAFETY_SIGNIFICANT_FIELDS`` — so mutating any single field changes it.
+    """
+    return hashlib.sha256(
+        json.dumps(row, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def compute_row_digests(ledger: dict) -> dict[str, str]:
+    """Map of ``id -> row_digest`` for every ledger row (sorted by id)."""
+    return {
+        row["id"]: row_digest(row)
+        for row in sorted(ledger["tasks"], key=lambda r: r["id"])
+    }
+
+
+def verify_review_v2(ledger_bytes: bytes, ledger: dict, review_v2: dict) -> list[str]:
+    """Pure check that a v2 review artifact binds the given ledger.
+
+    Returns a (possibly empty) list of problem strings. Empty means the binding holds: the review's
+    full-bytes digest equals the SHA-256 of ``ledger_bytes``, and its per-row digest map equals the
+    per-row digests recomputed from ``ledger``. This is the CO-05 assertion layer; it never inspects
+    the re-review dispositions (those are owner content — see ``build_review_v2``), only the digest
+    binding. Any mismatch is a defect the caller turns into a failing exit.
+    """
+    problems: list[str] = []
+
+    if review_v2.get("review_version") != REVIEW_V2_VERSION:
+        problems.append(
+            f"v2 review does not declare review_version {REVIEW_V2_VERSION!r} "
+            f"(got {review_v2.get('review_version')!r})")
+    if not review_v2.get("reviewer"):
+        problems.append("v2 review carries no reviewer/generator identity")
+    if review_v2.get("ledger_version") != ledger.get("ledger_version"):
+        problems.append(
+            f"v2 review binds ledger_version {review_v2.get('ledger_version')!r} "
+            f"but current ledger is {ledger.get('ledger_version')!r}")
+    if review_v2.get("row_digest_algorithm") != REVIEW_V2_ROW_DIGEST_ALGORITHM:
+        problems.append("v2 review declares an unexpected row_digest_algorithm")
+
+    # (a) full-bytes digest of the current ledger.
+    expected_full = review_v2.get("binds_ledger_sha256")
+    actual_full = hashlib.sha256(ledger_bytes).hexdigest()
+    if not expected_full:
+        problems.append("v2 review does not bind a full-ledger sha256 (binds_ledger_sha256)")
+    elif expected_full != actual_full:
+        problems.append(
+            f"v2 full-ledger digest mismatch: current {actual_full} "
+            f"!= reviewed {expected_full} (the ledger changed without a fresh review)")
+
+    # Fail closed if any row carries a field set other than the reviewed safety-significant set: an
+    # added or removed field is itself an unreviewed change.
+    expected_fields = set(REVIEW_V2_SAFETY_SIGNIFICANT_FIELDS)
+    for row in ledger["tasks"]:
+        if set(row) != expected_fields:
+            problems.append(
+                f"row {row.get('id')!r} field set {sorted(row)} differs from the reviewed "
+                f"safety-significant field set {sorted(expected_fields)}")
+            break
+
+    # (b) per-row digests.
+    reviewed = review_v2.get("row_digests", {})
+    if not isinstance(reviewed, dict):
+        problems.append("v2 review row_digests is not an object")
+        reviewed = {}
+    current = compute_row_digests(ledger)
+    missing = sorted(set(current) - set(reviewed))
+    extra = sorted(set(reviewed) - set(current))
+    if missing:
+        problems.append(f"v2 review omits row digests for current tasks: {missing[:5]}")
+    if extra:
+        problems.append(f"v2 review carries row digests for unknown tasks: {extra[:5]}")
+    mismatched = sorted(
+        rid for rid in (set(reviewed) & set(current)) if reviewed[rid] != current[rid]
+    )
+    if mismatched:
+        problems.append(
+            f"{len(mismatched)} row digest(s) mismatch — a safety-significant field changed "
+            f"without a fresh review: {mismatched[:5]}")
+
+    return problems
+
+
+def build_review_v2(ledger_bytes: bytes, ledger: dict, subject: dict,
+                    reviewer: str, reviewed_at: str, review_basis: str) -> dict:
+    """Regenerate the v2 review artifact from the CURRENT ledger and the frozen REVIEWED_V2 subject.
+
+    The digests are mechanical (derived from the current ledger bytes/rows). The drift change-log is
+    the exact per-field diff of every row that changed since REVIEWED_V2; each drifted row's
+    disposition is ``REVIEW_PENDING`` — the fresh full-row re-review of those rows is owner/reviewer
+    judgment, not agent content, so it is documented and left honestly pending. Deterministic: no
+    wall clock, sorted output.
+    """
+    subject_rows = {row["id"]: row for row in subject.get("tasks", [])}
+    current_rows = {row["id"]: row for row in ledger["tasks"]}
+    change_log = []
+    for rid in sorted(current_rows):
+        cur = current_rows[rid]
+        sub = subject_rows.get(rid)
+        if sub is None:
+            change_log.append({
+                "id": rid,
+                "kind": "ROW_ABSENT_IN_REVIEWED_V2",
+                "changed_fields": [],
+                "disposition": "REVIEW_PENDING",
+            })
+            continue
+        changed_fields = [
+            {
+                "field": field,
+                "reviewed_v2_value": sub.get(field),
+                "current_v3_value": cur.get(field),
+            }
+            for field in sorted(set(cur) | set(sub))
+            if cur.get(field) != sub.get(field)
+        ]
+        if changed_fields:
+            change_log.append({
+                "id": rid,
+                "kind": "ROW_FIELD_DRIFT",
+                "changed_fields": changed_fields,
+                "disposition": "REVIEW_PENDING",
+            })
+    return {
+        "review_version": REVIEW_V2_VERSION,
+        "supersedes": "build-ledger-review.v1",
+        "ledger_version": ledger.get("ledger_version"),
+        "reviewer": reviewer,
+        "reviewed_at": reviewed_at,
+        "review_basis": review_basis,
+        "binding_disposition": "MECHANICAL_DIGEST_BOUND",
+        "row_rereview_disposition": "REVIEW_PENDING",
+        "note": (
+            "The full-bytes and per-row digest binding is mechanically authenticated and enforced "
+            "by build_ledger.py --verify. The re-review dispositions for the rows that drifted from "
+            "REVIEWED_V2 are REVIEW_PENDING and require owner/reviewer judgment; the exact drift is "
+            "documented in drift_from_reviewed_v2.change_log."),
+        "binds_ledger_sha256": hashlib.sha256(ledger_bytes).hexdigest(),
+        "row_digest_algorithm": REVIEW_V2_ROW_DIGEST_ALGORITHM,
+        "safety_significant_fields": list(REVIEW_V2_SAFETY_SIGNIFICANT_FIELDS),
+        "row_count": len(current_rows),
+        "row_digests": compute_row_digests(ledger),
+        "drift_from_reviewed_v2": {
+            "predecessor_subject": "docs/control/closure/predecessors/build_ledger.REVIEWED_V2.json",
+            "predecessor_subject_sha256": REVIEW_SUBJECT_SHA256,
+            "changed_row_count": len(change_log),
+            "dispositions_state": "REVIEW_PENDING",
+            "change_log": change_log,
+        },
+    }
+
+
 def build() -> dict:
     rc3 = json.loads(RC3_BUNDLE.read_text())
     rc4 = json.loads(RC4_BUNDLE.read_text())
@@ -351,6 +531,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--verify", action="store_true")
     parser.add_argument("--status", action="store_true")
     parser.add_argument(
+        "--emit-review-v2", action="store_true",
+        help="regenerate docs/control/build_ledger_review.v2.json (CO-05 digest-binding review) "
+             "from the current ledger and the frozen REVIEWED_V2 subject; dispositions stay "
+             "REVIEW_PENDING (owner content)")
+    parser.add_argument(
         "--review", metavar="PREVIOUS_LEDGER",
         help="refused: the historical REVIEWED_V2 review artifact is immutable")
     args = parser.parse_args(argv)
@@ -370,6 +555,33 @@ def main(argv: list[str]) -> int:
         print(f"build ledger {ledger['ledger_version']}: {ledger['task_count']} tasks")
         for milestone, count in ledger["milestone_counts"].items():
             print(f"  {milestone}: {count}")
+        return 0
+
+    if args.emit_review_v2:
+        if LEDGER.read_text() != rendered:
+            print("FAIL: regenerate docs/control/build_ledger.json first "
+                  "(python tools/build_ledger.py) before emitting the v2 review",
+                  file=sys.stderr)
+            return 1
+        if not REVIEW_SUBJECT.exists():
+            print("FAIL: frozen REVIEWED_V2 review subject missing", file=sys.stderr)
+            return 1
+        subject = json.loads(REVIEW_SUBJECT.read_bytes())
+        review_v2 = build_review_v2(
+            LEDGER.read_bytes(), ledger, subject,
+            reviewer="co05-ledger-review-rebinding-session",
+            reviewed_at="2026-08-12",
+            review_basis=(
+                "CO-05 ledger review rebinding: the v2 review binds the exact SHA-256 of the full "
+                "current CANDIDATE_V3 ledger bytes plus a per-row digest over every safety-"
+                "significant field of each row; --verify recomputes and compares both. Digests are "
+                "mechanical; the re-review dispositions for the rows that drifted from REVIEWED_V2 "
+                "are REVIEW_PENDING (owner/reviewer judgment)."),
+        )
+        REVIEW_V2.write_text(json.dumps(review_v2, indent=1, sort_keys=True) + "\n")
+        drift = review_v2["drift_from_reviewed_v2"]["changed_row_count"]
+        print(f"wrote {REVIEW_V2} ({review_v2['row_count']} row digests; "
+              f"{drift} rows drifted from REVIEWED_V2, dispositions REVIEW_PENDING)")
         return 0
 
     if args.verify:
@@ -435,6 +647,28 @@ def main(argv: list[str]) -> int:
         print(f"OK: build ledger {LEDGER_VERSION} structurally current "
               f"({ledger['task_count']} tasks); historical REVIEWED_V2 subject authenticated "
               f"({unchanged} unchanged rows; {len(changed_ids)} changed rows require review)")
+
+        # CO-05: the NEW v2 digest-binding assertion layer (additive; the two OK lines above are
+        # unchanged). The v1 checks above only compare ID + milestone, so a `rule`/`exec_class`/
+        # etc. drift escapes them; the v2 review binds the full-bytes + per-row digests so any such
+        # drift fails until a fresh (re-pinned) v2 review is issued.
+        if not REVIEW_V2.exists():
+            print("FAIL: v2 digest-binding review missing "
+                  "(docs/control/build_ledger_review.v2.json); "
+                  "run python tools/build_ledger.py --emit-review-v2", file=sys.stderr)
+            return 1
+        review_v2 = json.loads(REVIEW_V2.read_text())
+        v2_problems = verify_review_v2(LEDGER.read_bytes(), ledger, review_v2)
+        if v2_problems:
+            for problem in v2_problems[:10]:
+                print(f"FAIL: {problem}", file=sys.stderr)
+            print(f"FAIL: {len(v2_problems)} v2 review-binding defects", file=sys.stderr)
+            return 1
+        drift = review_v2.get("drift_from_reviewed_v2", {})
+        print(f"OK: build_ledger_review.v2 binding authenticated "
+              f"(full-bytes + {review_v2.get('row_count')} per-row digests match current "
+              f"{LEDGER_VERSION}; {drift.get('changed_row_count')} rows drifted from REVIEWED_V2, "
+              f"dispositions {drift.get('dispositions_state')})")
         return 0
 
     LEDGER.write_text(rendered)
