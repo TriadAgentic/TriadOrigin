@@ -67,10 +67,57 @@ def test_class_level_retired_banner_does_not_exempt_a_live_module(tmp_path: path
 
 
 def test_module_docstring_banner_exempts_preserved_bytes(tmp_path: pathlib.Path) -> None:
+    # The real banner shape: the token stands alone on its line (or with a trailing dash),
+    # descriptive prose on following lines — the excursion_reclaim_registry.py form.
     retired = tmp_path / "retired.py"
     retired.write_text(
-        '"""RETIRED_DEFECTIVE{defect_ref=R-FXX} — preserved v1 bytes."""\n'
+        '"""RETIRED_DEFECTIVE{defect_ref=R-FXX} —\n'
+        "preserved v1 withdrawal banner (repair spec section 1.5).\n"
+        '"""\n'
         "Params = dict\n",
         encoding="utf-8",
     )
     assert gate.scan_module(retired) == []
+
+
+def test_warning_block_banner_exempts_preserved_bytes(tmp_path: pathlib.Path) -> None:
+    # The instrument_math.py form: the token alone inside an RST warning block, backticked.
+    retired = tmp_path / "retired2.py"
+    retired.write_text(
+        '"""Original module purpose line.\n\n'
+        ".. warning::\n\n"
+        "   ``RETIRED_DEFECTIVE{defect_ref=R-FXX}``\n"
+        '"""\n'
+        "Params = dict\n",
+        encoding="utf-8",
+    )
+    assert gate.scan_module(retired) == []
+
+
+def test_prose_mention_of_the_banner_token_does_not_retire_a_successor(tmp_path: pathlib.Path) -> None:
+    # A v2 successor whose docstring MENTIONS the v1 banner in prose (the swing_dc_v2 wording,
+    # incl. the line-wrap case that puts the token at line start) must still be scanned.
+    successor = tmp_path / "successor_v2.py"
+    successor.write_text(
+        '"""The v2 repair module. Repairs the retired v1 (banner\n'
+        "``RETIRED_DEFECTIVE{defect_ref=R-FXX}``): v1 evaluated things wrongly.\n"
+        '"""\n'
+        "Params = dict\n",
+        encoding="utf-8",
+    )
+    assert gate.scan_module(successor), "a prose mention must not exempt a live module"
+
+
+def test_type_identity_check_is_not_a_validated_input_construction(tmp_path: pathlib.Path) -> None:
+    # `type(x) is not ValidatedBar` + prose "ValidatedBar (constructed only...)" are lawful;
+    # only a CALL of the type is a forgery (the break_v2.py false-positive regression).
+    ok = tmp_path / "checker.py"
+    ok.write_text(
+        '"""x."""\n'
+        "def evaluate(caps, env, state):\n"
+        "    if type(env) is not ValidatedBar:\n"
+        '        raise TypeError("must be an e01_interface.ValidatedBar (constructed only there)")\n'
+        "    return state\n",
+        encoding="utf-8",
+    )
+    assert gate.scan_module(ok) == []

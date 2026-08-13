@@ -40,13 +40,17 @@ STRUCTURES = SRC / "structures"
 # C.3's "formula modules" scope and keep the shared transition machinery.
 FORMULA_MODULE_NAMES = (
     "displacement.py",            # F11
-    "excursion_reclaim_registry.py",  # F13 (v1)
+    "excursion_reclaim_registry.py",  # F13 (v1, retired R-F13)
+    "excursion_reclaim_v2.py",    # F13 machine (R-F13, converted — must scan clean)
+    "excursion_reclaim_registry_v2.py",  # F13 v2 registry face (converted)
     "reaction.py",                # F14 (v1)
     "flow_atoms.py",              # F15/F16/F17 (v1)
     "fvg_registry.py",            # F10 (v2 home before v3)
     "order_block_registry.py",    # F12 (v1)
     "typed_level_registry.py",    # F03/F04/F06 levels (v1)
-    "structure_state.py",         # F09 (v1)
+    "structure_state.py",         # F09 (v1 host; F08 raw sites stay until F08's own train)
+    "break_v2.py",                # F09 machine (R-F09, converted — must scan clean)
+    "swing_dc_v2.py",             # F03 machine (R-F03, converted — must scan clean)
     "clustering.py",              # F19 (v1)
     "candidate_geometry.py",      # F18 geometry home
 )
@@ -60,13 +64,12 @@ ROOT_FORMULA_MODULE_NAMES = (
 # commit series that converts the module; an entry whose module scans clean is a build failure.
 LEGACY_UNCONVERTED: set[str] = {
     "displacement.py",
-    "excursion_reclaim_registry.py",
     "reaction.py",
     "flow_atoms.py",
     "fvg_registry.py",
     "order_block_registry.py",
     "typed_level_registry.py",
-    "structure_state.py",
+    "structure_state.py",  # shared host: live F08 raw sites remain (§1.6 F06/F08 untouched)
     "clustering.py",
     "candidate_geometry.py",
     "features.py",
@@ -78,7 +81,23 @@ VALIDATED_INPUT_TYPES = ("ValidatedBar", "ValidatedTrade", "ValidatedBookUpdate"
 _RAW_ALIAS = re.compile(r"^\s*Params\s*=\s*dict", re.MULTILINE)
 _RAW_SIG = re.compile(r"def\s+\w*evaluate\w*\s*\([^)]*[Dd]ict\[str,\s*Any\]", re.DOTALL)
 _RAW_REQUIRE = re.compile(r"(?:transition\.)?require\(\s*params")
-_VALIDATED_CTOR = re.compile(r"\b(" + "|".join(VALIDATED_INPUT_TYPES) + r")\s*\(")
+
+
+def _constructs_validated_input(text: str) -> bool:
+    """AST-precise: a CALL of a ValidatedInput type (never a type-identity check or prose)."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return False  # the other regex findings still fire; unparseable never hides a ctor
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        name = func.id if isinstance(func, ast.Name) else (
+            func.attr if isinstance(func, ast.Attribute) else None)
+        if name in VALIDATED_INPUT_TYPES:
+            return True
+    return False
 
 
 def module_is_retired(text: str) -> bool:
@@ -86,13 +105,30 @@ def module_is_retired(text: str) -> bool:
 
     A class-level ``RETIRED_DEFECTIVE`` banner inside a module that still hosts live law (the
     typed_level_registry / structure_state pattern — one machine retired, siblings live) does NOT
-    exempt the module: its live surfaces still convert.
+    exempt the module: its live surfaces still convert. A PROSE MENTION of the token inside a
+    successor module's docstring ("repairs the retired v1, banner ``RETIRED_DEFECTIVE{...}``")
+    is NOT a banner either: the banner line carries the token with nothing before it but
+    whitespace/backticks and nothing after the closing brace but whitespace/backticks/dash-or-dot
+    punctuation (the instrument_math.py warning-block and excursion_reclaim_registry.py
+    first-line forms).
     """
     try:
         doc = ast.get_docstring(ast.parse(text))
     except SyntaxError:
         return False  # unparseable is never exempt — fail toward scanning
-    return bool(doc) and RETIRED_BANNER in doc
+    if not doc:
+        return False
+    for line in doc.splitlines():
+        stripped = line.strip().strip("`").lstrip()
+        if not stripped.startswith(RETIRED_BANNER + "{"):
+            continue
+        close = stripped.find("}")
+        if close < 0:
+            continue
+        tail = stripped[close + 1:].strip().strip("`").strip()
+        if all(ch in "—–-. " for ch in tail):
+            return True
+    return False
 
 
 def scan_module(path: pathlib.Path) -> list[str]:
@@ -106,7 +142,7 @@ def scan_module(path: pathlib.Path) -> list[str]:
         findings.append("dict[str, Any] in an evaluate signature")
     if _RAW_REQUIRE.search(text):
         findings.append("raw transition.require(params, ...) on a production path")
-    if path.name != "e01_interface.py" and _VALIDATED_CTOR.search(text):
+    if path.name != "e01_interface.py" and _constructs_validated_input(text):
         # Constructing a ValidatedInput outside the E01 boundary forges an envelope.
         findings.append("ValidatedInput constructed outside e01_interface")
     return findings
