@@ -7,6 +7,20 @@ until the owner signs; every still-gated item stays gated after signature. Postu
 `venue_environment=OFF / venue_activation=OFF / paper_activation=OFF / shadow_activation=LIVE`,
 `DENIED_SAFE_HOLD`.
 
+**Decision file received + cross-checked (2026-08-13).** The change-orders doc opened CO-14 as a
+*reserved slot* because the decision file was "not received in this session's upload set." The file
+`TOPOLOGY-DECISION-E03-E05-E06.md` has now been received and cross-checked clause-by-clause against
+the registered text below: every material clause corresponds — E03=Kairos (Forecast Core,
+`decision_authority = NONE`); E05=standalone Coordinator (the only mediator, never re-fuses prose,
+never admits/sizes/authorizes); E06=Logos (sole target-state governed-LLM caller,
+`decision_authority = NONE`); Kairos and Logos never call/import/discover/depend on each other;
+E07/E08/E09 remain the sole admission/risk/venue owners; additive (supersedes no RC2/RC3/RC4 byte);
+**source registration + DARK/shadow wiring only**; the 12,000 ms Logos deadline as law with the
+25.99 s observation a named violation; the §14 prohibited claims stay prohibited. The three
+precision amendments A1–A3 (§2) NARROW, never widen, the received text; the approver
+(`leesbak@gmail.com`) and posture (`OFF/OFF/OFF/LIVE / DENIED_SAFE_HOLD`) match. **No signature
+exists; the record stays `PENDING_SIGNATURE`.**
+
 **Order:** `TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12` CO-14 (the reserved slot, now filled by
 the received decision file). **Source of the signable text:**
 `TRIAD-OWNER-TOPO-01-ADJUDICATION-2026-08-12` (adjudicator: Claude, executive-lead seat per
