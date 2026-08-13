@@ -45,7 +45,8 @@ FORMULA_MODULE_NAMES = (
     "excursion_reclaim_registry_v2.py",  # F13 v2 registry face (converted)
     "reaction.py",                # F14 (v1)
     "flow_atoms.py",              # F15/F16/F17 (v1)
-    "fvg_registry.py",            # F10 (v2 home before v3)
+    "fvg_registry.py",            # F10 (v2, retired R-F10)
+    "fvg_registry_v3.py",         # F10 machine (R-F10, converted — must scan clean)
     "order_block_registry.py",    # F12 (v1, retired R-F12)
     "order_block_v2.py",          # F12 machine (R-F12, converted — must scan clean)
     "order_block_registry_v2.py", # F12 v2 registry face (converted)
@@ -67,7 +68,6 @@ ROOT_FORMULA_MODULE_NAMES = (
 LEGACY_UNCONVERTED: set[str] = {
     "reaction.py",
     "flow_atoms.py",
-    "fvg_registry.py",
     "typed_level_registry.py",
     "structure_state.py",  # shared host: live F08 raw sites remain (§1.6 F06/F08 untouched)
     "clustering.py",
