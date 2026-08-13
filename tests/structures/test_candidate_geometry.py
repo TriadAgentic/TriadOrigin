@@ -278,3 +278,52 @@ class TestFailClosed:
         bad[candidate_geometry.PARAM_MIN_GEOMETRIC_RR_RULE] = "3/2"
         with pytest.raises(StructureLawError, match="PAR-061"):
             evaluate(params=bad)
+
+
+class TestE0RefusalPosture:
+    """§E.0 (Origin, B06R — spec confirmation, no defect): the buffered-stop derivation
+    (``STOP_BUFFER_SOURCE``) and the priority target selector (``TARGET_SELECTOR_POLICY``) remain
+    lawful ONLY under their explicit ``PROPOSED_MUST_RATIFY`` bindings; absent ratification the
+    formula ABSTAINS rather than improvising. R-F19 demands no F18 code change (binding notes only),
+    so these assertions prove the EXISTING fail-closed posture holds: F18 never fabricates a stop
+    buffer or a target selection from an absent/undeclared governing rule.
+
+    (Interpretation point recorded for the orchestrator: F18's fail-closed today RAISES — a typed
+    ``MissingParameterError`` / ``StructureLawError`` — rather than emitting a named ABSTENTION
+    event; whether that satisfies §E.0's "abstains rather than improvising" is a wording question,
+    not a numeric one — the geometry law, the cross-multiplied 2:1 floor, the wrong-side-before-abs
+    rejection and the unreduced RR pair are all already as specified and golden-locked by GV-015.)
+    """
+
+    def test_stop_buffer_source_absent_fails_closed_never_improvises(self):
+        # STOP_BUFFER_SOURCE unbound: no buffered stop may be derived — fail closed, never a
+        # fabricated buffer.
+        bad = dict(PARAMS)
+        del bad[capsules.PAR_NATURAL_INVALIDATION_BUFFER_RULE]
+        with pytest.raises(MissingParameterError):
+            evaluate(params=bad)
+
+    def test_stop_buffer_source_wrong_bytes_refused_never_improvises(self):
+        bad = dict(PARAMS)
+        bad[capsules.PAR_NATURAL_INVALIDATION_BUFFER_RULE] = "max(1,ceil(ATR14_ticks*1/10))"
+        with pytest.raises(StructureLawError, match="PAR-172"):
+            evaluate(params=bad)
+
+    def test_target_selector_policy_absent_fails_closed_never_improvises(self):
+        bad = dict(PARAMS)
+        del bad[capsules.PAR_TARGET_SELECTOR]
+        with pytest.raises(MissingParameterError):
+            evaluate(params=bad)
+
+    def test_target_selector_policy_wrong_bytes_refused_never_improvises(self):
+        bad = dict(PARAMS)
+        bad[capsules.PAR_TARGET_SELECTOR] = ("SESSION_LEVEL", "PROTECTED_SWING", "EQUAL_LEVEL")
+        with pytest.raises(StructureLawError, match="PAR-173"):
+            evaluate(params=bad)
+
+    def test_geometry_law_stands_under_the_declared_bindings(self):
+        # §E.0: "Geometry law stands." With every governing binding present as its exact declared
+        # value, the GV-015 admit case holds unchanged (S < E < T; reward*1 >= risk*2, inclusive).
+        result = evaluate(targets=[target("PROTECTED_SWING", 104)])
+        assert result.admitted is True
+        assert (result.rr_numerator, result.rr_denominator) == (4, 2)  # unreduced, floor cleared
