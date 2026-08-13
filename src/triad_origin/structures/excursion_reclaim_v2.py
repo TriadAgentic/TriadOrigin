@@ -58,20 +58,24 @@ reads INVALIDATED before any tau/extreme work.
 
 C.3 entrypoint law: :func:`evaluate` consumes an authenticated capability map
 (``parameter_id -> triad_origin.bindings.VerifiedCapability``, exact type per entry, formula
-``F13``) and an E01 envelope (`triad_origin.e01_interface.ValidatedBar`, exact type). A raw dict
-or hand-built object in either seat raises a typed rejection BEFORE any state transition. The
-per-bar stream coordinates (``ordinal`` — the per-(instrument,timeframe) finalized-bar index,
-``bucket_start_us`` — the bar's bucket start for the §1.4 availability law) are injected
-keyword-only exact ints: the three fixed ``ValidatedInput`` shapes do not carry them, and this
-module never reads a clock.
+``F13``) and an E01 envelope (:class:`triad_origin.e01_interface.ValidatedBar`, exact type). A
+raw dict or hand-built object in either seat raises a typed rejection BEFORE any state
+transition. The per-bar stream coordinates (``ordinal`` — the per-(instrument,timeframe)
+finalized-bar index, ``bucket_start_us`` — the bar's bucket start for the §1.4 availability law)
+are injected keyword-only exact ints: the three fixed ``ValidatedInput`` shapes do not carry
+them, and this module never reads a clock. Level facts (registration / defining revision) and
+declared GAP / §1.1-quarantine facts are E01/F03-owned intake consumed through the pure
+:func:`register_level` / :func:`revise_level` / :func:`note_gap` faces — replay and live drive
+the SAME functions in recorded order.
 
 Parameter bindings (existing rows, values still ``PROPOSED_MUST_RATIFY`` — the registry rows are
 ``BLOCKED_BINDING_V2_MIGRATION``, so a production sealed bundle refuses F13 with the typed
 ``BLOCKED_BINDING_INCOMPLETE{F13}`` before any capability exists): ``PAR-048`` e (ticks) ·
 ``PAR-164`` r (ticks) · ``PAR-049`` tau (bars, 13b total-window scope) · ``PAR-165`` n
 (consecutive closes). This module's mechanism consumes each declared value as an EXACT
-non-negative integer; the v1 ATR-rule byte-strings are not ratified v2 tick values and refuse by
-name (``F13_BINDING_VALUE_NOT_INTEGER``) — never evaluated, never defaulted.
+non-negative integer (n additionally >= 1 — under 13a the trigger close is hold #1, so a confirm
+requires at least one hold); the v1 ATR-rule byte-strings are not ratified v2 tick values and
+refuse by name (``F13_BINDING_VALUE_NOT_INTEGER``) — never evaluated, never defaulted.
 
 GV-011: the R-F13 vector table (T1–T14) is the successor content of golden vector GV-011
 (RC3-GVOP-003 REPLACE row); T3 is the canonical confirm walk.
@@ -96,6 +100,7 @@ from ..exact import (
     dominant_transition,
     guard_int64,
 )
+from ..transition import TransitionResult
 from .common import LONG, SHORT, StructureLawError, require_direction, require_int
 
 FORMULA_ID = "F13"
@@ -177,7 +182,10 @@ def _capability_int(cap: VerifiedCapability, *, minimum: int, name: str) -> int:
 
     Admits an exact int (bool excluded) or a canonical non-negative decimal string (the registry
     wire carries declared values as strings). The v1 ATR-rule byte-strings are NOT ratified v2
-    values — they refuse here by name, never evaluated, never defaulted.
+    values — they refuse here by name, never evaluated, never defaulted. ``minimum`` is the
+    mechanism's structural domain floor (never a proposed value): ticks/bars are non-negative
+    magnitudes (a negative buffer would invert the written geometry) and 13a makes ``n >= 1``
+    structural (the trigger close is hold #1).
     """
     value = cap.value
     if isinstance(value, bool):
@@ -196,8 +204,8 @@ def _capability_int(cap: VerifiedCapability, *, minimum: int, name: str) -> int:
     guarded = guard_int64(result, formula_id=FORMULA_ID, field=cap.parameter_id)
     if guarded < minimum:
         raise StructureLawError(
-            f"{BINDING_VALUE_NOT_INTEGER}: {cap.parameter_id}={guarded} violates the semantic "
-            f"floor {name} >= {minimum}")
+            f"{BINDING_VALUE_NOT_INTEGER}: {cap.parameter_id}={guarded} violates the structural "
+            f"domain floor {name} >= {minimum}")
     return guarded
 
 
@@ -232,8 +240,8 @@ def _resolved_parameters(caps: object) -> tuple:
         if entry.parameter_id != pid:
             raise CapabilityForgeryError(
                 f"capability keyed {pid!r} carries parameter_id {entry.parameter_id!r}")
-    e = _capability_int(caps[PARAM_EXCURSION_MIN], minimum=1, name="e")
-    r = _capability_int(caps[PARAM_RECLAIM_CLOSE_BUFFER], minimum=1, name="r")
+    e = _capability_int(caps[PARAM_EXCURSION_MIN], minimum=0, name="e")
+    r = _capability_int(caps[PARAM_RECLAIM_CLOSE_BUFFER], minimum=0, name="r")
     tau = _capability_int(caps[PARAM_RECLAIM_TAU], minimum=0, name="tau")
     n = _capability_int(caps[PARAM_RECLAIM_HOLD_BARS], minimum=1, name="n")
     digest_source = tuple(
@@ -271,6 +279,44 @@ def _coordinate(value: object, name: str, *, minimum: int | None = None) -> int:
     return guarded
 
 
+_ROW_KEYS = (
+    "level_id", "side", "level_px_ticks", "availability_time_us", "level_source", "phase",
+    "extreme_ticks", "t_exc", "hold", "t_last", "t_confirm", "last_seen_ordinal",
+    "excursion_source", "hold_sources", "terminal_reason",
+)
+_ROW_OPTIONAL_INT_KEYS = ("extreme_ticks", "t_exc", "t_last", "t_confirm", "last_seen_ordinal")
+
+
+def _checked_row(row: object, level_id: str) -> dict:
+    """A level row re-validated on READ (no float / no junk on a semantic compare, ever).
+
+    Checkpointed state may round-trip through storage between calls; every field this machine
+    compares is re-proven an exact int64 (or honest ``None``) before any comparison runs.
+    """
+    if not isinstance(row, dict) or sorted(row) != sorted(_ROW_KEYS):
+        raise StructureLawError(
+            f"F13 v2 level row {level_id!r} must carry exactly the keys {sorted(_ROW_KEYS)}")
+    if row["level_id"] != level_id:
+        raise StructureLawError(
+            f"F13 v2 level row keyed {level_id!r} carries level_id {row['level_id']!r}")
+    require_direction(row["side"])
+    if row["phase"] not in PHASES:
+        raise StructureLawError(f"F13 v2 level row phase {row['phase']!r} is not in {PHASES}")
+    guard_int64(require_int(row["level_px_ticks"], "level_px_ticks"),
+                formula_id=FORMULA_ID, field="level_px_ticks")
+    guard_int64(require_int(row["availability_time_us"], "availability_time_us"),
+                formula_id=FORMULA_ID, field="availability_time_us")
+    guard_int64(require_int(row["hold"], "hold"), formula_id=FORMULA_ID, field="hold")
+    for name in _ROW_OPTIONAL_INT_KEYS:
+        if row[name] is not None:
+            guard_int64(require_int(row[name], name), formula_id=FORMULA_ID, field=name)
+    if not isinstance(row["level_source"], str) or not row["level_source"]:
+        raise StructureLawError("F13 v2 level row level_source must be a non-empty str")
+    if not isinstance(row["hold_sources"], list):
+        raise StructureLawError("F13 v2 level row hold_sources must be a list")
+    return row
+
+
 def _require_state(state: object) -> dict:
     """The v2 machine state — version-checked so v1 rows can never blend into v2 (§1.5)."""
     if not isinstance(state, dict):
@@ -306,7 +352,7 @@ def register_level(
     level_px_ticks: int,
     availability_time_us: int,
     source_event_id: str,
-) -> dict:
+) -> TransitionResult:
     """Track a frozen typed level (ARMED). Pure: returns the new state; emits nothing.
 
     The level is E01/F03-owned fact intake, frozen forever: ``L_px`` never rolls — a moving
@@ -343,27 +389,30 @@ def register_level(
     prior = levels.get(level_id)
     if prior is not None:
         if all(prior.get(name) == row[name] for name in _REGISTRATION_FIELDS):
-            return state  # idempotent duplicate registration
+            return TransitionResult(state=state)  # idempotent duplicate registration
         raise StructureLawError(
             f"level {level_id!r} is already tracked with different defining facts; a frozen "
             f"level never re-registers in place (revision -> INVALIDATED, successor = new id)")
     new_levels = dict(levels)
     new_levels[level_id] = row
-    return {"formula_version": VERSION, "levels": new_levels}
+    return TransitionResult(state={"formula_version": VERSION, "levels": new_levels})
 
 
-def revise_level(state: dict, *, level_id: str, source_event_id: str) -> tuple:
+def revise_level(state: dict, *, level_id: str, source_event_id: str) -> TransitionResult:
     """A defining revision of the level → INVALIDATED (any non-terminal phase; §R-F13).
 
     Terminal or untracked levels are untouched (a terminal absorbs; an untracked id names
-    nothing here). Returns ``(state, events)``.
+    nothing here).
     """
     levels = _require_state(state)
     if not isinstance(source_event_id, str) or not source_event_id:
         raise StructureLawError("source_event_id must be a non-empty str")
     row = levels.get(level_id)
-    if row is None or row["phase"] in TERMINAL_PHASES:
-        return state, ()
+    if row is None:
+        return TransitionResult(state=state)
+    row = _checked_row(row, level_id)
+    if row["phase"] in TERMINAL_PHASES:
+        return TransitionResult(state=state)
     new_row = dict(row)
     new_row["phase"] = INVALIDATED
     new_row["terminal_reason"] = LEVEL_REVISED
@@ -371,17 +420,18 @@ def revise_level(state: dict, *, level_id: str, source_event_id: str) -> tuple:
     new_levels[level_id] = new_row
     event = _state_event(
         row, to_phase=INVALIDATED, ordinal=None, reason=LEVEL_REVISED, source=source_event_id)
-    return {"formula_version": VERSION, "levels": new_levels}, (event,)
+    return TransitionResult(
+        state={"formula_version": VERSION, "levels": new_levels}, events=(event,))
 
 
-def note_gap(state: dict, *, ordinal: object = None, reason: str = GAP_BAR) -> tuple:
+def note_gap(state: dict, *, ordinal: object = None, reason: str = GAP_BAR) -> TransitionResult:
     """A declared GAP bar / §1.1 quarantined bar: every non-terminal level → INVALIDATED.
 
     ``EXC_GAP_RULE = INVALIDATE`` (ratified with this repair). A quarantined VALID_BAR failure
     invalidates any hold chain that requires the bar exactly as a GAP does — the caller passes
     the quarantine's ``reason_code`` (e.g. ``QUARANTINE_INVALID_BAR``) as ``reason``.
     ``ordinal`` is the gapped ordinal when known, else ``None`` (a malformed bar may carry no
-    usable ordinal — never fabricated). Returns ``(state, events)``.
+    usable ordinal — never fabricated).
     """
     levels = _require_state(state)
     if not isinstance(reason, str) or not re.fullmatch(_UPPER_SNAKE, reason):
@@ -391,7 +441,7 @@ def note_gap(state: dict, *, ordinal: object = None, reason: str = GAP_BAR) -> t
     events = []
     changed = False
     for level_id in sorted(levels):
-        row = levels[level_id]
+        row = _checked_row(levels[level_id], level_id)
         if row["phase"] in TERMINAL_PHASES:
             continue
         new_row = dict(row)
@@ -401,11 +451,14 @@ def note_gap(state: dict, *, ordinal: object = None, reason: str = GAP_BAR) -> t
         events.append(_state_event(row, to_phase=INVALIDATED, ordinal=at, reason=reason))
         changed = True
     if not changed:
-        return state, ()
-    return {"formula_version": VERSION, "levels": new_levels}, tuple(events)
+        return TransitionResult(state=state)
+    return TransitionResult(
+        state={"formula_version": VERSION, "levels": new_levels}, events=tuple(events))
 
 
-def evaluate(caps: dict, env: ValidatedBar, state: dict, *, ordinal: int, bucket_start_us: int) -> tuple:
+def evaluate(
+    caps: dict, env: ValidatedBar, state: dict, *, ordinal: int, bucket_start_us: int
+) -> TransitionResult:
     """The §C.3 production entrypoint: one finalized bar against every tracked level.
 
     * ``caps`` — ``parameter_id -> VerifiedCapability`` (exact type, formula F13, key ==
@@ -418,7 +471,7 @@ def evaluate(caps: dict, env: ValidatedBar, state: dict, *, ordinal: int, bucket
       int64-guarded, never read from a clock.
 
     Pure and deterministic: replay and live call THIS function; a checkpoint of the returned
-    state resumes to a byte-identical stream (T14). Returns ``(new_state, events)``.
+    state resumes to a byte-identical stream (T14).
     """
     e, r, tau, n, digest_source = _resolved_parameters(caps)
     bar = _require_validated_bar(env)
@@ -429,16 +482,17 @@ def evaluate(caps: dict, env: ValidatedBar, state: dict, *, ordinal: int, bucket
     events: list = []
     changed = False
     for level_id in sorted(levels):
+        row = _checked_row(levels[level_id], level_id)
         new_row, row_events = _level_on_bar(
-            levels[level_id], bar, t, bucket, e=e, r=r, tau=tau, n=n,
-            digest_source=digest_source)
-        if new_row is not levels[level_id]:
+            row, bar, t, bucket, e=e, r=r, tau=tau, n=n, digest_source=digest_source)
+        if new_row is not row:
             new_levels[level_id] = new_row
             changed = True
         events.extend(row_events)
     if not changed:
-        return state, tuple(events)
-    return {"formula_version": VERSION, "levels": new_levels}, tuple(events)
+        return TransitionResult(state=state, events=tuple(events))
+    return TransitionResult(
+        state={"formula_version": VERSION, "levels": new_levels}, events=tuple(events))
 
 
 # --- per-level bar law -----------------------------------------------------------------------------

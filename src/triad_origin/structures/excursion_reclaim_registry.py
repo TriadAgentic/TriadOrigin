@@ -1,4 +1,20 @@
-"""F13 — frozen-level excursion and timed reclaim (golden vector GV-011).
+"""RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F13} —
+``level_excursion_reclaim.closed.v1`` withdrawal banner (repair spec §1.5).
+
+FOUR CONFIRMED DEFECTS (R-F13): (1) excursion/reclaim directions are REVERSED — this LONG
+machine triggers on the SHORT geometry and vice versa (the docstring below codifies the
+reversal); (2) horizon off-by-one — the per-observation ordinal ceiling lets an ordinal-3 event
+satisfy a horizon of two; (3) non-consecutive ordinals can satisfy the n-consecutive-closes hold
+(the Phase-0 `7400094` dedup below closed only the DUPLICATE half; a skipped ordinal still
+confirms here — the spec declares it ``INVALIDATED{SEQUENCE_GAP}``); (4) the excursion extreme
+is not retained in state. Repaired as ``level_excursion_reclaim.closed.v2``
+(:mod:`triad_origin.structures.excursion_reclaim_v2`; versioned successor face
+:mod:`triad_origin.structures.excursion_reclaim_registry_v2`). The bytes/logic below are
+preserved unchanged per the §1.5 withdrawal law — never edited in place, never deleted; SHADOW
+rows produced under this version keep their version tag forever (never-blend across formula
+versions). Replay comparisons between v1 and v2 use the frozen event tape.
+
+F13 — frozen-level excursion and timed reclaim (golden vector GV-011).
 
 After a frozen level is EXCURSED (a finalized bar's high/low crosses beyond the level by at
 least PAR-048 ``EXCURSION_MIN``, the same declared rule byte-string as F09's break buffer — see
