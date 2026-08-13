@@ -301,6 +301,81 @@ Nothing in this section arms, merges, widens, or signs anything. Posture unchang
 
 ---
 
+## 9 · On-box implementation report cross-check (2026-08-13)
+
+`ONBOX-IMPLEMENTATION-REPORT-2026-08-13.md` is vendored byte-identically in `docs/repair/`. It is
+the first report in this programme produced from REAL data on the real box, and it is largely
+right — the A0 diagnosis in particular is a genuinely good catch. Five findings.
+
+**B-1 · The A0 diagnosis is CORRECT and the same defect existed in the repo copy — now repaired.**
+The box keyed A0 on `decision_id` alone, flagged 1,102 conflicts, investigated, and found the flag
+wrong: a decision carries one row per COHORT and a cohort is a different execution scenario. That
+reasoning is exactly right and the bank agrees structurally (`cohort text NOT NULL DEFAULT
+'TRIAD-A'` under a UNIQUE index on `(decision_id, cohort, opened_at)`). The repo copy had the right
+DOCTRINE (cross-X expected, within-X a stop) but keyed it on a `resolve_note`-derived proxy and
+never read `cohort` — so two cohorts that both resolve first-touch collapsed into one bucket and
+read as one model answering twice: the SAME false stop, arriving by a different route, and
+UNTESTED (zero tests exercised that `.sql`). Repaired: the stop is now
+`(decision_id, cohort, resolver_id)`, both cross-classes are informational, and five tests drive
+the real query against an in-memory bank — including the on-box false alarm replayed, and a proof
+the narrowed gate still fires.
+
+**B-2 · The two harnesses are a FORK, and the box copy is about to collide.** §2.1 is factually
+right that `analysis/wo_a/` was absent at head `bd00107` — that commit is the PARENT of the #462
+merge (`135a270`), so the guide described the branch while the box held the pre-merge tree. But the
+response was to build a SECOND implementation, and the two now differ in both directions: the box
+has the cohort fix (now also here), the repo has the R-03 §5 observation-parameterized bar and the
+A5 per-symbol reconciliation the box run does not. `analysis/wo_a/` is now tracked on `main`, so
+the next `git pull` on the box meets a modified/untracked collision. **The box copy should be moved
+aside and the repo copy pulled — not merged by hand.** Two implementations of one measurement is
+the estate's own re-deriver drift class, on the harness axis.
+
+**B-3 · The two halves of §2.3's table have COMPLETELY different evidential status, and §2.4 reads
+them as one.** Applying the R-03 §5 corrected bar (`n_required(0.544, observed)`) to the box's own
+numbers:
+
+| population | n | observed WR | n_required | verdict |
+|---|---:|---:|---:|---|
+| Gate ACCEPTED | 47 | 42.55 % | **139** | `HOLD_NOT_DISTINGUISHABLE` (34 % of the bar) |
+| TRUE OPPORTUNITY | 317,806 | 31.68 % | 37 | `DISTINGUISHABLE` |
+
+So the true-opportunity finding is rock solid — the opportunity pool genuinely wins far less than
+the frozen 54.4 % baseline, on 8,600× the required sample. The accepted number is not evidence yet
+and needs roughly 3× more data. §2.4's caveat ("47 rows is far too small") is right and now has a
+number. **And the sign is the other way:** accepted 42.55 % is ABOVE the pool's 31.68 %, so at the
+gate the judge is selecting FAVOURABLY, not adversely — the opposite of what §2.4's framing
+suggests, though at n=47 that direction is not established either. `P(observe ≤ 42.55 % | true
+54.4 %, n=47) = 0.038` — an unlikely single observation, not a finding.
+
+**B-4 · §4's "single highest-value open question" is ANSWERED, and the answer is a ratified design
+decision.** The report finds zero shorts in the census, concludes the suppressor is "upstream of
+the gateway", and recommends hunting it as priority #1. It is not a bug. The **LIVE30-PROFITABLE-ONLY
+settlement (2026-08-06)** makes the money lane exactly `bos_choch LONG ∪ order_block LONG`; all M1
+and all SHORT are shadow-only by ratified design. Verified in code at both planes: Engine
+`runtime.rs::is_money_live_candidate` requires `direction == "long"` before a candidate reaches
+`CANDIDATES_TOPIC`, and Intelligence `run_gateway._LIVE_JUDGED_DIRECTIONS = ("long",)`. The report's
+own evidence supports this — `matrix_off = 0` and the shadow lane carrying 30,357 shorts is the
+settlement working, not a leak. **Recommendation #1 would send someone hunting a bug that does not
+exist.** The `side_weight` 0.5→1.0 parity note is a real but separate lever (emission SCORING, not
+lane admission). What IS worth reading: 27 symbols, not 30.
+
+**B-5 · Two arithmetic/consistency notes.** §3 states "2,029 recorded decisions" and then a verdict
+mix summing to 4,000 (`skip` 3,725 + `take` 272 + `wait` 3) — two different windows or a
+transcription slip; the latency percentiles need to say which population they came from. The p99
+landing exactly on 12,000 ms is correctly read as a timeout cap. Separately, `defer_ttl_dropped`
+26,725 vs `decisions_published` 8,229 is the report's strongest operational finding and its
+recommendation #2 stands on its own evidence.
+
+**What the report gets right and should be said plainly:** it refused to fabricate a judge benchmark
+when the timeout could not be beaten and measured real production latency instead; it caught its own
+A0 bug rather than shipping the STOP; it left O-1/O-2 untouched; and it independently reached the
+CO-10 conclusion that the two MCP tokens are EXPOSED and need rotation. Those are the right instincts.
+
+Nothing in this section arms, merges, widens, or signs anything. Posture unchanged
+**OFF/OFF/OFF/LIVE** · `DENIED_SAFE_HOLD`.
+
+---
+
 *Prepared as a READ-ONLY audit. Every disposition above resolves to CLOSED / WITHDRAWN /
 OWNER_GATED / CHECK_ONLY / ON_BOX / OUT_OF_ORIGIN / STANDING_LAW; the only genuinely-open Origin
 disposition, WO-J, is an owner-gated amendment, not an agent repair.*
