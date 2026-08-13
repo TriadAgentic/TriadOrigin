@@ -106,3 +106,31 @@ def test_gv003_watermark_arithmetic_stays_e01_owned() -> None:
     op = next(o for o in _overlay()["golden_vector_operations"] if o["id"] == "FR-GVOP-003")
     assert op["owner"] == "E01"
     assert "ORIGIN consumes/validates, never authors" in op["note"]
+
+
+def test_version_map_strings_match_the_code_version_constants() -> None:
+    """Drift-lock: an IMPLEMENTED row's `repaired`/`retired` version STRING must equal the
+    repaired module's actual version constant — the F10 mislabel ('fvg.gap.v3' vs the real
+    'fvg.three_bar.closed.v3') is the class this guard closes."""
+    from triad_origin.structures import fvg_registry_v3, order_block_v2, reaction_v2
+    from triad_origin.structures import break_v2, clustering_v2, flow_atoms_v2
+    from triad_origin.structures import excursion_reclaim_v2
+    rows = {r["formula"]: r for r in _overlay()["version_map"]}
+    # (formula -> repaired-version-constant) for the modules that expose one cleanly.
+    expected = {
+        "F10": fvg_registry_v3.FORMULA_VERSION,          # fvg.three_bar.closed.v3
+        "F09": break_v2.V2_FORMULA_VERSION,              # break.bar_close.v2
+        "F12": order_block_v2.VERSION,                   # ob.displacement_bos.v2
+        "F13": excursion_reclaim_v2.VERSION,             # level_excursion_reclaim.closed.v2
+        "F14": reaction_v2.SEMANTIC_VERSION,             # reaction.first_touch.v2
+        "F15": flow_atoms_v2.F15_FORMULA_VERSION,        # flow.tfi.window.v2
+        "F16": flow_atoms_v2.F16_FORMULA_VERSION,        # flow.ofi.best.v2
+        "F17": flow_atoms_v2.F17_FORMULA_VERSION,        # flow.book_tilt.band.v2
+        "F19": clustering_v2.V2_FORMULA_VERSION,         # opportunity_cluster.v2
+    }
+    for fid, version in expected.items():
+        # the overlay's `repaired` field leads with the version string (may carry a note after it)
+        assert rows[fid]["repaired"].startswith(version), (
+            fid, rows[fid]["repaired"], "!= code", version)
+    # F10 retired must equal the repaired module's recorded predecessor.
+    assert rows["F10"]["retired"] == fvg_registry_v3.RETIRED_PREDECESSOR_VERSION

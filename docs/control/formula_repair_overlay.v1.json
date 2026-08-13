@@ -149,8 +149,8 @@
     },
     {
       "formula": "F10",
-      "retired": "fvg.gap.v2",
-      "repaired": "fvg.gap.v3",
+      "retired": "fvg.three_bar.closed.v2",
+      "repaired": "fvg.three_bar.closed.v3",
       "retired_module": "src/triad_origin/structures/fvg_registry.py",
       "repaired_module": "src/triad_origin/structures/fvg_registry_v3.py",
       "status": "IMPLEMENTED"
