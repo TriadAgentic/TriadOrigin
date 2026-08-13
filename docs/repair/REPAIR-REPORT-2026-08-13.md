@@ -251,6 +251,16 @@ baseline would have left the check exactly as uninformative. The remedy was buil
 described, and the baseline cannot honestly be wired into CI from this container because it was
 generated with tool versions `uv.lock` does not pin for the runner.
 
+**§3 / M-2, sharpened by a live CI read.** Watching PR #463's own run closed the last of it. `ci.yml`
+orders the steps ruff → mypy → pytest → PII-lint, and a GitHub Actions job stops at its first
+non-zero step — so for as long as the 281 findings have existed, **`Mypy`, `Pytest` and the
+build-rejecting `PII-lint` have not executed at all.** The check named
+`lint · typecheck · test · conformance` has been running the first quarter of its own name. That is
+a stronger claim than R-03's: the conformance, golden round-trip and PII evidence the check appears
+to supply is not weak, it is absent. (Corroboration for the frozen baseline: the runner's own locked
+ruff prints `Found 281 errors` — the exact frozen total. The count is version-agreed; the per-file
+distribution is not, so the `PROVISIONAL_LOCAL_VERSIONS` stamp stands.)
+
 **§5 — accepted, repaired, and returned with an erratum.** The miscalibration is real and was
 repaired under LAW-9 agent authority by passing the observation rather than adding a formula
 (`min_n_for_power` was already R-03's exact expression — a second derivation would have created
