@@ -65,11 +65,14 @@ credential/receipt fabricated.
   (`test_fvg_registry_v3.TestErr01MutuallyExclusiveStates` — 10⁵ random pens → exactly one state
   predicate true, `_state_for` agrees) + a precise docstring. Not a new law (spec-text adoption is
   D-21's signature).
-- **ERR-02 (F13) — RECORDED OWNER-GATED; code UNCHANGED.** The current module faithfully implements
-  the vendored CORRECTED LAW (`extreme = min over excursion-phase bar lows`, pinned by two tests).
-  The erratum's proposed redefinition contradicts that law + changes `extreme`/`excursion_depth_ticks`
-  bytes consumed by F18 stop logic — a formula-byte semantic change reserved for the owner's D-21
-  signature (a prior spec-amendment PR). Honest note in `excursion_reclaim_v2.py`.
+- **ERR-02 (F13) — WITHDRAWN by R-01 (2026-08-13) as reviewer error; code correct all along.** The
+  later Revision Record R-01 formally withdraws ERR-02 / GAP-12 / WO-H: the F13 module DOES update
+  the excursion extreme (rule 3 reset-branch applies the reset bar's own low — `extreme==9960` in
+  `test_h10`; `extreme = min over excursion-phase bar lows`), the reviewer's premise was wrong, and
+  this repo's refusal to edit a passing formula is validated. `WO-H` is retired. The
+  `excursion_reclaim_v2.py` docstring records the withdrawal and a **byte-neutral clarifying test**
+  (`test_reset_bar_low_is_applied_to_the_extreme_err02_r01_corrected`) pins the correct behaviour —
+  no emitted byte changed. R-01 elevates this refusal discipline to standing **LAW-9**.
 - **ERR-03 / D-17 (F12) — RECORDED OWNER-GATED; behaviour UNCHANGED.** The BOS-vs-`GENERIC_BREAK`
   trial-identity resolution is the owner's A/B/C choice (B recommended). Honest note in
   `order_block_v2.py`.
@@ -94,6 +97,46 @@ E02. Disposition: **1 CLOSED-IN-ORIGIN** (GAP-11/ERR-01, done), **6 OWNER-GATED 
 set), **~34 OUT-OF-ORIGIN** (named to their estate node), **~9 ON-BOX/operator**. No Origin formula
 byte was changed to match a non-ratified proposal; every gap is placed, none silently dropped; no
 signature/pin/credential/receipt fabricated.
+
+## Four-document set closure (R-01 + Master Sequence, 2026-08-13)
+The owner added `TRIAD_REVISION_RECORD_R-01_2026-08-13` (correction record) and
+`TRIAD_MASTER_SEQUENCE_2026-08-13` (sequencing + nine standing laws), completing a **four-document**
+repair package (with the gap register + work order). All four are vendored verbatim in `docs/repair/`
+(`NOT_A_RATIFICATION`); posture unchanged `OFF/OFF/OFF/LIVE`. Origin-scope closures:
+
+- **ERR-02 / GAP-12 / WO-H — WITHDRAWN** as reviewer error (see above); `WO-H` retired.
+- **LAW-9 recorded as standing estate law:** an external finding that would change a formula's
+  emitted bytes or flip a passing test is an *amendment* (owner signature + prior spec PR), never an
+  agent repair, *however obviously correct*. The discriminator is bytes, not correctness. It governs
+  every item in `docs/repair/`.
+- **R-01 §1.5 optional test — DONE, LAW-9-safe.** §1.5's proposed test as written would flip the
+  passing T9 (the same recursive error as ERR-02); the LAW-9-safe response is the OPPOSITE
+  byte-neutral clarifying test that confirms the reset bar deepens
+  (`test_reset_bar_low_is_applied_to_the_extreme_err02_r01_corrected`, added, suite green).
+- **WO-J (RPI book-completeness) — OWNER-GATED AMENDMENT, NOT ready agent work.** Cross-check shows
+  WO-J adds a mandatory `book_completeness` field to F15/F16/F17 → changes emitted bytes + flips ~16
+  frozen-dataclass constructor sites; under LAW-9 it lands only in a signed spec-amendment PR-set.
+  Recorded owner-gated (D-register II·G); code UNCHANGED.
+- **WO-C (F18) — VERIFIED_OK / check-only.** F18 already uses the ratified PAR-061 `2/1` (injected,
+  not hardcoded); 32 tests pass. No change (the remove-generation-floor is the owner redesign D-11).
+
+### Cross-repo lead: WO-A diagnostic harness (TriadLearning) + the BTC/BCH investigation
+The Master Sequence's lead economics work order is **WO-A** (diagnose the ~13 pp), which is
+measurement-only and has no entry gate. It is homed in **TriadLearning** (not Origin — Origin owns no
+economic layer): `TriadLearning/analysis/wo_a/` — A0.1–A0.4 + A1 + A2 + A3 SELECT-only queries, a
+pure stdlib arithmetic module proven against the work order's own reference table
+(0 %→26.4, 35 %→42.7, 50 %→49.6, 65 %→56.6), an on-box runner that reuses the estate's first-touch
+resolver for the A1 no-fill counterfactual, and a reconciliation that degrades to a NAMED
+`ON_BOX_PENDING` off-box (the bank is on the Mac; no number is fabricated). **WO-B is NOT built**
+(it amends RC3 law 14 and is gated on the SYNC-2 no_fill_win_share go/no-go).
+
+The BTC/BCH funnel-collapse investigation (`docs/repair/INVESTIGATION-BTC-BCH-2026-08-13.md`,
+read-only, 6-lane funnel audit) finds **no code path selects exactly {BTC, BCH}**; the extreme
+collapse is best explained by the *intersection* of general per-symbol narrowers at ~$100 equity —
+the VGP `min_notional_after_rounding` × the owner-margin-capped notional, and the scan_gate `$25k`
+depth floor — with the config-precision `PENDING_VENUE_SNAPSHOT` hypothesis **ruled out** (VGP owns
+precision from live `exchangeInfo`, not the config). The single fastest confirming read is on-box:
+`SELECT * FROM shadow.v_symbol_gate_aggregate ORDER BY instrument_id;`.
 
 ## Final gate
 12 required checks: pytest seed 0 + seed 1, collect_test_ids, verify_manifest,

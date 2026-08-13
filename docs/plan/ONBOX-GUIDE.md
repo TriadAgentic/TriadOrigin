@@ -83,6 +83,45 @@ patch candidates. **Do not** `git reset`, `git stash`, or blind-merge; **never**
 merge base. Recovery is yours; the agent recorded only the honest `UNAVAILABLE{declared_ref,
 search_log}` disposition.
 
+## WO-A · run the 13-pp diagnosis on the box (measurement-only, no arming)
+
+The lead economics work order is **WO-A** — measurement-only, no entry gate, and it lives in
+**TriadLearning** (Origin owns no economic layer). The harness is built and its arithmetic is
+proven in CI; the six numbers it reports are on-box because the bank and print tape are on the Mac.
+Run:
+
+```bash
+cd TriadLearning
+python3 analysis/wo_a/run_wo_a.py --db /Users/liko/triad/databank/triad.db
+#   → writes analysis/wo_a/RECONCILIATION-2026-08-13.md with the six real numbers.
+#   exit 0 = reconciled · exit 2 = A0 STOP (within-resolver disagreement — the printed
+#   decision_id subset escalates to DTBNK; A1/A4 do not run on an inconsistent population).
+```
+
+It is `SELECT`-only against the bank — it writes no bank row, arms nothing, and does not build
+WO-B. The reconciliation's last line is the **SYNC-2 signal**: `true_opportunity_WR` near 50 % ⇒
+adverse selection is not the culprit (do NOT build WO-B); meaningfully below the reported rate ⇒
+adverse selection confirmed and WO-B becomes the estate's highest-value work. **WO-B stays gated on
+that go/no-go** — it amends RC3 law 14 (an owner amendment) and is not built until you decide.
+
+## BTC/BCH · confirm where the 30→~2 funnel collapses (one read)
+
+`docs/repair/INVESTIGATION-BTC-BCH-2026-08-13.md` ruled out feed/universe narrowing (fail-closed to
+the full 30) and the config-precision snapshot (VGP fetches live `exchangeInfo`), and named the
+primary suspects as the intersection, at ~$100 equity, of the VGP `min_notional_after_rounding` ×
+the owner-margin-capped notional and the scan_gate `$25k` depth floor. The single fastest confirming
+read — where each of the 30 dies, in one query:
+
+```sql
+SELECT * FROM shadow.v_symbol_gate_aggregate ORDER BY instrument_id;   -- on the box (DTBNK)
+```
+
+Cross-checks: the gateway census `~/.triad/run/gateway_census.json` (`per_symbol_selection` /
+`per_symbol_model` — admits/starts > 0 for all 30?), the engine keeper `interval drops_by_symbol`
+line (`scan=` per symbol = liquidity-gated), and the `venuegateway-<lane>` log for
+`min_notional_after_rounding` / `reject_class=sizing` per symbol. This is diagnosis only — it arms,
+narrows, and edits nothing.
+
 ## Deploy / activation (reference — all gated, none defaulted on)
 
 Arming any live behaviour is out of scope for this repair set and stays behind its own ceremony.

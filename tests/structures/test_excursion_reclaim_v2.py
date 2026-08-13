@@ -611,6 +611,26 @@ class TestT9ExtremeRetention:
         assert row["phase"] == xr.EXPIRED
         assert row["extreme_ticks"] == 9940  # normative order: (1) deepen, then (2) tau
 
+    def test_reset_bar_low_is_applied_to_the_extreme_err02_r01_corrected(self, caps):
+        # ERR-02 clarification (TRIAD_REVISION_RECORD_R-01 §1.5, CORRECTED). R-01 §1.5 claimed
+        # "the reset bar's own low is never applied to the extreme"; that premise is a recursive
+        # reviewer error caught by LAW-9 (read the code, not the finding's restatement). A RESET
+        # bar — a RECLAIM_PENDING bar whose close FAILS the hold and returns the machine to
+        # EXCURSION — IS an excursion-phase bar: its OWN low deepens the extreme on that very bar
+        # (excursion_reclaim_v2 rule (3), _deepen). This pins the ACTUAL behaviour; it is
+        # byte-neutral and flips no passing test (T9 already asserts the same reset-bar low
+        # survives to the CONFIRMED atom). The "not applied" reading is a v3 research identity,
+        # never a v2 amendment.
+        tape = [
+            (0, long_bar(0, low=9975, close=9990)),               # EXCURSION, extreme 9975
+            (1, long_bar(1, close=10010, high=10015)),            # RECLAIM_PENDING, hold 1
+            (2, long_bar(2, low=9960, close=10005, high=10012)),  # reset: close fails, low 9960
+        ]
+        state, _ = drive(caps, armed_state(), tape)
+        row = row_of(state)
+        assert row["phase"] == xr.EXCURSION       # returned to EXCURSION on the reset
+        assert row["extreme_ticks"] == 9960       # the reset bar's OWN low deepened E at t
+
 
 # ---------------------------------------------------------------------------------------------
 # T10 — the direction trap (named CI regression: the reversed-code defect is unrecoverable)

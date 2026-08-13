@@ -113,7 +113,7 @@ owner choice), **D-17** (F12 confirmation semantics — recorded, an owner A/B/C
 | # | Finding | What the agent did (this PR) | What only you can do | Status |
 |---|---|---|---|---|
 | **D-21 · ERR-01 (F10)** | Spec §R-F10 state block overlapped `TOUCHED (pen>0)` / `PARTIAL (0<pen<1/2)`; inline T4 reasoning contradicted the `pen>0` gloss. | **Closed in code + test.** The module already implements the RATIFIED T4 mutually-exclusive reading (`TOUCHED: pen==0`, `PARTIAL: 0<pen<1/2`, `MIDPOINT_FILLED: 1/2≤pen<1`, `FILLED: pen==1`); added the required property test (`TestErr01MutuallyExclusiveStates` — 10⁵ random pens, exactly one predicate true) + a precise docstring. This locks already-ratified behaviour; it is not a new law. | Sign the erratum onto the repair PR (formal spec-text amendment) alongside D-1's `RATIFY_WITH_THIS_REPAIR` set. | OPEN (signature) — code/test done |
-| **D-21 · ERR-02 (F13)** | The errata proposes redefining the excursion `extreme` to accrue over **every** `t_exc..t_confirm` bar (a `(0.5)` deepen step in `RECLAIM_PENDING`). | **Recorded owner-gated; code UNCHANGED.** The current module faithfully implements the vendored CORRECTED LAW ("`extreme = min over excursion-phase bar lows`") — pinned by `test_hold_bars_do_not_deepen_the_extreme` + `test_h10_…deepens…first`. The erratum CONTRADICTS that law, flips a passing test, and changes `extreme`/`excursion_depth_ticks` bytes consumed by F18 stop logic — a formula-byte semantic change an agent may not pick (authority order: "a semantic change updates the authoritative spec/control artifact in a prior PR"). Honest note added to `excursion_reclaim_v2.py`. | Sign the erratum (redefine `extreme` per the proposal) in a prior spec-amendment PR + on the repair PR; then the F13 code change + acceptance test land in the same signed PR-set. | OPEN — blocks nothing today; adopt before pooling F13-fed stops |
+| **D-21 · ERR-02 (F13)** | ~~The errata proposed redefining the excursion `extreme` to accrue over **every** `t_exc..t_confirm` bar.~~ **WITHDRAWN by R-01 (2026-08-13) as reviewer error.** | **No action — the developer's refusal is validated on every count.** R-01 formally WITHDRAWS ERR-02 / GAP-12 / WO-H: the code was RIGHT (the F13 reset branch rule 3 DOES deepen the reset bar's own low — `extreme==9960` in `test_h10`), the reviewer's premise was wrong, and this repo's refusal to edit a passing formula to match a proposal is exactly the discipline R-01 elevates to **standing LAW-9**. The `excursion_reclaim_v2.py` docstring records the withdrawal; a **byte-neutral clarifying test** (`test_reset_bar_low_is_applied_to_the_extreme_err02_r01_corrected`) pins the correct behaviour without changing a single emitted byte. | Nothing — closed as reviewer error. (No amendment, no signature, no F13 byte change.) | ✅ CLOSED — WITHDRAWN (R-01); code + tests unchanged and correct |
 
 **ERR-03** is D-17 above (F12). **Order of operations (owner):** the register's v2.0 recommends the
 three P0s (D-12/D-13/D-11) first, then D-6, then D-21+D-17, then B00R root closure (D-3/O-3), then
@@ -133,7 +133,7 @@ onto this register:
 | Gap(s) | This register | Disposition |
 |---|---|---|
 | GAP-11 | **D-21 (ERR-01)** | ✅ CLOSED-IN-ORIGIN (F10 predicates + property test) |
-| GAP-12 | **D-21 (ERR-02)** | OWNER-GATED — code faithful to the vendored CORRECTED LAW; the redefinition is a signed spec change |
+| GAP-12 | **D-21 (ERR-02)** | ✅ WITHDRAWN (R-01) — reviewer error; code faithful and correct; no amendment; `WO-H` retired (identifier never reused) |
 | GAP-13 | **D-17 (ERR-03)** | OWNER-GATED — A/B/C, behaviour unchanged |
 | GAP-04, GAP-46 | **D-11** | OWNER-GATED — F18 uses the ratified PAR-061 `2/1`; WO-C's remove-generation-floor is an owner redesign |
 | GAP-01, GAP-02, GAP-03 | **D-12, D-13** | OUT-OF-ORIGIN (E07 admission / cost model / stop-width) |
@@ -159,6 +159,23 @@ onto this register:
 | **Blocks** | Semantic-identity alignment in the comparator run (WO-D). | 
 | **Status** | OPEN |
 
+### II·G · The revision record + master sequence (R-01 / LAW-1…LAW-9)
+
+The owner supplied `TRIAD_REVISION_RECORD_R-01_2026-08-13` (a correction record) and
+`TRIAD_MASTER_SEQUENCE_2026-08-13` (sequencing control + nine standing laws), both vendored in
+`docs/repair/`. Their Origin-scope dispositions:
+
+| Item | Disposition |
+|---|---|
+| **ERR-01 / GAP-11 / WO-G** | CLOSED-IN-ORIGIN (F10 predicates + property test) — R-01 marks ERR-01 closed. |
+| **ERR-02 / GAP-12 / WO-H** | **WITHDRAWN by R-01 as reviewer error.** Code correct; refusal validated; `WO-H` identifier retired, never reused. |
+| **ERR-03 / GAP-13 / WO-I** | OWNER-GATED (D-17) — F12 A/B/C confirmation semantics; behaviour unchanged. |
+| **LAW-9 (the standing law R-01 elevates)** | **RECORDED as estate law.** Any external finding that would alter a formula's **emitted bytes** — or flip a currently-passing test — is an **amendment** (owner signature + prior spec-amendment PR), **never an agent repair, however obviously correct it appears.** The discriminator is *bytes, not correctness.* This repo already applied it (refusing ERR-02); R-01 makes it standing. It governs every repair item in `docs/repair/`. |
+| **WO-J (RPI book-completeness coverage)** | **OWNER-GATED AMENDMENT — NOT ready agent work.** The Master Sequence Part 1 lists WO-J as an Origin lawful-queue item, but cross-check shows WO-J adds a **mandatory** `book_completeness` field to F15/F16/F17 → it CHANGES their emitted bytes and flips ~16 frozen-dataclass constructor sites (GV-F16-01 stays identical). Under **LAW-9** that is an amendment, not a repair: it lands only in a signed spec-amendment PR-set. Recorded owner-gated; code UNCHANGED. |
+| **WO-C (F18 remove-generation-floor)** | VERIFIED_OK / check-only — F18 already uses the ratified PAR-061 `2/1` (injected, not hardcoded); 32 tests pass. No change; WO-C's remove-generation-floor is the owner redesign D-11. |
+| **R-01 §1.5 optional byte-neutral test** | **DONE — as a LAW-9-safe clarifying test.** R-01 §1.5's proposed test AS WRITTEN would flip the passing T9 (`extreme==9960`), i.e. it is the same recursive reviewer error as ERR-02; the LAW-9-safe response is the OPPOSITE byte-neutral test that CONFIRMS the reset bar deepens (`test_reset_bar_low_is_applied_to_the_extreme_err02_r01_corrected`). Added; suite green. |
+| **Sequencing / lanes / SYNC points** | Recorded; the Master Sequence Part 1 supersedes only the work order's `EXECUTION ORDER` section. Origin's economic-layer / venue / bank / on-box items stay OUT-OF-ORIGIN. |
+
 ---
 
 ## Where the mechanisms live (so you can verify each refusal yourself)
@@ -173,8 +190,8 @@ onto this register:
 - **The Part D golden registry** is recorded in `docs/control/formula_repair_overlay.v1.json`
   (a separate, non-arming artifact — the RC3 bundle bytes are never edited, CO-01).
 - **The formula errata (D-21):** ERR-01 is closed in code + `TestErr01MutuallyExclusiveStates`
-  (F10 `_state_for` returns exactly one state per pen); ERR-02 is recorded owner-gated with an
-  honest note in `excursion_reclaim_v2.py` (the code faithfully implements the vendored CORRECTED
-  LAW; the proposed redefinition is a signed-owner spec change); ERR-03/D-17 is recorded
-  owner-gated with an honest note in `order_block_v2.py` (F12 behaviour unchanged; the A/B/C
-  choice is the owner's).
+  (F10 `_state_for` returns exactly one state per pen); **ERR-02 is WITHDRAWN by R-01 as reviewer
+  error** — the F13 code was correct all along, the refusal is validated, `WO-H` is retired, and a
+  byte-neutral clarifying test now pins the correct reset-bar-deepens behaviour; ERR-03/D-17 is
+  recorded owner-gated with an honest note in `order_block_v2.py` (F12 behaviour unchanged; the
+  A/B/C choice is the owner's).

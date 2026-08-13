@@ -75,7 +75,7 @@ has no venue client, no network path, and no order verb — by construction and 
 | Gap | WO | Disposition |
 |---|---|---|
 | **GAP-11** F10 FVG state predicates overlap | WO-G | **✅ CLOSED-IN-ORIGIN.** `fvg_registry_v3._state_for` already implements the mutually-exclusive T4-ratified reading (`TOUCHED: pen==0`, `PARTIAL: 0<pen<1/2`, `MIDPOINT_FILLED: 1/2≤pen<1`, `FILLED: pen==1`); the required property test `test_fvg_registry_v3.TestErr01MutuallyExclusiveStates` (10⁵ random pens → exactly one predicate true) + a precise docstring landed. Recorded **D-21 (ERR-01)**. |
-| **GAP-12** F13 `RECLAIM_PENDING` never updates the extreme | WO-H | **OWNER-GATED (recorded) — D-21 (ERR-02).** The current `excursion_reclaim_v2.py` faithfully implements the vendored CORRECTED LAW (`extreme = min over excursion-phase bar lows`), pinned by `test_hold_bars_do_not_deepen_the_extreme` + `test_h10_…deepens…first`. WO-H's "deepen in every non-terminal state" **contradicts that law**, flips a passing test, and changes `extreme`/`excursion_depth_ticks` bytes consumed by F18 stop logic → a formula-byte semantic change reserved for the owner's signature (a prior spec-amendment PR). Honest note in the module. |
+| **GAP-12** F13 `RECLAIM_PENDING` never updates the extreme | ~~WO-H~~ (retired) | **✅ WITHDRAWN by R-01 (2026-08-13) — reviewer error.** The premise was wrong: `excursion_reclaim_v2.py` DOES update the extreme in the excursion phase (rule 3 reset-branch `_deepen` applies the reset bar's own low — `extreme==9960` in `test_h10`; `extreme = min over excursion-phase bar lows`, pinned by `test_hold_bars_do_not_deepen_the_extreme` + `test_h10`). The code was RIGHT, this repo's refusal to edit it is validated, and R-01 elevates that refusal discipline to standing **LAW-9**. `WO-H` is retired (identifier never reused); a byte-neutral clarifying test (`test_reset_bar_low_is_applied_to_the_extreme_err02_r01_corrected`) now documents the correct behaviour. No amendment, no signature, no F13 byte change. |
 | **GAP-13** F12 confirms on `GENERIC_BREAK` while F08 refuses | WO-I | **OWNER-GATED (recorded) — D-17 (ERR-03).** The BOS-vs-`GENERIC_BREAK` trial-identity resolution is the owner's A/B/C choice (B = split identity recommended). Behaviour unchanged; honest note in `order_block_v2.py`. **Hard ordering rule preserved:** WO-I must land before any CAP-01 shadow row is written (the register's rule #2) — which is exactly why it is surfaced as owner-gated *now*, not deferred silently. |
 
 ---
@@ -163,9 +163,12 @@ has no venue client, no network path, and no order verb — by construction and 
 
 1. **Closed the one Origin-scope, agent-buildable formula gap** that was open: GAP-11 / ERR-01 (F10
    mutually-exclusive predicates + property test) — landed and dual-seed green.
-2. **Recorded, refusing-in-place, the Origin-scope owner-gated items:** GAP-12 (ERR-02, F13),
+2. **Recorded, refusing-in-place, the Origin-scope owner-gated items:**
    GAP-13 (ERR-03/D-17, F12), GAP-04/GAP-46 (D-11, F18 RR floor), GAP-50 (D-22, capsule mapping) —
    each with an honest code-site note; **no formula bytes changed to match a non-ratified proposal.**
+   *(GAP-12 / ERR-02 / WO-H was subsequently **WITHDRAWN by R-01 as reviewer error** — the code was
+   correct, the refusal validated, and the discipline elevated to standing **LAW-9**; see the row
+   above and `REPAIR-REPORT-2026-08-13.md`.)*
 3. **Vendored both repair documents verbatim** here (evidence, `NOT_A_RATIFICATION`).
 4. **Placed every one of the 50 gaps** in exactly one disposition and named the estate node that
    owns each out-of-Origin item, so nothing is lost and nothing is falsely claimed closed.

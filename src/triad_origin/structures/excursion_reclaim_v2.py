@@ -53,18 +53,35 @@ qualifying RECLAIM_PENDING HOLD bar does NOT deepen (it is a reclaim close, not 
 bar). This is pinned by ``test_excursion_reclaim_v2`` (``test_hold_bars_do_not_deepen_the_extreme``,
 ``test_h10_the_expiring_bar_still_deepens_the_extreme_first``, T9 ``via reset path``).
 
-ERRATUM ERR-02 (owner decision D-21 — TRIAD-ORIGIN-V7-ERRATA-2026-08-13) is a **PROPOSED semantic
-change**, NOT adopted here: it would redefine ``extreme`` to accrue over EVERY non-terminal bar
-from ``t_exc`` to ``t_confirm`` inclusive (a step ``(0.5) extreme := min(extreme, L_t)`` at the top
-of RECLAIM_PENDING, so a qualifying hold bar's intrabar low would also deepen the stop reference).
-That reading CONTRADICTS the vendored CORRECTED LAW's explicit "min over **excursion-phase** bar
-lows", flips ``test_hold_bars_do_not_deepen_the_extreme``, and changes the emitted
-``extreme_ticks``/``excursion_depth_ticks`` consumed by F18 stop logic — so it is a formula-byte
-change reserved for the owner's signature (D-21, alongside a prior spec-amendment PR per the
-authority order "a semantic change updates the authoritative spec/control artifact in a prior
-PR"). An agent does not silently pick between two conflicting spec statements; it is recorded in
-``docs/plan/DECISIONS-REQUIRED.md`` (D-21) and left refusing-in-place — the current behaviour is
-the faithful transcription of the law as written.
+ERRATUM ERR-02 — **WITHDRAWN 2026-08-13** (``TRIAD_REVISION_RECORD_R-01_2026-08-13``, reviewer
+error; the finding was wrong, this code is right). ERR-02 had proposed redefining ``extreme`` to
+accrue over EVERY non-terminal bar from ``t_exc`` to ``t_confirm`` inclusive (a step
+``(0.5) extreme := min(extreme, L_t)`` at the top of RECLAIM_PENDING). That reading CONTRADICTS the
+vendored CORRECTED LAW's explicit "min over **excursion-phase** bar lows", would flip the passing
+``test_hold_bars_do_not_deepen_the_extreme``, and would change the emitted
+``extreme_ticks``/``excursion_depth_ticks`` consumed by F18 stop logic — a formula-byte AMENDMENT,
+never an agent repair (now standing law **LAW-9**: an external finding that would flip a passing
+test or alter a formula's emitted bytes is an amendment requiring the owner's signature + a prior
+spec-amendment PR, however obviously correct it appears — the discriminator is bytes, not
+correctness). R-01 records that refusing ERR-02 was correct on every count; there is nothing to
+sign (D-21's ERR-02 clause is void).
+
+**R-01 §1.5's proposed test ``test_reset_bar_low_is_not_applied_to_extreme`` is DECLINED — its
+premise is itself a (recursive) reviewer error caught by LAW-9.** R-01 §1.5 claims "the reset bar's
+own low is never applied to the extreme, because EXCURSION processing begins at t+1." That is
+FALSE for this code: the RECLAIM_PENDING reset branch (rule 3, ``_deepen(side, extreme, bar)``)
+deepens the extreme on the reset bar ITSELF, and the passing test
+``test_t9_lower_low_on_the_reset_bar_updates_and_survives_to_the_atom`` pins exactly that (the reset
+bar's low 9960 becomes the CONFIRMED atom's ``extreme``). A test asserting "reset bar low UNCHANGED"
+would therefore FLIP the passing T9 — which is precisely the LAW-9 amendment tripwire — so it is not
+addable under agent authority. The correct, code-faithful boundary statement is: a qualifying HOLD
+bar (rule 2) does NOT deepen (``test_hold_bars_do_not_deepen_the_extreme``); a RESET bar (rule 3)
+DOES deepen on that very bar (T9); an EXPIRING bar deepens first then expires
+(``test_h10_the_expiring_bar_still_deepens_the_extreme_first``). LAW-9 STEP 2 ("read the vendored
+master law — not the finding's restatement of it") applied to R-01 §1.5 itself: the restatement was
+wrong, the code + T9 are right, no test is added. If the estate ever wants to *measure* the
+deeper-accrual reading it is a ``level_excursion_reclaim.closed.v3`` research identity under §1.5,
+never an amendment to v2.
 
 Same-event multi-transition law (§1.4, instantiated for F13): transitions map onto the global
 precedence classes via :data:`TRANSITION_CLASSES` and same-bar coincidences in the EXCURSION
