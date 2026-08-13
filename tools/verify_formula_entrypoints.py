@@ -55,7 +55,8 @@ FORMULA_MODULE_NAMES = (
     "structure_state.py",         # F09 (v1 host; F08 raw sites stay until F08's own train)
     "break_v2.py",                # F09 machine (R-F09, converted — must scan clean)
     "swing_dc_v2.py",             # F03 machine (R-F03, converted — must scan clean)
-    "clustering.py",              # F19 (v1)
+    "clustering.py",              # F19 (v1, retired R-F19)
+    "clustering_v2.py",           # F19 machine (R-F19, converted — must scan clean)
     "candidate_geometry.py",      # F18 geometry home
 )
 
@@ -70,7 +71,6 @@ LEGACY_UNCONVERTED: set[str] = {
     "flow_atoms.py",
     "typed_level_registry.py",
     "structure_state.py",  # shared host: live F08 raw sites remain (§1.6 F06/F08 untouched)
-    "clustering.py",
     "candidate_geometry.py",
     "features.py",
 }
