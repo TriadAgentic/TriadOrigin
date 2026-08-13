@@ -1,4 +1,15 @@
-"""Flow atoms — F15 trade-flow imbalance, F16 best-level order-flow imbalance, F17 anchored
+"""RETIRED_DEFECTIVE{defect_ref=R-F15;R-F16;R-F17}
+
+All three v1 flow machines below are RETIRED by TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 (§1.5):
+F15 ``flow.tfi.window.v1`` (arrival-ordered, non-adjacent-duplicate-counting, no watermark, no
+aggressor provenance, unit-invalid GV-013), F16 ``flow.ofi.best.v1`` (crossed books accepted,
+unenforceable max-age, no exact duplicate/sequence path, no normalized identity) and F17
+``flow.book_tilt.band.v1`` (``min_depth = 0`` admits a 0/0 emission, caller-supplied pre-banded
+sums). Their bytes and registry rows are preserved unchanged (no history relabeled); the repaired
+successors live in ``structures/flow_atoms_v2.py`` (``flow.tfi.window.v2`` · ``flow.ofi.best.v2``
++ ``flow.ofi.best_norm.v1`` · ``flow.book_tilt.band.v2``). Do not consume the classes below.
+
+Flow atoms — F15 trade-flow imbalance, F16 best-level order-flow imbalance, F17 anchored
 book-depth tilt (b03 grounding rows; golden vectors GV-013 / GV-014; F16 has no linked golden
 vector in the bundle, see the OPEN CONCERN below).
 
