@@ -281,6 +281,18 @@ paths, so the classifier returns False for the decision register, the repair REA
 every vendored revision record — **every repair-record commit trips `SOURCE_PATH_OUT_OF_SCOPE` by
 construction.** Recorded for D-3b's widening rather than worked around.
 
+**M-5 (new, and the first concrete cost of M-2).** Because CI has never reached pytest, the full
+TriadLearning suite was run locally against both the branch and `origin/main`, each with the estate
+siblings visible so the sibling-or-skip tests actually execute. It immediately surfaced a live
+`CG-REFUSAL-CODES` violation: `TriadVenueGateway` added `RejectClass.MAINTENANCE` (commit `8c7d667`,
+Binance −1016) **without moving its coupled §2b glossary row**, the obligation VGP's own `CLAUDE.md`
+states verbatim. It had been invisible twice over — the drift-lock is sibling-or-skip, so it SKIPS
+wherever the sibling is absent, and where it does run CI never got past ruff. A drift-lock that
+skips in CI and never executes locally is not a lock. Repaired in TriadLearning (row + `KIND` +
+`ORIGIN` + `STATUS` + both regenerated faces), display-only, registration point untouched. The
+like-for-like comparison: `origin/main` 102 failed / 2,278 passed; the branch 101 failed / 2,325
+passed; **zero regressions, one pre-existing failure fixed.**
+
 **§4 / M-3 — the checkpoint seal stays owed and owner-gated.** Performing it unbid would contradict
 the very call R-03 §1 recorded as correct.
 
