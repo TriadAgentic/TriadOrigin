@@ -1295,3 +1295,59 @@ class TestVersionDiscipline:
         assert fvg2.ZONE_FULLY_FILLED == "ZONE_FULLY_FILLED"
         assert fvg2.FvgZoneRegistry().initial_state() == {
             "last_event_id": None, "last_bar_seq": None, "recent": [], "zones": []}
+
+
+# ---------------------------------------------------------------------------------------------
+# ERR-01 (owner decision D-21) — the F10 state predicates are MUTUALLY EXCLUSIVE and monotone.
+#
+# Spec §R-F10's state block wrote overlapping predicates (`TOUCHED (pen>0)` and
+# `PARTIAL (0<pen<1/2)` both fire on the open interval (0, 1/2)), and its inline T4 reasoning
+# contradicted the `pen>0` gloss. The RATIFIED T4 row ("edge contact at z1 is TOUCHED with
+# pen = 0") is normative (spec §0) and is what this module implements. The resolved,
+# mutually-exclusive reading is:
+#     TOUCHED         : intersection, pen == 0        PARTIAL         : 0 < pen < 1/2
+#     MIDPOINT_FILLED : 1/2 <= pen < 1                FILLED          : pen == 1
+# (FRESH is the no-intersection case, contacted=False.) The errata document requires "a property
+# test asserting that for 10^5 random pen values in [0, 1] exactly one state predicate is true".
+# Formally adopting the erratum onto the spec TEXT is owner-gated as D-21; this test locks the
+# already-ratified code behaviour, it does not adopt a new law.
+# ---------------------------------------------------------------------------------------------
+
+
+class TestErr01MutuallyExclusiveStates:
+    @staticmethod
+    def _predicates(num: int, den: int) -> dict:
+        # exact integer arithmetic on a reduced pen = num/den in [0, 1] with den > 0 — no float.
+        return {
+            fvg3.STATE_TOUCHED: num == 0,
+            fvg3.STATE_PARTIAL: num > 0 and 2 * num < den,
+            fvg3.STATE_MIDPOINT_FILLED: 2 * num >= den and num < den,
+            fvg3.STATE_FILLED: num == den,
+        }
+
+    @staticmethod
+    def _reduced(num: int, den: int) -> tuple:
+        g = math.gcd(num, den)
+        return num // g, den // g
+
+    def test_exactly_one_predicate_holds_and_matches_state_for(self):
+        # the three published boundary rows — T4 (p = z1 -> pen 0), T5 (midpoint -> pen 1/2),
+        # T6 (p < z0 -> pen 1) — plus 10^5 deterministic random pens in [0, 1].
+        cases = [(0, 1), (1, 2), (1, 1)]
+        rng = random.Random(0xF10E01)
+        for _ in range(100_000):
+            den = rng.randint(1, 4096)
+            cases.append((rng.randint(0, den), den))
+        for raw_num, raw_den in cases:
+            num, den = self._reduced(raw_num, raw_den)
+            true_states = [s for s, ok in self._predicates(num, den).items() if ok]
+            # EXACTLY ONE state predicate is true for every pen in [0, 1].
+            assert len(true_states) == 1, (num, den, true_states)
+            # contacted=True is the intersection case: _state_for must return that one state.
+            assert fvg3._state_for((num, den), contacted=True) == true_states[0], (num, den)
+
+    def test_no_intersection_is_the_only_route_to_fresh(self):
+        # FRESH is reachable ONLY with no intersection (contacted=False); an edge contact with
+        # pen == 0 is TOUCHED, never FRESH (the T4 ratified reading).
+        assert fvg3._state_for((0, 1), contacted=False) == fvg3.STATE_FRESH
+        assert fvg3._state_for((0, 1), contacted=True) == fvg3.STATE_TOUCHED

@@ -51,6 +51,20 @@ CORRECTED LAW (R-F12, the pseudocode is normative)::
       §1.4 generic order for this formula; the §1.4 note blesses the per-formula line).
     Availability: max(displacement availability, linked BOS availability).
 
+**ERRATUM ERR-03 / owner decision D-17 (TRIAD-ORIGIN-V7-ERRATA-2026-08-13) — trial identity while
+F08 refuses.** ``CONFIRMED_BY_BOS`` above fires on a *same-direction accepted F09 break occurrence*.
+While F08 (protected-swing reducer) stands refused (``PROTECTED_SWING_REDUCER_VERSION NOT_RATIFIED``,
+untouched by the repair set), §R-F09 emits only ``GENERIC_BREAK`` with **no BOS/CHOCH label** — so
+this module confirms on any close through a frozen level in the displacement direction, not on a
+break of structure, and the state/capsule names assert a semantic the run does not yet have. That is
+a **trial-identity** question (RC3 law 18): order-block rows accrued under ``GENERIC_BREAK`` are not
+the same trial family as rows under ``BOS`` and must never be pooled. Resolving it is an **owner
+choice among three lawful options (A gate / B split identity / C stamp-and-record; B recommended)** —
+a genuine decision, not a mechanical fix — so an agent does NOT pick it: this module's behaviour is
+left unchanged and the decision is recorded in ``docs/plan/DECISIONS-REQUIRED.md`` (D-17). Whichever
+option is signed, CAP-01 shadow rows accrued before F08 ratifies carry an ambiguous trial identity
+until the ruling lands, which is why D-17 must precede any CAP-01 accrual (v2.0 register step 3).
+
 **Stream/intake law (declared; replay and live drive the SAME faces in recorded order).** For
 one bar index ``j`` the causal order is: gap/revision facts -> the accepted F09 occurrences
 derived from bar ``j`` (:func:`register_break` requires ``break_bar_index == last_bar_index + 1``,

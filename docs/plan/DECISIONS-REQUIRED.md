@@ -59,6 +59,69 @@ cutover are the E10 owner service's signed acts.
 
 ---
 
+## PART II · v2.0 — the eleven decisions from the independent cross-check (D-11 … D-21)
+
+**Source:** the owner supplied `DECISIONSREQUIREDv2.0` + `TRIAD_ORIGIN_V7_ERRATA_AND_CLARIFICATIONS_2026-08-13`
+and `INDEPENDENT_AUDIT_AND_SCORECARD` ("the answer for the decisions you required", 2026-08-13).
+These rows are recorded here at v2.0 parity. **Forwarding the register is not signing it** — every
+row below whose "what only you can do" is a signature is still `OPEN`; no signature, trust-registry
+pin, credential value, or on-box receipt is fabricated. Posture unchanged: `OFF/OFF/OFF/LIVE`,
+`DENIED_SAFE_HOLD`; `shadow_activation = LIVE` is fixed with no OFF control. **Nothing here disarms
+anything** — every remedy adds a gate, splits an identity, names a refusal, or converts a silent
+default into a measured experiment.
+
+**Scope discipline (why Origin builds almost none of these):** Origin owns **E02 only**. The three
+P0 economic gates (D-12, D-13) live at **E07**; the exit half of D-14 and D-19/D-20 sizing live at
+**E08/E09**; D-18 reconciliation is an **estate** act; D-15 is an **RC4** amendment. Origin must not
+implement order verbs, risk, sizing, venue reach, or a fee-net admission gate — those are forbidden
+capabilities here. The only rows that touch Origin code are **D-11** (F18 RR floor — recorded, an
+owner choice), **D-17** (F12 confirmation semantics — recorded, an owner A/B/C choice), and **D-21**
+(the F10/F13 formula errata).
+
+### II·A · The economic gate — three P0s (all cross-estate / owner; Origin does NOT build them)
+
+| # | Finding (one line) | Origin scope | What only you can do | Status |
+|---|---|---|---|---|
+| **D-11** | RC2 §F18 fixes `RR floor = 2.0`; the estate's live ratified `gross_rr_floor = 2.5`. Unremarked; costs ≈5.7 pp of required win rate at `H=9 bps`, `stop=45 bps` (`p_BE=(1+c)/(1+RR)`). Flips the shadow board's 34.3 % from break-even to negative. | **F18 is Origin (candidate_geometry).** But this is an owner *choice*, not a bug: the value is contested between two ratified sources, so an agent does not pick. Recorded refusing-in-place — F18 must not hardcode a contested floor active (§0 rule 1 / law 20). | Sign one: **(i)** restore `RR_FLOOR = 5/2` exact rational, or **(ii)** preregister `RR_FLOOR ∈ {2.0, 2.5}` as a two-arm cohort-tagged measurement frozen before any capsule read. Meanwhile F18 emits `BLOCKED_ON_RATIFY(RR_FLOOR)` and publishes exact-rational RR to SHADOW with no floor applied (both arms recoverable). | OPEN |
+| **D-12** | **No layer in V7 refuses a candidate for being fee-unviable.** E02 is forbidden cost (law 07, correct); E07's economic admission is `TBD-011` (does not exist); F20 sizes an unviable trade; F23 measures the loss after. Estate's own `breakeven_roundtrip_bps = 3.09` is below even pure-maker 4.0 bps. **Highest severity in the register.** | **E07 — OUT OF ORIGIN.** Origin cannot and must not build a fee-net gate (law 07). Recorded as the estate's owner/E07 act. | Ratify the E07 `ADMIT` predicate (stop_bps ≥ floor; RR_exact ≥ RR_FLOOR; `p_required=(1+cost_R)/(1+RR)`, `cost_R=H_bps/stop_bps`, per-side never blended; cell win-rate CI lower bound > p_required, else SHADOW-only `BLOCKED_ON_EVIDENCE(cell)`). Failure emits `REFUSED_FEE_UNVIABLE{…}` + full SHADOW lineage. | OPEN — blocks G7, any promotion, any expectancy claim |
+| **D-13** | The 45 bps `min_stop_width_bps` — the estate's single most effective filter — has **no home** in V7. Law 07 forbids it from E02; nothing re-establishes it at E07/E08. V7 as specified admits the 10 bps-median geometry that produced −643 R. | **E07 — OUT OF ORIGIN.** Recorded as the owner/E07 act. | Register `MIN_STOP_WIDTH_BPS` as an E07 admission binding, `PROPOSED_MUST_RATIFY`, proposed 45, refusal `REFUSED_STOP_TOO_TIGHT{…}` + SHADOW recording. **Derived, not inherited:** `MIN_STOP_WIDTH_BPS = H_bps / MAX_COST_R` (`MAX_COST_R` signed, proposed 1/5) so it moves with the fee model. | OPEN — blocks G7 |
+
+### II·B · Execution mechanics (cross-estate / RC4)
+
+| # | Finding (one line) | Origin scope | What only you can do | Status |
+|---|---|---|---|---|
+| **D-14** | Law 14 (post-only maker for every normal entry AND exit) is contradicted by three internal sources: resting entries ≈28 % WR vs market-at-signal ≈51.5 %; RC4 §06 audit shows 36 % historical taker fills; maker-stop failure is an unbounded tail vs bounded taker-stop cost. | **E08/E09 — OUT OF ORIGIN** (execution mechanics, venue). Recorded. | Two signatures: **(i) entry** — demote to a preregistered cohort-tagged measurement `{post_only_resting, confirmed_entry, market_at_signal}`; **(ii) exit** — ratify EXIT-MECH-01's PROTECTED-STOP hybrid (maker for `T` s in an `X` bps band, then deterministic market; `T`,`X` `PROPOSED_MUST_RATIFY`). | OPEN — exit half is a standing unbounded-tail exposure; sign before `venue_activation` is ever LIVE |
+| **D-15** | RC4 §01 law 10 lets four SHADOW refusals force `venue_activation=OFF` — a measurement-plane heartbeat revoking money-plane authority, conflicting with ARMED-BY-DEFAULT (disarm is never the default remedy) and creating a 5 s DoS surface. | **RC4 amendment — OUT OF ORIGIN.** Recorded. | Sign the split by what each refusal actually threatens (contamination → quarantine+page, no activation change; lineage → block new cohort opening; stale → page+fix-forward, escalate only after a signed `T_grace`; not-persisted → quarantine+page). Extend RC4's own `SHADOW_UNTRADEABLE` pattern. | OPEN — inert while posture is OFF; sign before it is not |
+
+### II·C · Sequencing & semantics
+
+| # | Finding (one line) | Origin scope | What only you can do | Status |
+|---|---|---|---|---|
+| **D-16** | Capsule dependency trace: CAP-03 (F06), CAP-04 (F08/CHOCH) hard-blocked; CAP-02 (F17 book tilt) blocked-or-advisory; CAP-05 (F07, E01) unknown; the repair set cleanly unblocks **only CAP-01**, whose base detector (`order_block`) is the estate's most trustworthy *negative* prior, while the positive-prior `fvg_retest` (CAP-02) stays gated. | **Owner sequencing decision + F17/F06/F08 ratifications** (F17/F06/F08 mechanisms exist refusing-in-place, D-2). Recorded — not an agent pick. | Sign a capsule order (proposed: F17 → CAP-02 first; then F08; then F06; CAP-01 second under D-17's split identity). | OPEN — governs what the next months of shadow data are *about* |
+| **D-17** | While F08 refuses, §R-F09 emits only `GENERIC_BREAK`, so F12 `ob.displacement_bos.v2` confirms on any close-through, not on breaks of structure — an ambiguous trial identity (RC3 law 18) that must never pool pre-/post-F08 rows. | **F12 is Origin.** Recorded as an owner A/B/C choice; **behaviour left unchanged** (an agent does not pick). Honest note added to `order_block_v2.py`. | Sign one: **A** gate (`BLOCKED_ON_RATIFY(F08)`); **B** split identity `ob.displacement_break.v2` / `CONFIRMED_BY_BREAK` (recommended — never-blend + armed); **C** stamp `confirmation_class ∈ {BOS, GENERIC_BREAK}` + read-time refusal. | OPEN — must precede any CAP-01 shadow accrual |
+
+### II·D · Carried-forward & operational (estate / executor — OUT OF ORIGIN)
+
+| # | Finding (one line) | Origin scope | What only you can do | Status |
+|---|---|---|---|---|
+| **D-18** | `last_reconcile_ts` is permanently null — the reconciler has **never run**; 13 incident-window orders have unrecorded round-trip P&L; **zero** references across all seven V7 docs. V7 law 10 / RC4 `UNKNOWN_SUBMIT_UNRECONCILED` make reconciliation a precondition it has never met. | **Estate act — OUT OF ORIGIN.** Recorded (Origin owns no venue/reconciler). | Register P1 as a named predecessor on the gate ladder (blocks G6/G7); require one successful reconciliation run + receipt before any promotion receipt; record the 13 orders' P&L discriminated by market-sell timestamp. | OPEN — blocks G6/G7 |
+| **D-19** | Ops guide asserts a `$20` MIN_NOTIONAL; Binance documents 5 USDT read per-symbol from `exchangeInfo`; estate limits carry `"5"`. The `$20` appears in no primary source → possibly a hardcoded constant (law 20 defect). | **E08/E09 executor — OUT OF ORIGIN.** Recorded. | Ratify: every venue constant read from live `exchangeInfo` with `metadata_revision` (§R-F00 metadata law); record per-symbol MIN_NOTIONAL in the activation manifest; audit/remove any hardcoded path. | OPEN — blocks TBD-013, G7 |
+| **D-20** | At ≈$99.82 equity, 1 % risk / 45 bps stop = $222 notional (clears 5 USDT); the reported "below minimum" failure does not reproduce in either direction → the executor sizing path does something no supplied doc describes. | **E08 sizing — OUT OF ORIGIN.** Recorded. | Require a written sizing-path trace (`risk_pct_equity` → `unit_loss=m·|E−S|+c` → submitted qty, each value + source) reconciled to live filters before signing TBD-012/013. | OPEN — blocks G7 |
+
+### II·E · The formula errata (Origin — D-21)
+
+| # | Finding | What the agent did (this PR) | What only you can do | Status |
+|---|---|---|---|---|
+| **D-21 · ERR-01 (F10)** | Spec §R-F10 state block overlapped `TOUCHED (pen>0)` / `PARTIAL (0<pen<1/2)`; inline T4 reasoning contradicted the `pen>0` gloss. | **Closed in code + test.** The module already implements the RATIFIED T4 mutually-exclusive reading (`TOUCHED: pen==0`, `PARTIAL: 0<pen<1/2`, `MIDPOINT_FILLED: 1/2≤pen<1`, `FILLED: pen==1`); added the required property test (`TestErr01MutuallyExclusiveStates` — 10⁵ random pens, exactly one predicate true) + a precise docstring. This locks already-ratified behaviour; it is not a new law. | Sign the erratum onto the repair PR (formal spec-text amendment) alongside D-1's `RATIFY_WITH_THIS_REPAIR` set. | OPEN (signature) — code/test done |
+| **D-21 · ERR-02 (F13)** | The errata proposes redefining the excursion `extreme` to accrue over **every** `t_exc..t_confirm` bar (a `(0.5)` deepen step in `RECLAIM_PENDING`). | **Recorded owner-gated; code UNCHANGED.** The current module faithfully implements the vendored CORRECTED LAW ("`extreme = min over excursion-phase bar lows`") — pinned by `test_hold_bars_do_not_deepen_the_extreme` + `test_h10_…deepens…first`. The erratum CONTRADICTS that law, flips a passing test, and changes `extreme`/`excursion_depth_ticks` bytes consumed by F18 stop logic — a formula-byte semantic change an agent may not pick (authority order: "a semantic change updates the authoritative spec/control artifact in a prior PR"). Honest note added to `excursion_reclaim_v2.py`. | Sign the erratum (redefine `extreme` per the proposal) in a prior spec-amendment PR + on the repair PR; then the F13 code change + acceptance test land in the same signed PR-set. | OPEN — blocks nothing today; adopt before pooling F13-fed stops |
+
+**ERR-03** is D-17 above (F12). **Order of operations (owner):** the register's v2.0 recommends the
+three P0s (D-12/D-13/D-11) first, then D-6, then D-21+D-17, then B00R root closure (D-3/O-3), then
+the merge chain (D-3b/D-1/D-7), then D-16, D-2, D-18, D-14, D-15, D-19/D-20, then D-4/D-5/D-8/D-9/D-10,
+then O-1/O-2.
+
+---
+
 ## Where the mechanisms live (so you can verify each refusal yourself)
 
 - **Every `PROPOSED_MUST_RATIFY` value** refuses via `BLOCKED_ON_RATIFY(<param>)` in its formula
@@ -70,3 +133,9 @@ cutover are the E10 owner service's signed acts.
   `PENDING_SIGNATURE` until signed.
 - **The Part D golden registry** is recorded in `docs/control/formula_repair_overlay.v1.json`
   (a separate, non-arming artifact — the RC3 bundle bytes are never edited, CO-01).
+- **The formula errata (D-21):** ERR-01 is closed in code + `TestErr01MutuallyExclusiveStates`
+  (F10 `_state_for` returns exactly one state per pen); ERR-02 is recorded owner-gated with an
+  honest note in `excursion_reclaim_v2.py` (the code faithfully implements the vendored CORRECTED
+  LAW; the proposed redefinition is a signed-owner spec change); ERR-03/D-17 is recorded
+  owner-gated with an honest note in `order_block_v2.py` (F12 behaviour unchanged; the A/B/C
+  choice is the owner's).

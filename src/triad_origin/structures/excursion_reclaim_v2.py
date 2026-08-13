@@ -45,6 +45,27 @@ Ratified conventions (``RATIFY_WITH_THIS_REPAIR`` — owner signature on the rep
   exactly as a GAP) invalidates every non-terminal level lifecycle; a skipped finalized ordinal
   inside an open window is ``INVALIDATED{SEQUENCE_GAP}``.
 
+EXTREME DEFINITION — the CORRECTED LAW ("``extreme = E = min over excursion-phase bar lows``")
+governs, and this module implements it EXACTLY: the extreme deepens on every EXCURSION-phase bar
+(incl. an expiring bar, which deepens first per the normative within-bar order, and a
+RECLAIM_PENDING bar that RESETS back to EXCURSION because its close failed the reclaim), and a
+qualifying RECLAIM_PENDING HOLD bar does NOT deepen (it is a reclaim close, not an excursion-phase
+bar). This is pinned by ``test_excursion_reclaim_v2`` (``test_hold_bars_do_not_deepen_the_extreme``,
+``test_h10_the_expiring_bar_still_deepens_the_extreme_first``, T9 ``via reset path``).
+
+ERRATUM ERR-02 (owner decision D-21 — TRIAD-ORIGIN-V7-ERRATA-2026-08-13) is a **PROPOSED semantic
+change**, NOT adopted here: it would redefine ``extreme`` to accrue over EVERY non-terminal bar
+from ``t_exc`` to ``t_confirm`` inclusive (a step ``(0.5) extreme := min(extreme, L_t)`` at the top
+of RECLAIM_PENDING, so a qualifying hold bar's intrabar low would also deepen the stop reference).
+That reading CONTRADICTS the vendored CORRECTED LAW's explicit "min over **excursion-phase** bar
+lows", flips ``test_hold_bars_do_not_deepen_the_extreme``, and changes the emitted
+``extreme_ticks``/``excursion_depth_ticks`` consumed by F18 stop logic — so it is a formula-byte
+change reserved for the owner's signature (D-21, alongside a prior spec-amendment PR per the
+authority order "a semantic change updates the authoritative spec/control artifact in a prior
+PR"). An agent does not silently pick between two conflicting spec statements; it is recorded in
+``docs/plan/DECISIONS-REQUIRED.md`` (D-21) and left refusing-in-place — the current behaviour is
+the faithful transcription of the law as written.
+
 Same-event multi-transition law (§1.4, instantiated for F13): transitions map onto the global
 precedence classes via :data:`TRANSITION_CLASSES` and same-bar coincidences in the EXCURSION
 state are resolved by :func:`triad_origin.exact.dominant_transition`

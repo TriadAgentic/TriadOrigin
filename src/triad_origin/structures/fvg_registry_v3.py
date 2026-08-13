@@ -21,12 +21,23 @@ Penetration (bull; touch price ``p`` = bar low per the FVG_TOUCH_PRICE_SOURCE bi
     pen = clamp( (z1 - min(p, z1)) / (z1 - z0), 0, 1 )     stored as a reduced rational (§1.3)
     bear mirror: pen = clamp( (max(p, z0) - z0) / (z1 - z0), 0, 1 ) with p = bar high
 
-States: ``FRESH -> TOUCHED -> PARTIAL (0 < pen < 1/2) -> MIDPOINT_FILLED (pen >= 1/2)
--> FILLED (pen = 1, terminal) | EXPIRED (terminal) | INVALIDATED (terminal)``. Progression is
-monotone; a single bar may advance multiple stages (ONE event carrying the final stage). Per the
-RATIFIED T4 row — "**edge contact at z1 is TOUCHED with pen = 0**" — contact is inclusive at the
-near edge (bull ``p <= z1``; bear ``p >= z0``) and the ratified test row wins over the state
-diagram's ``TOUCHED (pen>0)`` gloss (spec §0: the ratified row is normative).
+States (MUTUALLY EXCLUSIVE, monotone, on the bar's extreme penetration): ``FRESH`` (no
+intersection) ``-> TOUCHED (pen == 0, edge contact) -> PARTIAL (0 < pen < 1/2)
+-> MIDPOINT_FILLED (1/2 <= pen < 1) -> FILLED (pen = 1, terminal) | EXPIRED (terminal)
+| INVALIDATED (terminal)``. Progression is monotone; a single bar may advance multiple stages
+(ONE event carrying the final stage). Per the RATIFIED T4 row —
+"**edge contact at z1 is TOUCHED with pen = 0**" — contact is inclusive at the near edge (bull
+``p <= z1``; bear ``p >= z0``) and the ratified test row wins over the state diagram's
+``TOUCHED (pen>0)`` gloss (spec §0: the ratified row is normative).
+
+ERRATUM ERR-01 (owner decision D-21 — TRIAD-ORIGIN-V7-ERRATA-2026-08-13). The spec §R-F10 state
+block as written overlapped ``TOUCHED (pen>0)`` with ``PARTIAL (0<pen<1/2)``, and its inline T4
+reasoning contradicted the ``pen>0`` gloss. This module already resolves the overlap in favour of
+the RATIFIED T4 reading (the mutually-exclusive predicate set above), so ``_state_for`` returns
+exactly one state for every ``pen`` in ``[0, 1]``. Formally adopting the erratum onto the spec
+text is the owner's signature (D-21, alongside D-1's ``RATIFY_WITH_THIS_REPAIR`` set); the code and
+its property test (``test_fvg_registry_v3.TestErr01MutuallyExclusiveStates``) lock the already-
+ratified behaviour, they do not adopt a new law.
 
 EVALUATION ORDER PER EVENT (normative; RATIFY_WITH_THIS_REPAIR):
 
