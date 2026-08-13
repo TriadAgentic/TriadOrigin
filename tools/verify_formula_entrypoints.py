@@ -45,7 +45,8 @@ FORMULA_MODULE_NAMES = (
     "excursion_reclaim_registry_v2.py",  # F13 v2 registry face (converted)
     "reaction.py",                # F14 (v1, retired R-F14)
     "reaction_v2.py",             # F14 machine (R-F14, converted — must scan clean)
-    "flow_atoms.py",              # F15/F16/F17 (v1)
+    "flow_atoms.py",              # F15/F16/F17 (v1, retired R-F15/16/17)
+    "flow_atoms_v2.py",           # F15/F16/F17 machine (converted — must scan clean)
     "fvg_registry.py",            # F10 (v2, retired R-F10)
     "fvg_registry_v3.py",         # F10 machine (R-F10, converted — must scan clean)
     "order_block_registry.py",    # F12 (v1, retired R-F12)
@@ -68,7 +69,6 @@ ROOT_FORMULA_MODULE_NAMES = (
 # Fail-closed ratchet: modules awaiting their §1.6 repair commit. REMOVE each entry in the same
 # commit series that converts the module; an entry whose module scans clean is a build failure.
 LEGACY_UNCONVERTED: set[str] = {
-    "flow_atoms.py",
     "typed_level_registry.py",
     "structure_state.py",  # shared host: live F08 raw sites remain (§1.6 F06/F08 untouched)
     "candidate_geometry.py",
