@@ -1906,6 +1906,75 @@ def b04c_flow_goldens() -> None:
         f"the normalized identity emitted with the lever OFF: {norm_feats!r}"
 
 
+@stage("b06r_cluster_goldens",
+       "B06R: F19 opportunity_cluster.v2 — the ordering law (arrival order can never change the "
+       "output) + the F14->F19 source_reaction_id adoption (shared reaction id clusters even "
+       "without a zone touch) — capability-sealed; the genuine registry stays honest-dark")
+def b06r_cluster_goldens() -> None:
+    import itertools
+
+    from triad_origin import transition
+    from triad_origin.structures import clustering_v2 as cl
+    from triad_origin.structures import common as _common
+
+    forge = _capability_forge()
+    ctx = forge["ctx"]
+
+    # F19's sole genuine row FPB-0036 is BLOCKED; FPB-0092 is repurposed as CLUSTER_MAX (the
+    # test-battery pattern). SELF_TEST fixture surgery flips both ACTIVE through real acceptance.
+    f19_bundle = forge["fixture_bundle"]({
+        "FPB-0036": {"parameter_id": cl.PARAM_CLUSTER_WINDOW, "declared_value": "30000",
+                     "semantic_slot": "E2E:F19.cluster_window"},
+        "FPB-0092": {"formula_id": cl.FORMULA_F19, "parameter_id": cl.PARAM_CLUSTER_MAX,
+                     "parameter_name": cl.PARAM_CLUSTER_MAX, "declared_value": "32",
+                     "semantic_slot": "E2E:F19.cluster_max_members"},
+    })
+    caps = {
+        cl.PARAM_CLUSTER_WINDOW: transition.require_bundle(
+            f19_bundle, cl.PARAM_CLUSTER_WINDOW, formula_id="F19", ctx=ctx),
+        cl.PARAM_CLUSTER_MAX: transition.require_bundle(
+            f19_bundle, cl.PARAM_CLUSTER_MAX, formula_id="F19", ctx=ctx),
+    }
+
+    def occ(cid, zone_low, zone_high, avail, srid=""):
+        return cl.CandidateOccurrence(
+            candidate_id=cid, instrument="BTCUSDT", side=_common.LONG,
+            source_structure_id="", source_reaction_id=srid,
+            entry_zone_low_ticks=zone_low, entry_zone_high_ticks=zone_high,
+            availability_us=avail, occurrence_version=1, capsule_id="cap-1",
+            capsule_params_digest="digest-1", source_event_id=f"occ:{cid}")
+
+    def batch(*cands):
+        return cl.ClusterBatch(candidates=tuple(cands), source_event_id="b1")
+
+    def live(state):
+        return {k: v for k, v in state["components"].items() if not v["expired"]}
+
+    # ORDERING LAW: a two-component set clusters identically under every arrival permutation.
+    two = [
+        occ("A", 0, 10, 0), occ("B", 10, 20, 100, "RY"), occ("C", 500, 600, 200, "RY"),
+        occ("D", 1000, 1010, 0), occ("E", 1010, 1020, 50, "RZ"), occ("F", 1500, 1600, 60, "RZ"),
+    ]
+    from triad_origin.canonical import canonical_json as _cj
+    baseline = None
+    for perm in itertools.permutations(two):
+        final = cl.run_clustering_v2(caps, [batch(*perm)]).final_state
+        fp = _cj(final)
+        if baseline is None:
+            baseline = fp
+        assert fp == baseline, "F19 ordering law: arrival order changed the output"
+    comps = live(cl.run_clustering_v2(caps, [batch(*two)]).final_state)
+    assert len(comps) == 2, f"expected two components, got {len(comps)}"
+    assert sorted(c["root_candidate_id"] for c in comps.values()) == ["A", "D"]
+
+    # F14->F19 adoption: a shared source_reaction_id clusters even with DISJOINT zones.
+    shared = live(cl.run_clustering_v2(caps, [batch(
+        occ("P", 0, 5, 0, "RX"), occ("Q", 9000, 9005, 10, "RX"))]).final_state)
+    assert len(shared) == 1, f"shared source_reaction_id must cluster, got {shared!r}"
+    (comp,) = shared.values()
+    assert sorted(comp["member_candidate_ids"]) == ["P", "Q"]
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")
