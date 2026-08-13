@@ -115,7 +115,7 @@ from __future__ import annotations
 
 import re
 
-from ..bindings import CapabilityForgeryError, VerifiedCapability
+from .. import bindings
 from ..canonical import canonical_json, sha256_hex
 from ..e01_interface import ValidatedBar
 from ..exact import (
@@ -228,7 +228,7 @@ _UPPER_SNAKE = r"[A-Z][A-Z0-9_]*"
 class BlockedOnRatify(RuntimeError):
     """The named refusal ``BLOCKED_ON_RATIFY(OB_TTL_BARS)`` (R-F12 BINDINGS).
 
-    Raised when evaluation is attempted without an authenticated ``VerifiedCapability`` for a
+    Raised when evaluation is attempted without an authenticated ``bindings.VerifiedCapability`` for a
     required parameter that has no ratified registry row. The mechanism exists; activation is
     ONLY via an authenticated binding — the proposed value (192) is never hardcoded active.
     """
@@ -251,7 +251,7 @@ class EnvelopeContractError(TypeError):
 # ==================================================================================================
 
 
-def _capability_int(cap: VerifiedCapability, *, minimum: int, name: str) -> int:
+def _capability_int(cap: bindings.VerifiedCapability, *, minimum: int, name: str) -> int:
     """An exact integer declared value, else the named ``F12_BINDING_VALUE_NOT_INTEGER`` refusal.
 
     Admits an exact int (bool excluded) or a canonical non-negative decimal string (the registry
@@ -282,7 +282,7 @@ def _capability_int(cap: VerifiedCapability, *, minimum: int, name: str) -> int:
     return guarded
 
 
-def _capability_fraction(cap: VerifiedCapability) -> tuple:
+def _capability_fraction(cap: bindings.VerifiedCapability) -> tuple:
     """An exact reduced rational in ``(0, 1]``, else ``F12_BINDING_VALUE_NOT_RATIONAL``.
 
     Admits ``"num/den"`` (canonical non-negative decimals) or an exact int / canonical int
@@ -319,7 +319,7 @@ def _capability_fraction(cap: VerifiedCapability) -> tuple:
 def _resolved_parameters(caps: object) -> tuple:
     """Validate the capability map; resolve ``(W, H_bos, fraction, buffer, ttl, digest_source)``.
 
-    Exact-type check per entry (``type(entry) is VerifiedCapability`` — a subclass, duck-typed
+    Exact-type check per entry (``type(entry) is bindings.VerifiedCapability`` — a subclass, duck-typed
     stand-in, dict, or int is a typed :class:`~triad_origin.bindings.CapabilityForgeryError`
     BEFORE any state transition); every entry must be minted for THIS formula and keyed by its
     own ``parameter_id``; the key set is exactly :data:`REQUIRED_PARAMETER_IDS`. A missing
@@ -327,29 +327,29 @@ def _resolved_parameters(caps: object) -> tuple:
     no row for it, so no capability can exist until the owner ratifies one.
     """
     if not isinstance(caps, dict):
-        raise CapabilityForgeryError(
-            f"F12 v2 requires a parameter_id -> VerifiedCapability map, got "
+        raise bindings.CapabilityForgeryError(
+            f"F12 v2 requires a parameter_id -> bindings.VerifiedCapability map, got "
             f"{type(caps).__name__}")
     unknown = sorted(set(caps) - set(REQUIRED_PARAMETER_IDS))
     if unknown:
-        raise CapabilityForgeryError(f"unexpected capability for F12 v2: {unknown[0]!r}")
+        raise bindings.CapabilityForgeryError(f"unexpected capability for F12 v2: {unknown[0]!r}")
     if PARAM_TTL not in caps:
         raise BlockedOnRatify(PARAM_TTL)
     missing = [pid for pid in REQUIRED_PARAMETER_IDS if pid not in caps]
     if missing:
-        raise CapabilityForgeryError(f"missing capability for F12 v2: {missing[0]!r}")
+        raise bindings.CapabilityForgeryError(f"missing capability for F12 v2: {missing[0]!r}")
     for pid in REQUIRED_PARAMETER_IDS:
         entry = caps[pid]
-        if type(entry) is not VerifiedCapability:
-            raise CapabilityForgeryError(
-                f"F12 v2 parameter {pid!r} requires a VerifiedCapability, got "
+        if type(entry) is not bindings.VerifiedCapability:
+            raise bindings.CapabilityForgeryError(
+                f"F12 v2 parameter {pid!r} requires a bindings.VerifiedCapability, got "
                 f"{type(entry).__name__}")
         if entry.formula_id != FORMULA_ID:
-            raise CapabilityForgeryError(
+            raise bindings.CapabilityForgeryError(
                 f"capability for {pid!r} was minted for formula {entry.formula_id!r}, "
                 f"not {FORMULA_ID}")
         if entry.parameter_id != pid:
-            raise CapabilityForgeryError(
+            raise bindings.CapabilityForgeryError(
                 f"capability keyed {pid!r} carries parameter_id {entry.parameter_id!r}")
     predicate = caps[PARAM_OPPOSING].value
     if predicate != DECLARED_OPPOSING_PREDICATE:
@@ -920,7 +920,7 @@ def evaluate(
 ) -> TransitionResult:
     """The §C.3 production entrypoint: one E01-validated finalized bar.
 
-    * ``caps`` — ``parameter_id -> VerifiedCapability`` (exact type, formula F12, key ==
+    * ``caps`` — ``parameter_id -> bindings.VerifiedCapability`` (exact type, formula F12, key ==
       ``parameter_id``); anything else is a typed rejection BEFORE any state transition; a
       missing ``OB_TTL_BARS`` capability is ``BLOCKED_ON_RATIFY(OB_TTL_BARS)``.
     * ``env`` — the E01 :class:`~triad_origin.e01_interface.ValidatedBar` (exact type; a raw
