@@ -191,6 +191,22 @@ they arm, narrow, and edit nothing; posture stays OFF/OFF/OFF/LIVE.
 
 ---
 
+## 6c · Revision Record R-02 cross-check (2026-08-13)
+
+R-02 is a fifth document that cross-checks §3/§4 of this report + the BTC/BCH investigation. Verified
+against the code, it **validates this repo's work on every count** and adds four items:
+
+| R-02 item | Verified disposition |
+|---|---|
+| **§1 · R-01 §1.5 WITHDRAWN** (2nd reviewer error, opposite direction) | ✅ The reset bar DOES deepen (`excursion_reclaim_v2.py` rule-3 `_deepen`; `test_h10` `extreme==9960`). The withdrawn `test_reset_bar_low_is_not_applied_to_extreme` was **never added**; the replacement `_applied_` test is present + green. Verified by grep + the passing suite. |
+| **§1.2 · LAW-9 step 2 strengthened** | ✅ RECORDED (DECISIONS-REQUIRED §II·G): read the code + name the pinning test file:line before writing a finding. |
+| **§2 · WO-J = OWNER_GATED_AMENDMENT** | ✅ Accepted. `book_completeness`/`RPI` verified **zero matches in `src/`** (net-new); `flow_atoms_v2.py` has 5 frozen dataclasses (the 16-constructor-site claim). Enum corrected to `{COMPLETE, RPI_EXCLUDED, UNKNOWN}`. **WO-J-a deferred into the amendment PR** (a strict-xfail needs the not-yet-existing field to fail honestly; the placeholder body would XPASS-break the gate — a LAW-9-step-2 catch). |
+| **§3 · GAP-51 symbol-selection confound** (NEW, P0) | ✅ Built in TriadLearning WO-A **A5** (`a5_per_symbol_baseline.sql` + `sample_size.py`). The binomial table is reproduced exactly (n=30→0.0809, n=60→0.0176, n=128→0.00066; 93 round trips two-sided). SYNC-2 amended (both-condition gate + the `n<93` not-distinguishable rule). |
+
+No F13 byte changed; no owner signature/receipt fabricated; posture `OFF/OFF/OFF/LIVE`.
+
+---
+
 ## 7 · Attestation boundary (LAW-8)
 
 Four claims are kept separate and none is conflated:

@@ -138,6 +138,32 @@ depth floor — with the config-precision `PENDING_VENUE_SNAPSHOT` hypothesis **
 precision from live `exchangeInfo`, not the config). The single fastest confirming read is on-box:
 `SELECT * FROM shadow.v_symbol_gate_aggregate ORDER BY instrument_id;`.
 
+## Revision Record R-02 closure (2026-08-13) — a fifth cross-check document
+The owner added `TRIAD_REVISION_RECORD_R-02_2026-08-13` (vendored verbatim). It **cross-checks the
+work we just did and validates it on every count**, and adds four items:
+
+- **R-01 §1.5 fully WITHDRAWN** (a second reviewer error on the same machine, opposite direction —
+  the reset bar DOES deepen). The withdrawn `test_reset_bar_low_is_not_applied_to_extreme` was **never
+  added** here; the developer's replacement `test_reset_bar_low_is_applied_to_the_extreme_err02_r01_corrected`
+  is confirmed "correct and sufficient". F13 needs no further work.
+- **LAW-9 step 2 strengthened** (R-02 §1.2): read the implementing code + name the pinning test
+  (file:line) BEFORE writing a finding; a finding that cannot name the test it would flip is not
+  ready. Recorded in DECISIONS-REQUIRED §II·G.
+- **WO-J = OWNER_GATED_AMENDMENT accepted without reservation** + the enum corrected to
+  **`{COMPLETE, RPI_EXCLUDED, UNKNOWN}`** (three values, UNKNOWN the no-default default). **WO-J-a**
+  (the optional strict-xfail tripwire) is **deferred into the amendment PR, not added now** — a
+  faithful `strict=True` xfail needs the not-yet-existing `book_completeness` field to fail for the
+  right reason; R-02's placeholder body would XPASS and break the gate (itself a LAW-9-step-2 catch).
+- **GAP-51 (NEW, P0) — the symbol-selection confound.** The live WR is measured on the non-random
+  ~2-symbol subset that clears the funnel, so the 13 pp has a fourth source (symbol selection). Built
+  in **TriadLearning WO-A A5**: `a5_per_symbol_baseline.sql` + `sample_size.py` (the binomial
+  distinguishability statistic, proven against R-02's table — n=30→0.0809, n=128→0.00066, 93 round
+  trips for 54.4%-vs-40% at two-sided α=0.05/80% power), wired into the runner's A4 four-line
+  decomposition, and the **SYNC-2 amendment** (WO-B gated on BOTH `no_fill_win_share`<50% AND A5
+  showing symbol selection does not dominate; `n_total<93` ⇒ not yet distinguishable). Tests green.
+
+Posture unchanged `OFF/OFF/OFF/LIVE`; nothing armed; no formula byte changed.
+
 ## Final gate
 12 required checks: pytest seed 0 + seed 1, collect_test_ids, verify_manifest,
 validate_contract_manifest, verify_reproducible_build, test_wheel_install,

@@ -100,6 +100,13 @@ pass the depth screen.
   = the current $25k) read by `scan_gate.rs`, unset ⇒ today's value ⇒ byte-identical.
 - **Enforced:** `scan_gate` tests + `verify_alignment.py §15a/§1`.
 
+> **GAP-51 (R-02 §3) — the symbol-selection confound, before you widen.** The live win rate is
+> measured on the NON-RANDOM ~2-symbol subset that clears the funnel, so part of the "13 pp"
+> shortfall may be *symbol selection*, not signal quality — and widening the gates is exactly the
+> remedy for that source (whereas entry-mechanism work, WO-B, is not). WO-A **A5** (per-symbol
+> baseline reconciliation + the 93-round-trip distinguishability bar, `TriadLearning/analysis/wo_a/`)
+> quantifies it on-box; run it in the §1 confirm so you widen against evidence, not a confound.
+
 ### 3b · All-detector / both-sides money policy (the LIVE30-PROFITABLE-ONLY wall)
 Live money is currently exactly `bos_choch LONG ∪ order_block LONG`; **all M1 and all SHORT are
 shadow-only** (`is_money_live_candidate` / `_money_live_candidate` / `LiveEligibilityConfig` side
