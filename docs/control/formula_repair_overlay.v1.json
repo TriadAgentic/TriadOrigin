@@ -62,7 +62,7 @@
       "expected": "(a) TFI = +2/5 (reduced); (b) TFI = +1/13. A base-quantity computation would claim +2/5 for (b), so vector (b) makes the unit bug permanently detectable. quote_notional_atoms = price_ticks x qty_steps, computed inside from the ValidatedTrade; output stored as reduced rational.",
       "boundary": "buy=sell=0 -> NULL{ZERO_DENOMINATOR}, never 0. Retires the base-quantity buy_qty/sell_qty inputs and the 'never reduced' 40/100 posture.",
       "executable_home": "tests/formulas/test_f10_f17_goldens_b04c.py (B04C); tests/structures/test_flow_atoms_v2.py",
-      "status": "SPEC_DEFINED_LANDS_WITH_R-F15_B04C"
+      "status": "IMPLEMENTED"
     },
     {
       "id": "FR-GVOP-018",
@@ -70,7 +70,7 @@
       "source_vector_id": "GV-018",
       "linked_formula": "F21",
       "part_d_ref": "D.4",
-      "inputs": "full observed ladder (tick=0.01; bids L0..L4; best ask 100.01; entry zone [99.90,100.05] BUY) + SPARSE, ZONE-OUTSIDE-BOOK, and GTX-RACE variants (spec Part D §D.4 verbatim)",
+      "inputs": "full observed ladder (tick=0.01; bids L0..L4; best ask 100.01; entry zone [99.90,100.05] BUY) + SPARSE, ZONE-OUTSIDE-BOOK, and GTX-RACE variants (spec Part D \u00a7D.4 verbatim)",
       "expected": "limit = min(zone_max, best_bid) on-grid GTX; reprice ordinals 0..4 each an OBSERVED level; ordinal 5 -> REFUSED{LEVEL_BUDGET_EXHAUSTED}; sparse -> REFUSED{NO_OBSERVED_LEVEL}; zone-outside-book -> REFUSED{NO_OBSERVED_LEVEL_IN_ZONE}; GTX race -> EXEC_GTX_REJECTED consuming one reprice unit, never taker.",
       "boundary": "no synthesis of an unobserved level, ever; re-evaluate from a FRESH validated book after a GTX reject.",
       "executable_home": "NONE_IN_ORIGIN (F21 is E09-owned; order verbs are a forbidden capability in Origin). Registry-row + contract-schema only here.",
@@ -111,23 +111,114 @@
       "expected": "e1=+3, e2=-7, e3=+11 (exact CKS); OFI = +7. Normalized (flow.ofi.best_norm.v1, activation OFF): D-bar = 40/6 = 20/3; OFI_norm = 7 / (20/3) = 21/20. Replaces the crossed-book hand-worked vector; a crossed/locked update is INVALID and breaks the pair chain.",
       "boundary": "validity per update: Pb<Pa strict, both qty>0, seq continuity; gap -> window NULL{SEQUENCE_GAP}+reset; duplicate seq -> ignored, count unchanged; stale -> NULL{STALE}. Lever OFF -> the norm identity never emits.",
       "executable_home": "tests/structures/test_flow_atoms_v2.py (R-F16); B04C golden home tests/formulas/test_f10_f17_goldens_b04c.py",
-      "status": "SPEC_DEFINED_LANDS_WITH_R-F16_B04C"
+      "status": "IMPLEMENTED"
     }
   ],
   "version_map": [
-    {"formula": "F00", "retired": "instrument_math.v1", "repaired": "instrument_math.v2", "retired_module": "src/triad_origin/instrument_math.py", "repaired_module": "src/triad_origin/instrument_math_v2.py", "status": "IMPLEMENTED"},
-    {"formula": "F03", "retired": "swing.dc.bar_extrema.v1", "repaired": "swing.dc.bar_extrema.v2", "retired_module": "src/triad_origin/structures/typed_level_registry.py (DirectionalChangeSwing, class-level banner)", "repaired_module": "src/triad_origin/structures/swing_dc_v2.py", "status": "IMPLEMENTED"},
-    {"formula": "F04", "retired": "swing.fractal.closed.v1", "repaired": "swing.fractal.closed.v1 (RETAINED; STRICT_UNIQUE erratum recorded)", "retired_module": "src/triad_origin/structures/typed_level_registry.py (FractalPivot)", "repaired_module": "src/triad_origin/structures/typed_level_registry.py (erratum + owed test family)", "status": "IMPLEMENTED"},
-    {"formula": "F09", "retired": "break.bar_close.v1", "repaired": "break.bar_close.v2", "retired_module": "src/triad_origin/structures/structure_state.py (BreakDetector, class-level banner)", "repaired_module": "src/triad_origin/structures/break_v2.py", "status": "IMPLEMENTED"},
-    {"formula": "F10", "retired": "fvg.gap.v2", "repaired": "fvg.gap.v3", "retired_module": "src/triad_origin/structures/fvg_registry.py", "repaired_module": "src/triad_origin/structures/fvg_registry_v3.py", "status": "LANDS_WITH_R-F10_B04C"},
-    {"formula": "F11", "retired": "displacement.closed_path.v1 (RETAINED)", "repaired": "displacement.closed_path.v1 (in-place VALID_BAR hardening + C.3 conversion)", "retired_module": "src/triad_origin/structures/displacement.py", "repaired_module": "src/triad_origin/structures/displacement.py", "status": "IMPLEMENTED"},
-    {"formula": "F12", "retired": "ob.displacement_bos.v1", "repaired": "ob.displacement_bos.v2", "retired_module": "src/triad_origin/structures/order_block_registry.py", "repaired_module": "src/triad_origin/structures/order_block_v2.py", "status": "IMPLEMENTED"},
-    {"formula": "F13", "retired": "level_excursion_reclaim.closed.v1", "repaired": "level_excursion_reclaim.closed.v2", "retired_module": "src/triad_origin/structures/excursion_reclaim_registry.py", "repaired_module": "src/triad_origin/structures/excursion_reclaim_v2.py", "status": "IMPLEMENTED"},
-    {"formula": "F14", "retired": "reaction.first_touch.v1", "repaired": "reaction.first_touch.v2", "retired_module": "src/triad_origin/structures/reaction.py", "repaired_module": "src/triad_origin/structures/reaction_v2.py", "status": "LANDS_WITH_R-F14_B04C"},
-    {"formula": "F15", "retired": "flow.tfi.window.v1", "repaired": "flow.tfi.window.v2", "retired_module": "src/triad_origin/structures/flow_atoms.py", "repaired_module": "src/triad_origin/structures/flow_atoms_v2.py", "status": "LANDS_WITH_R-F15_B04C"},
-    {"formula": "F16", "retired": "flow.ofi.best.v1", "repaired": "flow.ofi.best.v2 (+ new separate identity flow.ofi.best_norm.v1, activation OFF)", "retired_module": "src/triad_origin/structures/flow_atoms.py", "repaired_module": "src/triad_origin/structures/flow_atoms_v2.py", "status": "LANDS_WITH_R-F16_B04C"},
-    {"formula": "F17", "retired": "flow.book_tilt.band.v1", "repaired": "flow.book_tilt.band.v2", "retired_module": "src/triad_origin/structures/flow_atoms.py", "repaired_module": "src/triad_origin/structures/flow_atoms_v2.py", "status": "LANDS_WITH_R-F17_B04C"},
-    {"formula": "F19", "retired": "opportunity_cluster.v1", "repaired": "opportunity_cluster.v2", "retired_module": "src/triad_origin/structures/clustering.py", "repaired_module": "src/triad_origin/structures/clustering_v2.py", "status": "LANDS_WITH_R-F19_B06R"}
+    {
+      "formula": "F00",
+      "retired": "instrument_math.v1",
+      "repaired": "instrument_math.v2",
+      "retired_module": "src/triad_origin/instrument_math.py",
+      "repaired_module": "src/triad_origin/instrument_math_v2.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F03",
+      "retired": "swing.dc.bar_extrema.v1",
+      "repaired": "swing.dc.bar_extrema.v2",
+      "retired_module": "src/triad_origin/structures/typed_level_registry.py (DirectionalChangeSwing, class-level banner)",
+      "repaired_module": "src/triad_origin/structures/swing_dc_v2.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F04",
+      "retired": "swing.fractal.closed.v1",
+      "repaired": "swing.fractal.closed.v1 (RETAINED; STRICT_UNIQUE erratum recorded)",
+      "retired_module": "src/triad_origin/structures/typed_level_registry.py (FractalPivot)",
+      "repaired_module": "src/triad_origin/structures/typed_level_registry.py (erratum + owed test family)",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F09",
+      "retired": "break.bar_close.v1",
+      "repaired": "break.bar_close.v2",
+      "retired_module": "src/triad_origin/structures/structure_state.py (BreakDetector, class-level banner)",
+      "repaired_module": "src/triad_origin/structures/break_v2.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F10",
+      "retired": "fvg.gap.v2",
+      "repaired": "fvg.gap.v3",
+      "retired_module": "src/triad_origin/structures/fvg_registry.py",
+      "repaired_module": "src/triad_origin/structures/fvg_registry_v3.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F11",
+      "retired": "displacement.closed_path.v1 (RETAINED)",
+      "repaired": "displacement.closed_path.v1 (in-place VALID_BAR hardening + C.3 conversion)",
+      "retired_module": "src/triad_origin/structures/displacement.py",
+      "repaired_module": "src/triad_origin/structures/displacement.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F12",
+      "retired": "ob.displacement_bos.v1",
+      "repaired": "ob.displacement_bos.v2",
+      "retired_module": "src/triad_origin/structures/order_block_registry.py",
+      "repaired_module": "src/triad_origin/structures/order_block_v2.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F13",
+      "retired": "level_excursion_reclaim.closed.v1",
+      "repaired": "level_excursion_reclaim.closed.v2",
+      "retired_module": "src/triad_origin/structures/excursion_reclaim_registry.py",
+      "repaired_module": "src/triad_origin/structures/excursion_reclaim_v2.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F14",
+      "retired": "reaction.first_touch.v1",
+      "repaired": "reaction.first_touch.v2",
+      "retired_module": "src/triad_origin/structures/reaction.py",
+      "repaired_module": "src/triad_origin/structures/reaction_v2.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F15",
+      "retired": "flow.tfi.window.v1",
+      "repaired": "flow.tfi.window.v2",
+      "retired_module": "src/triad_origin/structures/flow_atoms.py",
+      "repaired_module": "src/triad_origin/structures/flow_atoms_v2.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F16",
+      "retired": "flow.ofi.best.v1",
+      "repaired": "flow.ofi.best.v2 (+ new separate identity flow.ofi.best_norm.v1, activation OFF)",
+      "retired_module": "src/triad_origin/structures/flow_atoms.py",
+      "repaired_module": "src/triad_origin/structures/flow_atoms_v2.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F17",
+      "retired": "flow.book_tilt.band.v1",
+      "repaired": "flow.book_tilt.band.v2",
+      "retired_module": "src/triad_origin/structures/flow_atoms.py",
+      "repaired_module": "src/triad_origin/structures/flow_atoms_v2.py",
+      "status": "IMPLEMENTED"
+    },
+    {
+      "formula": "F19",
+      "retired": "opportunity_cluster.v1",
+      "repaired": "opportunity_cluster.v2",
+      "retired_module": "src/triad_origin/structures/clustering.py",
+      "repaired_module": "src/triad_origin/structures/clustering_v2.py",
+      "status": "IMPLEMENTED"
+    }
   ],
   "retired_bytes_law": "Every retired version keeps its bytes and its registry rows with status RETIRED_DEFECTIVE{defect_ref}. No history is relabeled; SHADOW rows produced under retired versions keep their version tag forever (never-blend applies across formula versions exactly as across cohorts).",
   "part_f_criterion_3": "All Part D golden rows replaced/added with direct formula links; no formula-linked golden remains stale. This artifact is the registry-row record for the repaired set; the executable batteries are named per row in executable_home."
