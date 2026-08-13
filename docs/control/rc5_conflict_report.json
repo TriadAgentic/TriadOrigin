@@ -1,0 +1,344 @@
+{
+ "schema": "triad.origin.v7.rc5_conflict_report.v1",
+ "applier_version": "triad.origin.v7.rc5_effective_consolidation.v1",
+ "change_order": "CO-01",
+ "families_expected": 10,
+ "families": [
+  {
+   "family": "ADR-005-ENV-ENUM",
+   "rc4_supersession_index": 0,
+   "operation": "REPLACE_SCHEMA",
+   "status": "APPLIED",
+   "records_touched": 1,
+   "records": [
+    {
+     "collection": "rc5_schema_installs",
+     "record": "LEVER::venue_environment",
+     "before_digest": "9b716ca1ae36f077f7bfda282fad14bd83f8e8a94809cbe880c6c60ef497444e",
+     "after_digest": "4bc1bfe7c1396acc6a27d74ab663b4a6d33f2d1f59ba1716e1245cc52bf50df2"
+    }
+   ]
+  },
+  {
+   "family": "DEP-010-ALIAS-RETIREMENT",
+   "rc4_supersession_index": 1,
+   "operation": "RETIRE_VOCABULARY",
+   "status": "APPLIED",
+   "records_touched": 3,
+   "records": [
+    {
+     "collection": "tasks",
+     "record": "SCP-0310",
+     "before_digest": "446bb641890d4fd86654cd96ca27190850be3b16b2f899037a865cd2a54d913e",
+     "after_digest": "ebff3c7ca849415d94023b3373a4168f87a4fc08b1c346dbcfb89d2ad9d3a6b3"
+    },
+    {
+     "collection": "verifications",
+     "record": "V-SCP-0310",
+     "before_digest": "34b8dd7e34f192555f5a1270d4c38c566c63e09b8436ad28345c7dde906b4986",
+     "after_digest": "6447a1edb3ca44d202162ecad567959a0f8f89122958ac33b97e288069f22799"
+    },
+    {
+     "collection": "crosswalk",
+     "record": "CHK-0310",
+     "before_digest": "e526ced341f9789e9cc02ceab86bba8b7bbb942dda136703adc16ea512f9358f",
+     "after_digest": "db42e02d96fa596b974b9a589aaa67e960b8e5b3357e5099117f12b3c396e734"
+    }
+   ]
+  },
+  {
+   "family": "GAP-006-MISMATCH-ONLY",
+   "rc4_supersession_index": 2,
+   "operation": "REPLACE_RECORD",
+   "status": "APPLIED",
+   "records_touched": 2,
+   "records": [
+    {
+     "collection": "tasks",
+     "record": "GAP-006",
+     "before_digest": "ad99f3c08153e5279ec40dd3ba7b92ee546c8ef5da912f8e8efea5c16d1412b6",
+     "after_digest": "b59467ec310b2b205dd203921d149172e36c0c66578c7743b3ed7fc2848c2679"
+    },
+    {
+     "collection": "verifications",
+     "record": "V-GAP-006",
+     "before_digest": "d75230697a49a66c9fcdf6fd880cdd28d71479807d3e5def2951978fde10bb78",
+     "after_digest": "ad2b59fd2d73c1ae9bf0e427366ab53542cc36718a3a975de244d4058b74596b"
+    }
+   ]
+  },
+  {
+   "family": "SEC-015-EXACT-BINDING",
+   "rc4_supersession_index": 3,
+   "operation": "REPLACE_RECORD",
+   "status": "APPLIED",
+   "records_touched": 3,
+   "records": [
+    {
+     "collection": "tasks",
+     "record": "SCP-0216",
+     "before_digest": "778fe7c7d117ca7ba9638a42adb393be4753cbfb9c6ceea0464003e864fe4755",
+     "after_digest": "fb7ab48e4770306c14e25ccf9ab0e24f09b1c70db8578144c7895ee607857f33"
+    },
+    {
+     "collection": "verifications",
+     "record": "V-SCP-0216",
+     "before_digest": "c62477a8e66dab014dd1036349cd46d830ee6254b4f6ab3d5cfee76b401c0456",
+     "after_digest": "6cbf81470652c6c8198164726d2d090e20593c9f0dd911f86cd8f4a4cb1515fc"
+    },
+    {
+     "collection": "crosswalk",
+     "record": "CHK-0216",
+     "before_digest": "5030598fe0b0ce67f32ba655df6e0e9ac403ad46ca5b1d69567c5684f458ac06",
+     "after_digest": "0fdc22aef13f72777c5d4b7fac840065ea7029c127a0207876d634d54d4f19a7"
+    }
+   ]
+  },
+  {
+   "family": "F20-SINGLE-POLICY-SLOT",
+   "rc4_supersession_index": 4,
+   "operation": "REPLACE_RECORD",
+   "status": "APPLIED",
+   "records_touched": 8,
+   "records": [
+    {
+     "collection": "tasks",
+     "record": "FORM-F20-01",
+     "before_digest": "fc937b764babc76621ada2f9277e6998a31c9486c0ac476bfc8d916791fe5d48",
+     "after_digest": "96283caf87938c9fd07d59cef21afbf7cacc0b68009bece69fe195acd6badb23"
+    },
+    {
+     "collection": "tasks",
+     "record": "FORM-F20-02",
+     "before_digest": "c69c955cb6bb7f666474c95d8a67521f8ea0887b57a7583b606e965b9f3af212",
+     "after_digest": "1ed71f5bd2d14fe027ddf84c631a0997ca4caae926a824cf9575b461f811fd96"
+    },
+    {
+     "collection": "tasks",
+     "record": "FORM-F20-03",
+     "before_digest": "f3ba6f15daad59721cb6a452a11e7e04a1cc1f3cfadf223d36da693b39bdacc3",
+     "after_digest": "3f3c7142a696edfa4a6e12ee1a38b62a049242846a46ef160fb82de15f222e02"
+    },
+    {
+     "collection": "tasks",
+     "record": "FORM-F20-04",
+     "before_digest": "f946f5e7c8accac0ef6bf80904c0daaa34e4e8e51d41beb25b3d92d3620bdf7b",
+     "after_digest": "8e316aaaea13c5637f64954aca7c362e467f626f2d6ef4a8c4162a241978e257"
+    },
+    {
+     "collection": "tasks",
+     "record": "FORM-F20-05",
+     "before_digest": "bc1d969c5f54fea30bd09db57e4b68b05beece7bf46255d4ab947bedd8312f91",
+     "after_digest": "5dbe8bf91dd3fcdfa3c94d0ee1f10ab5e7b8d37574b117aafe48326f4fb67c26"
+    },
+    {
+     "collection": "tasks",
+     "record": "FORM-F20-06",
+     "before_digest": "ae52cb2f80033163144cccb87bb1cf2037f43abe2d086698c3b6375420df4bb5",
+     "after_digest": "83a9b95dce94c2248e1b34bc093e67db73011bbc262c5560ac6822bf84090afc"
+    },
+    {
+     "collection": "tasks",
+     "record": "FORM-F20-07",
+     "before_digest": "008acae7bc76586b9fd74a281ab763119b519fda820dc53046da8abea23d53d1",
+     "after_digest": "fd4b054e3200b6e8afbda0a539c860ecb26d53db9b02576a52ea397c533ba983"
+    },
+    {
+     "collection": "formulas",
+     "record": "F20",
+     "before_digest": "5a94e5c145617a8a745bc12a7c3186541fb49db5601777b146e5d3bf7409434a",
+     "after_digest": "36a3e92ff250755e711c45eccf5ea8fa206af9a5748a05a39640d21827893620"
+    }
+   ]
+  },
+  {
+   "family": "C-027-ENGINE-CONTROL-MANIFEST-V2",
+   "rc4_supersession_index": 5,
+   "operation": "REPLACE_SCHEMA",
+   "status": "APPLIED",
+   "records_touched": 5,
+   "records": [
+    {
+     "collection": "tasks",
+     "record": "SCP-0089",
+     "before_digest": "136eca26de33454d190c1c79d23c20301d4999cebcf42686895dd57b67319870",
+     "after_digest": "aac7d2fbddbc0b02c1b20ac957a700d7c4d2d347c45338be0956425f4fc0883c"
+    },
+    {
+     "collection": "tasks",
+     "record": "SCP-0159",
+     "before_digest": "b9657f9d6cd60819220cadf9b93495b88af7b0983f3bdd6de0b7ed9c9c40b439",
+     "after_digest": "27eb95986ce2e23a64bbc9ad27adfe74e367941302ed2e8363cc3561915cd775"
+    },
+    {
+     "collection": "verifications",
+     "record": "V-SCP-0089",
+     "before_digest": "5cb0e3fe49740f332087ac48f3633eef0cc061d76b2407a553c44095bf36b470",
+     "after_digest": "e0b45d41739d96ea93ee14a3562d6daa998b7ffe920ccc11587782d91a7d69fe"
+    },
+    {
+     "collection": "verifications",
+     "record": "V-SCP-0159",
+     "before_digest": "24b568fef00e74cc5ab8ab018e9c0acb71ba57b04361006e1e22fc7579770e79",
+     "after_digest": "cbc71dbf91e0fa6bd639c46af2eb9fe22032c37dfc1e1a20a4b96c144cd3c15c"
+    },
+    {
+     "collection": "rc3_extensions.contract_union",
+     "record": "contract_union",
+     "before_digest": "eeaee60aeca254f140afbf665e834991d5acb5577d58afc6c644b440e71b2292",
+     "after_digest": "b942e25b47aa71bafe56fe1b41c4ffbb60b3726f974e65d5fd2eb7a97b2657bc"
+    }
+   ]
+  },
+  {
+   "family": "RC2-RECEIPT-SCHEMAS-STRICT-V2",
+   "rc4_supersession_index": 6,
+   "operation": "REPLACE_SCHEMA",
+   "status": "APPLIED",
+   "records_touched": 1,
+   "records": [
+    {
+     "collection": "rc5_schema_installs",
+     "record": "SCHEMA::rc2_receipt_schemas",
+     "before_digest": "d56febad3f814c198c3bf1b9ff265c871afb868f1245bd8114c94631893bd3ad",
+     "after_digest": "b1881ce61b218953e6ac97649b9a575b019e6a00c934e60de26d29a4dbb9a971"
+    }
+   ]
+  },
+  {
+   "family": "W06-G5-LEVER-VOCABULARY",
+   "rc4_supersession_index": 7,
+   "operation": "RETIRE_VOCABULARY",
+   "status": "APPLIED",
+   "records_touched": 12,
+   "records": [
+    {
+     "collection": "tasks",
+     "record": "CTL-G5-06",
+     "before_digest": "2793ad21c1bfa1c43322ea49f0b7732563bd9ef48a61d825b0513c04b8fea345",
+     "after_digest": "f6684be35cf1573a12601ec2e4cedce76068a2a554d54aa18c7c51d88db7d0cc"
+    },
+    {
+     "collection": "tasks",
+     "record": "WIRE-W06-01",
+     "before_digest": "43ed717c4d5b8c4d9506010879fc966eb099433071de616d9f9b55fd0da5a56c",
+     "after_digest": "8c9f98b19961590f0e73c96c6ab06fea9d02c9e066fa26c2531abb07c4c34764"
+    },
+    {
+     "collection": "tasks",
+     "record": "WIRE-W06-02",
+     "before_digest": "fcb60c9e74b47578d1e7f4811ac22fa1e506e677a5c7a6302c4f5d0b074574ca",
+     "after_digest": "4008a6671dd9e1a02f51015f6100d2c9e1489359d3cd4c7d20a72a459a6c47b7"
+    },
+    {
+     "collection": "tasks",
+     "record": "WIRE-W06-03",
+     "before_digest": "a361e03b4d56dbd13452e8c4591255c6e8296d4b8e5afb504abacf021869bfa6",
+     "after_digest": "47c5a3c95582e729925836628cefb358cd15702320529c16de732643739496a9"
+    },
+    {
+     "collection": "tasks",
+     "record": "WIRE-W06-04",
+     "before_digest": "6b670155992541f48d583df7fc220f475cca22d6652a27652092e71a9ca6231f",
+     "after_digest": "3dcab2bceb4e1d59a3f2c74093ef697bdc88c6c8cf39dd38d444404b0d96e5ed"
+    },
+    {
+     "collection": "tasks",
+     "record": "WIRE-W06-05",
+     "before_digest": "697083c7b7ad705f51c7923d657fc8e342f51289530b3efaeab63ff3b916d281",
+     "after_digest": "7d0795e7cf6bd807e33430b3513562e05d6619f2cb07cc1f2c17fa7a7619fc9b"
+    },
+    {
+     "collection": "tasks",
+     "record": "WIRE-W06-06",
+     "before_digest": "cdd60dc9f7362a57ae53167fa74b5d3d9540b24cf232be2e14b68b6d4d031e38",
+     "after_digest": "03cd388c2a978f45f52d723bffa2c8832458216831725a06624ecc50aec29ddc"
+    },
+    {
+     "collection": "tasks",
+     "record": "WIRE-W06-07",
+     "before_digest": "e9c3dfc364023bcacca2fa46fd8624958edf85e4a6b09b968c7cc33b455194ec",
+     "after_digest": "fe6a271214b6aad40675800694563ebcf27992037b91544b4845fd453d9dfaf8"
+    },
+    {
+     "collection": "tasks",
+     "record": "WIRE-W06-08",
+     "before_digest": "8eee44f177f5333897136c2474cae639c9e8a78b23909853a1c8f2d26e99f74f",
+     "after_digest": "6b5e80cb2fee05c842110872d600282d47067b7894f57dd5b88c1c5bf0dbc28f"
+    },
+    {
+     "collection": "verifications",
+     "record": "V-CTL-G5-RECEIPT",
+     "before_digest": "5c68805cadb5263df9394cf8700b7b9021ac1a6454f873cefe5dce16de0c3cd3",
+     "after_digest": "333fe82e8061e30e8d04d61d22648f57a4b4e785fa06b54c3192458242cae341"
+    },
+    {
+     "collection": "gates",
+     "record": "G5",
+     "before_digest": "42ad5c5dfc799e11ea615778c01859642904f3bfbfd59ae9274e029d8c49918a",
+     "after_digest": "f6a3fefed2c5edfbb6c0df069232c357376672adf059f47a85d6a87189933b69"
+    },
+    {
+     "collection": "wiring",
+     "record": "W06",
+     "before_digest": "799545a14ad4eefe99b5a425178dd2c05d10330a283879ac8fa92db558343e83",
+     "after_digest": "7e1f26905334d145dadcc8f17541df8ab22a8b78546c3ef2eef50464bc063463"
+    }
+   ]
+  },
+  {
+   "family": "PAR-170-RENAME-ACTIVATION",
+   "rc4_supersession_index": 8,
+   "operation": "RENAME_PARAMETER",
+   "status": "APPLIED",
+   "records_touched": 5,
+   "records": [
+    {
+     "collection": "tasks",
+     "record": "PAR-170",
+     "before_digest": "c2793ef9ea9afa843a2032bd8095be6103bf38df646a7a415c217e4c2ce5eb0f",
+     "after_digest": "7202519590e762b2139f0a9898efabb3f3f17c9476cc1dc9fd138992319899a3"
+    },
+    {
+     "collection": "criteria",
+     "record": "AC-PAR-170",
+     "before_digest": "3a37e20bbb69ed68708b850914ddfcd03a093f8b105d2ef3623ffc154e616284",
+     "after_digest": "568f848c5eb473551c7f15101517e3f2d1003d1e4721c17483d32e03f5b53c25"
+    },
+    {
+     "collection": "verifications",
+     "record": "V-PAR-170",
+     "before_digest": "19931c550360aaf78b08362d793a205a29cf0b6c7ff7fcf6fe8fee40a344687c",
+     "after_digest": "fc9826663cb2b885d5a7562338e710969bbe6f25e3fe25e03a4fb7da1f80eefe"
+    },
+    {
+     "collection": "parameters",
+     "record": "PAR-170",
+     "before_digest": "d7535ff57b43b61c218c8b0a537d45eabb398c6ecc06c67ba92654777e86ea5e",
+     "after_digest": "508cbe123306bf3f2083e97f19b9a473523646daff7bccede0ebdc6260666907"
+    },
+    {
+     "collection": "formula_parameter_bindings",
+     "record": "FPB-0078",
+     "before_digest": "b1028ff939bd713a70940df79ac079e65737643d56235fa3fe90ad199cb4080e",
+     "after_digest": "ecbccfd8d9fbb48e16dc24d9509377666e6cefbf03ad3ced6f3b812c3ed64596"
+    }
+   ]
+  },
+  {
+   "family": "MCP-FAMILY-ACTIVATION-ENUM",
+   "rc4_supersession_index": 9,
+   "operation": "REPLACE_SCHEMA",
+   "status": "APPLIED",
+   "records_touched": 1,
+   "records": [
+    {
+     "collection": "rc5_schema_installs",
+     "record": "SCHEMA::mcp_family_activation",
+     "before_digest": "4da5b961dd13b8d3da1efeefb977ccea8e1fb75b980d3974c287796820f99ba5",
+     "after_digest": "316dba7881337bc3c8ba6ebb5a8088e687da966aaf57762db536329613010400"
+    }
+   ]
+  }
+ ]
+}

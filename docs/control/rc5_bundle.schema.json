@@ -1,0 +1,200 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://triad.internal/contracts/rc5_effective_control_bundle.v1.schema.json",
+ "title": "RC5 effective consolidation bundle",
+ "type": "object",
+ "required": [
+  "schema",
+  "tasks",
+  "criteria",
+  "verifications",
+  "parameters",
+  "formulas",
+  "gates",
+  "wiring",
+  "rc5_provenance",
+  "rc5_schema_installs"
+ ],
+ "properties": {
+  "schema": {
+   "type": "string"
+  },
+  "tasks": {
+   "type": "array"
+  },
+  "criteria": {
+   "type": "array"
+  },
+  "verifications": {
+   "type": "array"
+  },
+  "parameters": {
+   "type": "array"
+  },
+  "formulas": {
+   "type": "array"
+  },
+  "formula_parameter_bindings": {
+   "type": "array"
+  },
+  "dependencies": {
+   "type": "array"
+  },
+  "gates": {
+   "type": "array"
+  },
+  "crosswalk": {
+   "type": "array"
+  },
+  "golden_vectors": {
+   "type": "array"
+  },
+  "wiring": {
+   "type": "array"
+  },
+  "rc5_schema_installs": {
+   "type": "object",
+   "properties": {
+    "rc5_lever_vocabulary": {
+     "type": "object",
+     "required": [
+      "schema_slot",
+      "family",
+      "operation",
+      "rc4_record",
+      "effective"
+     ],
+     "properties": {
+      "schema_slot": {
+       "type": "string"
+      },
+      "family": {
+       "type": "string"
+      },
+      "operation": {
+       "enum": [
+        "REPLACE_RECORD",
+        "RENAME_PARAMETER",
+        "REPLACE_SCHEMA",
+        "RETIRE_VOCABULARY"
+       ]
+      },
+      "rc4_record": {
+       "type": "string"
+      },
+      "effective": {
+       "type": "object"
+      }
+     }
+    },
+    "rc5_receipt_schema_binding": {
+     "type": "object",
+     "required": [
+      "schema_slot",
+      "family",
+      "operation",
+      "rc4_record",
+      "effective"
+     ],
+     "properties": {
+      "schema_slot": {
+       "type": "string"
+      },
+      "family": {
+       "type": "string"
+      },
+      "operation": {
+       "enum": [
+        "REPLACE_RECORD",
+        "RENAME_PARAMETER",
+        "REPLACE_SCHEMA",
+        "RETIRE_VOCABULARY"
+       ]
+      },
+      "rc4_record": {
+       "type": "string"
+      },
+      "effective": {
+       "type": "object"
+      }
+     }
+    },
+    "rc5_mcp_family_activation": {
+     "type": "object",
+     "required": [
+      "schema_slot",
+      "family",
+      "operation",
+      "rc4_record",
+      "effective"
+     ],
+     "properties": {
+      "schema_slot": {
+       "type": "string"
+      },
+      "family": {
+       "type": "string"
+      },
+      "operation": {
+       "enum": [
+        "REPLACE_RECORD",
+        "RENAME_PARAMETER",
+        "REPLACE_SCHEMA",
+        "RETIRE_VOCABULARY"
+       ]
+      },
+      "rc4_record": {
+       "type": "string"
+      },
+      "effective": {
+       "type": "object"
+      }
+     }
+    }
+   }
+  },
+  "rc5_provenance": {
+   "type": "object",
+   "required": [
+    "schema",
+    "applier_version",
+    "authority",
+    "posture",
+    "activation_result",
+    "supersession_families_expected",
+    "supersession_families_applied",
+    "operation_log",
+    "assertions"
+   ],
+   "properties": {
+    "schema": {
+     "type": "string"
+    },
+    "applier_version": {
+     "type": "string"
+    },
+    "authority": {
+     "type": "string"
+    },
+    "posture": {
+     "const": "OFF/OFF/OFF/LIVE"
+    },
+    "activation_result": {
+     "const": "DENIED_SAFE_HOLD"
+    },
+    "supersession_families_expected": {
+     "const": 10
+    },
+    "supersession_families_applied": {
+     "type": "integer"
+    },
+    "operation_log": {
+     "type": "array"
+    },
+    "assertions": {
+     "type": "array"
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,143 @@
+{
+ "schema": "triad.origin.v7.rc5_manifest.v1",
+ "applier_version": "triad.origin.v7.rc5_effective_consolidation.v1",
+ "document_id": "TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12",
+ "change_order": "CO-01",
+ "input_preimages": {
+  "rc3_master_html": {
+   "path": "docs/spec_rc3/TRIAD_ORIGIN_V7_COMPLETE_MASTER_SPECIFICATION_AND_MASTER_DOCUMENT_1.0.0_RC3.html",
+   "sha256": "1a7f57265b707dceaa29fe09582cf6067dd5c438dcc4306de7d6900d4348f2c2"
+  },
+  "rc4_addendum_html": {
+   "path": "docs/spec_rc4/TRIAD_ORIGIN_V7_FOUR_PLANE_EXECUTION_AND_LEVER_MASTER_ADDENDUM_1.0.0_RC4.html",
+   "sha256": "5db46aa6db02721b68fbf7c640a44db0b7a9ae2fac7423c80452a671fd9a7ff1"
+  },
+  "rc3_effective_control_bundle": {
+   "path": "docs/control/rc3_effective_control_bundle.json",
+   "sha256": "b42afe0e57b285eb44eb5969a8069afd3e5c0ab3870735e3600f6becc54bb114"
+  },
+  "rc4_control_bundle": {
+   "path": "docs/control/rc4_control_bundle.json",
+   "sha256": "75463cdd2bcc1ce818b5c858e77fb31e19f647637818deb2e051ece7e18052b6"
+  }
+ },
+ "operation_log": [
+  {
+   "family": "ADR-005-ENV-ENUM",
+   "rc4_supersession_index": 0,
+   "operation": "REPLACE_SCHEMA",
+   "mode": "SCHEMA_INSTALL",
+   "rc4_record": "ADR-005",
+   "rc4_old": "Forbids testnet and declares LIVE-only production",
+   "rc4_replacement": "Superseded: venue_environment is LIVE|TESTNET|OFF. PAPER is a distinct demo plane; SHADOW is the mandatory rejected-candidate plane; neither is TESTNET.",
+   "status": "APPLIED",
+   "records_touched": 1
+  },
+  {
+   "family": "DEP-010-ALIAS-RETIREMENT",
+   "rc4_supersession_index": 1,
+   "operation": "RETIRE_VOCABULARY",
+   "mode": "DISPOSITION",
+   "rc4_record": "DEP-010 / CHK-0310 / SCP-0310 / V-SCP-0310",
+   "rc4_old": "Retire testnet with paper/dry-run",
+   "rc4_replacement": "Retire aliases; retain a physically isolated canonical TESTNET path.",
+   "status": "APPLIED",
+   "records_touched": 3
+  },
+  {
+   "family": "GAP-006-MISMATCH-ONLY",
+   "rc4_supersession_index": 2,
+   "operation": "REPLACE_RECORD",
+   "mode": "DISPOSITION",
+   "rc4_record": "GAP-006 / V-GAP-006",
+   "rc4_old": "Reject testnet globally",
+   "rc4_replacement": "Reject only environment mismatch or mixed bundle; certify LIVE and TESTNET separately.",
+   "status": "APPLIED",
+   "records_touched": 2
+  },
+  {
+   "family": "SEC-015-EXACT-BINDING",
+   "rc4_supersession_index": 3,
+   "operation": "REPLACE_RECORD",
+   "mode": "DISPOSITION",
+   "rc4_record": "SEC-015 / CHK-0216 / SCP-0216 / V-SCP-0216",
+   "rc4_old": "LIVE-only canary/account cell",
+   "rc4_replacement": "Require exact environment-account-route-credential binding for LIVE and TESTNET.",
+   "status": "APPLIED",
+   "records_touched": 3
+  },
+  {
+   "family": "F20-SINGLE-POLICY-SLOT",
+   "rc4_supersession_index": 4,
+   "operation": "REPLACE_RECORD",
+   "mode": "TOKEN_REPLACE",
+   "rc4_record": "F20",
+   "rc4_old": "activation_mode selects CANARY or PRODUCTION budget",
+   "rc4_replacement": "Remove branch; pass one already selected signed risk-budget policy. Rollout metadata cannot reach sizing.",
+   "status": "APPLIED",
+   "records_touched": 8
+  },
+  {
+   "family": "C-027-ENGINE-CONTROL-MANIFEST-V2",
+   "rc4_supersession_index": 5,
+   "operation": "REPLACE_SCHEMA",
+   "mode": "TOKEN_REPLACE",
+   "rc4_record": "C-027 activation_manifest.v1",
+   "rc4_old": "Mode not closed",
+   "rc4_replacement": "Replace with engine_control_manifest.v2 and exact enums.",
+   "status": "APPLIED",
+   "records_touched": 5
+  },
+  {
+   "family": "RC2-RECEIPT-SCHEMAS-STRICT-V2",
+   "rc4_supersession_index": 6,
+   "operation": "REPLACE_SCHEMA",
+   "mode": "SCHEMA_INSTALL",
+   "rc4_record": "RC2 receipt schemas",
+   "rc4_old": "environment/modes accept arbitrary strings",
+   "rc4_replacement": "Replace with strict v2 schemas and semantic combination validation.",
+   "status": "APPLIED",
+   "records_touched": 1
+  },
+  {
+   "family": "W06-G5-LEVER-VOCABULARY",
+   "rc4_supersession_index": 7,
+   "operation": "RETIRE_VOCABULARY",
+   "mode": "TOKEN_REPLACE",
+   "rc4_record": "W06 and G5",
+   "rc4_old": "connected-dark / prospective-dark terminology",
+   "rc4_replacement": "Use explicit venue_environment/venue_activation, PAPER activation, and fixed SHADOW activation LIVE.",
+   "status": "APPLIED",
+   "records_touched": 12
+  },
+  {
+   "family": "PAR-170-RENAME-ACTIVATION",
+   "rc4_supersession_index": 8,
+   "operation": "RENAME_PARAMETER",
+   "mode": "TOKEN_REPLACE",
+   "rc4_record": "PAR-170 / FPB-0078",
+   "rc4_old": "OFI_NORMALIZED_VARIANT_ENABLED=false",
+   "rc4_replacement": "Rename to OFI_NORMALIZED_VARIANT_ACTIVATION=OFF; preserve its separate ratification state.",
+   "status": "APPLIED",
+   "records_touched": 5
+  },
+  {
+   "family": "MCP-FAMILY-ACTIVATION-ENUM",
+   "rc4_supersession_index": 9,
+   "operation": "REPLACE_SCHEMA",
+   "mode": "SCHEMA_INSTALL",
+   "rc4_record": "MCP *_family_enabled booleans",
+   "rc4_old": "true/false and dark/live tool exposure",
+   "rc4_replacement": "Historical raw evidence only; target family activation accepts LIVE|OFF.",
+   "status": "APPLIED",
+   "records_touched": 1
+  }
+ ],
+ "supersession_families_expected": 10,
+ "supersession_families_applied": 10,
+ "supersession_families_halted": 0,
+ "halted_families": [],
+ "output_digest": "225f6e34814c2b5a308c77870d866092841510b77d367c0e63815399df15d164",
+ "posture": "OFF/OFF/OFF/LIVE",
+ "activation_result": "DENIED_SAFE_HOLD"
+}
