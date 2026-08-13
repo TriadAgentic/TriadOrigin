@@ -4,6 +4,10 @@ _Mechanical projection. Do not edit; run `python tools/closure_control.py --writ
 
 Safety baseline: `OFF / OFF / OFF / LIVE`. No deployment, restart, MCP enablement, arming, order action, venue mutation, or promotion is authorized.
 
+- Generated against provider head: `GIT_HEAD_SHA1:2a82c6b3b376110d63ea94ed5aa98cb90419bd5c`
+- Provider run id: `AUTHORITY_OPEN` (no authenticated provider run id offline)
+- Generation context: `docs/control/closure/closure_generation_context.v1.json` (sha256 `59caf13dbedfa91bd9557e09ec1b2523c624bed22b48674fa171b02bb8f0666a`)
+
 ## `CONTROL_FREEZE::C0::sha256:3a2152de236540099955b21e9efef846775d1aee0d15af86eafabecb954cc230`
 
 - [ ] `C0-CURRENT-LEDGER-REVIEW` — current CANDIDATE_V3 ledger has 94 rows changed since the frozen REVIEWED_V2 subject (provenance: `SEMANTICS_BLOCKER_CATALOG:closure_task_bindings.v1.json:review_coverage`)

@@ -16,6 +16,7 @@ import hashlib
 import json
 import pathlib
 import re
+import subprocess
 import sys
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
@@ -41,6 +42,12 @@ BUILD_LEDGER_REVIEW_REL = pathlib.Path("docs/control/build_ledger_review.v1.json
 BUILD_LEDGER_REVIEW_SUBJECT_REL = pathlib.Path(
     "docs/control/closure/predecessors/build_ledger.REVIEWED_V2.json"
 )
+GENERATION_CONTEXT_SCHEMA_REL = pathlib.Path(
+    "docs/control/closure/closure_generation_context.v1.schema.json"
+)
+GENERATION_CONTEXT_REL = pathlib.Path(
+    "docs/control/closure/closure_generation_context.v1.json"
+)
 STATUS_DOC_REL = pathlib.Path("docs/plan/04_STATUS.md")
 CHECKLIST_DOC_REL = pathlib.Path("docs/plan/08_BUILD_CHECKLIST.md")
 
@@ -54,6 +61,39 @@ STATUS_EVENT_DOMAIN = "triad.closure.status_event.v1"
 TASK_BINDING_SCHEMA = "triad.closure.task_binding.v1"
 TASK_BINDING_DOMAIN = "triad.closure.task_binding.artifact.v1"
 SCOPE_DOMAIN = "triad.closure.milestone_scope.v1"
+GENERATION_CONTEXT_SCHEMA = "triad.closure.generation_context.v1"
+GENERATION_CONTEXT_DOMAIN = "triad.closure.generation_context.artifact.v1"
+
+# The closed set of typed artifact-presence states.  PRESENCE IS NEVER CLOSURE: a controlling
+# artifact that exists is ARTIFACT_PRESENT; a historical receipt that exists is
+# HISTORICAL_RECEIPT_PRESERVED (preserved byte-unchanged, never a pass); a required-but-absent or
+# unbound artifact is AUTHORITY_OPEN.  No presence fact may ever render as "passed" or a checked box.
+PRESENCE_ARTIFACT_PRESENT = "ARTIFACT_PRESENT"
+PRESENCE_HISTORICAL_RECEIPT_PRESERVED = "HISTORICAL_RECEIPT_PRESERVED"
+PRESENCE_AUTHORITY_OPEN = "AUTHORITY_OPEN"
+PRESENCE_STATES = (
+    PRESENCE_ARTIFACT_PRESENT,
+    PRESENCE_HISTORICAL_RECEIPT_PRESERVED,
+    PRESENCE_AUTHORITY_OPEN,
+)
+# Controlling closure inputs whose on-disk presence the status doc states as ARTIFACT_PRESENT.
+# Their presence is stat-derived (deterministic against the committed tree) and is NOT closure.
+CONTROLLING_INPUT_ARTIFACT_RELS: tuple[pathlib.Path, ...] = (
+    SEMANTICS_SCHEMA_REL,
+    SEMANTICS_REL,
+    STATUS_SCHEMA_REL,
+    STATUS_EVENTS_SCHEMA_REL,
+    STATUS_EVENTS_REL,
+    TASK_BINDING_SCHEMA_REL,
+    TASK_BINDING_REL,
+    B00R_POLICY_REL,
+    BUILD_LEDGER_REVIEW_SUBJECT_REL,
+    GENERATION_CONTEXT_SCHEMA_REL,
+    GENERATION_CONTEXT_REL,
+)
+CONTROLLING_INPUT_ARTIFACTS_SORTED: tuple[pathlib.Path, ...] = tuple(
+    sorted(CONTROLLING_INPUT_ARTIFACT_RELS, key=lambda rel: rel.as_posix())
+)
 
 EXPECTED_MILESTONES: tuple[tuple[str, str], ...] = (
     ("CONTROL_FREEZE", "C0"),
@@ -1439,14 +1479,209 @@ def validate_semantics(
     return digest
 
 
+_GIT_HEAD_SHA1_RE = re.compile(r"[0-9a-f]{40}\Z")
+
+
+def _real_git_head(root: pathlib.Path) -> str | None:
+    """Return the real 40-hex git HEAD of ``root``, or ``None`` if git is unavailable.
+
+    This is used ONLY by the operator-facing ``--stamp-context`` action to record a REAL provider
+    head; it never fabricates a value.  The deterministic ``--check`` / ``--write`` paths never call
+    git — they read the committed generation-context input.
+    """
+
+    try:
+        completed = subprocess.run(  # noqa: S603 - fixed argv, no shell, read-only
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (OSError, ValueError):
+        return None
+    if completed.returncode != 0:
+        return None
+    head = completed.stdout.strip()
+    if _GIT_HEAD_SHA1_RE.fullmatch(head) is None:
+        return None
+    return head
+
+
+def build_generation_context(head: str | None) -> dict[str, Any]:
+    """Build the canonical generation-context envelope from a REAL (or absent) provider head.
+
+    ``provider_run_id`` is always the typed ``AUTHORITY_OPEN`` placeholder: no authenticated
+    provider (CI/Actions) run id is available offline, and a run id is NEVER fabricated.  When git
+    is unavailable the provider head is honestly ``AUTHORITY_OPEN`` too, never a fabricated sha.
+    """
+
+    if head is None:
+        provider_head = {
+            "kind": "AUTHORITY_OPEN",
+            "source": "git rev-parse HEAD",
+            "value": None,
+        }
+    else:
+        if _GIT_HEAD_SHA1_RE.fullmatch(head) is None:
+            _fail("GENERATION_CONTEXT_HEAD_NOT_REAL", repr(head))
+        provider_head = {
+            "kind": "GIT_HEAD_SHA1",
+            "source": "git rev-parse HEAD",
+            "value": head,
+        }
+    payload = {
+        "provider_head": provider_head,
+        "provider_run_id": {
+            "authority_note": (
+                "No authenticated provider (CI/Actions) run id is available offline; the slot is "
+                "AUTHORITY_OPEN and is never fabricated."
+            ),
+            "state": "AUTHORITY_OPEN",
+            "value": None,
+        },
+    }
+    document: dict[str, Any] = {
+        "digest": {
+            "algorithm": "sha256",
+            "canonicalizer": "triad_origin.canonical.canonical_json",
+            "domain": GENERATION_CONTEXT_DOMAIN,
+            "preimage_rule": "canonical_json({domain,schema,version,payload})",
+            "value": "",
+        },
+        "payload": payload,
+        "schema": GENERATION_CONTEXT_SCHEMA,
+        "version": "1",
+    }
+    document["digest"]["value"] = compute_envelope_digest(document, GENERATION_CONTEXT_DOMAIN)
+    return document
+
+
+def validate_generation_context(
+    context: Mapping[str, Any], schema: Mapping[str, Any]
+) -> str:
+    """Validate the generation-context input; return its envelope digest.
+
+    The provider head is either a real 40-hex git sha or the typed ``AUTHORITY_OPEN`` placeholder;
+    the provider run id is always ``AUTHORITY_OPEN`` (never fabricated).  This is fail-closed: an
+    ambiguous head kind, a head that claims ``GIT_HEAD_SHA1`` without a real sha, or a run id that
+    overclaims a value is refused.
+    """
+
+    validate_schema(schema, context, "closure generation context")
+    digest = validate_envelope(context, GENERATION_CONTEXT_SCHEMA, GENERATION_CONTEXT_DOMAIN)
+    payload = context["payload"]
+    head = payload["provider_head"]
+    kind = head.get("kind")
+    value = head.get("value")
+    if kind == "GIT_HEAD_SHA1":
+        if not isinstance(value, str) or _GIT_HEAD_SHA1_RE.fullmatch(value) is None:
+            _fail("GENERATION_CONTEXT_HEAD_NOT_REAL", repr(value))
+    elif kind == "AUTHORITY_OPEN":
+        if value is not None:
+            _fail("GENERATION_CONTEXT_HEAD_OVERCLAIM", repr(value))
+    else:
+        _fail("GENERATION_CONTEXT_HEAD_KIND_INVALID", repr(kind))
+    run_id = payload["provider_run_id"]
+    if run_id.get("state") != "AUTHORITY_OPEN" or run_id.get("value") is not None:
+        _fail("GENERATION_CONTEXT_RUN_ID_OVERCLAIM", repr(run_id.get("value")))
+    validate_no_secrets(context, "closure generation context")
+    return digest
+
+
+def _generation_context_reference(context: Mapping[str, Any], digest: str) -> dict[str, Any]:
+    """Project the committed generation-context into the self-identifying status reference block."""
+
+    head = context["payload"]["provider_head"]
+    run_id = context["payload"]["provider_run_id"]
+    return {
+        "digest_domain": GENERATION_CONTEXT_DOMAIN,
+        "digest_sha256": digest,
+        "path": GENERATION_CONTEXT_REL.as_posix(),
+        "provider_head_kind": head["kind"],
+        "provider_head_value": head["value"],
+        "provider_run_id_state": run_id["state"],
+        "provider_run_id_value": run_id["value"],
+        "schema": GENERATION_CONTEXT_SCHEMA,
+    }
+
+
+def _derive_artifact_presence(
+    semantics: Mapping[str, Any],
+    rows: Sequence[Mapping[str, Any]],
+    root: pathlib.Path,
+) -> list[dict[str, str | None]]:
+    """Derive the typed artifact-presence table — presence stated, never rendered as closure.
+
+    * Controlling closure inputs that exist on disk are ``ARTIFACT_PRESENT`` (stat-derived;
+      an absent one is ``AUTHORITY_OPEN``).
+    * Legacy historical receipts named in the crosswalk are ``HISTORICAL_RECEIPT_PRESERVED``
+      (their existence and byte digest are already asserted by ``validate_legacy_crosswalk``).
+    * Every required-but-unmerged source receipt / unpublished protected anchor for an
+      applicable milestone is ``AUTHORITY_OPEN``.
+    """
+
+    presence: list[dict[str, str | None]] = []
+    for rel in CONTROLLING_INPUT_ARTIFACTS_SORTED:
+        presence.append({
+            "artifact_ref": rel.as_posix(),
+            "presence_state": (
+                PRESENCE_ARTIFACT_PRESENT
+                if (root / rel).is_file()
+                else PRESENCE_AUTHORITY_OPEN
+            ),
+            "subject_kind": "CONTROLLING_INPUT",
+        })
+    for entry in semantics["payload"]["legacy_crosswalk"]:
+        receipt_path = entry.get("historical_receipt_path")
+        if receipt_path is None:
+            continue
+        presence.append({
+            "artifact_ref": receipt_path,
+            "presence_state": PRESENCE_HISTORICAL_RECEIPT_PRESERVED,
+            "subject_kind": "HISTORICAL_RECEIPT",
+        })
+    test_layers = {
+        row["milestone_identity"]: row["layers"]
+        for row in semantics["payload"]["test_layer_matrix"]
+    }
+    for row in rows:
+        layers = test_layers[row["identity"]]
+        if layers["T7"] == "NOT_APPLICABLE":
+            continue
+        presence.append({
+            "artifact_ref": row["path_law"]["source_receipt"],
+            "presence_state": PRESENCE_AUTHORITY_OPEN,
+            "subject_kind": "REQUIRED_SOURCE_RECEIPT",
+        })
+        presence.append({
+            "artifact_ref": row["path_law"]["anchor"],
+            "presence_state": PRESENCE_AUTHORITY_OPEN,
+            "subject_kind": "PROTECTED_ANCHOR",
+        })
+    presence.sort(key=lambda item: (item["subject_kind"], item["artifact_ref"]))
+    return presence
+
+
 def derive_status_projection(
     semantics: Mapping[str, Any], semantics_digest: str,
     status_events: Mapping[str, Any], status_events_digest: str,
     task_bindings: Mapping[str, Any], task_bindings_digest: str,
     work_states: Mapping[str, str],
+    generation_context: Mapping[str, Any] | None = None,
+    root: pathlib.Path = ROOT,
 ) -> dict[str, Any]:
-    """Derive the sole status projection from normative controls plus chained events."""
+    """Derive the sole status projection from normative controls plus chained events.
 
+    ``generation_context`` is the committed generation-context input (the provider head + run-id
+    the status is generated against); when omitted it is loaded from ``root`` so existing callers
+    stay byte-identical.  ``root`` locates the tree for the stat-derived artifact-presence table.
+    """
+
+    if generation_context is None:
+        generation_context = load_canonical_object(root / GENERATION_CONTEXT_REL)
+    generation_context_digest = compute_envelope_digest(
+        generation_context, GENERATION_CONTEXT_DOMAIN
+    )
     rows, _, _ = _milestone_maps(semantics)
     blockers: list[dict[str, str]] = []
 
@@ -1549,12 +1784,17 @@ def derive_status_projection(
             "work_state": work_states[identity],
         })
     current_work = [row["identity"] for row in rows if work_states[row["identity"]] == "SOURCE_IN_PROGRESS"]
+    artifact_presence = _derive_artifact_presence(semantics, rows, root)
     payload = {
         "activation_posture": semantics["payload"]["activation_posture"],
+        "artifact_presence": artifact_presence,
         "classification": "GENERATED_STATUS_NON_EVIDENCE",
         "closed_claims": [],
         "cryptographic_authentication": "NOT_CLAIMED",
         "current_work": current_work,
+        "generation_context": _generation_context_reference(
+            generation_context, generation_context_digest
+        ),
         "generation_law": "Derived from canonical semantics, exact task bindings, and append-only chained status events; manual edits are forbidden.",
         "milestones": status_rows,
         "next_gate": "Complete C0 owner authentication and exact-head independent review; continue B00R G2 source validation without runtime or venue mutation.",
@@ -1613,6 +1853,30 @@ def derive_status_projection(
     return document
 
 
+def _render_provider_head_value(context_ref: Mapping[str, Any]) -> str:
+    if context_ref["provider_head_kind"] == "GIT_HEAD_SHA1":
+        return f"`GIT_HEAD_SHA1:{context_ref['provider_head_value']}`"
+    return "`AUTHORITY_OPEN` (no authenticated provider head offline)"
+
+
+def _render_generation_context_lines(payload: Mapping[str, Any]) -> list[str]:
+    """The self-identifying provider head + run-id block shared by every generated status page.
+
+    Embedding the real head this projection was generated against makes a stale-head status
+    self-identifying (a reader compares it to the live head); the provider run-id slot is the typed
+    ``AUTHORITY_OPEN`` placeholder — never a fabricated id.
+    """
+
+    context_ref = payload["generation_context"]
+    return [
+        f"- Generated against provider head: {_render_provider_head_value(context_ref)}",
+        f"- Provider run id: `{context_ref['provider_run_id_state']}` "
+        "(no authenticated provider run id offline)",
+        f"- Generation context: `{context_ref['path']}` "
+        f"(sha256 `{context_ref['digest_sha256']}`)",
+    ]
+
+
 def render_status_document(status: Mapping[str, Any]) -> bytes:
     payload = status["payload"]
     lines = [
@@ -1624,6 +1888,7 @@ def render_status_document(status: Mapping[str, Any]) -> bytes:
         "- Activation posture: `OFF / OFF / OFF / LIVE`",
         f"- Open blockers: `{len(payload['open_blockers'])}`",
         "- Closed claims: `0`",
+        *_render_generation_context_lines(payload),
         "",
         "## Milestones",
         "",
@@ -1634,6 +1899,22 @@ def render_status_document(status: Mapping[str, Any]) -> bytes:
         lines.append(
             f"| `{row['identity']}` | `{row['work_state']}` | `{row['gate_state']}` | "
             f"`{row['receipt_state']}` | `{row['runtime_state']}` | {len(row['blocking_reasons'])} |"
+        )
+    lines.extend([
+        "",
+        "## Artifact presence",
+        "",
+        "_Presence is not closure. `ARTIFACT_PRESENT` = a controlling input exists on disk; "
+        "`HISTORICAL_RECEIPT_PRESERVED` = a historical receipt preserved byte-unchanged; "
+        "`AUTHORITY_OPEN` = a required artifact or authority is absent or unbound. A present "
+        "artifact never renders as closure._",
+        "",
+        "| Subject | Kind | Presence |",
+        "|---|---|---|",
+    ])
+    for item in payload["artifact_presence"]:
+        lines.append(
+            f"| `{item['artifact_ref']}` | `{item['subject_kind']}` | `{item['presence_state']}` |"
         )
     lines.extend(["", "## Next gate", "", payload["next_gate"], ""])
     return "\n".join(lines).encode("utf-8")
@@ -1647,6 +1928,8 @@ def render_checklist_document(status: Mapping[str, Any]) -> bytes:
         "_Mechanical projection. Do not edit; run `python tools/closure_control.py --write`._",
         "",
         "Safety baseline: `OFF / OFF / OFF / LIVE`. No deployment, restart, MCP enablement, arming, order action, venue mutation, or promotion is authorized.",
+        "",
+        *_render_generation_context_lines(payload),
         "",
     ]
     blockers_by_owner: dict[str, list[Mapping[str, Any]]] = {}
@@ -1663,11 +1946,39 @@ def render_checklist_document(status: Mapping[str, Any]) -> bytes:
     return "\n".join(lines).encode("utf-8")
 
 
+_PRESENCE_FORBIDDEN_TOKEN_RE = re.compile(r"(?i)\bpass(?:ed|es|ing)?\b|\bclosed\b|\[x\]|✅")
+
+
+def validate_artifact_presence(
+    presence: Any, semantics: Mapping[str, Any], root: pathlib.Path
+) -> None:
+    """Fail closed unless the presence table is the exact derived projection with typed states.
+
+    Every row must carry one of the closed :data:`PRESENCE_STATES`; a presence fact may NEVER be
+    worded as a pass/close/checked box (PRESENCE IS NEVER CLOSURE); and the whole table must equal
+    the deterministically derived projection (no injected or removed presence row).
+    """
+
+    rows, _, _ = _milestone_maps(semantics)
+    expected = _derive_artifact_presence(semantics, rows, root)
+    if presence != expected:
+        _fail("STATUS_ARTIFACT_PRESENCE_MISMATCH", "artifact_presence")
+    for item in presence:
+        if item["presence_state"] not in PRESENCE_STATES:
+            _fail("ARTIFACT_PRESENCE_STATE_INVALID", repr(item.get("presence_state")))
+        for field in ("artifact_ref", "subject_kind", "presence_state"):
+            if _PRESENCE_FORBIDDEN_TOKEN_RE.search(str(item[field])):
+                _fail("ARTIFACT_PRESENCE_READS_AS_CLOSURE", f"{item['artifact_ref']}:{field}")
+
+
 def validate_status(
     status: Mapping[str, Any],
     schema: Mapping[str, Any],
     semantics: Mapping[str, Any],
     semantics_digest: str,
+    generation_context: Mapping[str, Any] | None = None,
+    generation_context_digest: str | None = None,
+    root: pathlib.Path = ROOT,
 ) -> str:
     validate_schema(schema, status, "closure status")
     digest = validate_envelope(status, STATUS_SCHEMA, STATUS_DOMAIN)
@@ -1678,6 +1989,20 @@ def validate_status(
         _fail("STATUS_ACTIVATION_POSTURE_MISMATCH", repr(payload["activation_posture"]))
     if payload["cryptographic_authentication"] != "NOT_CLAIMED":
         _fail("CRYPTOGRAPHIC_AUTHENTICATION_OVERCLAIM", "status")
+
+    if generation_context is None:
+        generation_context = load_canonical_object(root / GENERATION_CONTEXT_REL)
+    if generation_context_digest is None:
+        generation_context_digest = compute_envelope_digest(
+            generation_context, GENERATION_CONTEXT_DOMAIN
+        )
+    expected_context_ref = _generation_context_reference(
+        generation_context, generation_context_digest
+    )
+    if payload["generation_context"] != expected_context_ref:
+        _fail("STATUS_GENERATION_CONTEXT_MISMATCH", "generation_context")
+
+    validate_artifact_presence(payload["artifact_presence"], semantics, root)
 
     rows, _, _ = _milestone_maps(semantics)
     expected_identities = tuple(row["identity"] for row in rows)
@@ -1795,13 +2120,18 @@ def check_all(root: pathlib.Path = ROOT) -> dict[str, str | int]:
     status_schema = load_json_object(root / STATUS_SCHEMA_REL)
     status_events_schema = load_json_object(root / STATUS_EVENTS_SCHEMA_REL)
     task_binding_schema = load_json_object(root / TASK_BINDING_SCHEMA_REL)
+    generation_context_schema = load_json_object(root / GENERATION_CONTEXT_SCHEMA_REL)
     semantics = load_canonical_object(root / SEMANTICS_REL)
     status_events = load_canonical_object(root / STATUS_EVENTS_REL)
     task_bindings = load_canonical_object(root / TASK_BINDING_REL)
+    generation_context = load_canonical_object(root / GENERATION_CONTEXT_REL)
     status = load_canonical_object(root / STATUS_REL)
     policy = load_json_object(root / B00R_POLICY_REL)
 
     semantics_digest = validate_semantics(semantics, semantics_schema, root)
+    generation_context_digest = validate_generation_context(
+        generation_context, generation_context_schema
+    )
     task_bindings_digest = validate_task_bindings(
         task_bindings, task_binding_schema, semantics, root
     )
@@ -1811,10 +2141,14 @@ def check_all(root: pathlib.Path = ROOT) -> dict[str, str | int]:
     expected_status = derive_status_projection(
         semantics, semantics_digest, status_events, status_events_digest,
         task_bindings, task_bindings_digest, work_states,
+        generation_context, root,
     )
     if canonical_json(status) != canonical_json(expected_status):
         _fail("GENERATED_STATUS_DRIFT", "run tools/closure_control.py --write")
-    status_digest = validate_status(status, status_schema, semantics, semantics_digest)
+    status_digest = validate_status(
+        status, status_schema, semantics, semantics_digest,
+        generation_context, generation_context_digest, root,
+    )
     expected_status_doc = render_status_document(expected_status)
     expected_checklist_doc = render_checklist_document(expected_status)
     try:
@@ -1849,11 +2183,14 @@ def write_generated_outputs(root: pathlib.Path = ROOT) -> dict[str, str | int]:
     semantics_schema = load_json_object(root / SEMANTICS_SCHEMA_REL)
     status_events_schema = load_json_object(root / STATUS_EVENTS_SCHEMA_REL)
     task_binding_schema = load_json_object(root / TASK_BINDING_SCHEMA_REL)
+    generation_context_schema = load_json_object(root / GENERATION_CONTEXT_SCHEMA_REL)
     semantics = load_canonical_object(root / SEMANTICS_REL)
     status_events = load_canonical_object(root / STATUS_EVENTS_REL)
     task_bindings = load_canonical_object(root / TASK_BINDING_REL)
+    generation_context = load_canonical_object(root / GENERATION_CONTEXT_REL)
     policy = load_json_object(root / B00R_POLICY_REL)
     semantics_digest = validate_semantics(semantics, semantics_schema, root)
+    validate_generation_context(generation_context, generation_context_schema)
     task_bindings_digest = validate_task_bindings(
         task_bindings, task_binding_schema, semantics, root
     )
@@ -1864,6 +2201,7 @@ def write_generated_outputs(root: pathlib.Path = ROOT) -> dict[str, str | int]:
     status = derive_status_projection(
         semantics, semantics_digest, status_events, status_events_digest,
         task_bindings, task_bindings_digest, work_states,
+        generation_context, root,
     )
     (root / STATUS_REL).write_bytes(canonical_json(status))
     (root / STATUS_DOC_REL).write_bytes(render_status_document(status))
@@ -1884,6 +2222,22 @@ def write_generated_outputs(root: pathlib.Path = ROOT) -> dict[str, str | int]:
     }
 
 
+def stamp_generation_context(root: pathlib.Path = ROOT) -> dict[str, Any]:
+    """Operator action: record the REAL git HEAD into the generation-context input.
+
+    This is the only path that reads git, and it never fabricates a value: the provider run id is
+    always the typed ``AUTHORITY_OPEN`` placeholder, and if git is unavailable the provider head is
+    honestly ``AUTHORITY_OPEN`` too.  The deterministic ``--check`` / ``--write`` paths only read the
+    committed context this produces.
+    """
+
+    context = build_generation_context(_real_git_head(root))
+    schema = load_json_object(root / GENERATION_CONTEXT_SCHEMA_REL)
+    validate_generation_context(context, schema)
+    (root / GENERATION_CONTEXT_REL).write_bytes(canonical_json(context))
+    return context
+
+
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1897,6 +2251,14 @@ def main(argv: Iterable[str] | None = None) -> int:
         help="mechanically regenerate closure_status.v1.json and the two documented projections",
     )
     parser.add_argument(
+        "--stamp-context",
+        action="store_true",
+        help=(
+            "operator action: record the real git HEAD into the generation-context input "
+            "(provider run id stays the typed AUTHORITY_OPEN placeholder, never fabricated)"
+        ),
+    )
+    parser.add_argument(
         "--require-closure-ready",
         action="store_true",
         help="validate structurally, then exit 2 unless the derived open-blocker count is zero",
@@ -1908,10 +2270,22 @@ def main(argv: Iterable[str] | None = None) -> int:
         help=argparse.SUPPRESS,
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
-    if sum((args.check, args.write, args.require_closure_ready)) > 1:
-        parser.error("--check, --write, and --require-closure-ready are mutually exclusive")
+    if sum((args.check, args.write, args.require_closure_ready, args.stamp_context)) > 1:
+        parser.error(
+            "--check, --write, --stamp-context, and --require-closure-ready are mutually exclusive"
+        )
     try:
         root = args.root.resolve()
+        if args.stamp_context:
+            context = stamp_generation_context(root)
+            head = context["payload"]["provider_head"]
+            print(
+                "OK: generation context stamped; provider head "
+                f"{head['kind']}"
+                f"{':' + head['value'] if head['value'] else ''}; "
+                "provider run id AUTHORITY_OPEN; no closure claim"
+            )
+            return 0
         result = write_generated_outputs(root) if args.write else check_all(root)
     except ClosureControlError as exc:
         print(f"FAIL: {exc}", file=sys.stderr)

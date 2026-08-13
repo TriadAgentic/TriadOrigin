@@ -6,6 +6,9 @@ _Mechanical projection. Do not edit; run `python tools/closure_control.py --writ
 - Activation posture: `OFF / OFF / OFF / LIVE`
 - Open blockers: `102`
 - Closed claims: `0`
+- Generated against provider head: `GIT_HEAD_SHA1:2a82c6b3b376110d63ea94ed5aa98cb90419bd5c`
+- Provider run id: `AUTHORITY_OPEN` (no authenticated provider run id offline)
+- Generation context: `docs/control/closure/closure_generation_context.v1.json` (sha256 `59caf13dbedfa91bd9557e09ec1b2523c624bed22b48674fa171b02bb8f0666a`)
 
 ## Milestones
 
@@ -25,6 +28,62 @@ _Mechanical projection. Do not edit; run `python tools/closure_control.py --writ
 | `ORIGIN_REPAIR::B09::sha256:00773cb7d61c85d047cbd2c828c9f0324476d6fb0701b7019541ccc24bae3407` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 7 |
 | `ORIGIN_REPAIR::B10::sha256:f1d75c13f8d1cd0622738fc1d9e6f30cbc73aed0828652df1a71817f7fe06a25` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 12 |
 | `ESTATE_CLOSURE::BN::sha256:80dd0762c222cb661692896003ace482602cd028860d630d58da71a925cb79e3` | `NOT_STARTED` | `BLOCKED` | `BLOCKED` | `NOT_ATTESTED` | 7 |
+
+## Artifact presence
+
+_Presence is not closure. `ARTIFACT_PRESENT` = a controlling input exists on disk; `HISTORICAL_RECEIPT_PRESERVED` = a historical receipt preserved byte-unchanged; `AUTHORITY_OPEN` = a required artifact or authority is absent or unbound. A present artifact never renders as closure._
+
+| Subject | Kind | Presence |
+|---|---|---|
+| `docs/control/b00r_policy.v2.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `docs/control/closure/closure_generation_context.v1.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `docs/control/closure/closure_generation_context.v1.schema.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `docs/control/closure/closure_semantics.v1.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `docs/control/closure/closure_semantics.v1.schema.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `docs/control/closure/closure_status.v1.schema.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `docs/control/closure/closure_status_events.v1.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `docs/control/closure/closure_status_events.v1.schema.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `docs/control/closure/closure_task_bindings.v1.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `docs/control/closure/closure_task_bindings.v1.schema.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `docs/control/closure/predecessors/build_ledger.REVIEWED_V2.json` | `CONTROLLING_INPUT` | `ARTIFACT_PRESENT` |
+| `evidence/receipts/B00.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/B00C.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/B00R.receipt.v3.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/B01.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/B01R.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/B02.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/B03.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/B04.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/B05.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/B06.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/B07.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `evidence/receipts/R00.json` | `HISTORICAL_RECEIPT` | `HISTORICAL_RECEIPT_PRESERVED` |
+| `B00R_RECEIPT_ANCHOR_G2` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `B01C_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `B02C_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `B03C_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `B04C_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `B05C_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `B06R_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `B07_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `B08_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `B09_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `B10_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `BN_TERMINAL_SAFE_HOLD_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `XC01_RECEIPT_ANCHOR` | `PROTECTED_ANCHOR` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B00R.g2.receipt.v3.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B01C.receipt.v3.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B02C.receipt.v3.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B03C.receipt.v3.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B04C.receipt.v3.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B05C.receipt.v3.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B06R.receipt.v3.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B07.receipt.v3.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B08.receipt.v4.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B09.receipt.v4.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/B10.receipt.v4.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/BN.receipt.v1.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
+| `evidence/receipts/XC01.receipt.v4.json` | `REQUIRED_SOURCE_RECEIPT` | `AUTHORITY_OPEN` |
 
 ## Next gate
 
