@@ -1,0 +1,41 @@
+{
+  "authenticated": true,
+  "authority_registry": "docs/governance/trust/receipt_trust_registry.g2.v1.json",
+  "decision": "IDENTIFY_AND_PIN_AUTHORITY_BUNDLE_G2 (RC1..RC4 subjects, precedence, supersession scope)",
+  "decision_id": "DEC-AUTHORITY-BUNDLE-002",
+  "decision_kind": "GOVERNANCE_DECISION",
+  "effective_at_us": 1786526123912152,
+  "failure_behavior": "UNAVAILABLE_AUTHORITY_ROOT",
+  "issuer": "joseph@uponlytrader.com (Authority Owner)",
+  "schema": "triad.governance_decision.v1",
+  "schema_version": "1.0.0",
+  "scope": {
+    "applies_to": "authority-bundle",
+    "precedence": [
+      "OWNER",
+      "SAFETY",
+      "RC4",
+      "RC3",
+      "RC2",
+      "RC1"
+    ]
+  },
+  "signatures": [
+    {
+      "key_id": "owner-ed25519-2026",
+      "signature_hex": "f3ff715f4cb675c85ae9de256ce9a123dc5beb39055cf0949ea02af8efb1e01138a7e86b914bb91059239b324d3dd771fd66e31643e81a9031585a012b0b1c02"
+    }
+  ],
+  "subject_sha256s": {
+    "RC2_complete_checklist": "aae978907ce710d69369ed4cef083dedee4865a6ffb7946452804c54975e191a",
+    "RC2_master_workbook": "2b60d1d4a40456948eff8da5a982956d35f144a7e76445839aa937a1282481e4",
+    "RC2_wiring_guide": "6c12490ba5677177dc6a85818ce6936e3f028c54ccbbb50bc85496d48162573d",
+    "RC3_master_document": "1a7f57265b707dceaa29fe09582cf6067dd5c438dcc4306de7d6900d4348f2c2",
+    "RC4_master_addendum": "5db46aa6db02721b68fbf7c640a44db0b7a9ae2fac7423c80452a671fd9a7ff1",
+    "rc3_effective_control_bundle": "b42afe0e57b285eb44eb5969a8069afd3e5c0ab3870735e3600f6becc54bb114",
+    "rc4_control_bundle": "75463cdd2bcc1ce818b5c858e77fb31e19f647637818deb2e051ece7e18052b6"
+  },
+  "supersedes": [
+    "DEC-AUTHORITY-BUNDLE-001"
+  ]
+}
