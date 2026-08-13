@@ -692,6 +692,15 @@ class TestT11ShortMirror:
         "t2_no_trigger": [
             (0, ("b0", 9995, 9981, 9990)),
         ],
+        "t1_trigger_boundary": [
+            (0, ("b0", 9995, 9980, 9990)),  # low == L - e exactly (inclusive)
+        ],
+        "t6_duplicate_delivery": [
+            (0, ("b0", 9995, 9975, 9990)),
+            (1, ("b1", 10015, 9995, 10010)),
+            (1, ("b1", 10015, 9995, 10010)),  # exact duplicate of the hold-1 bar
+            (2, ("b2", 10016, 10000, 10012)),
+        ],
         "t8_expire": [
             (0, ("b0", 9995, 9975, 9990)),
             (1, ("b1", 10008, 9990, 10005)),
@@ -725,6 +734,22 @@ class TestT11ShortMirror:
             assert short_row["extreme_ticks"] is None
         else:
             assert short_row["extreme_ticks"] == -long_row["extreme_ticks"]
+
+    def test_t7_mirror_single_hold_expiry_under_a_tight_window(self, caps):
+        tight = variant(caps, **{xr.PARAM_RECLAIM_TAU: "3"})
+        tape = [
+            (0, vbar("b0", h=9995, l=9975, c=9990)),
+            (1, vbar("b1", h=10008, l=9990, c=10005)),
+            (2, vbar("b2", h=10015, l=9995, c=10010)),   # hold 1
+            (3, vbar("b3", h=10008, l=9990, c=10005)),   # reset at the edge
+            (4, vbar("b4", h=10016, l=9995, c=10012)),   # past tau: EXPIRED
+        ]
+        long_state, long_events = drive(tight, armed_state(side=LONG), tape)
+        short_state, short_events = drive(
+            tight, armed_state(side=SHORT, level_px=-L_PX), mirror_tape(tape))
+        assert [json.loads(canonical_json(ev)) for ev in short_events] \
+            == mirrored_events(long_events)
+        assert phase_of(long_state) == phase_of(short_state) == xr.EXPIRED
 
     def test_short_atom_depth_is_positive_and_mirror_equal(self, caps):
         tape = [(t, vbar(bid, h=h, l=lo, c=c))
