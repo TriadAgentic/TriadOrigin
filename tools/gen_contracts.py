@@ -51,7 +51,8 @@ HEX64 = r"^[0-9a-f]{64}$"
 #                    required_payload_fields, payload_enums, forbidden_fields)
 def _c(schema_id, version, producer, consumers, event_kinds, authority, required, enums=None,
        forbidden=None, payload_overrides=None, invalid_payload_overrides=None,
-       superseded_by=None):
+       superseded_by=None, payload_field_schemas=None, payload_additional=None,
+       schema_extra=None, registry_extra=None):
     return {
         "id": schema_id,
         "version": version,
@@ -67,6 +68,19 @@ def _c(schema_id, version, producer, consumers, event_kinds, authority, required
         "payload_overrides": payload_overrides or {},
         "invalid_payload_overrides": invalid_payload_overrides or {},
         "superseded_by": superseded_by,
+        # CO-03: exact per-field payload subschemas (nested objects with required members, typed
+        # arrays, bounded integers) that the name-suffix heuristics cannot express. Every field
+        # named here MUST also carry a payload_overrides sample (asserted in main()) so the golden
+        # valid vector is built from an explicit value, never a heuristic guess.
+        "payload_field_schemas": payload_field_schemas or {},
+        # CO-03 stop rule: a CONTRACT_RATIFICATION_REQUIRED stub closes its payload
+        # (additionalProperties false) so no body can be smuggled under a reserved name before
+        # the owner-signed topology decision lands. None keeps the Doc 03 additive default (True).
+        "payload_additional": payload_additional,
+        # Extra top-level JSON Schema annotations ("x-status", "description"); merged verbatim.
+        "schema_extra": schema_extra or {},
+        # Extra registry-entry annotations (e.g. x_status: CONTRACT_RATIFICATION_REQUIRED).
+        "registry_extra": registry_extra or {},
     }
 
 
@@ -556,6 +570,339 @@ CONTRACTS = [
         "state": ["ISSUED", "ACTIVE", "REVOKED", "EXPIRED", "SUPERSEDED"]}),
 ]
 
+# ---------------------------------------------------------------- CO-03 additions (2026-08-12)
+# TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12 CO-03: the four contract-union majors, the transport
+# registry, the E08->E09 venue execution plan, and the six E03-E06 advisory-chain stubs. All
+# additive majors, all DARK (no producer emits any of them; registration activates nothing;
+# posture stays OFF/OFF/OFF/LIVE, DENIED_SAFE_HOLD). The stubs are OWNER-GATED: OWNER-TOPO-01 is
+# adjudicated (TRIAD-OWNER-TOPO-01-ADJUDICATION-2026-08-12) but NOT signed, so each stub carries
+# ONLY its name + the required lineage/no-authority fields, is marked
+# "x-status": "CONTRACT_RATIFICATION_REQUIRED", and CLOSES its payload — a body field is refused
+# structurally until the signed CO-14 decision lands (the CO-03 stop rule).
+
+_CO03_DARK_NOTE = (
+    "Registered by CO-03 (TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12) as an additive major. "
+    "Registration activates no producer and grants no authority; posture unchanged "
+    "OFF/OFF/OFF/LIVE, DENIED_SAFE_HOLD.")
+
+_CO03_STUB_NOTE = (
+    "RESERVED ADVISORY-CHAIN STUB (CO-03 step 7). PENDING_SIGNATURE: OWNER-TOPO-01 is "
+    "adjudicated (2026-08-12) but NOT signed; per the CO-03 stop rule this schema carries ONLY "
+    "the contract name plus the required lineage/no-authority fields "
+    "(artifact/model/prompt/retrieval versions, uncertainty, calibration, freshness, citations, "
+    "decision_authority const NONE). The payload is CLOSED (additionalProperties false): any "
+    "body field is refused until the signed CO-14 topology decision lands. Consumers refuse "
+    "with the named refusal CONTRACT_RATIFICATION_REQUIRED. E04 is excluded from the seam "
+    "(OWNER-TOPO-01 Amendment A2): no E04 stub exists and none is authorized here. "
+    + _CO03_DARK_NOTE)
+
+_STUB_LINEAGE_REQUIRED = [
+    "artifact_version", "model_version", "prompt_version", "retrieval_version",
+    "uncertainty", "calibration", "freshness", "citations", "decision_authority",
+]
+
+_STUB_LINEAGE_SCHEMAS = {
+    # An empty version string is not a lineage claim: every version field is non-empty.
+    "artifact_version": {"type": "string", "minLength": 1},
+    "model_version": {"type": "string", "minLength": 1},
+    "prompt_version": {"type": "string", "minLength": 1},
+    "retrieval_version": {"type": "string", "minLength": 1},
+    "uncertainty": {"type": "object"},
+    "calibration": {"type": "object"},
+    "freshness": {"type": "object"},
+    "citations": {"type": "array", "items": {"type": "string", "minLength": 1}},
+}
+
+_STUB_LINEAGE_SAMPLES = {
+    "artifact_version": "x",
+    "model_version": "x",
+    "prompt_version": "x",
+    "retrieval_version": "x",
+    "uncertainty": {},
+    "calibration": {},
+    "freshness": {},
+    "citations": [],
+}
+
+
+def _stub(schema_id, version, producer, consumers, event_kind):
+    """A CO-03 step-7 reserved advisory-chain stub: names + lineage fields, nothing else."""
+    return _c(
+        schema_id, version, producer, consumers, [event_kind], False,
+        list(_STUB_LINEAGE_REQUIRED),
+        {"decision_authority": ["NONE"]},
+        payload_field_schemas=dict(_STUB_LINEAGE_SCHEMAS),
+        payload_overrides=dict(_STUB_LINEAGE_SAMPLES),
+        # The stop-rule negative: a smuggled body field under a ratification-required stub is
+        # refused by the closed payload (additionalProperties false) — by BOTH the full
+        # validator and the stdlib diagnostic.
+        invalid_payload_overrides={"body": {"smuggled": "x"}},
+        payload_additional=False,
+        schema_extra={"x-status": "CONTRACT_RATIFICATION_REQUIRED",
+                      "description": _CO03_STUB_NOTE},
+        registry_extra={"x_status": "CONTRACT_RATIFICATION_REQUIRED",
+                        "x_change_order": "CO-03"},
+    )
+
+
+CONTRACTS += [
+    # CO-03 step 1 — the B08 read-face envelope law, promoted to a schema. The seven-value
+    # status enum is exact and closed; presence never reads as OK.
+    _c("triad.evidence_view.v2", "2.0.0", "b08-read-face",
+       ["operations", "governance", "audit"], ["EVIDENCE_VIEW"], False,
+       ["source", "plane", "cohort", "scope", "producer_rev", "build_digest", "config_digest",
+        "contract_digest", "binding_digest", "event_time", "observation_time", "freshness_ms",
+        "completeness", "status", "payload"],
+       {"status": ["OK", "UNAVAILABLE", "NOT_IMPLEMENTED", "TOOL_TIMEOUT", "NOT_MEASURABLE",
+                   "STALE", "NOT_ATTESTED"]},
+       payload_field_schemas={
+           "source": {"type": "string", "minLength": 1},
+           "plane": {"type": "string", "minLength": 1},
+           "cohort": {"type": "string", "minLength": 1},
+           "producer_rev": {"type": "string", "minLength": 1},
+           "event_time": {"type": "integer"},
+           "observation_time": {"type": "integer"},
+           "freshness_ms": {"type": "string", "pattern": DECIMAL_UINT},
+           "completeness": {"type": "string", "minLength": 1},
+           "payload": {"type": "object"},
+       },
+       payload_overrides={
+           "source": "b08-read-face", "plane": "governance", "cohort": "x-cohort",
+           "producer_rev": "x-rev", "event_time": 1786156800123456,
+           "observation_time": 1786156800123456, "freshness_ms": "0",
+           "completeness": "COMPLETE", "payload": {},
+       },
+       # The envelope-law negative: a status outside the closed seven-value enum (e.g. the
+       # presence-reads-as-closure word) is refused.
+       invalid_payload_overrides={"status": "PRESENT"},
+       schema_extra={"description": (
+           "CO-03 step 1: the exact B08 read-face envelope law as a contract. status is the "
+           "CLOSED seven-value truth vocabulary {OK, UNAVAILABLE, NOT_IMPLEMENTED, TOOL_TIMEOUT, "
+           "NOT_MEASURABLE, STALE, NOT_ATTESTED}; an unavailable read is UNAVAILABLE, an "
+           "unattested claim is NOT_ATTESTED — never a fabricated OK. " + _CO03_DARK_NOTE)}),
+
+    # CO-03 step 2 — the E00 immutable, replayable venue fact with structural quarantine flags.
+    _c("triad.raw_venue_event.v2", "2.0.0", "triad-e00", ["triad-e01", "raw-ledger", "replay"],
+       ["RAW_VENUE_EVENT"], True,
+       ["venue", "instrument_id", "route_id", "session_id", "source_sequence", "event_time",
+        "receive_time", "payload_kind", "payload_bytes_digest", "metadata_revision",
+        "quarantine_flags"],
+       {"payload_kind": ["trade", "book_delta", "book_snapshot", "account", "order", "funding",
+                         "mark"]},
+       payload_field_schemas={
+           "venue": {"type": "string", "minLength": 1},
+           "instrument_id": {"type": "string", "minLength": 1},
+           "route_id": {"type": "string", "minLength": 1},
+           "session_id": {"type": "string", "minLength": 1},
+           "source_sequence": {"type": "string", "pattern": DECIMAL_UINT},
+           "event_time": {"type": "integer"},
+           "receive_time": {"type": "integer"},
+           "metadata_revision": {"type": "string", "pattern": DECIMAL_UINT},
+           "quarantine_flags": {
+               "type": "object",
+               "required": ["gap", "clock", "dq"],
+               "properties": {"gap": {"type": "boolean"}, "clock": {"type": "boolean"},
+                              "dq": {"type": "boolean"}},
+               "additionalProperties": False},
+       },
+       payload_overrides={
+           "venue": "binance-usdm", "instrument_id": "x-instrument", "route_id": "x-route",
+           "session_id": "x-session", "source_sequence": "1",
+           "event_time": 1786156800123456, "receive_time": 1786156800123456,
+           "metadata_revision": "1",
+           "quarantine_flags": {"gap": False, "clock": False, "dq": False},
+       },
+       # Recursive negative: quarantine_flags missing its dq member (nested required violation).
+       invalid_payload_overrides={"quarantine_flags": {"gap": False, "clock": False}},
+       schema_extra={"description": (
+           "CO-03 step 2: the E00 fact — immutable and replayable; quarantine flags for "
+           "gap/clock/DQ are structural (all three booleans required, closed object). "
+           + _CO03_DARK_NOTE)}),
+
+    # CO-03 step 3 — process truth. deployment_class DARK is the gate-#12 deployment-class
+    # vocabulary (legitimate post-RC4), NOT the retired RC4 connected-dark LEVER vocabulary and
+    # NOT an activation-manifest plane value.
+    _c("triad.runtime_lifecycle.v2", "2.0.0", "every-runtime-instance",
+       ["operations", "audit", "deployment-registry"], ["RUNTIME_LIFECYCLE"], True,
+       ["component_id", "deployment_class", "build_digest", "config_digest", "contract_digest",
+        "binding_digest", "lease", "attestation_time", "plane_bindings"],
+       {"deployment_class": ["ACTIVE_WRITER", "REPLICA", "MIRROR", "DARK", "RETIRED"]},
+       payload_field_schemas={
+           "component_id": {"type": "string", "minLength": 1},
+           "lease": {
+               "type": "object",
+               "required": ["topic", "epoch", "ttl"],
+               "properties": {"topic": {"type": "string", "minLength": 1},
+                              "epoch": {"type": "string", "pattern": DECIMAL_UINT},
+                              "ttl": {"type": "string", "pattern": DECIMAL_UINT}},
+               "additionalProperties": False},
+           "attestation_time": {"type": "integer"},
+           "plane_bindings": {"type": "object"},
+       },
+       payload_overrides={
+           "component_id": "x-component",
+           "deployment_class": "DARK",
+           "lease": {"topic": "x-topic", "epoch": "1", "ttl": "1"},
+           "attestation_time": 1786156800123456,
+           "plane_bindings": {},
+       },
+       # Recursive negative: lease missing its epoch member (nested required violation).
+       invalid_payload_overrides={"lease": {"topic": "x-topic", "ttl": "1"}},
+       schema_extra={"description": (
+           "CO-03 step 3: runtime process truth — deployment class, build/config/contract/"
+           "binding digests, lease{topic, epoch, ttl}, attestation time, plane bindings. "
+           "deployment_class DARK is the deployment-class vocabulary (closure gate #12), not "
+           "the retired RC4 connected-dark lever vocabulary. " + _CO03_DARK_NOTE)}),
+
+    # CO-03 step 4 — Learning's advisory output, hard-split from outcome.*: decision_authority
+    # is const NONE; consumers may read, never auto-apply.
+    _c("triad.signed_recommendation.v1", "1.0.0", "triad-e10-learning",
+       ["governance", "owner", "audit"], ["SIGNED_RECOMMENDATION"], False,
+       ["recommendation_id", "subject_scope", "evidence_refs", "proposal", "decision_authority",
+        "signer", "signature", "valid_to"],
+       {"decision_authority": ["NONE"]},
+       payload_field_schemas={
+           "recommendation_id": {"type": "string", "minLength": 1},
+           "subject_scope": {"type": "object"},
+           "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+           "proposal": {"type": "object"},
+           "signer": {"type": "string", "minLength": 1},
+           "signature": {"type": "string", "minLength": 1},
+           "valid_to": {"type": "integer"},
+       },
+       payload_overrides={
+           "recommendation_id": "rec-x", "subject_scope": {}, "evidence_refs": ["ev-1"],
+           "proposal": {}, "signer": "x-signer", "signature": "sig-1",
+           "valid_to": 1786243200123456,
+       },
+       # The constitutional negative: any decision_authority other than NONE is refused.
+       invalid_payload_overrides={"decision_authority": "FULL"},
+       schema_extra={"description": (
+           "CO-03 step 4: Learning's advisory output, hard-split from outcome.*. "
+           "decision_authority is const NONE — consumers may read, never auto-apply. "
+           + _CO03_DARK_NOTE)}),
+
+    # CO-03 step 5 — the single owner of exact transports per logical topic. An unknown binding
+    # resolves to the NAMED refusal TRANSPORT_BINDING_UNKNOWN, never a silent default.
+    _c("triad.transport_bindings.v1", "1.0.0", "contract-governance", ["every-service"],
+       ["TRANSPORT_BINDINGS"], False,
+       ["bindings_id", "revision", "bindings", "unknown_binding_refusal", "bindings_digest"],
+       {"unknown_binding_refusal": ["TRANSPORT_BINDING_UNKNOWN"]},
+       payload_field_schemas={
+           "bindings_id": {"type": "string", "minLength": 1},
+           "bindings": {
+               "type": "array",
+               "minItems": 1,
+               "items": {
+                   "type": "object",
+                   "required": ["logical_topic", "transport_kind", "exact_binding", "owner"],
+                   "properties": {
+                       "logical_topic": {"type": "string", "minLength": 1},
+                       "transport_kind": {"type": "string",
+                                          "enum": ["TOPIC", "FILENAME", "DATABASE_PATH",
+                                                   "OBJECT_PATH"]},
+                       "exact_binding": {"type": "string", "minLength": 1},
+                       "owner": {"type": "string", "minLength": 1},
+                       "consumers": {"type": "array",
+                                     "items": {"type": "string", "minLength": 1}}},
+                   "additionalProperties": False}},
+       },
+       payload_overrides={
+           "bindings_id": "x-bindings",
+           "bindings": [{"logical_topic": "x.logical", "transport_kind": "TOPIC",
+                         "exact_binding": "x.exact", "owner": "x-owner",
+                         "consumers": ["x-consumer"]}],
+       },
+       # The named-refusal negative: a silent-default token in place of the named refusal.
+       invalid_payload_overrides={"unknown_binding_refusal": "SILENT_DEFAULT"},
+       schema_extra={"description": (
+           "CO-03 step 5: the SINGLE owner of exact topics, filenames, database paths and "
+           "object paths per logical topic in the wiring matrix. Producers/consumers resolve "
+           "transport only through this registry; an unknown binding yields the named refusal "
+           "TRANSPORT_BINDING_UNKNOWN (const), never a silent default. Golden vectors carry "
+           "placeholder rows only — no live wiring truth is declared here. " + _CO03_DARK_NOTE)}),
+
+    # CO-03 step 6 — VenueExecutionPlan.v1 (repo grammar: triad.venue_execution_plan.v1), the
+    # E08->E09 plan required by F21/C-006, field-complete for GV-018's variants.
+    _c("triad.venue_execution_plan.v1", "1.0.0", "triad-e08", ["e09-orchestrator", "audit"],
+       ["VENUE_EXECUTION_PLAN"], True,
+       ["authorization_ref", "economic_purpose", "side", "instrument_id", "account_mode",
+        "zone", "observed_book", "ordinal_budget", "reprice_budget", "ttl_ms",
+        "price_filters", "price_bands", "idempotency_key_law", "refusal_codes"],
+       {"side": ["BUY", "SELL"]},
+       payload_field_schemas={
+           "authorization_ref": {"type": "string", "minLength": 1},
+           "economic_purpose": {"type": "string", "minLength": 1},
+           "instrument_id": {"type": "string", "minLength": 1},
+           "account_mode": {"type": "string", "minLength": 1},
+           "zone": {
+               "type": "object",
+               "required": ["z0", "z1"],
+               "properties": {"z0": {"type": "string", "pattern": SIGNED_INT},
+                              "z1": {"type": "string", "pattern": SIGNED_INT}},
+               "additionalProperties": False},
+           "observed_book": {
+               "type": "object",
+               "required": ["revision", "levels"],
+               "properties": {
+                   "revision": {"type": "string", "pattern": DECIMAL_UINT},
+                   "levels": {
+                       "type": "array",
+                       "items": {
+                           "type": "object",
+                           "required": ["price_ticks", "qty_steps"],
+                           "properties": {
+                               "price_ticks": {"type": "string", "pattern": SIGNED_INT},
+                               "qty_steps": {"type": "string", "pattern": SIGNED_INT}},
+                           "additionalProperties": False}}},
+               "additionalProperties": False},
+           "ordinal_budget": {"type": "integer", "minimum": 0, "maximum": 4},
+           "reprice_budget": {"type": "string", "pattern": DECIMAL_UINT},
+           "ttl_ms": {"type": "string", "pattern": DECIMAL_UINT},
+           "price_filters": {"type": "object"},
+           "price_bands": {"type": "object"},
+           "idempotency_key_law": {"type": "string", "minLength": 1},
+           "refusal_codes": {"type": "array", "items": {"type": "string", "minLength": 1}},
+       },
+       payload_overrides={
+           "authorization_ref": "x-authorization", "economic_purpose": "x-purpose",
+           "instrument_id": "x-instrument", "account_mode": "x-mode",
+           "zone": {"z0": "100", "z1": "90"},
+           "observed_book": {"revision": "1",
+                             "levels": [{"price_ticks": "101", "qty_steps": "5"}]},
+           "ordinal_budget": 0, "reprice_budget": "1", "ttl_ms": "1000",
+           "price_filters": {}, "price_bands": {}, "idempotency_key_law": "x-law",
+           "refusal_codes": [],
+       },
+       # Recursive negative: zone missing z1 (nested required violation).
+       invalid_payload_overrides={"zone": {"z0": "100"}},
+       forbidden=["raw_credentials", "venue_order_id", "venue_trade_id"],
+       schema_extra={"description": (
+           "CO-03 step 6: VenueExecutionPlan.v1 — the E08->E09 plan (F21/C-006). Field-complete "
+           "for GV-018's variants: sparse level (observed_book.levels is an explicit, possibly "
+           "empty or non-contiguous list of price/qty pairs), zone-outside-book (zone[z0,z1] is "
+           "not range-bound to observed_book levels), GTX race (a post-only cross race resolves "
+           "to a named token in refusal_codes, never a silent conversion). ordinal_budget is a "
+           "bounded integer 0..4. price_filters and price_bands carry the venue price-filter "
+           "and band constraints ('price_filters/bands' in the order text). " + _CO03_DARK_NOTE)}),
+
+    # CO-03 step 7 — the six E03-E06 advisory-chain reserved stubs (names + lineage fields
+    # only; bodies land only with the signed CO-14 / OWNER-TOPO-01 decision). E04 is excluded
+    # (Amendment A2): no E04 stub.
+    _stub("triad.forecast_request.v2", "2.0.0", "triad-e05", ["triad-e03"],
+          "FORECAST_REQUEST"),
+    _stub("triad.forecast_response.v2", "2.0.0", "triad-e03", ["triad-e05"],
+          "FORECAST_RESPONSE"),
+    _stub("triad.logos_prompt_packet.v1", "1.0.0", "triad-e05", ["triad-e06"],
+          "LOGOS_PROMPT_PACKET"),
+    _stub("triad.logos_explanation.v1", "1.0.0", "triad-e06", ["triad-e05"],
+          "LOGOS_EXPLANATION"),
+    _stub("triad.logos_contradiction_report.v1", "1.0.0", "triad-e06", ["triad-e05"],
+          "LOGOS_CONTRADICTION_REPORT"),
+    _stub("triad.e05_intelligence_bundle.v1", "1.0.0", "triad-e05", ["triad-e07"],
+          "E05_INTELLIGENCE_BUNDLE"),
+]
+
 
 # --- type heuristics -----------------------------------------------------------------------------
 _TICK_SUFFIXES = ("_ticks", "_steps", "_atomic", "_minor", "_quote")
@@ -673,20 +1020,23 @@ def build_schema(c: dict) -> dict:
     }
     payload_props: dict[str, dict] = {}
     for f in c["required"]:
-        payload_props[f] = _field_schema(f, c["enums"])
+        payload_props[f] = c["payload_field_schemas"].get(f) or _field_schema(f, c["enums"])
     for f in c["forbidden"]:
         payload_props[f] = False  # presence of a forbidden key fails validation
+    payload_additional = c.get("payload_additional")
     payload = {
         "type": "object",
         "required": list(c["required"]),
         "properties": payload_props,
-        "additionalProperties": True,  # additive minor fields preserved (Doc 03 compatibility)
+        # Additive minor fields preserved by default (Doc 03 compatibility); a ratification-
+        # required stub instead closes its payload (CO-03 stop rule — no smuggled bodies).
+        "additionalProperties": True if payload_additional is None else payload_additional,
     }
     props["payload"] = payload
     required = list(ENVELOPE_REQUIRED)
     if c["authority"]:
         required.append("producer_epoch")
-    return {
+    schema = {
         "$schema": DRAFT,
         "$id": f"https://triad.origin.v7/contracts/{c['id']}.schema.json",
         "title": c["id"],
@@ -695,6 +1045,8 @@ def build_schema(c: dict) -> dict:
         "properties": props,
         "additionalProperties": False,
     }
+    schema.update(c.get("schema_extra") or {})
+    return schema
 
 
 def build_valid(c: dict, schema: dict) -> dict:
@@ -772,6 +1124,13 @@ def main() -> None:
         "contracts": [],
     }
     for c in CONTRACTS:
+        # CO-03 discipline: a field with an exact custom subschema never takes a heuristic
+        # sample — the golden must state its value explicitly or generation fails loudly.
+        missing = sorted(set(c["payload_field_schemas"]) - set(c["payload_overrides"]))
+        if missing:
+            raise SystemExit(
+                f"{c['id']}: payload_field_schemas fields lack payload_overrides samples: "
+                f"{missing}")
         schema = build_schema(c)
         _write_json(SCHEMA_DIR / f"{c['id']}.schema.json", schema)
         _write_json(GOLDEN_DIR / c["id"] / "valid.json", build_valid(c, schema))
@@ -786,6 +1145,7 @@ def main() -> None:
         }
         if c.get("superseded_by"):
             entry["superseded_by"] = c["superseded_by"]
+        entry.update(c.get("registry_extra") or {})
         index["contracts"].append(entry)
     _write_json(REGISTRY_DIR / "index.json", index)
     print(f"generated {len(CONTRACTS)} contracts + golden vectors + registry index")

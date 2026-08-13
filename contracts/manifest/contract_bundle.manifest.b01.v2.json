@@ -1,8 +1,8 @@
 {
-  "artifact_sha256": "145bb63f23d5b1d4d20dc733c2179251854e80dee07632eada9c6a855f8d2a47",
+  "artifact_sha256": "d2129062733464002acc67973344d4523138dbff8eb3fdc68430b2086034081d",
   "build_commit": "UNBOUND_DARK_BUILD",
   "config_bundle_sha256": "fabdc1c16d4044a051c99d2b4230a6273ff5c899a53d7151cc384d6674c12297",
-  "contract_manifest_sha256": "145bb63f23d5b1d4d20dc733c2179251854e80dee07632eada9c6a855f8d2a47",
+  "contract_manifest_sha256": "d2129062733464002acc67973344d4523138dbff8eb3fdc68430b2086034081d",
   "emitted_at_us": 0,
   "event_id": "contract_bundle_manifest_origin.contract-bundle-descriptor.b01.v2",
   "event_kind": "CONTRACT_BUNDLE_MANIFEST",
@@ -77,6 +77,16 @@
         "media_type": "application/json",
         "path": "contracts/golden/triad.divergence_record.v1/valid.json",
         "sha256": "a6adb4189934effb5ffa0b936f455f3f14e7683779e70f2400e5c61c3cd6931f"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.e05_intelligence_bundle.v1/invalid.json",
+        "sha256": "c16671db8bf2bb8cec504ddd0651f54a6f75ce91b634f583a64d995f008da508"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.e05_intelligence_bundle.v1/valid.json",
+        "sha256": "f2f4c28c5465c56ca3ab73a6e9bc4f3083b08afeee2867c583b5f6df565e7915"
       },
       {
         "media_type": "application/json",
@@ -170,6 +180,16 @@
       },
       {
         "media_type": "application/json",
+        "path": "contracts/golden/triad.evidence_view.v2/invalid.json",
+        "sha256": "4d9c3e97742c44b72bb2fa3bd53c6d161c83ae04b192c892673998711e2f4953"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.evidence_view.v2/valid.json",
+        "sha256": "3d9308e20d7b5976f06e32f37c8765bbe35e1ea2c16a2f7702782eac604f77ab"
+      },
+      {
+        "media_type": "application/json",
         "path": "contracts/golden/triad.execution_authorization.v2/invalid.json",
         "sha256": "5efed1a47c2e68f14e0e7a786ee60b850dcc40fbee8931f4643adedee7915e30"
       },
@@ -220,6 +240,26 @@
       },
       {
         "media_type": "application/json",
+        "path": "contracts/golden/triad.forecast_request.v2/invalid.json",
+        "sha256": "47b18fb644d976f491ff57f813ace760916c4a476b59b6ee4316aef2df1b958e"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.forecast_request.v2/valid.json",
+        "sha256": "a691cf741a645cde84d7bd39771fcf20cc1104cb87411628bd62fd969d431e91"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.forecast_response.v2/invalid.json",
+        "sha256": "35e8b92e3acc40aa7c8fe6e1e33986026775d68edc2ff4feaab5b7de2c8dd4ac"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.forecast_response.v2/valid.json",
+        "sha256": "240779baf60a3079149d5ef36b388d570f71b506e9ae7b3196b3c7bb90717720"
+      },
+      {
+        "media_type": "application/json",
         "path": "contracts/golden/triad.gate_receipt.v2/invalid.json",
         "sha256": "3d11afe9edb1260ff869f02f0c769d9b34a00680771c9046cdfc3cbd798a6480"
       },
@@ -247,6 +287,36 @@
         "media_type": "application/json",
         "path": "contracts/golden/triad.governance_snapshot.v1/valid.json",
         "sha256": "232a080ef6290705867c2d03de1335b53f7969c68c7dda12dfaa3469f01aaeb7"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.logos_contradiction_report.v1/invalid.json",
+        "sha256": "7d7796b0b1e83809b24b8d46a7f9cf15191b9c591848ce1ead9ae813a8f2725f"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.logos_contradiction_report.v1/valid.json",
+        "sha256": "8f8146acfd0e20e51fdf52fa265fa51b0b85355fce615e2c7131621140cb7c23"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.logos_explanation.v1/invalid.json",
+        "sha256": "21b3fb50f63ddfa64edaacc28c20242d4dba6f99718e57a5dd7101c698ededc3"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.logos_explanation.v1/valid.json",
+        "sha256": "2f1d654ef4d367b2ade644f424ebb94814ca56cb4e1db8e328fdf02628646741"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.logos_prompt_packet.v1/invalid.json",
+        "sha256": "cc8dce92fdba85a4c913b7946a1fb44d9d1eb4c5e52322ed98eeb93c07509c9b"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.logos_prompt_packet.v1/valid.json",
+        "sha256": "cabeb0000810afb469d3fa18a6908affebd6c2cd491a3e6e14a4c9ca541c8658"
       },
       {
         "media_type": "application/json",
@@ -340,6 +410,16 @@
       },
       {
         "media_type": "application/json",
+        "path": "contracts/golden/triad.raw_venue_event.v2/invalid.json",
+        "sha256": "ae9f4b496c72f19a83690d3c8a31ce9d6e8eb64fce17756ecf2fa10c7e5706b9"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.raw_venue_event.v2/valid.json",
+        "sha256": "86a7aa0ebbcad7545dfb86158d6945f56c839d74afff054eca02cddfd971b281"
+      },
+      {
+        "media_type": "application/json",
         "path": "contracts/golden/triad.reaction_event.v1/invalid.json",
         "sha256": "7750bc88bf461cda6c72e5bed33181583eaebba31bc316e62175114969cbda55"
       },
@@ -410,6 +490,16 @@
       },
       {
         "media_type": "application/json",
+        "path": "contracts/golden/triad.runtime_lifecycle.v2/invalid.json",
+        "sha256": "1356236a5d46b01782e64c0b83aadb7b233c566669a2dab41a75400d9364dd49"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.runtime_lifecycle.v2/valid.json",
+        "sha256": "544d9a80b138cce9f00b979a1f6ee26e062e886d1c5f3e3f246e7beb735c5ced"
+      },
+      {
+        "media_type": "application/json",
         "path": "contracts/golden/triad.service_heartbeat.v1/invalid.json",
         "sha256": "dd5bf15c871e57250216450f79210a3f9102529abcb16d5fc41f6ac472589535"
       },
@@ -450,6 +540,16 @@
       },
       {
         "media_type": "application/json",
+        "path": "contracts/golden/triad.signed_recommendation.v1/invalid.json",
+        "sha256": "9fc93f0c4b174d7dc64f97e8273920cf7f2d869cae7a953e0387e7467fd2d275"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.signed_recommendation.v1/valid.json",
+        "sha256": "a417578c6373d230a0f18778d148a624ade4097930766120436f4cad9773dcab"
+      },
+      {
+        "media_type": "application/json",
         "path": "contracts/golden/triad.structure_atom.v2/invalid.json",
         "sha256": "ada76d85a96e3503bb33b002944cce269a3bc204cf7cc3a8c1302682cb6bbdd6"
       },
@@ -480,6 +580,16 @@
       },
       {
         "media_type": "application/json",
+        "path": "contracts/golden/triad.transport_bindings.v1/invalid.json",
+        "sha256": "284cdde1d31d412af6fd3e3847aa10ea9478934dfa81c056969d31c68eefa2b0"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.transport_bindings.v1/valid.json",
+        "sha256": "baeefd14136908fc2924ff259c63c78366a0e9144ec6160b322a1debf6d37ca8"
+      },
+      {
+        "media_type": "application/json",
         "path": "contracts/golden/triad.trial_registration.v1/invalid.json",
         "sha256": "15b1c7627c91b404d7367e60a97a9d74ef854ac3372c9690aa13c9b5c4eef95d"
       },
@@ -500,8 +610,18 @@
       },
       {
         "media_type": "application/json",
+        "path": "contracts/golden/triad.venue_execution_plan.v1/invalid.json",
+        "sha256": "5c20f871e5a5e90bf3f88b940f8d27e0c017620f8efb7a7151f2cd053ac87b37"
+      },
+      {
+        "media_type": "application/json",
+        "path": "contracts/golden/triad.venue_execution_plan.v1/valid.json",
+        "sha256": "9d43de9227e0d8679418a8c77c644d84ab8606c03916b2cd27a274c64c824fc0"
+      },
+      {
+        "media_type": "application/json",
         "path": "contracts/registry/index.json",
-        "sha256": "c13f3733e443b0b422b64c5cfd32d828a78988158ba3884be2e906f65f1e7731"
+        "sha256": "9a80a47907d2d1931b7a3c6016744372926e7086246d8975da8e244a0ac2d9c5"
       },
       {
         "media_type": "application/schema+json",
@@ -537,6 +657,11 @@
         "media_type": "application/schema+json",
         "path": "contracts/schemas/triad.divergence_record.v1.schema.json",
         "sha256": "e652b2b2635dab26b18061cc13a54d0a773eb04abaa665e255d193a8ed49d6c2"
+      },
+      {
+        "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.e05_intelligence_bundle.v1.schema.json",
+        "sha256": "3f4bf6f374466bfe7b3a0e9f21759c88cc763f92f2f333271a6143bff2a3cae6"
       },
       {
         "media_type": "application/schema+json",
@@ -585,6 +710,11 @@
       },
       {
         "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.evidence_view.v2.schema.json",
+        "sha256": "fc918b5119cb62769dacb79b4258e1ac12ab4467a19686d29b419b693e1e7bb5"
+      },
+      {
+        "media_type": "application/schema+json",
         "path": "contracts/schemas/triad.execution_authorization.v2.schema.json",
         "sha256": "c0e196a5816da7d9969660e94cbf88bdd485742fcf3f7be922737cbfc36df145"
       },
@@ -610,6 +740,16 @@
       },
       {
         "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.forecast_request.v2.schema.json",
+        "sha256": "2e0873f6e424df0b1e4a1a7967c8c00865dd397eb4922831e2733e62a2290737"
+      },
+      {
+        "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.forecast_response.v2.schema.json",
+        "sha256": "a5a5f963e1fd8399920e4bb4120ebcde675b0649142d1b097e101e74a2a203cd"
+      },
+      {
+        "media_type": "application/schema+json",
         "path": "contracts/schemas/triad.gate_receipt.v2.schema.json",
         "sha256": "180ba583b26460750c7b97236a13bf057b04ba704c564e3f9b169572173e67e8"
       },
@@ -622,6 +762,21 @@
         "media_type": "application/schema+json",
         "path": "contracts/schemas/triad.governance_snapshot.v1.schema.json",
         "sha256": "64d69e4b3df2f7c38c5b6f2afa4e4a73d92419838c22603371e375e3e096cb22"
+      },
+      {
+        "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.logos_contradiction_report.v1.schema.json",
+        "sha256": "8f0d6011b26bf30e99c5122c1523a15bc8a7de3f3f83232e5f229fd9ece358f9"
+      },
+      {
+        "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.logos_explanation.v1.schema.json",
+        "sha256": "86be790a3f005bbae1ac1f6aa5a18a5d20060baa9e2c1acce5f5a8e53c1a421e"
+      },
+      {
+        "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.logos_prompt_packet.v1.schema.json",
+        "sha256": "4f0cc0f75cccbed06b356506229d4b984d1bf44298c0c4257a8fd3ef6da6243b"
       },
       {
         "media_type": "application/schema+json",
@@ -670,6 +825,11 @@
       },
       {
         "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.raw_venue_event.v2.schema.json",
+        "sha256": "b91d431308e3d568029a2604a82fc70c7a089065d4e88ce1138589a92c28d4bf"
+      },
+      {
+        "media_type": "application/schema+json",
         "path": "contracts/schemas/triad.reaction_event.v1.schema.json",
         "sha256": "5a49013d9bc0dcb775ff925301d2b34e035e49cedcdd46410a53a505e8710573"
       },
@@ -705,6 +865,11 @@
       },
       {
         "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.runtime_lifecycle.v2.schema.json",
+        "sha256": "2c0bbdf5b8153d536aa52f6711724929b3b22fa0d11565d56c17efae0428fce5"
+      },
+      {
+        "media_type": "application/schema+json",
         "path": "contracts/schemas/triad.service_heartbeat.v1.schema.json",
         "sha256": "5b620f8e4b59ba72351df0a23a935112f2eb2c9045c6a4281be1d38b91e14a05"
       },
@@ -725,6 +890,11 @@
       },
       {
         "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.signed_recommendation.v1.schema.json",
+        "sha256": "e776bb11611f1a4f3ad842cf810d0be447ef924eb868cc388a0e3a65a2e33de2"
+      },
+      {
+        "media_type": "application/schema+json",
         "path": "contracts/schemas/triad.structure_atom.v2.schema.json",
         "sha256": "619caefc54c791b844e078f1a78214cbfa95915b9fc1868a8ba50cc0cac734b4"
       },
@@ -740,6 +910,11 @@
       },
       {
         "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.transport_bindings.v1.schema.json",
+        "sha256": "4dec7847a9f074b45ba7eb4aaf28f1ce98ec6081df8d377a4d24c237d8f9f02c"
+      },
+      {
+        "media_type": "application/schema+json",
         "path": "contracts/schemas/triad.trial_registration.v1.schema.json",
         "sha256": "059459f965a1a14d3b8983617d1383b46e8736764b7ce89019b3c0c84378a209"
       },
@@ -747,10 +922,15 @@
         "media_type": "application/schema+json",
         "path": "contracts/schemas/triad.venue_account_event.v2.schema.json",
         "sha256": "9d0b241932f0c9ef013a1a41c61327ef1ccf42a1c9929f4d26c3a7ae3a7f0634"
+      },
+      {
+        "media_type": "application/schema+json",
+        "path": "contracts/schemas/triad.venue_execution_plan.v1.schema.json",
+        "sha256": "80452f5fcee1a526ef9ff1318944363cb1c278b380ff2ab78da81f615118e429"
       }
     ],
     "bundle_version": "origin.contracts.1.1.0-B01",
-    "canonical_manifest_hash": "145bb63f23d5b1d4d20dc733c2179251854e80dee07632eada9c6a855f8d2a47",
+    "canonical_manifest_hash": "d2129062733464002acc67973344d4523138dbff8eb3fdc68430b2086034081d",
     "descriptor_version": "origin.contract-bundle-descriptor.b01.v2"
   },
   "producer_instance_id": "offline-build",

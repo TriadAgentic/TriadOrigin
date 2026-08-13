@@ -1,0 +1,155 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.transport_bindings.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "CO-03 step 5: the SINGLE owner of exact topics, filenames, database paths and object paths per logical topic in the wiring matrix. Producers/consumers resolve transport only through this registry; an unknown binding yields the named refusal TRANSPORT_BINDING_UNKNOWN (const), never a silent default. Golden vectors carry placeholder rows only — no live wiring truth is declared here. Registered by CO-03 (TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12) as an additive major. Registration activates no producer and grants no authority; posture unchanged OFF/OFF/OFF/LIVE, DENIED_SAFE_HOLD.",
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "TRANSPORT_BINDINGS"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "bindings": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "consumers": {
+                "items": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "exact_binding": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "logical_topic": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "owner": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "transport_kind": {
+                "enum": [
+                  "TOPIC",
+                  "FILENAME",
+                  "DATABASE_PATH",
+                  "OBJECT_PATH"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "logical_topic",
+              "transport_kind",
+              "exact_binding",
+              "owner"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "bindings_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "bindings_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "unknown_binding_refusal": {
+          "enum": [
+            "TRANSPORT_BINDING_UNKNOWN"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "bindings_id",
+        "revision",
+        "bindings",
+        "unknown_binding_refusal",
+        "bindings_digest"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.transport_bindings.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.transport_bindings.v1",
+  "type": "object"
+}

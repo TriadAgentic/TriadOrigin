@@ -490,6 +490,147 @@
       "producer": "governance-lease-issuer",
       "schema_path": "contracts/schemas/triad.candidate_authority.v1.schema.json",
       "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "operations",
+        "governance",
+        "audit"
+      ],
+      "contract_id": "triad.evidence_view.v2",
+      "producer": "b08-read-face",
+      "schema_path": "contracts/schemas/triad.evidence_view.v2.schema.json",
+      "schema_version": "2.0.0"
+    },
+    {
+      "authority_fenced": true,
+      "consumers": [
+        "triad-e01",
+        "raw-ledger",
+        "replay"
+      ],
+      "contract_id": "triad.raw_venue_event.v2",
+      "producer": "triad-e00",
+      "schema_path": "contracts/schemas/triad.raw_venue_event.v2.schema.json",
+      "schema_version": "2.0.0"
+    },
+    {
+      "authority_fenced": true,
+      "consumers": [
+        "operations",
+        "audit",
+        "deployment-registry"
+      ],
+      "contract_id": "triad.runtime_lifecycle.v2",
+      "producer": "every-runtime-instance",
+      "schema_path": "contracts/schemas/triad.runtime_lifecycle.v2.schema.json",
+      "schema_version": "2.0.0"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "governance",
+        "owner",
+        "audit"
+      ],
+      "contract_id": "triad.signed_recommendation.v1",
+      "producer": "triad-e10-learning",
+      "schema_path": "contracts/schemas/triad.signed_recommendation.v1.schema.json",
+      "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "every-service"
+      ],
+      "contract_id": "triad.transport_bindings.v1",
+      "producer": "contract-governance",
+      "schema_path": "contracts/schemas/triad.transport_bindings.v1.schema.json",
+      "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": true,
+      "consumers": [
+        "e09-orchestrator",
+        "audit"
+      ],
+      "contract_id": "triad.venue_execution_plan.v1",
+      "producer": "triad-e08",
+      "schema_path": "contracts/schemas/triad.venue_execution_plan.v1.schema.json",
+      "schema_version": "1.0.0"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "triad-e03"
+      ],
+      "contract_id": "triad.forecast_request.v2",
+      "producer": "triad-e05",
+      "schema_path": "contracts/schemas/triad.forecast_request.v2.schema.json",
+      "schema_version": "2.0.0",
+      "x_change_order": "CO-03",
+      "x_status": "CONTRACT_RATIFICATION_REQUIRED"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "triad-e05"
+      ],
+      "contract_id": "triad.forecast_response.v2",
+      "producer": "triad-e03",
+      "schema_path": "contracts/schemas/triad.forecast_response.v2.schema.json",
+      "schema_version": "2.0.0",
+      "x_change_order": "CO-03",
+      "x_status": "CONTRACT_RATIFICATION_REQUIRED"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "triad-e06"
+      ],
+      "contract_id": "triad.logos_prompt_packet.v1",
+      "producer": "triad-e05",
+      "schema_path": "contracts/schemas/triad.logos_prompt_packet.v1.schema.json",
+      "schema_version": "1.0.0",
+      "x_change_order": "CO-03",
+      "x_status": "CONTRACT_RATIFICATION_REQUIRED"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "triad-e05"
+      ],
+      "contract_id": "triad.logos_explanation.v1",
+      "producer": "triad-e06",
+      "schema_path": "contracts/schemas/triad.logos_explanation.v1.schema.json",
+      "schema_version": "1.0.0",
+      "x_change_order": "CO-03",
+      "x_status": "CONTRACT_RATIFICATION_REQUIRED"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "triad-e05"
+      ],
+      "contract_id": "triad.logos_contradiction_report.v1",
+      "producer": "triad-e06",
+      "schema_path": "contracts/schemas/triad.logos_contradiction_report.v1.schema.json",
+      "schema_version": "1.0.0",
+      "x_change_order": "CO-03",
+      "x_status": "CONTRACT_RATIFICATION_REQUIRED"
+    },
+    {
+      "authority_fenced": false,
+      "consumers": [
+        "triad-e07"
+      ],
+      "contract_id": "triad.e05_intelligence_bundle.v1",
+      "producer": "triad-e05",
+      "schema_path": "contracts/schemas/triad.e05_intelligence_bundle.v1.schema.json",
+      "schema_version": "1.0.0",
+      "x_change_order": "CO-03",
+      "x_status": "CONTRACT_RATIFICATION_REQUIRED"
     }
   ],
   "identity_schema_version": "origin.identity.v1",

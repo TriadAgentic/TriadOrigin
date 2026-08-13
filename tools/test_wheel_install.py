@@ -149,7 +149,7 @@ import json
 import pathlib
 import triad_origin
 from triad_origin import contracts, bindings
-assert len(contracts.known_contracts()) == 44
+assert len(contracts.known_contracts()) == 56
 assert contracts._CONTRACTS_DIR.name == '_contracts'
 
 # B01C-BIND-03: the binding bundle resolves to the packaged resource, never a repo-relative path.
@@ -193,7 +193,7 @@ for line in manifest_text.read_text(encoding='utf-8').splitlines():
         assert target.is_file(), name
         assert hashlib.sha256(target.read_bytes()).hexdigest() == digest, name
         entries.append(relative)
-assert len(entries) == 148
+assert len(entries) == 184
 actual = {{str(path.relative_to(root)) for path in root.rglob('*') if path.is_file()}}
 expected = set(entries) | {{
     'MANIFEST.sha256',
@@ -233,8 +233,8 @@ for schema_id in contracts.known_contracts():
         print(f"FAIL: isolated wheel smoke failed: {exc}", file=sys.stderr)
         return 1
     print(
-        "OK: sdist-built wheel byte-matches runtime, verifies 148 artifacts, fails closed without "
-        "the full validator, and diagnoses all 44 goldens"
+        "OK: sdist-built wheel byte-matches runtime, verifies 184 artifacts, fails closed without "
+        "the full validator, and diagnoses all 56 goldens"
     )
     return 0
 
