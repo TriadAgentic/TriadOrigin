@@ -1808,6 +1808,104 @@ def b03c_structure_goldens() -> None:
     assert feature["dependency_range"] == {"first_bar_index": 0, "last_bar_index": 2}
 
 
+@stage("b04c_flow_goldens",
+       "B04C: F15 flow.tfi.window.v2 GV-013 unit pair (+2/5 vs +1/13 — the unit-bug trap) + "
+       "F16 flow.ofi.best.v2 GV-F16-01 (OFI +7) with the normalized identity default-OFF (it "
+       "never emits) — capability-sealed on the repaired v2 surfaces")
+def b04c_flow_goldens() -> None:
+    from triad_origin import transition
+    from triad_origin.structures import flow_atoms_v2 as fv2
+    from triad_origin.structures.flow_atoms_v2 import (
+        BookUpdateObservation, TradeObservation, WindowClose, run_f15, run_f16)
+    from triad_origin.e01_interface import validate_trade
+
+    forge = _capability_forge()
+    ctx = forge["ctx"]
+
+    # F15/F16 acceptance requires EVERY live row of the requesting formula ACTIVE, so the full
+    # row set is flipped (empty edit == flip-ACTIVE only); the three/four value rows carry their
+    # SELF_TEST declared values. The genuine registry leaves these rows BLOCKED (honest-dark).
+    f15_edits = {"FPB-0026": {"declared_value": 100}, "FPB-0027": {"declared_value": 2000},
+                 "FPB-0028": {"declared_value": 1}, "FPB-0029": {}, "FPB-0077": {}}
+    f15_bundle = forge["fixture_bundle"](f15_edits)
+    f15_caps = {
+        fv2.PARAM_TFI_WINDOW_TRADES: transition.require_bundle(
+            f15_bundle, "PAR-052", formula_id="F15", ctx=ctx),
+        fv2.PARAM_TFI_WINDOW_MAX_AGE: transition.require_bundle(
+            f15_bundle, "PAR-053", formula_id="F15", ctx=ctx),
+        fv2.PARAM_TFI_MIN_TRADES: transition.require_bundle(
+            f15_bundle, "PAR-054", formula_id="F15", ctx=ctx),
+    }
+
+    def tobs(tid, side, event_time, price, qty):
+        return TradeObservation(
+            trade=validate_trade({"trade_id": tid, "revision": "rev-1",
+                                  "event_time_us": event_time, "aggressor_side": side}),
+            venue="BINANCE", instrument="BTCUSDT", price_ticks=price, qty_steps=qty,
+            metadata_revision="m1", source_event_id=tid)
+
+    def wclose():
+        return WindowClose(w_start=0, w_end=1000, expected_trades=2, watermark_us=1000,
+                           source_event_id="wc")
+
+    def tfi_of(run):
+        feats = [e for e in run.events
+                 if e.get("formula_version") == fv2.F15_FORMULA_VERSION
+                 and e.get("event_kind") == "FEATURE"]
+        assert len(feats) == 1, f"expected one F15 feature, got {feats!r}"
+        return feats[0]
+
+    # GV-013 (a) equal-price: buy atoms 70, sell atoms 30 -> TFI +2/5 reduced.
+    a = tfi_of(run_f15(f15_caps, [
+        tobs("b", "BUY", 100, 1, 70), tobs("s", "SELL", 200, 1, 30), wclose()]))
+    assert a["tfi"] == [2, 5] and a["buy_atoms"] == 70 and a["sell_atoms"] == 30, \
+        f"GV-013(a) wrong: {a!r}"
+    # GV-013 (b) unequal-price: 70 steps @ 100 ticks = 7000 vs 30 steps @ 200 ticks = 6000
+    #   -> TFI +1/13 (a base-quantity computation would claim +2/5 — the unit-bug trap).
+    b = tfi_of(run_f15(f15_caps, [
+        tobs("b", "BUY", 100, 100, 70), tobs("s", "SELL", 200, 200, 30), wclose()]))
+    assert b["tfi"] == [1, 13] and b["buy_atoms"] == 7000 and b["sell_atoms"] == 6000, \
+        f"GV-013(b) unit-bug trap wrong: {b!r}"
+
+    # F16 GV-F16-01: OFI = +7; the normalized identity is a SEPARATE identity behind a
+    # default-OFF lever — with the lever OFF it must NEVER emit.
+    f16_edits = {"FPB-0030": {}, "FPB-0032": {"declared_value": 100},
+                 "FPB-0033": {"declared_value": 1000}, "FPB-0034": {"declared_value": 3},
+                 "FPB-0078": {"parameter_id": fv2.PARAM_OFI_NORM_ACTIVATION,
+                              "parameter_name": fv2.PARAM_OFI_NORM_ACTIVATION,
+                              "semantic_slot": "E2E:F16.ofi_normalized_variant_activation",
+                              "declared_value": fv2.NORM_ACTIVATION_OFF}}
+    f16_bundle = forge["fixture_bundle"](f16_edits)
+    f16_caps = {
+        fv2.PARAM_OFI_WINDOW_UPDATES: transition.require_bundle(
+            f16_bundle, "PAR-056", formula_id="F16", ctx=ctx),
+        fv2.PARAM_OFI_WINDOW_MAX_AGE: transition.require_bundle(
+            f16_bundle, "PAR-057", formula_id="F16", ctx=ctx),
+        fv2.PARAM_OFI_MIN_UPDATES: transition.require_bundle(
+            f16_bundle, "PAR-058", formula_id="F16", ctx=ctx),
+    }
+
+    def bupd(seq, pb, qb, pa, qa):
+        return BookUpdateObservation(
+            sequence=seq, event_time_us=seq * 10, eval_time_us=seq * 10,
+            best_bid_price_ticks=pb, best_bid_qty_steps=qb, best_ask_price_ticks=pa,
+            best_ask_qty_steps=qa, watermark_complete=True, source_event_id=f"u{seq}")
+
+    ofi_run = run_f16(f16_caps, [
+        bupd(0, 100, 5, 101, 7), bupd(1, 100, 8, 101, 7),   # e1 = +3
+        bupd(2, 99, 4, 101, 6), bupd(3, 99, 9, 102, 6)])    # e2 = -7, e3 = +11
+    ofi_feats = [e for e in ofi_run.events
+                 if e.get("formula_version") == fv2.F16_FORMULA_VERSION
+                 and e.get("event_kind") == "FEATURE"]
+    assert len(ofi_feats) == 1 and ofi_feats[0]["ofi_value"] == 7 \
+        and ofi_feats[0]["window_size"] == 3, f"GV-F16-01 OFI wrong: {ofi_feats!r}"
+    # The OFF-lever law: the normalized identity never emits.
+    norm_feats = [e for e in ofi_run.events
+                  if e.get("formula_version") == fv2.F16_NORM_FORMULA_VERSION]
+    assert not norm_feats, \
+        f"the normalized identity emitted with the lever OFF: {norm_feats!r}"
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--list", action="store_true")
