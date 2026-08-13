@@ -56,17 +56,44 @@ Each milestone: a closure-named golden home under `tests/formulas/`, an `e2e_aud
 - `docs/plan/ONBOX-GUIDE.md` — O-1 (CO-10 credential rotation), O-2 (CO-12 salvage), O-3 (B00R
   closure ceremony).
 
-## Final gate (to re-run after CO-06/09 integrate)
+## Independent cross-check closure (ERRATA + DECISIONSREQUIREDv2.0, 2026-08-13)
+Owner-forwarded independent audit ("the answer for the decisions you required"). Cross-checked
+clause-by-clause; posture unchanged `OFF/OFF/OFF/LIVE`, `DENIED_SAFE_HOLD`; no signature/pin/
+credential/receipt fabricated.
+- **ERR-01 (F10) — CLOSED in code + test.** The module already implements the RATIFIED T4
+  mutually-exclusive state reading; added the required property test
+  (`test_fvg_registry_v3.TestErr01MutuallyExclusiveStates` — 10⁵ random pens → exactly one state
+  predicate true, `_state_for` agrees) + a precise docstring. Not a new law (spec-text adoption is
+  D-21's signature).
+- **ERR-02 (F13) — RECORDED OWNER-GATED; code UNCHANGED.** The current module faithfully implements
+  the vendored CORRECTED LAW (`extreme = min over excursion-phase bar lows`, pinned by two tests).
+  The erratum's proposed redefinition contradicts that law + changes `extreme`/`excursion_depth_ticks`
+  bytes consumed by F18 stop logic — a formula-byte semantic change reserved for the owner's D-21
+  signature (a prior spec-amendment PR). Honest note in `excursion_reclaim_v2.py`.
+- **ERR-03 / D-17 (F12) — RECORDED OWNER-GATED; behaviour UNCHANGED.** The BOS-vs-`GENERIC_BREAK`
+  trial-identity resolution is the owner's A/B/C choice (B recommended). Honest note in
+  `order_block_v2.py`.
+- **D-11..D-20 — RECORDED** in `docs/plan/DECISIONS-REQUIRED.md` Part II (v2.0). Origin-scope
+  discipline held: the P0 economic gates (D-12 E07 admission, D-13 E07 stop-width floor) and
+  D-14-exit / D-18 reconciliation / D-19 / D-20 sizing are **cross-estate (E07/E08/E09) / estate
+  acts Origin must NOT build**; D-11 (F18 RR floor), D-16 (capsule order), D-17, D-21 touch Origin
+  and are recorded as owner choices / errata, refusing-in-place.
+- **B03C golden home strengthened.** +7 additive walks of the R-F03/R-F04/R-F09 headline repairs at
+  the B03C golden home (`tests/formulas/test_f02_f09_goldens_b03c.py`, 8→15), each through the same
+  acceptance path as its structure battery; dual-seed green.
+
+## Final gate
 12 required checks: pytest seed 0 + seed 1, collect_test_ids, verify_manifest,
 validate_contract_manifest, verify_reproducible_build, test_wheel_install,
 verify_no_forbidden_capabilities, e2e_audit, verify_source_hashes, build_ledger --verify,
 validate_combined_dag.
 
-**FINAL (fully integrated, clean env, dual-seed): ALL 12 GREEN.** e2e = 30/30 stages;
-verify_source_hashes = 132 pins / 110 required; build_ledger --verify = v1 + v2 authenticated.
-Branch `claude/scorecard-origin-validation-mboymp` pushed (65 commits ahead). PR #36 body rewritten;
-stays DRAFT — owner-gated (B00R root closure, GOV-01 signature, independent review, CO-06 semantic
-owner). No merge performed (none was requested).
+**FINAL (fully integrated, clean env, dual-seed — re-run after the 2026-08-13 cross-check closure +
+the B03C golden-home strengthening): ALL 12 GREEN.** pytest 3,149 tests, seed 0 + seed 1 both exit 0;
+e2e = 30/30 stages; verify_source_hashes = 133 pins / 110 required; build_ledger --verify = v1 + v2
+authenticated; all 10 non-pytest gates OK. Branch `claude/scorecard-origin-validation-mboymp` pushed;
+PR #36 stays DRAFT — owner-gated (B00R root closure, GOV-01 signature, independent review, CO-06
+semantic owner, and the v2.0 register D-11..D-21). No merge performed (none was requested).
 
 ## What only you / a semantic owner can do (never faked)
 See `docs/plan/DECISIONS-REQUIRED.md` (D-1..D-10, D-3b) and `docs/plan/ONBOX-GUIDE.md` (O-1/O-2/O-3):
