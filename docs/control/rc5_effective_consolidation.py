@@ -201,6 +201,19 @@ _C027_REPLACEMENTS = (
     ("activation_manifest.v1", "engine_control_manifest.v2"),
 )
 
+# CO-03 additive-major contract additions that RC5 CARRIES (change-orders doc, CO-03 §5/§6 +
+# acceptance "RC5 bundle's contract union contains all of the above"; "Depends on: CO-01 (RC5
+# carries the additions as additive majors)"). These are NOT RC4 supersessions — they are a
+# SEPARATE, clearly-labelled additive layer applied after the ten families, so the "exactly ten
+# families" conflict-report invariant is untouched. The four other CO-03 union schemas
+# (evidence_view.v2 / raw_venue_event.v2 / runtime_lifecycle.v2 / signed_recommendation.v1) are
+# already present in the RC3 contract_union; only these two were declared as schemas but never
+# folded into the effective union. Fixed order ⇒ byte-stable output.
+_CO03_ADDITIVE_CONTRACT_UNION = (
+    "transport_bindings.v1",
+    "venue_execution_plan.v1",
+)
+
 
 def _rc4_replacement(rc4_bundle: dict, index: int) -> tuple[str, str, str]:
     row = rc4_bundle["supersessions"][index]
@@ -433,6 +446,36 @@ def _apply_contract_union(bundle: dict, family: dict, rc4_bundle: dict) -> list[
             "rc3_extensions.contract_union", "contract_union", before, record_digest(new_union)
         )
     ]
+
+
+def _apply_co03_additive_contracts(bundle: dict) -> list[str]:
+    """Fold the CO-03 additive-major contracts (transport_bindings.v1, venue_execution_plan.v1)
+    into the effective contract union — the additive layer RC5 CARRIES per CO-03. Idempotent and
+    deterministic (fixed order, appended after the RC3 entries), so output stays byte-stable. A
+    provenance row records exactly what was added; the ten RC4 supersession families are untouched.
+    """
+    ext = bundle.setdefault("rc3_extensions", {})
+    union = ext.get("contract_union")
+    if not isinstance(union, list):
+        return []
+    before = record_digest(union)
+    added = [c for c in _CO03_ADDITIVE_CONTRACT_UNION if c not in union]
+    if not added:
+        return []
+    union.extend(added)  # fixed order ⇒ byte-stable
+    ext["rc5_co03_additive_contract_union"] = OrderedDict(
+        [
+            ("change_order", "CO-03"),
+            ("layer", "ADDITIVE_MAJOR_NOT_AN_RC4_SUPERSESSION"),
+            ("reason",
+             "CO-03 §5/§6 declared these contracts; RC5 carries them as additive majors "
+             "(CO-03 acceptance: the RC5 contract union contains all of the above)."),
+            ("added", list(added)),
+            ("before_digest", before),
+            ("after_digest", record_digest(union)),
+        ]
+    )
+    return added
 
 
 def _apply_disposition(bundle: dict, family: dict, rc4_bundle: dict) -> list[dict]:
@@ -698,6 +741,9 @@ def apply(rc3_bundle: dict, rc4_bundle: dict) -> tuple[dict, dict, dict]:
             )
         operation_log.append(entry)
 
+    # CO-03 additive-major contract additions (a SEPARATE layer from the ten RC4 families).
+    co03_added = _apply_co03_additive_contracts(rc5)
+
     # Stamp RC5 provenance/disposition onto the effective bundle (DARK — arms nothing).
     rc5["rc5_provenance"] = OrderedDict(
         [
@@ -714,6 +760,7 @@ def apply(rc3_bundle: dict, rc4_bundle: dict) -> tuple[dict, dict, dict]:
             ("supersession_families_expected", len(families)),
             ("supersession_families_applied", len(families) - len(halted)),
             ("supersession_families_halted", len(halted)),
+            ("co03_additive_contracts_carried", list(co03_added)),
             ("operation_log", operation_log),
         ]
     )

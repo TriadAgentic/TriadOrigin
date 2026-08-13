@@ -373,3 +373,31 @@ def test_ambiguous_supersession_halts_with_typed_conflict_nine_still_land() -> N
     assert results["no_ofi_variant_enabled_boolean"] == "PASS"
     assert results["no_dark_vocabulary"] == "PASS"
     assert results["lever_fields_exact_rc4_enums"] == "PASS"
+
+
+# --------------------------------------------------------------------------- #
+# CO-03 additive-major contracts carried by RC5 (contract-union completeness). #
+# --------------------------------------------------------------------------- #
+
+
+def test_co03_additive_contracts_are_in_the_effective_union() -> None:
+    rc5, _manifest, _conflict, _schema = _compiled()
+    union = rc5["rc3_extensions"]["contract_union"]
+    # The two CO-03 contracts that were declared as schemas but not yet folded into the union.
+    assert "venue_execution_plan.v1" in union
+    assert "transport_bindings.v1" in union
+    # The four other CO-03 union schemas remain present.
+    for c in ("evidence_view.v2", "raw_venue_event.v2",
+              "runtime_lifecycle.v2", "signed_recommendation.v1"):
+        assert c in union, c
+    # It is recorded as a SEPARATE additive layer, never as an eleventh RC4 family.
+    rec = rc5["rc3_extensions"]["rc5_co03_additive_contract_union"]
+    assert rec["change_order"] == "CO-03"
+    assert rec["layer"] == "ADDITIVE_MAJOR_NOT_AN_RC4_SUPERSESSION"
+    assert set(rec["added"]) == {"venue_execution_plan.v1", "transport_bindings.v1"}
+    prov = rc5["rc5_provenance"]
+    assert set(prov["co03_additive_contracts_carried"]) == {
+        "venue_execution_plan.v1", "transport_bindings.v1"}
+    # The ten-family invariant is untouched by the additive layer.
+    assert prov["supersession_families_expected"] == 10
+    assert prov["supersession_families_applied"] == 10

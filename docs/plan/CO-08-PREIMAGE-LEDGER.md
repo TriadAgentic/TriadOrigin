@@ -101,7 +101,8 @@ therefore frozen historical bytes, not an editable claim surface).
 | `docs/SPEC_INDEX.md` — "B00 · Complete/resolve RC2 package…" | "Complete" (verb) | Not an overclaim — milestone scope description, row status reads `BLOCKED / SAFE_HOLD` | none |
 | `docs/control/README.md` — "fails without full coverage/agreement" | "full" | Not an overclaim — a verifier requirement statement | none |
 | `docs/governance/README.md` — "the full no-bypass facts" | "full" | Not an overclaim — access-scoping instruction | none |
-| whole repo | "independently reproducible", "post-RC4 effective" | **Zero occurrences** (grep, case-insensitive) | none |
+| editable claim surfaces | "independently reproducible" | **Zero occurrences** on any editable claim surface (README/plan docs) | none — enforced by `tests/plan/test_no_overclaim.py` |
+| editable claim surfaces | "post-RC4 effective" | **Occurs only in corrective / naming context** — `docs/control/README.md` NAMES `RC5_EFFECTIVE_CONSOLIDATION` as the post-RC4 effective bundle (a true naming, not a package possession-claim) and NEGATES the claim for the RC3 bundle ("neither … is the post-RC4 effective law"); the RC5 compiler docstring names itself. **Not an overclaim.** (The earlier "zero occurrences" row was inaccurate: the CO-08 step-3 correction itself introduced the RC5-naming reference.) | none — the machine guard `tests/plan/test_no_overclaim.py` permits ONLY the RC5-naming / negating context and fails any package possession-claim |
 
 ## 5. CO-08 step 4 — PENDING (external package, owner/packaging act)
 

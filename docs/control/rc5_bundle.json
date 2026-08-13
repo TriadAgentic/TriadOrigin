@@ -54106,7 +54106,9 @@
    "structure_atom.v2",
    "structure_transition.v2",
    "trial_registration.v1",
-   "venue_account_event.v2"
+   "venue_account_event.v2",
+   "transport_bindings.v1",
+   "venue_execution_plan.v1"
   ],
   "external_prerequisites": [
    {
@@ -54601,7 +54603,18 @@
      ]
     ]
    }
-  ]
+  ],
+  "rc5_co03_additive_contract_union": {
+   "change_order": "CO-03",
+   "layer": "ADDITIVE_MAJOR_NOT_AN_RC4_SUPERSESSION",
+   "reason": "CO-03 §5/§6 declared these contracts; RC5 carries them as additive majors (CO-03 acceptance: the RC5 contract union contains all of the above).",
+   "added": [
+    "transport_bindings.v1",
+    "venue_execution_plan.v1"
+   ],
+   "before_digest": "b942e25b47aa71bafe56fe1b41c4ffbb60b3726f974e65d5fd2eb7a97b2657bc",
+   "after_digest": "5c9dc4c3a7fc26e020624b199039bd3a10d1e19b9e3e3ece34d84cad45d57548"
+  }
  },
  "schema": "triad.implementation_control_bundle.effective.v1",
  "sources": [
@@ -147146,6 +147159,10 @@
   "supersession_families_expected": 10,
   "supersession_families_applied": 10,
   "supersession_families_halted": 0,
+  "co03_additive_contracts_carried": [
+   "transport_bindings.v1",
+   "venue_execution_plan.v1"
+  ],
   "operation_log": [
    {
     "family": "ADR-005-ENV-ENUM",
@@ -147276,6 +147293,6 @@
     "result": "PASS"
    }
   ],
-  "output_digest_self_excluded": "225f6e34814c2b5a308c77870d866092841510b77d367c0e63815399df15d164"
+  "output_digest_self_excluded": "8c92512d3f65d579c63652ed8baac0ef3af091831504c2f7c2c7f0383c6febe7"
  }
 }

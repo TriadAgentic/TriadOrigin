@@ -137,7 +137,7 @@
  "supersession_families_applied": 10,
  "supersession_families_halted": 0,
  "halted_families": [],
- "output_digest": "225f6e34814c2b5a308c77870d866092841510b77d367c0e63815399df15d164",
+ "output_digest": "8c92512d3f65d579c63652ed8baac0ef3af091831504c2f7c2c7f0383c6febe7",
  "posture": "OFF/OFF/OFF/LIVE",
  "activation_result": "DENIED_SAFE_HOLD"
 }
