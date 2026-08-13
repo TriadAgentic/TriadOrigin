@@ -191,11 +191,12 @@ def _require_caps(caps: object) -> tuple:
             f"F11 admits only the declared PAR-159 rule "
             f"{common.DECLARED_DISPLACEMENT_CLOSE_LOCATION!r}, "
             f"got {values[PARAMETER_CLOSE_LOCATION]!r}")
-    horizon_bars = _DECLARED_HORIZON_BARS.get(values[PARAMETER_HORIZON])
-    if horizon_bars is None:
+    horizon_value = values[PARAMETER_HORIZON]
+    if not isinstance(horizon_value, str) or horizon_value not in _DECLARED_HORIZON_BARS:
         raise common.StructureLawError(
             f"F11 admits only the declared PAR-157 horizon "
-            f"{DECLARED_DISPLACEMENT_HORIZON!r}, got {values[PARAMETER_HORIZON]!r}")
+            f"{DECLARED_DISPLACEMENT_HORIZON!r}, got {horizon_value!r}")
+    horizon_bars = _DECLARED_HORIZON_BARS[horizon_value]
     body_num, body_den = common.declared_fraction(values[PARAMETER_BODY_FRACTION])
     close_num, close_den = common.declared_fraction(values[PARAMETER_CLOSE_LOCATION])
     return horizon_bars, body_num, body_den, close_num, close_den
