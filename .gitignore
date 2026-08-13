@@ -18,3 +18,4 @@ htmlcov/
 *.checkpoint
 secrets/
 *.env
+.claude/

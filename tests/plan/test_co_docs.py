@@ -121,7 +121,10 @@ def test_co08_claim_surface_corrections_landed():
     control_readme = _text(ROOT / "docs" / "control" / "README.md")
     assert "RC5_EFFECTIVE_CONSOLIDATION" in control_readme
     assert "pre-RC4 supersession" in control_readme
-    assert "REVIEWED_V3" in control_readme
+    # The CO-05 drift stated truthfully: the current ledger token is CANDIDATE_V3 (the review
+    # file still binds the frozen REVIEWED_V2 subject) — "REVIEWED_V3" does not exist anywhere.
+    assert "CANDIDATE_V3" in control_readme
+    assert "CO-05" in control_readme
     inventory = _text(PLAN / "06_RC2_SOURCE_INVENTORY.md")
     assert "CO-08 correction" in inventory
     assert "PARTIAL" in inventory
