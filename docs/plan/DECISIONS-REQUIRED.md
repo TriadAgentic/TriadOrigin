@@ -235,6 +235,41 @@ is now closed; the register is not — eight of ten UC rows are stale, refuted, 
 
 ---
 
+### II·I · The adjustment set (WO-D1 / WO-D2 / WO-X1 / WO-X2 · UC-11)
+
+Vendored byte-identically at `docs/repair/TRIAD_ADJUSTMENT_SET_2026-08-13.md`
+(sha256 `08ce7d87…`); reproduced and dispositioned in
+`docs/repair/IMPLEMENTATION-REPORT-2026-08-14.md` §2. Headline: **a markedly better document than
+the structural-defect repair — it attests its own numbers as a MODEL and forbids the one thing an
+agent must not do — and its two READY work orders are built. Four defects were found by reproducing
+its own arithmetic, and one of them is already live in the bank.**
+
+| Item | Disposition |
+|---|---|
+| **WO-D1 (drawdown metric suite)** | **BUILT (TriadLearning `analysis/drawdown/`, 95 tests).** Eleven metrics + the bank adapter + a SELECT-only sequence query + the reference model. Three documented corrections to the work order as written: the ulcer index in **percent** is honest-null (the R-unit series has no percentage basis), a censored recovery is **labelled** rather than reported as a duration, and duplicate `decision_id`s are **refused**, never deduped. |
+| **WO-X1 (exit-cause decomposition)** | **BUILT (TriadLearning `analysis/exit_capture/`, 41 tests).** Two proposed buckets are structurally underivable and are named as coverage gaps rather than invented (`TRAIL_TRIGGERED` cannot exist — a trail closes as `sl`, and the D3(c) trail is `trail_dark`; `TARGET_FILLED_PARTIAL` needs the DARK fill.v2 lineage plane). Six real causes the work order omits — kill · breaker · invalidation · reconcile · expiry_7d · liq — are each named rather than swept into the leftover bucket the work order itself forbids. |
+| **WO-X2 (the ladder cohort)** | **NOT BUILT.** Its own entry gate (`WO-X1 published`) is not met, and `ladder_60_40` already ships as the ACTIVE exit profile with multi-leg TP armed since 2026-07-31 — so the "add a ladder cohort" framing is behind the estate. |
+| **F1 · the comparison table charges two costs** | **RECORDED.** Four of five Part-1 rows reproduce at `c = 0.20 R`; the status quo row reproduces only at `c = 0.1444` (`= (2.0 + 4.5)/45`, a maker-in/taker-out round trip) — **28 % less cost than every alternative it is compared against**. At a common `c`, its EV is `−0.0009` (not `+0.0547`) and its median drawdown `−34.8 R` (not `−26.0 R`). The direction runs AGAINST the document's own conclusion, so this is an error, not a thumb on the scale — but the ladder's drawdown advantage is **45 %, not 25 %**. |
+| **F2 · the cost basis is a retired anchor** | **RECORDED.** `c = 0.20` is `9 bps / 45 bps`; the live per-trade floor has been **67 bps since 2026-07-31** (CG-STOP-FLOOR-67). And `9` is not a vendored named quantity — `fee_model.v1.json` names `maker_maker 4 · maker_taker 7 · taker_taker 10` and carries its own instruction, *"names are law: consumers import a NAMED quantity, never a bare number."* At the live floor the review's `c` is **1.91×** the vendored `maker_taker`. |
+| **F3 · `INV-3` refutes the document's own recommendation — and the defect is ALREADY LIVE** | **RECORDED · money-line-adjacent, OWNER-GATED.** The work order calls leg-aware fees *"the single most important line in the work order"* and then charges the two-leg ladder one exit fee. Charged consistently, the ladder is no longer second on EV/σ. **More importantly the same defect is already in the bank:** `simulate_ladder` (the `P-LADDER` shadow cohort) accumulates **gross R with no fees at all** and its writer has no `pnl_r_net` column, while the base cohort **is** fee-netted — so the two cohorts are **not fee-comparable today**, and any P-LADDER-vs-base comparison already published overstates the ladder. Fixing it changes recorded research outputs, so it is yours to schedule, not an agent's to repair. |
+| **F4 / UC-11 · the −15R cap is not a drawdown latch** | **RECORDED · the `√n` argument SURVIVES.** Verified at `pilot_caps.rs:57`: the latch compares `realized_r` — the running **SUM** since the arm ceremony, `window_days: None` so the window never rolls — against `−15`, latches stickily, and refuses **new entries only** (no flatten). The document compares median max **drawdown** against the same number. They diverge in a specific direction: *a book that runs +20R then −30R does not breach; a book that grinds straight to −15R does.* **Early winners permanently buy latitude.** Two operational facts recorded with it: the `−15` literal has **three uncoupled copies** (Rust · `caps_state_writer.py` · `live_lane.py`), and `TRIAD_CAPS_WINDOW_START_US` is set by **no deploy script**. |
+| **WO-D2 (the −15R cap options)** | **REFUSED — as the document itself instructs** (*"record all three options, implement none"*, and *"do not widen a safety cap under agent authority — ever, under any argument, including this document's"*). **This is your decision, D-25 below.** |
+| **F5 · the operating point pairs two populations** | **RECORDED.** `W = 1.818` is not measured — it is back-solved from the frozen 54.4 % / +0.533R baseline constant. `42.55 %` **is** measured, on a different cut (Gate ACCEPTED, **n = 47**) whose own verdict is `HOLD_NOT_DISTINGUISHABLE` at 34 % of its bar. Pairing them is a never-blend violation on both the population and the generation axis, so every table built on the pair is a model, not a measurement — which the document states, and which this note preserves. |
+| **F6 · four exit vocabularies** | **RECORDED · measurement debt.** `outcome.v1.exit_reason` (8) · `outcome.v1.exit_kind` (5, a **second** field on the same record) · `shadow.terminal_reason` (3, the only CHECK-enforced one) · `exit_trigger.v1.reason` (9). `stop` and `sl` are one event spelled two ways on one record, and **`live.trades.exit_reason` was deliberately left without a CHECK** while shadow's got one — so the live lane's vocabulary is enforced nowhere. `TARGET_FILLED_SLIPPED` is additionally **identically 0 on the shadow lane by construction** (the resolvers *assign* `exit_px = tp1_px`), so only the live lane can measure slippage at all. |
+
+#### D-25 · The −15R cap semantics (NEW · money-line · Executor · OWNER ONLY)
+
+| | |
+|---|---|
+| **The finding** | The cap is a **cumulative-sum floor**, not a drawdown floor, and it is compared in the review against a **drawdown** distribution. Under the document's own model the probability of a book with genuine positive edge eventually touching a fixed −15R sum over an unbounded window approaches certainty — that is the `√n` argument, and it survives the correction. |
+| **The three options (recorded, none implemented)** | **A** — scale the floor with `√n`. **B** — cap on *departure from the preregistered distribution* rather than on a fixed depth (the document's own recommendation). **C** — keep −15R and restate its meaning as "a hard capital stop, not a drawdown tolerance". |
+| **Why no agent may act** | Every option is a **widening or a re-scoping of a safety cap** (ARM-02 §5 · GOV-01). The document forbids it explicitly; so does this repo's law. An agent may build the measurement that informs the choice — that is `WO-D1`, and it is built. |
+| **Prerequisite before any option is priceable** | The three uncoupled `−15` copies need one coupling row, and `TRIAD_CAPS_WINDOW_START_US` needs a deploy-script owner — otherwise "the window" in options A and B has no single definition to change. |
+| **Blocks** | Nothing today. The cap is armed and behaving as written. |
+| **Status** | OPEN |
+
+---
+
 ## Where the mechanisms live (so you can verify each refusal yourself)
 
 - **Every `PROPOSED_MUST_RATIFY` value** refuses via `BLOCKED_ON_RATIFY(<param>)` in its formula
