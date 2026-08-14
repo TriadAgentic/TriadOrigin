@@ -197,6 +197,44 @@ vendored in `docs/repair/`. Their Origin-scope dispositions:
 
 ---
 
+### II·H · The structural-defect repair (UC-01…UC-10 / VG-01…VG-04 / WO-S1…WO-S8)
+
+The owner supplied `TRIAD_STRUCTURAL_DEFECT_REPAIR_2026-08-13` ("unreconciled constants" +
+"vacuous gates" + eight work orders), vendored in `docs/repair/`. A 13-agent read-only pass ran
+against the live code of all five repos **before** any repair was written; the full disposition is
+`docs/repair/STRUCTURAL-DEFECT-CROSSCHECK-2026-08-13.md`. Headline: **the meta-defect is real and
+is now closed; the register is not — eight of ten UC rows are stale, refuted, or mis-framed.**
+
+| Item | Disposition |
+|---|---|
+| **UC-01 (governor hardcodes RR 2.5 · 44 net_rr refusals)** | **REFUTED, both halves.** The governor holds no RR literal — it consumes the caller's floor (serde default tracks the vendored 2.0, reconciled 2026-07-29; the live path passes the per-profile `ladder_60_40` 1.7). And `net_rr` is `None` at every production construction site, so the 6b check cannot fire at all. |
+| **UC-02 (min_stop 45 vs 67)** | **STALE.** 67 in all four planes since CG-STOP-FLOOR-67 (2026-07-31, contracts 1.24.0/1.25.0), CI-checked by `verify_alignment.py §15c`. This is the repair the estate already performed. |
+| **UC-04 (`MAX_COST_R = 1/5` sets the ceiling at the edge)** | **REFUTED — and it is the document's load-bearing row.** `MAX_COST_R` has **zero occurrences** anywhere in the estate; the derivation `MIN_STOP_WIDTH = H / MAX_COST_R` is not implemented. `WO-S2` would have written a new derivation into the money line to repair arithmetic nothing performs. |
+| **UC-03 (risk_pct_equity dead)** | **OWNER-GATED policy interaction, not an unreconciled constant.** The margin cap is deliberate and shrink-only; risk sizing still bounds qty by stop distance. Whether the combination under-risks is your capital decision (the document's own `WO-S4` agrees). |
+| **UC-05 (admission 8.4/min)** | **CONFIRMED as a real limiter · OWNER-GATED.** Already registered as CG-ADMISSION-CAPACITY-PROFILE. Widening it means arming `profiled` against a MEASURED on-box capacity artifact that does not exist; the mode fails closed without one. An agent may build the measurement, never the widening. |
+| **UC-06 (side policy at selection)** | **REFRAMED.** Long-only is the ratified LIVE30-PROFITABLE-ONLY settlement (2026-08-06). SHORT is not foreclosed — it accrues on `candidates.shadow` precisely so the decision stays revisable on evidence, which answers the row's "prevents its own repair" concern. |
+| **UC-07 (fee constant)** | **PARTIALLY CONFIRMED · BUILT.** Vendored `fee_model.v1.json` taker = **5**; the one unmanaged copy is `edge_jobs.DEFAULT_TAKER_FEE_BPS = 4.5`. Locked as a SEALED DIVERGENCE (both values pinned), **not equalised** — moving the research default moves already-computed research outputs, which is yours to decide. |
+| **UC-08 (min notional)** | **REFRAMED · BUILT as CG-MIN-NOTIONAL.** The real finding is five sites, no coupling row, and **two different laws**: the config floor is a sizing BUMP, the venue floor was a refusal that was REMOVED (`ecc942d`) leaving its whole input path computed and read by nothing. Four comments — including two operator CLI help strings and a test **name** — still promised the removed skip; corrected. **Two owner-gated findings raised: D-24 below.** |
+| **UC-09 / UC-10 / VG-03 (CI hygiene)** | **CONFIRMED — the only rows that verify.** Already dispositioned in §II·G (M-1 `WO-P` escalation; M-2 `CG-LINT-RATCHET` built, deliberately unwired pending runner regeneration). |
+| **VG-01 (F15 coverage ratio)** | **OWNER-GATED AMENDMENT (`WO-J`, unchanged).** Emitting `NULL{COVERAGE_UNVERIFIABLE_RPI}` changes emitted bytes — LAW-9. |
+| **VG-02 (`get_sim_gap` vacuous HONEST)** | **BUILT — additively.** `verdict_basis` (`VACUOUS_PRE_LIVE`/`MEASURED`) + `measured` now ship beside the verdict. The `verdict` TOKEN is deliberately unchanged: moving it flips `test_databank_local.py:360`, making it an amendment (LAW-9 — bytes, not correctness). |
+| **VG-04 (`matrix_off = 0`)** | **ACCEPTED as written.** The sharpest observation in the document: a check that is correct, passing, and measuring a question that was never the suppressor. |
+| **WO-S8 (the CI ratchet) — the meta-defect's own example** | **BUILT (TriadLearning `triad_param_census.py` + `data/param_baseline.v1.json`).** Engine 552 / executor 861 frozen; `MIXED-ABS-REL` pinned at ZERO regardless of the baseline; an absent sibling tree is a NAMED refusal, and `--allow-absent` skips LOUDLY stating the run proves nothing. Stamped `AUTHORITATIVE_DETERMINISTIC` (stdlib regex — no tool-version skew), unlike the lint baseline. |
+| **"Unblock all 30 symbols"** | **NOT AGENT-EXECUTABLE — and the premise does not hold.** The 30 are already unblocked at every symbol-scoped gate (matrix 90 ON cells ×4, LIVE30 registry + all 12 views at 30, no lane carries a symbol field, canary default-OFF). The binding limiters are (1) portfolio concurrency `max_open_positions=10` / `per_symbol=1` / `max_net_exposure_quote=50000`, (2) the 8.4/min admission bucket, (3) the ratified money-lane cell scope — **all three GOV-01 widenings.** The free first act is diagnostic: read `TRIAD_LIVE_SETUPS` on the box. |
+
+#### D-24 · The min-notional behaviour reconcile (NEW · money-line · Executor)
+
+| | |
+|---|---|
+| **The finding** | Two defects surfaced by CG-MIN-NOTIONAL, both raised and deliberately NOT fixed. **(a)** `CHECKPOINTS.md:128` seals the 5→20 raise as "sub-$20 now *skips cleanly* instead of a venue reject" — the governor has never skipped, it **bumps** (rounds a sub-floor order UP via `ceil_to_lot(floor / entry_mid)`). **(b)** That bump raises risk above `risk_pct_equity`, because the size is no longer the risk-derived size. |
+| **Origin scope** | **OUT-OF-ORIGIN.** Money-line behaviour in `TriadExecutor governor.rs`; Origin owns no execution layer. Recorded here because (a) touches the estate checkpoint ledger, which is tamper-evidence and is never edited. |
+| **What only you can do** | Decide the reconcile for (a): make the code SKIP as the ledger describes, or record that the ledger row's description was wrong at seal time. Either is a decision; neither is an agent repair (LAW-9 — changing bump→skip changes money-line behaviour). For (b), decide whether the bump is acceptable at all, or whether a sub-floor take should refuse. |
+| **Magnitude (b)** | Currently latent, stated honestly rather than as an alarm: at 2 % risk and the `[67,120]` bps band, the bump only engages below roughly **$7** equity. It is a real defect at small equity, not a live one today. |
+| **Blocks** | Nothing today. It blocks the claim that the ledger and the code agree. |
+| **Status** | OPEN |
+
+---
+
 ## Where the mechanisms live (so you can verify each refusal yourself)
 
 - **Every `PROPOSED_MUST_RATIFY` value** refuses via `BLOCKED_ON_RATIFY(<param>)` in its formula
