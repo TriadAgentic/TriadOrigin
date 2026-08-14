@@ -14,6 +14,115 @@ loudly and names the refusal — it does not guess.
 
 ---
 
+## 0 · Owner instruction of 2026-08-14 — RECORDED, and exactly how far it reaches
+
+> *"#36 approved and B00R close it"* — account owner (leesbak@gmail.com), in session.
+
+**Recorded as a real owner instruction. Acted on to its lawful limit, and no further.** What it
+does and does not reach is set out below, because the honest boundary this whole register exists to
+hold is that **an approval expressed in a chat is not a cryptographic act** — the estate's own
+doctrine states it plainly: *an email is not authentication* (GOV-01 §2.2 — the account-owner
+consent line **follows the key**, it does not replace it).
+
+### What was done on this instruction
+
+* **PR #36 was taken out of draft** and review was formally requested from **@djordi10**, the
+  CODEOWNER of every governance surface it touches. That is the one mechanical step an owner
+  approval unlocks, and it merges nothing.
+* This record was written. Nothing else changed: no signature was created, no tag was published, no
+  gate was bypassed, no posture moved.
+
+### Why #36 still cannot merge — three structural facts, each verified
+
+| # | Fact | Evidence |
+|---|---|---|
+| 1 | **PR #36 has no human review of any kind.** The only review event is an automated Codex bot **comment** (`state: COMMENTED`, not `APPROVED`) — and it is against `6e831f71`, which is **stale**: head is now `505e209`. | `pull_request_read --method get_reviews` |
+| 2 | **You cannot approve it: you are its author.** #36's author is `likosubakti`. GitHub does not permit self-approval, and the B00R gate names this exact case a stop condition — `BLOCKED_REVIEW_SAFE_HOLD` for an approval that is *"absent, self-authored, stale, or not exact-head"*. `D-7` (reviewer ≠ author) is therefore structurally unmet by any act of yours. | `.github/CODEOWNERS`; `docs/governance/B00R_EXTERNAL_AUTHORITY_AND_CLEAN_RUNNER_HANDOFF.md` §11 |
+| 3 | **CODEOWNERS says so in its own words:** *"@djordi10 has live administrator permission on this repository and is not the corrective PR author. Native exact-head review remains mandatory; this file is not evidence that review happened."* | `.github/CODEOWNERS` |
+
+`mergeable_state` reads `clean` and the green button is live. **That is precisely the condition the
+PR body warns about** — *"Do not merge on a green button."* It is also worth stating that #36's base
+is `agent/b00r-generation-2-forward-repair`, **not `main`**, so merging it would not close B00R even
+if every review gate were satisfied.
+
+### B00R: the machine verdict is `BLOCKED`, and the gate says source mode can never close it
+
+`tools/b00r_gate.py --mode source --expected-head 505e209 …` was run at this head. Fifteen checks
+PASS — including `tests_seed0: 3150 passed` / `tests_seed1: 3150 passed`, `e2e_audit: all 30 stages
+passed`, `reproducible_build`, `wheel_install`, `dark_capability`, `historical_evidence`. Then:
+
+```
+[BLOCKED] codeowners_identity:   CODEOWNERS_PROVIDER_IDENTITY_UNAVAILABLE:LIVE_PERMISSION_HTTP_STATUS:401
+[BLOCKED] authority_root:        UNAVAILABLE_AUTHORITY_ROOT: authority_bundle:EXTERNAL_PIN_ABSENT:AUTHORITY_BUNDLE_G2_DECISION_SHA256
+[BLOCKED] governance_snapshot:   UNAVAILABLE: GOVERNANCE_PROVIDER_RAW_OR_EXTERNAL_PIN_ABSENT (main.ruleset.provider.json)
+B00R result: BLOCKED
+SOURCE mode is engineering diagnostics only and can never close B00R. Fail-closed BLOCKED.
+```
+
+**The gate's own last line is the answer to "close it":** source mode *cannot* close B00R by
+construction, no matter how green it runs. Only the post-merge **terminal receipt sequence** can,
+and only from a clean checkout of a merged receipt PR.
+
+| act | state | evidence |
+|---|---|---|
+| Authenticate the three root decisions (`DEC-AUTHORITY-BUNDLE-002` · `DEC-B00-REPAIR-002` · `DEC-RECEIPT-PROFILE-002`) | **DONE in-repo** | commit `de9f6ae` *"authenticate generation-2 authority root"*, authored by **josephvoxone** 2026-08-12; each file carries `authenticated: true` and an Ed25519 `signature_hex` under `key_id: owner-ed25519-2026` |
+| Externally pin the g2 trust registry | **ASSERTED, NOT VERIFIABLE HERE** — the commit says *"pins set externally as Actions Variables"*, but the gate reports `EXTERNAL_PIN_ABSENT: AUTHORITY_BUNDLE_G2_DECISION_SHA256`. That is expected off-runner (the pin lives in the CI environment), so this session can confirm the artifact exists but **cannot confirm the pin is live.** It must be re-proved on the runner. | `receipt_trust_registry.g2.v1.json` present + `authenticated: true`, three keys; gate `authority_root` BLOCKED |
+| Install the no-bypass `main` ruleset | **ASSERTED, NOT VERIFIABLE HERE** — commit `6191b65` captured a live provider object (*"merge-only, canary ref included, bypass empty"*), but the gate reports the raw-or-pin pair absent in this environment. Same caveat: re-prove on the runner. | gate `governance_snapshot` BLOCKED |
+| **Threshold-sign receipt-v3 → publish `B00R_RECEIPT_ANCHOR_G2`** | **NOT DONE — and not startable here** | see below |
+
+I am stating the middle two as *asserted* rather than *done* deliberately. Their commit messages
+claim the external half was performed; the only mechanism that can confirm it returns
+`EXTERNAL_PIN_ABSENT` from this environment. Recording them as closed on the strength of a commit
+message would be precisely the kind of unearned green this generation-2 repair exists to eliminate.
+
+**The fourth act is the whole remaining gate, and none of it can be produced here.** Four
+independent artifacts are absent:
+
+1. **`evidence/receipts/B00R.g2.receipt.v3.json` does not exist.** Only the generation-1
+   `B00R.receipt.v3.json` is present, and `CLAUDE.md` is explicit that *"the generation-1
+   `B00R_RECEIPT_ANCHOR` is historical evidence, never a B01C predecessor."*
+2. **It needs a 2-of-2 threshold signature.** `governance.py` pins `threshold == 2` over roles
+   exactly `["EVIDENCE_PRODUCER", "INDEPENDENT_COUNTERSIGNER"]` — i.e. Ed25519 signatures from
+   `producer-ed25519-2026` **and** `countersigner-ed25519-2026`. Both are `@uponlytrader.com`
+   identities in the g2 registry. **Neither key is the account-owner key that issued this
+   instruction, and no key is held by this session.**
+3. **`evidence/B00R_G2/tag_ruleset.provider.json` does not exist** — the no-bypass tag ruleset
+   targeting `refs/tags/B00R_RECEIPT_ANCHOR_G2` has not been installed or captured, and its provider
+   `updated_at` must be strictly **before** the signed receipt's `observed_at_us`, so it cannot be
+   back-filled after the fact.
+4. **The tag `B00R_RECEIPT_ANCHOR_G2` does not exist** — locally or on the remote. Only the
+   generation-1 `B00R_RECEIPT_ANCHOR` is published.
+
+Fabricating any one of them would be the exact failure this repository was rebuilt to make
+impossible. The lawful state is a **named refusal**, and it is named here.
+
+### The remaining sequence, in order (all owner / clean-runner acts)
+
+0. Re-run `b00r_gate --mode source` **on the CI runner**, where the external pins and a permissioned
+   token exist, to convert the three environment-BLOCKED checks into real PASS/FAIL. Off-runner they
+   are `UNAVAILABLE`, which is neither.
+1. Merge #36 **after** @djordi10's exact-head CODEOWNER approval — the source merge.
+2. Install the tag ruleset on `refs/tags/B00R_RECEIPT_ANCHOR_G2` (no exclusions, update **and**
+   deletion blocked), capture its raw provider object to `evidence/B00R_G2/tag_ruleset.provider.json`,
+   and externally pin those exact bytes as `B00R_G2_TAG_RULESET_SHA256`. **Do this before signing.**
+3. Produce `evidence/receipts/B00R.g2.receipt.v3.json` and threshold-sign it 2-of-2
+   (`producer-ed25519-2026` + `countersigner-ed25519-2026`).
+4. Open and merge the **receipt PR** (evidence-only content; mixed or historical content fails
+   `FAIL_RECEIPT_LAYOUT`).
+5. Create the annotated tag on the exact receipt merge, message bytes exactly as
+   `B00R_EXTERNAL_AUTHORITY_AND_CLEAN_RUNNER_HANDOFF.md` §10 specifies — no `-s`, no repeated `-m`,
+   no reordered fields, no missing terminal newline. Publish once, never repoint.
+6. Run the terminal gate from a clean checkout of the receipt merge:
+   `python tools/b00r_gate.py --mode receipt --base-sha "$SOURCE_MERGE" --expected-head "$RECEIPT_MERGE" --receipt-pr "$RECEIPT_PR" --now-us "$NOW_US" --pins "$PINS_JSON" --provider-pin "$MAIN_RULESET_EVIDENCE_SHA256" --anchor-ruleset-pin "$B00R_G2_TAG_RULESET_SHA256"`
+
+**Only that terminal sequence may return `PASS_REPOSITORY_SAFE_HOLD`** — the only permitted B00R
+result. Until it does, B01C stays frozen and posture stays `DENIED_SAFE_HOLD`, `OFF/OFF/OFF/LIVE`.
+
+Full operator detail: `docs/governance/B00R_EXTERNAL_AUTHORITY_AND_CLEAN_RUNNER_HANDOFF.md` §§9–11
+and `docs/plan/ONBOX-GUIDE.md` O-3.
+
+---
+
 ## A · Signatures & ratifications (cryptographic — only you hold the key)
 
 | # | Decision | What I built (refusing in place) | What only you can do | Blocks |
