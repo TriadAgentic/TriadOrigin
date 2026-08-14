@@ -1,0 +1,180 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "triad.origin.v7.plan/outcome.v3.draft.schema.json",
+  "title": "outcome.v3 (DRAFT — F23 §E.4 encoding, CO-04)",
+  "x-status": "DRAFT_FOR_E10_OWNER — publication is the E10 service's act (CO-04), dual-write v2+v3, readers cut over by signed supersession",
+  "x-disposition": "DRAFT / PENDING_OWNER_PUBLICATION — this file lives under docs/plan/ and is input material only. It is NOT a published contract, is NOT part of the contracts/ bundle, grants no authority, and never enters a validator path as effective law. outcome.v2 remains the historical published bytes until the E10 owner's signed supersession.",
+  "x-provenance": "TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 §E.4 (outcome.linear_usdm.v1 schema conflict resolution) under TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12 CO-04; Origin-vendored via docs/plan/PART-E-OWNER-SERVICE-CORRECTIONS.md.",
+  "description": "F23 §E.4: outcome.v2's integer-string, unitless money fields cannot encode the golden (0.2, -0.1, net 5.1). outcome.v3 is the additive major in which every money field is an exact reduced rational {num: int64-string, den: int64-string} with a declared quote unit and mandatory fee-conversion mark preimages. LAWS BOUND WITH THIS SCHEMA (enforced by the E10 owner's semantic validator beside shape validation; JSON Schema alone cannot express them all): (1) CONSERVATION — quantity conservation sum(entry_qty_steps) == sum(exit_qty_steps) is required for status COMPLETE; a non-conserved outcome may never be COMPLETE. (2) TERMINAL — COMPLETE is terminal; a terminal outcome's money fields are frozen; the emergency cohort is permanently separate and never pools with the non-emergency cohort. (3) NULL — R_net is NULL when initial risk is unknown or <= 0; markout_bps(h) is NULL when the causal mid mark at horizon h is unavailable; a NULL is an honest absence, never a fabricated zero. (4) IDENTITY — SHADOW/PAPER/TESTNET/LIVE execution identity is mandatory and never mixed. GOLDEN: gross 6 - fees 1 + rebates 0.2 + funding (-0.1) = 5.1 encodes as {\"num\":\"51\",\"den\":\"10\"}.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "outcome_id",
+    "execution_identity",
+    "emergency_cohort",
+    "order_side_sign",
+    "quote_unit",
+    "gross_pnl",
+    "fees",
+    "rebates",
+    "funding",
+    "net",
+    "fee_conversion_marks",
+    "quantity_conservation",
+    "status",
+    "initial_risk_quote",
+    "r_net",
+    "fill_cost_bps",
+    "markout_bps"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "outcome.v3-DRAFT",
+      "description": "DRAFT discriminator. The E10 owner's published major replaces this with the published version string at publication; no reader may treat a *-DRAFT record as effective."
+    },
+    "outcome_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Immutable outcome identity assigned by the E10 owner service."
+    },
+    "campaign_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional reference to the owning campaign/subject record (E10 owner's identity law)."
+    },
+    "instrument_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional instrument identity per the estate contract catalog."
+    },
+    "execution_identity": {
+      "enum": ["SHADOW", "PAPER", "TESTNET", "LIVE"],
+      "description": "IDENTITY LAW (§E.4): mandatory and never mixed. An aggregation that pools two identities is invalid at the semantic validator; this field never defaults."
+    },
+    "emergency_cohort": {
+      "type": "boolean",
+      "description": "EMERGENCY COHORT LAW (§E.4): the emergency cohort is permanently separate. true rows never pool with false rows in any downstream read, learning, or attribution surface."
+    },
+    "order_side_sign": {
+      "enum": [1, -1],
+      "description": "Signed side convention entering fill_cost_bps and markout_bps: +1 buy/long, -1 sell/short."
+    },
+    "quote_unit": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Declared quote unit for EVERY money field in this record (e.g. USDT). A money field without this declared unit is meaningless; unit conversion preimages live in fee_conversion_marks."
+    },
+    "gross_pnl": { "$ref": "#/$defs/exact_rational", "description": "Gross PnL in quote_unit. Golden component: 6." },
+    "fees": { "$ref": "#/$defs/exact_rational", "description": "Total fees in quote_unit (signed convention: fees reduce net). Golden component: 1." },
+    "rebates": { "$ref": "#/$defs/exact_rational", "description": "Total rebates in quote_unit. Golden component: 2/10." },
+    "funding": { "$ref": "#/$defs/exact_rational", "description": "SIGNED funding in quote_unit (§E.4 signed-funding law). Golden component: -1/10." },
+    "net": {
+      "$ref": "#/$defs/exact_rational",
+      "description": "Net = gross_pnl - fees + rebates + funding, computed in exact rational arithmetic — never floating point. GOLDEN: gross 6 - fees 1 + rebates 0.2 + funding (-0.1) = 5.1 encodes exactly as {\"num\":\"51\",\"den\":\"10\"}."
+    },
+    "initial_risk_quote": {
+      "oneOf": [{ "$ref": "#/$defs/exact_rational" }, { "type": "null" }],
+      "description": "Initial risk in quote_unit at decision time; null when unknown. NULL LAW: when null or <= 0, r_net MUST be null."
+    },
+    "r_net": {
+      "oneOf": [{ "$ref": "#/$defs/exact_rational" }, { "type": "null" }],
+      "description": "R_net = net / initial_risk_quote. NULL LAW (§E.4): NULL when initial risk is unknown or <= 0 — never a fabricated zero, never a division by an invented risk."
+    },
+    "fill_cost_bps": {
+      "oneOf": [{ "$ref": "#/$defs/exact_rational" }, { "type": "null" }],
+      "description": "fill_cost_bps = order_side_sign x (fill - decision_ref)/decision_ref x 10^4, exact rational; null when the decision reference is unavailable (honest absence)."
+    },
+    "markout_bps": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^h[0-9]+(ms|s|m)$": {
+          "oneOf": [{ "$ref": "#/$defs/exact_rational" }, { "type": "null" }],
+          "description": "markout_bps(h) = order_side_sign x (mid_{t+h} - fill)/fill x 10^4. NULL LAW (§E.4): NULL when the causal mid mark at horizon h is unavailable — a missing mark is never interpolated or fabricated."
+        }
+      },
+      "description": "Per-horizon markouts keyed by horizon token (e.g. h1s, h5m). Every value is an exact rational or null under the causal-mark null law."
+    },
+    "fee_conversion_marks": {
+      "type": "array",
+      "description": "MANDATORY fee-conversion mark preimages (§E.4): every conversion of a fee/rebate/funding amount from its native asset into quote_unit records the exact mark used, its source, and its time — the preimage that makes the converted money field reproducible. Empty ONLY when every money component was natively denominated in quote_unit (no conversion occurred).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["native_asset", "mark", "mark_source", "mark_time"],
+        "properties": {
+          "native_asset": { "type": "string", "minLength": 1 },
+          "mark": { "$ref": "#/$defs/exact_rational", "description": "Exact conversion mark native_asset -> quote_unit." },
+          "mark_source": { "type": "string", "minLength": 1, "description": "Named mark source (venue mark/index identity); never an unnamed number." },
+          "mark_time": { "type": "string", "minLength": 1, "description": "Causal mark timestamp (must not postdate the conversion it prices)." }
+        }
+      }
+    },
+    "quantity_conservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry_qty_steps_sum", "exit_qty_steps_sum"],
+      "properties": {
+        "entry_qty_steps_sum": { "$ref": "#/$defs/uint_string", "description": "Sum of entry quantity steps (exact integer string)." },
+        "exit_qty_steps_sum": { "$ref": "#/$defs/uint_string", "description": "Sum of exit quantity steps (exact integer string)." }
+      },
+      "description": "CONSERVATION LAW (§E.4): sum(entry_qty_steps) == sum(exit_qty_steps) is REQUIRED for status COMPLETE. The equality is enforced by the E10 semantic validator; a non-conserved record presenting status COMPLETE is invalid."
+    },
+    "status": {
+      "enum": ["OPEN", "COMPLETE", "QUARANTINED"],
+      "description": "TERMINAL LAW: COMPLETE is terminal and requires quantity conservation; QUARANTINED marks a record failing a semantic law (never silently dropped, never silently completed). Enum finalization is the E10 owner's publication decision."
+    }
+  },
+  "$defs": {
+    "int64_string": {
+      "type": "string",
+      "pattern": "^-?(0|[1-9][0-9]{0,18})$",
+      "description": "Signed integer as a decimal string. Range law (semantic validator): must fit int64 [-9223372036854775808, 9223372036854775807]; the pattern bounds digit count, the validator bounds the value. Never a JSON number — floating point never touches a money field."
+    },
+    "uint_string": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,18})$",
+      "description": "Unsigned integer as a decimal string; int64 range enforced by the semantic validator."
+    },
+    "exact_rational": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["num", "den"],
+      "properties": {
+        "num": { "$ref": "#/$defs/int64_string" },
+        "den": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,18}$",
+          "description": "Strictly positive denominator as a decimal string (int64 range); zero and negative denominators are unrepresentable."
+        }
+      },
+      "description": "EXACT REDUCED RATIONAL (§E.4): value = num/den with gcd(|num|, den) == 1 and den > 0. Reducedness is a semantic law (JSON Schema cannot express gcd); the E10 validator rejects an unreduced pair. The sign lives on num. GOLDEN: 5.1 => {\"num\":\"51\",\"den\":\"10\"}."
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "outcome.v3-DRAFT",
+      "outcome_id": "outc_draft_golden_e4",
+      "execution_identity": "SHADOW",
+      "emergency_cohort": false,
+      "order_side_sign": 1,
+      "quote_unit": "USDT",
+      "gross_pnl": { "num": "6", "den": "1" },
+      "fees": { "num": "1", "den": "1" },
+      "rebates": { "num": "1", "den": "5" },
+      "funding": { "num": "-1", "den": "10" },
+      "net": { "num": "51", "den": "10" },
+      "initial_risk_quote": null,
+      "r_net": null,
+      "fill_cost_bps": null,
+      "markout_bps": { "h1s": null },
+      "fee_conversion_marks": [],
+      "quantity_conservation": {
+        "entry_qty_steps_sum": "100",
+        "exit_qty_steps_sum": "100"
+      },
+      "status": "COMPLETE"
+    }
+  ]
+}

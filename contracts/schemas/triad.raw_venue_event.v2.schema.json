@@ -1,0 +1,166 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.raw_venue_event.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "CO-03 step 2: the E00 fact — immutable and replayable; quarantine flags for gap/clock/DQ are structural (all three booleans required, closed object). Registered by CO-03 (TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12) as an additive major. Registration activates no producer and grants no authority; posture unchanged OFF/OFF/OFF/LIVE, DENIED_SAFE_HOLD.",
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "RAW_VENUE_EVENT"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "event_time": {
+          "type": "integer"
+        },
+        "instrument_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "metadata_revision": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "payload_bytes_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "payload_kind": {
+          "enum": [
+            "trade",
+            "book_delta",
+            "book_snapshot",
+            "account",
+            "order",
+            "funding",
+            "mark"
+          ],
+          "type": "string"
+        },
+        "quarantine_flags": {
+          "additionalProperties": false,
+          "properties": {
+            "clock": {
+              "type": "boolean"
+            },
+            "dq": {
+              "type": "boolean"
+            },
+            "gap": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "gap",
+            "clock",
+            "dq"
+          ],
+          "type": "object"
+        },
+        "receive_time": {
+          "type": "integer"
+        },
+        "route_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "session_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "source_sequence": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "venue": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "venue",
+        "instrument_id",
+        "route_id",
+        "session_id",
+        "source_sequence",
+        "event_time",
+        "receive_time",
+        "payload_kind",
+        "payload_bytes_digest",
+        "metadata_revision",
+        "quarantine_flags"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.raw_venue_event.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.raw_venue_event.v2",
+  "type": "object"
+}

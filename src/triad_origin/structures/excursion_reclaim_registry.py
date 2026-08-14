@@ -1,4 +1,20 @@
-"""F13 — frozen-level excursion and timed reclaim (golden vector GV-011).
+"""RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F13} —
+``level_excursion_reclaim.closed.v1`` withdrawal banner (repair spec §1.5).
+
+FOUR CONFIRMED DEFECTS (R-F13): (1) excursion/reclaim directions are REVERSED — this LONG
+machine triggers on the SHORT geometry and vice versa (the docstring below codifies the
+reversal); (2) horizon off-by-one — the per-observation ordinal ceiling lets an ordinal-3 event
+satisfy a horizon of two; (3) non-consecutive ordinals can satisfy the n-consecutive-closes hold
+(the Phase-0 `7400094` dedup below closed only the DUPLICATE half; a skipped ordinal still
+confirms here — the spec declares it ``INVALIDATED{SEQUENCE_GAP}``); (4) the excursion extreme
+is not retained in state. Repaired as ``level_excursion_reclaim.closed.v2``
+(:mod:`triad_origin.structures.excursion_reclaim_v2`; versioned successor face
+:mod:`triad_origin.structures.excursion_reclaim_registry_v2`). The bytes/logic below are
+preserved unchanged per the §1.5 withdrawal law — never edited in place, never deleted; SHADOW
+rows produced under this version keep their version tag forever (never-blend across formula
+versions). Replay comparisons between v1 and v2 use the frozen event tape.
+
+F13 — frozen-level excursion and timed reclaim (golden vector GV-011).
 
 After a frozen level is EXCURSED (a finalized bar's high/low crosses beyond the level by at
 least PAR-048 ``EXCURSION_MIN``, the same declared rule byte-string as F09's break buffer — see
@@ -126,7 +142,7 @@ class ExcursionReclaimTracker:
                 return TransitionResult(state)  # no excursion this bar; silent non-emission
             levels[level_id] = {
                 "direction": direction, "level_ticks": level_ticks,
-                "reclaim_state": EXCURSED, "hold_count": 0,
+                "reclaim_state": EXCURSED, "hold_count": 0, "last_ordinal": -1,
             }
             return TransitionResult({"levels": levels})
 
@@ -136,6 +152,13 @@ class ExcursionReclaimTracker:
             if row is None or row["reclaim_state"] in _TERMINAL:
                 return TransitionResult(state)  # unexcursed or already-terminal: refused
             ordinal = common.require_int(payload["ordinal"], "ordinal")
+            if ordinal <= row.get("last_ordinal", -1):
+                # Strict-increasing ordinal: a duplicate (redelivered) or regressing ordinal must
+                # not advance the reclaim hold — only a later finalized bar can. The hold's
+                # "consecutive" law stays stream-consecutive (a non-qualifying close resets it), so
+                # a legitimate ordinal gap (e.g. 0 then 3) still confirms; only a repeat/regress of
+                # an already-processed ordinal is refused. Idempotent no-op.
+                return TransitionResult(state)
             close = common.require_int(payload["close_ticks"], "close_ticks")
             atr = payload.get("atr14_ticks")
             if atr is None:
@@ -146,6 +169,7 @@ class ExcursionReclaimTracker:
                 return TransitionResult(state, (event,))
             if ordinal > horizon:
                 row = dict(row)
+                row["last_ordinal"] = ordinal
                 row["reclaim_state"] = RECLAIM_EXPIRED
                 levels[level_id] = row
                 event = {
@@ -155,6 +179,7 @@ class ExcursionReclaimTracker:
                 return TransitionResult({"levels": levels}, (event,))
             buffer = common.evaluate_declared_rational(reclaim_rule, atr)
             row = dict(row)
+            row["last_ordinal"] = ordinal
             if not _reclaims(row["direction"], row["level_ticks"], close, buffer):
                 row["hold_count"] = 0
                 row["reclaim_state"] = EXCURSED

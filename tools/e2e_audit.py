@@ -516,7 +516,6 @@ def structures_walk() -> None:
 def structure_flow_walk() -> None:
     from triad_origin import transition
     from triad_origin.structures import common
-    from triad_origin.structures.displacement import QualifiedDisplacement
     from triad_origin.structures.excursion_reclaim_registry import (
         CONFIRMED as RECLAIM_CONFIRMED, ExcursionReclaimTracker)
     from triad_origin.structures.flow_atoms import BookDepthTilt, TradeFlowImbalance
@@ -538,22 +537,63 @@ def structure_flow_walk() -> None:
     if not [e for e in fvg_run.events if e.get("event_kind") == ZONE_FORMED]:
         raise AssertionError("F10 GV-009 gap did not form")
 
-    # 2 · F11 displacement — GV-010: ATR_before=10 => D_ticks=15; move 15 qualifies.
-    disp_inputs = [
-        {"event_id": "d_origin", "kind": "ORIGIN", "payload": {
-            "origin_bar_index": 0, "origin_open_ticks": 1000, "atr14_before_origin_ticks": 10}},
-        {"event_id": "d1", "kind": "BAR", "payload": {
-            "bar_index": 1, "open_ticks": 1000, "high_ticks": 1015, "low_ticks": 992,
-            "close_ticks": 1015}},
-    ]
-    disp_run = transition.run(
-        QualifiedDisplacement(), disp_inputs,
-        {"displacement_horizon": 3, "displacement_min_move_rule": common.DECLARED_DISPLACEMENT_MIN_MOVE,
-         "body_fraction_rule": common.DECLARED_DISPLACEMENT_BODY_FRACTION,
-         "close_location_rule": common.DECLARED_DISPLACEMENT_CLOSE_LOCATION})
-    qualified = [e for e in disp_run.events if e.get("event_kind") == "DISPLACEMENT_QUALIFIED"]
+    # 2 · F11 displacement — GV-010 on the R-F11 in-place C.3 surface (the raw
+    #     QualifiedDisplacement machine is DELETED): ATR_before=10 => D_ticks=15; move 15
+    #     qualifies. The four F11 rows are BLOCKED in the genuine registry (honest-dark), so
+    #     SELF_TEST fixture surgery mints the caps; PAR-158's declared rule byte-string carries
+    #     '*' (the C.1 sentinel), so its cap is minted with a sentinel-free stand-in and the
+    #     verified handle's value swapped to the declared rule (acceptance ran in full).
+    import dataclasses as _dc
+
+    from triad_origin import e01_interface as e01
+    from triad_origin.structures import displacement as disp
+
+    forge = _capability_forge()
+    f11_updates: dict = {}
+    for row_id, par in (("FPB-0021", "PAR-046"), ("FPB-0065", "PAR-157"),
+                        ("FPB-0066", "PAR-158"), ("FPB-0067", "PAR-159")):
+        f11_updates[row_id] = {
+            "lifecycle_status": "ACTIVE", "cardinality": "EXACTLY_ONE",
+            "migration_state": "NOT_APPLICABLE",
+            "semantic_slot": f"f11_{par.lower().replace('-', '_')}_E2E",
+            "condition": "E2E SELF_TEST stand-in for the F11 ratification ceremony",
+            "activation_scope": f"E2E;F11;{par};displacement walk only",
+            "precedence": "TEST_FIXTURE",
+            "consumer": "ORIGIN(F11)",
+            "consuming_wiring_ids": "W03",
+            "disposition_reason": "E2E SELF_TEST posture; the repository rows stay BLOCKED.",
+        }
+    f11_updates["FPB-0066"]["declared_value"] = (
+        "E2E-TRANSPORT max(5,ceil(ATR14_before_origin 3/2)) (sentinel-free)")
+    f11_bundle = forge["fixture_bundle"](f11_updates)
+    f11_caps = {
+        par: transition.require_bundle(f11_bundle, par, formula_id="F11", ctx=forge["ctx"])
+        for par in (disp.PARAMETER_BODY_FRACTION, disp.PARAMETER_HORIZON,
+                    disp.PARAMETER_MIN_MOVE, disp.PARAMETER_CLOSE_LOCATION)
+    }
+    f11_caps[disp.PARAMETER_MIN_MOVE] = _dc.replace(
+        f11_caps[disp.PARAMETER_MIN_MOVE], value=common.DECLARED_DISPLACEMENT_MIN_MOVE)
+
+    def f11_bar(identity, o, h, low, c):
+        return e01.require_valid_bar({
+            "bar_identity": identity, "metadata_revision": "r1",
+            "open_ticks": o, "high_ticks": h, "low_ticks": low, "close_ticks": c,
+            "base_volume": 1, "quote_volume": 1, "trade_count": 1,
+        })
+
+    disp_state = disp.initial_state()
+    origin_result = disp.evaluate(
+        f11_caps, f11_bar("d_origin", 1000, 1001, 999, 1000), disp_state,
+        role=disp.ROLE_ORIGIN, bar_index=0, atr14_before_origin_ticks=10)
+    bar_result = disp.evaluate(
+        f11_caps, f11_bar("d1", 1000, 1015, 992, 1015), origin_result.state,
+        role="BAR", bar_index=1)
+    qualified = [e for e in (*origin_result.events, *bar_result.events)
+                 if e.get("event_kind") == "DISPLACEMENT_QUALIFIED"]
     if not qualified:
-        raise AssertionError("F11 GV-010 displacement did not qualify")
+        raise AssertionError("F11 GV-010 displacement did not qualify on the v2 surface")
+    if qualified[0].get("origin_bar_identity") != "d_origin":
+        raise AssertionError(f"GV-010 origin identity wrong: {qualified[0]!r}")
 
     # 3 · F13 excursion/reclaim — GV-011: two consecutive qualifying closes confirm.
     reclaim_run = transition.run(
@@ -1424,6 +1464,524 @@ def c0_closure_control() -> None:
         raise AssertionError("C0 closure-ready refusal omitted a clear CLOSURE_NOT_READY marker")
     if re.search(r"\b[1-9][0-9]* open blockers?\b", ready_output) is None:
         raise AssertionError("C0 closure-ready refusal omitted the positive open-blocker count")
+
+
+@stage("b02c_security_boundary",
+       "B02C security boundary: E01 envelope validators quarantine invalid inputs; a forged "
+       "sealed bundle refuses at content acceptance; the C.3 entrypoint ratchet holds; absent "
+       "--authority is never a green PASS")
+def b02c_security_boundary() -> None:
+    # C.3 static gate — the fail-closed ratchet over the production formula surface.
+    _run_tool("verify_formula_entrypoints.py")
+
+    # C.2 absence law — no --authority preimage is NONZERO with the one stdout token.
+    proc = _run_tool_result("verify_binding_bundle.py")
+    if proc.returncode == 0 or proc.stdout.strip() != "UNAVAILABLE_AUTHORITY":
+        raise AssertionError(
+            "verify_binding_bundle without --authority must refuse UNAVAILABLE_AUTHORITY "
+            f"(exit {proc.returncode}; stdout {proc.stdout!r})"
+        )
+
+    # Part A §1.1 / C.3 envelope walk — valid inputs validate, invalid inputs quarantine.
+    from triad_origin import e01_interface as e01
+
+    good_bar = {
+        "bar_identity": "e2e-bar-1", "metadata_revision": "r1",
+        "open_ticks": 10, "high_ticks": 12, "low_ticks": 9, "close_ticks": 11,
+        "base_volume": 5, "quote_volume": 55, "trade_count": 3,
+    }
+    validated = e01.require_valid_bar(good_bar)
+    assert type(validated).__name__ == "ValidatedBar"
+    try:
+        e01.require_valid_bar({**good_bar, "low_ticks": 13})  # low > min(open, close)
+    except e01.QuarantineInvalidBar:
+        pass
+    else:
+        raise AssertionError("an invalid-geometry bar reached ValidatedBar")
+    trade = {"trade_id": "t-1", "revision": "r1", "event_time_us": 1_000, "aggressor_side": "BUY"}
+    e01.validate_trade(trade)
+    try:
+        e01.validate_trade({k: v for k, v in trade.items() if k != "aggressor_side"})
+    except e01.QuarantineInvalidTrade:
+        pass
+    else:
+        raise AssertionError("a trade without an aggressor flag validated")
+    book = {
+        "sequence": 7, "event_time_us": 1_000,
+        "best_bid_price_ticks": 100, "best_bid_qty_steps": 5,
+        "best_ask_price_ticks": 101, "best_ask_qty_steps": 4,
+    }
+    e01.validate_book_update(book, prior_seq=6, now_us=2_000, freshness_bound_us=10_000)
+    try:
+        crossed = {**book, "best_bid_price_ticks": 102}
+        e01.validate_book_update(crossed, prior_seq=6, now_us=2_000, freshness_bound_us=10_000)
+    except e01.QuarantineInvalidBookUpdate:
+        pass
+    else:
+        raise AssertionError("a crossed book validated")
+
+    # C.1 acceptance law — a fabricated sealed shape refuses at require_bundle (content law),
+    # long before any formula; type identity buys nothing.
+    from triad_origin import bindings, transition
+
+    forged = {
+        "schema_version": "sealed-bundle.v2",
+        "scope": {"repository": "TriadOrigin", "environment": "OFF"},
+        "rows": [{"binding_id": "B-XXX", "parameter_id": "PAR-000", "formula_id": "F00",
+                  "semantic_slot": "forged", "declared_value": 1, "status": "ACTIVE"}],
+        "canonical_root_digest": "0" * 64,
+        "trust_registry_digest": "0" * 64,
+        "signer_set": [], "signatures": [],
+        "valid_from": 0, "valid_to": 2**62,
+        "formula_coverage": {f"F{i:02d}": "ACTIVE" for i in range(24)},
+        "row_preimage_digests": [],
+    }
+    ctx = bindings.VerificationContext(
+        trust={}, trust_registry_bytes=b"{}", now_us=1,
+        process_scope={"repository": "TriadOrigin", "environment": "OFF"},
+        verify_fn=None, expected_digest_pin=None,
+    )
+    try:
+        transition.require_bundle(forged, "PAR-000", formula_id="F00", ctx=ctx)
+    except (bindings.SealedBundleRejected, bindings.CapabilityForgeryError):
+        pass
+    else:
+        raise AssertionError("a forged sealed bundle reached acceptance")
+
+
+_FORGE_CACHE: dict = {}
+
+
+def _capability_forge():
+    """SELF_TEST capability forge shared by the milestone formula stages.
+
+    Mints REAL Ed25519 keys and drives the REAL C.1 acceptance path (build/sign →
+    ``require_bundle``). The keypair and every ACTIVE-flipped registry row are SELF_TEST fixture
+    material — walk scaffolding, never authority evidence. One forge per process: the trust pin
+    is set-once, so every formula stage shares the same pinned trust registry.
+    """
+    if _FORGE_CACHE:
+        return _FORGE_CACHE["forge"]
+    import dataclasses
+    import json as _json
+
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+        Ed25519PrivateKey, Ed25519PublicKey)
+
+    from triad_origin import bindings
+    from triad_origin.canonical import canonical_json, sha256_hex
+
+    kid = "k-e2e-selftest"
+    private = Ed25519PrivateKey.generate()
+    pub_hex = private.public_key().public_bytes_raw().hex()
+    trust = {kid: {"key_id": kid, "identity": "e2e-selftest@triad-origin",
+                   "role": "AUTHORITY_OWNER", "algorithm": "ed25519",
+                   "public_key_hex": pub_hex, "revoked": False}}
+    trust_bytes = _json.dumps(trust, sort_keys=True).encode("utf-8")
+    trust_digest = sha256_hex(trust_bytes)
+    bindings.pin_trust_registry_digest(trust_digest)
+
+    def _verify(public_key_hex: str, message: bytes, signature_hex: str) -> bool:
+        try:
+            key = Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_key_hex))
+            key.verify(bytes.fromhex(signature_hex), message)
+            return True
+        except Exception:
+            return False
+
+    ctx = bindings.VerificationContext(
+        trust=trust, trust_registry_bytes=trust_bytes, now_us=2_000_000,
+        process_scope={"repository": "TriadOrigin", "environment": "OFF"},
+        verify_fn=_verify)
+
+    def _sign(unsigned):
+        signing = bindings.sealed_bundle_signing_bytes(
+            canonical_root_digest=unsigned.canonical_root_digest, scope=unsigned.scope,
+            valid_from=unsigned.valid_from, valid_to=unsigned.valid_to)
+        return dataclasses.replace(unsigned, signatures=[
+            {"key_id": kid, "signature_hex": private.sign(signing).hex()}])
+
+    def genuine_bundle():
+        registry = bindings.load_registry()
+        unsigned = bindings.build_sealed_bundle(
+            registry, repository="TriadOrigin", environment="OFF",
+            valid_from=1_000_000, valid_to=9_000_000,
+            trust_registry_digest=trust_digest, signer_set=[kid])
+        return _sign(unsigned)
+
+    def fixture_bundle(edit_rows):
+        """A signed bundle over the registry with SELF_TEST row surgery applied.
+
+        ``edit_rows`` maps binding_id -> field-update dict; edited rows are re-digested and the
+        touched formulas flipped ACTIVE in coverage. Fixture surgery, never a ratification.
+        """
+        registry = bindings.load_registry()
+        rows = [dict(r) for r in registry.rows()]
+        coverage = dict(bindings.derive_formula_coverage(registry))
+        for row in rows:
+            update = edit_rows.get(row["binding_id"])
+            if update is None:
+                continue
+            row.update(update)
+            row["status"] = "ACTIVE"
+            coverage[row["formula_id"]] = "ACTIVE"
+            unsigned_row = {k: v for k, v in row.items() if k != "binding_digest"}
+            row["binding_digest"] = sha256_hex(canonical_json(unsigned_row))
+        root = bindings.canonical_rows_digest(rows)
+        unsigned = bindings.SealedParameterBundle(
+            schema_version=bindings.SEALED_SCHEMA_VERSION,
+            scope={"repository": "TriadOrigin", "environment": "OFF"},
+            rows=rows,
+            canonical_root_digest=root,
+            trust_registry_digest=trust_digest,
+            signer_set=[kid],
+            signatures=[],
+            valid_from=1_000_000,
+            valid_to=9_000_000,
+            formula_coverage=coverage,
+            row_preimage_digests=sorted(sha256_hex(canonical_json(r)) for r in rows),
+        )
+        return _sign(unsigned)
+
+    forge = {"ctx": ctx, "genuine_bundle": genuine_bundle, "fixture_bundle": fixture_bundle}
+    _FORGE_CACHE["forge"] = forge
+    return forge
+
+
+@stage("b03c_structure_goldens",
+       "B03C: F03 v2 ambiguous-bar law + F04 STRICT_UNIQUE erratum + F09 v2 first-terminal "
+       "break + GV-F05-01 — capability-sealed walks; the genuine registry stays honest-dark")
+def b03c_structure_goldens() -> None:
+    from triad_origin import bindings, features, transition
+    from triad_origin import e01_interface as e01
+    from triad_origin.structures import break_v2
+    from triad_origin.structures import swing_dc_v2 as sdc
+    from triad_origin.structures import typed_level_registry as tlr
+
+    forge = _capability_forge()
+    ctx = forge["ctx"]
+
+    # 0) HONEST-DARK LAW: on the GENUINE registry, F03's PAR-036 row (FPB-0011) is not ratified —
+    #    the capability can never mint, so the v2 formula stays dark by construction.
+    try:
+        transition.require_bundle(
+            forge["genuine_bundle"](), sdc.PARAMETER_DC_REVERSAL, formula_id="F03", ctx=ctx)
+    except bindings.SealedBundleRejected:
+        pass
+    else:
+        raise AssertionError("PAR-036 minted from the genuine (unratified) registry")
+
+    # 1) R-F03 walk under a SELF_TEST-ratified transport value: the ambiguous bar abstains
+    #    (ABSTAIN_EXTEND_WINS) and the NEXT bar confirms at the NEW extreme's threshold.
+    #    SENTINEL COLLISION (documented in the F03/F09 batteries): the declared PAR-036 rule
+    #    byte-string contains '*', which C.1 acceptance treats as an unresolved sentinel — so a
+    #    sentinel-free stand-in is minted through the REAL acceptance path and the verified
+    #    handle's value is then swapped to the declared rule (construction is unrestricted by
+    #    the C.1 law; ACCEPTANCE is what is guarded, and it ran in full).
+    import dataclasses as _dc
+
+    from triad_origin.structures import common as _common
+
+    transport = "TEST-RATIFIED-TRANSPORT max(5,ceil(ATR14_ticks 1/4)) (sentinel-free)"
+    f03_bundle = forge["fixture_bundle"]({
+        "FPB-0011": {"lifecycle_status": "ACTIVE", "cardinality": "EXACTLY_ONE",
+                     "migration_state": "NOT_APPLICABLE", "declared_value": transport,
+                     "semantic_slot": "dc_reversal_delta_ticks_E2E",
+                     "condition": "E2E SELF_TEST stand-in for the PAR-036 ceremony"},
+    })
+    minted = transition.require_bundle(
+        f03_bundle, sdc.PARAMETER_DC_REVERSAL, formula_id="F03", ctx=ctx)
+    f03_caps = {sdc.PARAMETER_DC_REVERSAL: _dc.replace(
+        minted, value=_common.DECLARED_DC_REVERSAL)}
+
+    def swing_bar(identity, high, low):
+        return e01.require_valid_bar({
+            "bar_identity": identity, "metadata_revision": "r1",
+            "open_ticks": low, "high_ticks": high, "low_ticks": low, "close_ticks": high,
+            "base_volume": 1, "quote_volume": 1, "trade_count": 1,
+        })
+
+    st = sdc.initial_state()
+    events: list = []
+    for identity, high, low in (
+        ("b0", 1000, 998), ("b1", 1004, 998),   # seed + up leg
+        ("b2", 1010, 998),                        # ambiguous: extends AND crosses old threshold
+        ("b3", 1006, 1005),                       # 1010 - 1005 == 5 == delta: NEW threshold
+    ):
+        result = sdc.evaluate(f03_caps, swing_bar(identity, high, low), st, atr14_ticks=20)
+        events.extend(result.events)
+        st = result.state
+    ambiguous = [e for e in events
+                 if e.get("reason_code") == sdc.AMBIGUOUS_BAR_ABSTENTION]
+    assert len(ambiguous) == 1 and ambiguous[0]["refs"]["bar_identity"] == "b2", \
+        "the ambiguous bar must abstain exactly once (ABSTAIN_EXTEND_WINS)"
+    swings = [e for e in events if e.get("event_kind") == tlr.TYPED_LEVEL]
+    assert swings and swings[-1]["level_ticks"] == 1010, \
+        f"the extension must win — expected the 1010 swing, got {swings!r}"
+    assert all(e["confirmed_by_bar_identity"] != "b2" for e in swings), \
+        "nothing may be confirmed BY the ambiguous bar itself"
+
+    # 2) R-F04 erratum: STRICT_UNIQUE is the tie law — a strict pivot publishes on the second
+    #    right bar; a right tie rejects the candidate entirely.
+    def f04_bar(index, high):
+        return {"event_id": f"b{index}", "kind": "BAR",
+                "payload": {"high_ticks": high, "low_ticks": high - 7, "bar_seq": index}}
+
+    f04_params = {tlr.PARAM_FRACTAL_LEFT: 2, tlr.PARAM_FRACTAL_RIGHT: 2}
+    strict = transition.run(
+        tlr.FractalPivot(), [f04_bar(i, h) for i, h in enumerate((8, 9, 12, 11, 10))],
+        f04_params)
+    published = [e for e in strict.events if e.get("event_kind") == tlr.TYPED_LEVEL]
+    assert [e["level_ticks"] for e in published] == [12], "GV-006 strict pivot must publish"
+    tie = transition.run(
+        tlr.FractalPivot(), [f04_bar(i, h) for i, h in enumerate((8, 9, 12, 11, 12))],
+        f04_params)
+    assert not [e for e in tie.events if e.get("event_kind") == tlr.TYPED_LEVEL], \
+        "a right tie must reject under STRICT_UNIQUE"
+
+    # 3) R-F09 walk: an armed level, one qualifying close -> BREAK_OCCURRENCE (GENERIC_BREAK,
+    #    first-terminal); a second qualifying close -> DUPLICATE_BREAK_IGNORED, never a second
+    #    occurrence. Acceptance demands EVERY live F09 row ACTIVE, so the second F09 row
+    #    (FPB-0092) is fixture-repurposed as the LEVEL_TTL_BARS row (the v2 battery's surgery) —
+    #    without a ratified TTL capability the machine lawfully abstains on every observation.
+    f09_bundle = forge["fixture_bundle"]({
+        "FPB-0018": {"declared_value": 2, "semantic_slot": "E2E:F09.break_buffer_ticks"},
+        "FPB-0092": {"parameter_id": break_v2.PARAM_LEVEL_TTL,
+                     "parameter_name": break_v2.PARAM_LEVEL_TTL,
+                     "semantic_slot": "E2E:F09.level_ttl_bars", "declared_value": 500},
+    })
+    f09_caps = {
+        break_v2.PARAM_BREAK_BUFFER: transition.require_bundle(
+            f09_bundle, break_v2.PARAM_BREAK_BUFFER, formula_id="F09", ctx=ctx),
+        break_v2.PARAM_LEVEL_TTL: transition.require_bundle(
+            f09_bundle, break_v2.PARAM_LEVEL_TTL, formula_id="F09", ctx=ctx),
+    }
+
+    def f09_bar(eid, close, ordinal):
+        bucket = 1_000_000 + ordinal * 60_000_000
+        return break_v2.BarObservation(
+            bar=e01.require_valid_bar({
+                "bar_identity": f"bar:{eid}", "metadata_revision": "rev-1",
+                "open_ticks": close - 1, "high_ticks": close + 1, "low_ticks": close - 2,
+                "close_ticks": close, "base_volume": 1, "quote_volume": 1, "trade_count": 1,
+            }),
+            bucket_start_us=bucket,
+            availability_time_us=bucket + 60_000_000 + 2_000_000,
+            source_sequence=100 + ordinal,
+            bar_ordinal=ordinal,
+            atr14_ticks=20,
+            source_event_id=eid,
+        )
+
+    registration = break_v2.LevelRegistration(
+        level_id="L1", level_ticks=1000, direction="LONG",
+        availability_time_us=1_000_000, formation_bar_ordinal=0,
+        defining_swing_id="SW1", swing_revision=0, source_event_id="lvl-1")
+    walk = break_v2.run_break_v2(
+        f09_caps, [registration, f09_bar("j1", 1003, 1), f09_bar("j2", 1004, 2)])
+    occurrences = [e for e in walk.events
+                   if e.get("event_kind") == break_v2.BREAK_OCCURRENCE]
+    duplicates = [e for e in walk.events
+                  if e.get("event_kind") == break_v2.DUPLICATE_BREAK_IGNORED]
+    assert len(occurrences) == 1, f"exactly one first-terminal break, got {len(occurrences)}"
+    assert occurrences[0]["classification"] == break_v2.CLASSIFICATION_GENERIC
+    assert len(duplicates) == 1, "the second qualifying close must be DUPLICATE_BREAK_IGNORED"
+
+    # 4) GV-F05-01 (Part D §D.5): N=3, highs [10,12,11] -> upper 12; lows [9,9,10] -> lower 9;
+    #    the current bar's high 15 excluded by construction.
+    def f05_bar(index, o, h, low, c):
+        return {"event_id": f"gv_f05_{index}", "payload": {
+            "state_kind": "BAR", "bar_finalization_state": "FINALIZED",
+            "watermark_complete": True, "validity": "READY", "bar_index": index,
+            "bar_open_time_us": index * 60_000_000,
+            "bar_close_time_us": (index + 1) * 60_000_000,
+            "open_ticks": o, "high_ticks": h, "low_ticks": low, "close_ticks": c,
+        }}
+
+    gv = transition.run(features.RollingExtreme(), [
+        f05_bar(0, 10, 10, 9, 9), f05_bar(1, 10, 12, 9, 11),
+        f05_bar(2, 10, 11, 10, 10), f05_bar(3, 12, 15, 12, 14),
+    ], {"window": 3})
+    feature = gv.events[3]
+    assert feature["event_kind"] == "FEATURE" and feature["upper_ticks"] == 12 \
+        and feature["lower_ticks"] == 9, f"GV-F05-01 numbers wrong: {feature!r}"
+    assert feature["dependency_range"] == {"first_bar_index": 0, "last_bar_index": 2}
+
+
+@stage("b04c_flow_goldens",
+       "B04C: F15 flow.tfi.window.v2 GV-013 unit pair (+2/5 vs +1/13 — the unit-bug trap) + "
+       "F16 flow.ofi.best.v2 GV-F16-01 (OFI +7) with the normalized identity default-OFF (it "
+       "never emits) — capability-sealed on the repaired v2 surfaces")
+def b04c_flow_goldens() -> None:
+    from triad_origin import transition
+    from triad_origin.structures import flow_atoms_v2 as fv2
+    from triad_origin.structures.flow_atoms_v2 import (
+        BookUpdateObservation, TradeObservation, WindowClose, run_f15, run_f16)
+    from triad_origin.e01_interface import validate_trade
+
+    forge = _capability_forge()
+    ctx = forge["ctx"]
+
+    # F15/F16 acceptance requires EVERY live row of the requesting formula ACTIVE, so the full
+    # row set is flipped (empty edit == flip-ACTIVE only); the three/four value rows carry their
+    # SELF_TEST declared values. The genuine registry leaves these rows BLOCKED (honest-dark).
+    f15_edits = {"FPB-0026": {"declared_value": 100}, "FPB-0027": {"declared_value": 2000},
+                 "FPB-0028": {"declared_value": 1}, "FPB-0029": {}, "FPB-0077": {}}
+    f15_bundle = forge["fixture_bundle"](f15_edits)
+    f15_caps = {
+        fv2.PARAM_TFI_WINDOW_TRADES: transition.require_bundle(
+            f15_bundle, "PAR-052", formula_id="F15", ctx=ctx),
+        fv2.PARAM_TFI_WINDOW_MAX_AGE: transition.require_bundle(
+            f15_bundle, "PAR-053", formula_id="F15", ctx=ctx),
+        fv2.PARAM_TFI_MIN_TRADES: transition.require_bundle(
+            f15_bundle, "PAR-054", formula_id="F15", ctx=ctx),
+    }
+
+    def tobs(tid, side, event_time, price, qty):
+        return TradeObservation(
+            trade=validate_trade({"trade_id": tid, "revision": "rev-1",
+                                  "event_time_us": event_time, "aggressor_side": side}),
+            venue="BINANCE", instrument="BTCUSDT", price_ticks=price, qty_steps=qty,
+            metadata_revision="m1", source_event_id=tid)
+
+    def wclose():
+        return WindowClose(w_start=0, w_end=1000, expected_trades=2, watermark_us=1000,
+                           source_event_id="wc")
+
+    def tfi_of(run):
+        feats = [e for e in run.events
+                 if e.get("formula_version") == fv2.F15_FORMULA_VERSION
+                 and e.get("event_kind") == "FEATURE"]
+        assert len(feats) == 1, f"expected one F15 feature, got {feats!r}"
+        return feats[0]
+
+    # GV-013 (a) equal-price: buy atoms 70, sell atoms 30 -> TFI +2/5 reduced.
+    a = tfi_of(run_f15(f15_caps, [
+        tobs("b", "BUY", 100, 1, 70), tobs("s", "SELL", 200, 1, 30), wclose()]))
+    assert a["tfi"] == [2, 5] and a["buy_atoms"] == 70 and a["sell_atoms"] == 30, \
+        f"GV-013(a) wrong: {a!r}"
+    # GV-013 (b) unequal-price: 70 steps @ 100 ticks = 7000 vs 30 steps @ 200 ticks = 6000
+    #   -> TFI +1/13 (a base-quantity computation would claim +2/5 — the unit-bug trap).
+    b = tfi_of(run_f15(f15_caps, [
+        tobs("b", "BUY", 100, 100, 70), tobs("s", "SELL", 200, 200, 30), wclose()]))
+    assert b["tfi"] == [1, 13] and b["buy_atoms"] == 7000 and b["sell_atoms"] == 6000, \
+        f"GV-013(b) unit-bug trap wrong: {b!r}"
+
+    # F16 GV-F16-01: OFI = +7; the normalized identity is a SEPARATE identity behind a
+    # default-OFF lever — with the lever OFF it must NEVER emit.
+    f16_edits = {"FPB-0030": {}, "FPB-0032": {"declared_value": 100},
+                 "FPB-0033": {"declared_value": 1000}, "FPB-0034": {"declared_value": 3},
+                 "FPB-0078": {"parameter_id": fv2.PARAM_OFI_NORM_ACTIVATION,
+                              "parameter_name": fv2.PARAM_OFI_NORM_ACTIVATION,
+                              "semantic_slot": "E2E:F16.ofi_normalized_variant_activation",
+                              "declared_value": fv2.NORM_ACTIVATION_OFF}}
+    f16_bundle = forge["fixture_bundle"](f16_edits)
+    f16_caps = {
+        fv2.PARAM_OFI_WINDOW_UPDATES: transition.require_bundle(
+            f16_bundle, "PAR-056", formula_id="F16", ctx=ctx),
+        fv2.PARAM_OFI_WINDOW_MAX_AGE: transition.require_bundle(
+            f16_bundle, "PAR-057", formula_id="F16", ctx=ctx),
+        fv2.PARAM_OFI_MIN_UPDATES: transition.require_bundle(
+            f16_bundle, "PAR-058", formula_id="F16", ctx=ctx),
+    }
+
+    def bupd(seq, pb, qb, pa, qa):
+        return BookUpdateObservation(
+            sequence=seq, event_time_us=seq * 10, eval_time_us=seq * 10,
+            best_bid_price_ticks=pb, best_bid_qty_steps=qb, best_ask_price_ticks=pa,
+            best_ask_qty_steps=qa, watermark_complete=True, source_event_id=f"u{seq}")
+
+    ofi_run = run_f16(f16_caps, [
+        bupd(0, 100, 5, 101, 7), bupd(1, 100, 8, 101, 7),   # e1 = +3
+        bupd(2, 99, 4, 101, 6), bupd(3, 99, 9, 102, 6)])    # e2 = -7, e3 = +11
+    ofi_feats = [e for e in ofi_run.events
+                 if e.get("formula_version") == fv2.F16_FORMULA_VERSION
+                 and e.get("event_kind") == "FEATURE"]
+    assert len(ofi_feats) == 1 and ofi_feats[0]["ofi_value"] == 7 \
+        and ofi_feats[0]["window_size"] == 3, f"GV-F16-01 OFI wrong: {ofi_feats!r}"
+    # The OFF-lever law: the normalized identity never emits.
+    norm_feats = [e for e in ofi_run.events
+                  if e.get("formula_version") == fv2.F16_NORM_FORMULA_VERSION]
+    assert not norm_feats, \
+        f"the normalized identity emitted with the lever OFF: {norm_feats!r}"
+
+
+@stage("b06r_cluster_goldens",
+       "B06R: F19 opportunity_cluster.v2 — the ordering law (arrival order can never change the "
+       "output) + the F14->F19 source_reaction_id adoption (shared reaction id clusters even "
+       "without a zone touch) — capability-sealed; the genuine registry stays honest-dark")
+def b06r_cluster_goldens() -> None:
+    import itertools
+
+    from triad_origin import transition
+    from triad_origin.structures import clustering_v2 as cl
+    from triad_origin.structures import common as _common
+
+    forge = _capability_forge()
+    ctx = forge["ctx"]
+
+    # F19's sole genuine row FPB-0036 is BLOCKED; FPB-0092 is repurposed as CLUSTER_MAX (the
+    # test-battery pattern). SELF_TEST fixture surgery flips both ACTIVE through real acceptance.
+    f19_bundle = forge["fixture_bundle"]({
+        "FPB-0036": {"parameter_id": cl.PARAM_CLUSTER_WINDOW, "declared_value": "30000",
+                     "semantic_slot": "E2E:F19.cluster_window"},
+        "FPB-0092": {"formula_id": cl.FORMULA_F19, "parameter_id": cl.PARAM_CLUSTER_MAX,
+                     "parameter_name": cl.PARAM_CLUSTER_MAX, "declared_value": "32",
+                     "semantic_slot": "E2E:F19.cluster_max_members"},
+    })
+    caps = {
+        cl.PARAM_CLUSTER_WINDOW: transition.require_bundle(
+            f19_bundle, cl.PARAM_CLUSTER_WINDOW, formula_id="F19", ctx=ctx),
+        cl.PARAM_CLUSTER_MAX: transition.require_bundle(
+            f19_bundle, cl.PARAM_CLUSTER_MAX, formula_id="F19", ctx=ctx),
+    }
+
+    def occ(cid, zone_low, zone_high, avail, srid=""):
+        return cl.CandidateOccurrence(
+            candidate_id=cid, instrument="BTCUSDT", side=_common.LONG,
+            source_structure_id="", source_reaction_id=srid,
+            entry_zone_low_ticks=zone_low, entry_zone_high_ticks=zone_high,
+            availability_us=avail, occurrence_version=1, capsule_id="cap-1",
+            capsule_params_digest="digest-1", source_event_id=f"occ:{cid}")
+
+    def batch(*cands):
+        return cl.ClusterBatch(candidates=tuple(cands), source_event_id="b1")
+
+    def live(state):
+        return {k: v for k, v in state["components"].items() if not v["expired"]}
+
+    # ORDERING LAW: a two-component set clusters identically under every arrival permutation.
+    two = [
+        occ("A", 0, 10, 0), occ("B", 10, 20, 100, "RY"), occ("C", 500, 600, 200, "RY"),
+        occ("D", 1000, 1010, 0), occ("E", 1010, 1020, 50, "RZ"), occ("F", 1500, 1600, 60, "RZ"),
+    ]
+    from triad_origin.canonical import canonical_json as _cj
+    baseline = None
+    for perm in itertools.permutations(two):
+        final = cl.run_clustering_v2(caps, [batch(*perm)]).final_state
+        fp = _cj(final)
+        if baseline is None:
+            baseline = fp
+        assert fp == baseline, "F19 ordering law: arrival order changed the output"
+    comps = live(cl.run_clustering_v2(caps, [batch(*two)]).final_state)
+    assert len(comps) == 2, f"expected two components, got {len(comps)}"
+    assert sorted(c["root_candidate_id"] for c in comps.values()) == ["A", "D"]
+
+    # F14->F19 adoption: a shared source_reaction_id clusters even with DISJOINT zones.
+    shared = live(cl.run_clustering_v2(caps, [batch(
+        occ("P", 0, 5, 0, "RX"), occ("Q", 9000, 9005, 10, "RX"))]).final_state)
+    assert len(shared) == 1, f"shared source_reaction_id must cluster, got {shared!r}"
+    (comp,) = shared.values()
+    assert sorted(comp["member_candidate_ids"]) == ["P", "Q"]
+
+
+@stage("co06_linkage_repair",
+       "CO-06: the additive verification-linkage repair overlay recomputes byte-identically from "
+       "the frozen RC1/RC3/RC4 (+RC5) masters, leaves zero effective dangling references, and "
+       "reproduces the B09 unique-set base 1,648 without the blind-summation 2,056 — read-only "
+       "over the masters, arms nothing")
+def co06_linkage_repair() -> None:
+    _run_tool("gen_linkage_repair.py", "--check")
 
 
 def main(argv: list[str]) -> int:

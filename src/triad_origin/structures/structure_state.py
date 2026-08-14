@@ -1,6 +1,16 @@
 """Structure state — F08 refusal interface + F09 accepted-break detector (b03 grounding rows;
 golden vector GV-008), plus the structure_atom/structure_transition payload builders.
 
+NOTE (Formula Repair §1.5, B03C): the F09 v1 detector below (:class:`BreakDetector`,
+``break.bar_close.v1``) is retired — see its class-level withdrawal banner; the repaired
+surface is ``break.bar_close.v2`` in :mod:`triad_origin.structures.break_v2`. This module is
+NOT bannered as a whole — deliberately, at the word level too: the C.3 static gate
+(``tools/verify_formula_entrypoints.py``) treats a module whose MODULE docstring carries the
+withdrawal marker as wholly retired, and this module still hosts live law (F08
+:class:`ProtectedSwingStructure` + the payload builders), so it must keep scanning under its
+``LEGACY_UNCONVERTED`` pin (the gate's own "typed_level_registry / structure_state pattern —
+one machine retired, siblings live"). The v1 bytes/logic are unchanged (replay of v1 history).
+
 **F08 (:class:`ProtectedSwingStructure`) is a REFUSAL INTERFACE, loudly and deliberately.** The
 RC3 formula row reads "NO IMPLEMENTATION AUTHORIZED until exact reducer version is ratified"
 (RC3-PAR-STRUCT-003, status BLOCKING_RESEARCH_DECISION, declared_value NOT_RATIFIED). There is
@@ -133,7 +143,21 @@ class ProtectedSwingStructure:
 
 
 class BreakDetector:
-    """F09 — accepted close break over confirmed frozen levels (GV-008).
+    """RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 §2 R-F09} —
+    ``break.bar_close.v1`` is WITHDRAWN; the repaired surface is ``break.bar_close.v2``
+    (:mod:`triad_origin.structures.break_v2`).
+
+    DEFECT (spec R-F09, verbatim): one frozen level can record accepted first breaks in BOTH
+    directions (the ``(level_id, direction)`` dedup key below); there is no
+    availability-before-break proof, so a late-finalizing older bar can false-trigger; BOS/CHOCH
+    classification can run without valid F08 state.
+
+    §1.5 withdrawal discipline: the bytes and logic below are otherwise UNCHANGED — retained for
+    replay of history produced under v1; SHADOW rows produced under this version keep their
+    version tag forever (never-blend applies across formula versions exactly as across cohorts).
+    No new consumer may invoke this machine.
+
+    F09 v1 — accepted close break over confirmed frozen levels (GV-008).
 
     ``up_break`` iff ``close >= level + buffer``; ``down_break`` iff ``close <= level - buffer``
     (equality passes, PAR-009). One first-breach occurrence per ``(level_id, direction)``. Every

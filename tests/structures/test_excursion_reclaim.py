@@ -177,3 +177,26 @@ class TestInvariance:
         assert resumed.final_state == whole.final_state
         dup = run(full + [full[-1]])
         assert dup.final_state == whole.final_state
+
+
+class TestStrictOrdinal:
+    """F13 strict-increasing ordinal: a duplicate or regressing ordinal never advances the hold."""
+
+    def test_duplicate_ordinal_does_not_advance_the_reclaim_hold(self):
+        inputs = [
+            excursion("L1", common.LONG, 1000, high=1001, low=999),
+            observation("L1", 1, close=998),                       # qualifies -> PENDING (hold 1)
+            observation("L1", 1, close=998, event_id="obs_dup"),   # SAME ordinal redelivered
+        ]
+        result = run(inputs)
+        assert states_of("L1", result) == [RECLAIM_PENDING]
+        assert result.final_state["levels"]["L1"]["reclaim_state"] == RECLAIM_PENDING
+
+    def test_regressing_ordinal_is_ignored(self):
+        inputs = [
+            excursion("L1", common.LONG, 1000, high=1001, low=999),
+            observation("L1", 2, close=998),                       # PENDING, last_ordinal = 2
+            observation("L1", 1, close=997, event_id="obs_regress"),  # ordinal < last -> ignored
+        ]
+        result = run(inputs)
+        assert states_of("L1", result) == [RECLAIM_PENDING]

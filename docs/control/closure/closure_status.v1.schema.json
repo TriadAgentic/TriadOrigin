@@ -59,6 +59,40 @@
           ],
           "type": "object"
         },
+        "artifact_presence": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "artifact_ref": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "presence_state": {
+                "enum": [
+                  "ARTIFACT_PRESENT",
+                  "HISTORICAL_RECEIPT_PRESERVED",
+                  "AUTHORITY_OPEN"
+                ]
+              },
+              "subject_kind": {
+                "enum": [
+                  "CONTROLLING_INPUT",
+                  "HISTORICAL_RECEIPT",
+                  "REQUIRED_SOURCE_RECEIPT",
+                  "PROTECTED_ANCHOR"
+                ]
+              }
+            },
+            "required": [
+              "artifact_ref",
+              "subject_kind",
+              "presence_state"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
         "classification": {
           "const": "GENERATED_STATUS_NON_EVIDENCE"
         },
@@ -78,6 +112,58 @@
           "minItems": 2,
           "type": "array",
           "uniqueItems": true
+        },
+        "generation_context": {
+          "additionalProperties": false,
+          "properties": {
+            "digest_domain": {
+              "const": "triad.closure.generation_context.artifact.v1"
+            },
+            "digest_sha256": {
+              "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+              "type": "string"
+            },
+            "path": {
+              "const": "docs/control/closure/closure_generation_context.v1.json"
+            },
+            "provider_head_kind": {
+              "enum": [
+                "GIT_HEAD_SHA1",
+                "AUTHORITY_OPEN"
+              ]
+            },
+            "provider_head_value": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "pattern": "^[0-9a-f]{40}$",
+                  "type": "string"
+                }
+              ]
+            },
+            "provider_run_id_state": {
+              "const": "AUTHORITY_OPEN"
+            },
+            "provider_run_id_value": {
+              "type": "null"
+            },
+            "schema": {
+              "const": "triad.closure.generation_context.v1"
+            }
+          },
+          "required": [
+            "path",
+            "schema",
+            "digest_domain",
+            "digest_sha256",
+            "provider_head_kind",
+            "provider_head_value",
+            "provider_run_id_state",
+            "provider_run_id_value"
+          ],
+          "type": "object"
         },
         "generation_law": {
           "minLength": 1,
@@ -333,6 +419,8 @@
         "semantics_reference",
         "status_events_reference",
         "task_binding_reference",
+        "generation_context",
+        "artifact_presence",
         "generation_law",
         "activation_posture",
         "cryptographic_authentication",

@@ -1,0 +1,167 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.evidence_view.v2.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "CO-03 step 1: the exact B08 read-face envelope law as a contract. status is the CLOSED seven-value truth vocabulary {OK, UNAVAILABLE, NOT_IMPLEMENTED, TOOL_TIMEOUT, NOT_MEASURABLE, STALE, NOT_ATTESTED}; an unavailable read is UNAVAILABLE, an unattested claim is NOT_ATTESTED — never a fabricated OK. Registered by CO-03 (TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12) as an additive major. Registration activates no producer and grants no authority; posture unchanged OFF/OFF/OFF/LIVE, DENIED_SAFE_HOLD.",
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "EVIDENCE_VIEW"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "binding_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "build_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "cohort": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "completeness": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "config_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "contract_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "event_time": {
+          "type": "integer"
+        },
+        "freshness_ms": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "observation_time": {
+          "type": "integer"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "plane": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "producer_rev": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "scope": {
+          "type": "object"
+        },
+        "source": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "OK",
+            "UNAVAILABLE",
+            "NOT_IMPLEMENTED",
+            "TOOL_TIMEOUT",
+            "NOT_MEASURABLE",
+            "STALE",
+            "NOT_ATTESTED"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "plane",
+        "cohort",
+        "scope",
+        "producer_rev",
+        "build_digest",
+        "config_digest",
+        "contract_digest",
+        "binding_digest",
+        "event_time",
+        "observation_time",
+        "freshness_ms",
+        "completeness",
+        "status",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.evidence_view.v2"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.evidence_view.v2",
+  "type": "object"
+}

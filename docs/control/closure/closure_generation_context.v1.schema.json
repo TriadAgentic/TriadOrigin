@@ -1,0 +1,111 @@
+{
+  "$id": "https://triad.invalid/schemas/closure-generation-context-v1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "digest": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "sha256"
+        },
+        "canonicalizer": {
+          "const": "triad_origin.canonical.canonical_json"
+        },
+        "domain": {
+          "const": "triad.closure.generation_context.artifact.v1"
+        },
+        "preimage_rule": {
+          "const": "canonical_json({domain,schema,version,payload})"
+        },
+        "value": {
+          "pattern": "^(?!0{64}$)[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "algorithm",
+        "canonicalizer",
+        "domain",
+        "preimage_rule",
+        "value"
+      ],
+      "type": "object"
+    },
+    "payload": {
+      "additionalProperties": false,
+      "properties": {
+        "provider_head": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "GIT_HEAD_SHA1",
+                "AUTHORITY_OPEN"
+              ]
+            },
+            "source": {
+              "const": "git rev-parse HEAD"
+            },
+            "value": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "pattern": "^[0-9a-f]{40}$",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "source",
+            "value"
+          ],
+          "type": "object"
+        },
+        "provider_run_id": {
+          "additionalProperties": false,
+          "properties": {
+            "authority_note": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "state": {
+              "const": "AUTHORITY_OPEN"
+            },
+            "value": {
+              "type": "null"
+            }
+          },
+          "required": [
+            "authority_note",
+            "state",
+            "value"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "provider_head",
+        "provider_run_id"
+      ],
+      "type": "object"
+    },
+    "schema": {
+      "const": "triad.closure.generation_context.v1"
+    },
+    "version": {
+      "const": "1"
+    }
+  },
+  "required": [
+    "schema",
+    "version",
+    "digest",
+    "payload"
+  ],
+  "type": "object"
+}

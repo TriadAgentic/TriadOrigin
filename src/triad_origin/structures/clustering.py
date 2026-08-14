@@ -1,4 +1,23 @@
-"""F19 — opportunity clustering and alias control (golden vector GV-016).
+"""RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F19} —
+``opportunity_cluster.v1`` withdrawal banner (repair spec §1.5).
+
+THREE CONFIRMED DEFECTS (R-F19): (1) the cluster ROOT depends on input ARRIVAL order, not
+``(availability, candidate_id)`` order — this machine processes one occurrence per
+``transition()`` call in the caller's arrival order ("whichever occurrence the upstream feed
+delivers first wins the root"), so a permutation delivering the ``(availability, id)``-larger
+candidate first roots it; (2) a REVISION (``_redeliver``) updates the row fields in place with
+``cluster_id`` untouched and NO edge re-evaluation, so a revision that changes a cluster-defining
+field never reclusters; (3) TTL / COMPACTION is absent — a component can never expire. Repaired as
+``opportunity_cluster.v2`` (:mod:`triad_origin.structures.clustering_v2`): the entrypoint SORTS the
+evaluation batch by ``(availability, candidate_id)`` before the frozen prospective rule (arrival
+order can never influence any output), a defining-field revision emits a cluster revision event and
+re-evaluates edges (retire-on-fail with prospective re-clustering), cross-cluster attachment MERGES
+under the min-root surviving id with an append-only ALIAS record, and TTL/COMPACTION expires an
+all-terminal, window-elapsed component. The bytes/logic below are preserved unchanged per the §1.5
+withdrawal law — never edited in place, never deleted; rows produced under this version keep their
+version tag forever (never-blend across formula versions).
+
+F19 — opportunity clustering and alias control (golden vector GV-016).
 
 Exact RC3 formula text (F19)::
 

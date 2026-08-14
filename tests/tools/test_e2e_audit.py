@@ -35,6 +35,11 @@ EXPECTED_STAGES = (
     "b00r_governance_evidence",
     "b01c_contract_binding_promotion",
     "c0_closure_control",
+    "b02c_security_boundary",
+    "b03c_structure_goldens",
+    "b04c_flow_goldens",
+    "b06r_cluster_goldens",
+    "co06_linkage_repair",
 )
 
 
@@ -42,9 +47,9 @@ def _completed(returncode: int, output: str) -> subprocess.CompletedProcess[str]
     return subprocess.CompletedProcess([], returncode, stdout=output, stderr="")
 
 
-def test_registry_is_exactly_the_25_stage_walk() -> None:
+def test_registry_is_exactly_the_30_stage_walk() -> None:
     assert tuple(name for name, _doc in e2e_audit.STAGES) == EXPECTED_STAGES
-    assert len({name for name, _doc in e2e_audit.STAGES}) == 25
+    assert len({name for name, _doc in e2e_audit.STAGES}) == 30
 
 
 def test_c0_stage_proves_structural_green_is_not_closure_green(monkeypatch) -> None:

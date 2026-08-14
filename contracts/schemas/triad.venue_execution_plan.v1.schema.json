@@ -1,0 +1,212 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.venue_execution_plan.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "CO-03 step 6: VenueExecutionPlan.v1 — the E08->E09 plan (F21/C-006). Field-complete for GV-018's variants: sparse level (observed_book.levels is an explicit, possibly empty or non-contiguous list of price/qty pairs), zone-outside-book (zone[z0,z1] is not range-bound to observed_book levels), GTX race (a post-only cross race resolves to a named token in refusal_codes, never a silent conversion). ordinal_budget is a bounded integer 0..4. price_filters and price_bands carry the venue price-filter and band constraints ('price_filters/bands' in the order text). Registered by CO-03 (TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12) as an additive major. Registration activates no producer and grants no authority; posture unchanged OFF/OFF/OFF/LIVE, DENIED_SAFE_HOLD.",
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "VENUE_EXECUTION_PLAN"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "account_mode": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "authorization_ref": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "economic_purpose": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "idempotency_key_law": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "instrument_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "observed_book": {
+          "additionalProperties": false,
+          "properties": {
+            "levels": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "price_ticks": {
+                    "pattern": "^-?(0|[1-9][0-9]*)$",
+                    "type": "string"
+                  },
+                  "qty_steps": {
+                    "pattern": "^-?(0|[1-9][0-9]*)$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "price_ticks",
+                  "qty_steps"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "revision": {
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "revision",
+            "levels"
+          ],
+          "type": "object"
+        },
+        "ordinal_budget": {
+          "maximum": 4,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "price_bands": {
+          "type": "object"
+        },
+        "price_filters": {
+          "type": "object"
+        },
+        "raw_credentials": false,
+        "refusal_codes": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "reprice_budget": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "side": {
+          "enum": [
+            "BUY",
+            "SELL"
+          ],
+          "type": "string"
+        },
+        "ttl_ms": {
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "type": "string"
+        },
+        "venue_order_id": false,
+        "venue_trade_id": false,
+        "zone": {
+          "additionalProperties": false,
+          "properties": {
+            "z0": {
+              "pattern": "^-?(0|[1-9][0-9]*)$",
+              "type": "string"
+            },
+            "z1": {
+              "pattern": "^-?(0|[1-9][0-9]*)$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "z0",
+            "z1"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "authorization_ref",
+        "economic_purpose",
+        "side",
+        "instrument_id",
+        "account_mode",
+        "zone",
+        "observed_book",
+        "ordinal_budget",
+        "reprice_budget",
+        "ttl_ms",
+        "price_filters",
+        "price_bands",
+        "idempotency_key_law",
+        "refusal_codes"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.venue_execution_plan.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_epoch",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.venue_execution_plan.v1",
+  "type": "object"
+}

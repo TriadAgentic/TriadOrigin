@@ -26,8 +26,12 @@ def _load(schema_id: str, kind: str) -> dict:
 def test_registry_lists_all_contracts():
     # 30 RC1 contracts + 12 B01 additions (RC4 lever/plane + receipt v2 + attestation v2 + auth v3)
     # + 1 B07 addition (candidate_authority.v1 — the externally issued, ORIGIN-verify-only
-    # governance-lease fact naming the selected engine_cohort producer).
-    assert len(CONTRACT_IDS) == 44
+    # governance-lease fact naming the selected engine_cohort producer)
+    # + 12 CO-03 additions (TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12: the four contract-union
+    # majors evidence_view.v2 / raw_venue_event.v2 / runtime_lifecycle.v2 /
+    # signed_recommendation.v1, transport_bindings.v1, venue_execution_plan.v1, and the six
+    # E03-E06 advisory-chain stubs marked CONTRACT_RATIFICATION_REQUIRED).
+    assert len(CONTRACT_IDS) == 56
 
 
 @pytest.mark.parametrize("schema_id", CONTRACT_IDS)
@@ -95,7 +99,7 @@ def test_public_contract_views_cannot_mutate_cached_validation_truth():
     schema.clear()
     registry = contracts.registry()
     registry["contracts"].clear()
-    assert len(contracts.known_contracts()) == 44
+    assert len(contracts.known_contracts()) == 56
     with pytest.raises(contracts.ContractError):
         contracts.validate(invalid, schema_id=schema_id)
     assert contracts.load_schema(schema_id)

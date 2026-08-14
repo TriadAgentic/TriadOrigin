@@ -34,7 +34,9 @@ first (a strictly better extreme re-freezes level + delta + origin; an equal ext
 re-freeze), then the reversal check runs against the frozen extreme. In the two-sided SEED phase
 a bar on which BOTH reversals confirm is an ambiguous boundary: it emits the named abstention
 ``F03_AMBIGUOUS_SEED_REVERSAL`` and re-seeds from that bar — never a side-preferring guess,
-which would break the LONG/SHORT mirror law.
+which would break the LONG/SHORT mirror law. (The F03 machine below is the retired
+``swing.dc.bar_extrema.v1`` — see its class banner; the repaired ``swing.dc.bar_extrema.v2``
+lives in :mod:`triad_origin.structures.swing_dc_v2`. F04 and F06 below remain live law.)
 
 F04 publishes only when the second right bar finalizes (delayed benchmark, never early); a tie
 on either side rejects (strict unique extreme); an incomplete right window yields no pivot
@@ -119,7 +121,19 @@ def _frozen(extreme_ticks: int, delta_ticks: int, origin_event_id: str) -> dict:
 
 
 class DirectionalChangeSwing:
-    """F03 — directional-change swing over finalized bars carrying causal ATR14 (GV-005).
+    """RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F03} —
+    ``swing.dc.bar_extrema.v1`` withdrawal banner (repair spec §1.5).
+
+    DEFECT: this v1 machine extends the provisional extreme FIRST and then evaluates the
+    reversal against the POST-extension extreme, so a wide-range extending bar confirms a swing
+    at its own bar (``origin_event_id == confirmed_by_event_id``) — the intrabar path is
+    unknowable from OHLC, so the outcome was implementation-defined. Repaired as
+    ``swing.dc.bar_extrema.v2`` (:mod:`triad_origin.structures.swing_dc_v2` — pre-bar reversal
+    evaluation + the PAR-036b ``ABSTAIN_EXTEND_WINS`` ambiguous-bar law). The bytes/logic below
+    are FROZEN: never edited in place, never deleted; rows produced under v1 keep their version
+    tag forever (never-blend applies across formula versions exactly as across cohorts).
+
+    F03 — directional-change swing over finalized bars carrying causal ATR14 (GV-005).
 
     ``delta_ticks = evaluate_declared_rational(DECLARED_DC_REVERSAL, atr)`` with the declared
     string arriving as the required parameter ``dc_reversal_rule`` (any other string refuses).
@@ -232,6 +246,24 @@ class FractalPivot:
     window (any tie rejects); mirror for ``pivot_low``. Publishes only when the second right bar
     finalizes. An incomplete right window yields no pivot (silent non-emission per the formula
     row); a detected ``bar_seq`` gap resets the window cleanly; out-of-order input refuses.
+
+    v1 ERRATUM (TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F04 — RATIFY_WITH_THIS_REPAIR;
+    ``swing.fractal.closed.v1`` is RETAINED, code unchanged where already strict):
+
+    (a) STRICT_UNIQUE is the v1 tie law — the already-bound law of registry rows
+        FPB-0012/FPB-0013 (strict ``>`` for high, ``<`` for low; ANY tie rejects). Any
+        earliest/latest tie variant is a NEW research identity
+        (``swing.fractal.closed.v2-tie-earliest`` etc.), never a silent change here.
+    (b) SIMULTANEOUS_PIVOT = BOTH_EMIT — a bar that is simultaneously the strict unique
+        window max-high AND the strict unique window min-low emits BOTH ``pivot_high(i)``
+        and ``pivot_low(i)`` as separate typed atoms with distinct identity material
+        (``kind`` always differs, and ``level_ticks`` always differ: a zero-range candidate
+        cannot be strictly outside valid bars on both sides). Emission order is pinned
+        deterministic: ``pivot_high`` before ``pivot_low``.
+
+    Availability stays the close of bar ``i+R`` (never backdated to ``i``). Registry rows
+    FPB-0012/FPB-0013 keep their ``PROPOSED_RC2_MUST_RATIFY`` status — this erratum ratifies
+    the tie/simultaneous LAW, not the L=R=2 values.
     """
 
     def initial_state(self) -> State:

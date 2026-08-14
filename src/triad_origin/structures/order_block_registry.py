@@ -1,4 +1,21 @@
-"""F12 — causal order block: opposing-origin search, BOS-linked confirmation, and a break
+"""RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F12} —
+``ob.displacement_bos.v1`` withdrawal banner (repair spec §1.5).
+
+FOUR CONFIRMED DEFECTS (R-F12): (1) the origin tie-break uses the superseded larger-body rule
+(mislabelled below as a "quote-notional" body term without any quantity) instead of the
+RC3-effective ``LATEST_THEN_MIN_SOURCE_ID`` rule — body size never participates; (2) one
+accepted ``LINKED_BOS`` confirms EVERY same-direction pending block (``_link_bos`` loops all —
+the spec's ONE-BOS-ONE-LINEAGE 1:1 consumption map is absent, and the envelope carries no
+``bos_occurrence_id`` at all); (3) TTL, mitigation, first-touch and lineage are absent (the
+"No TTL" scoping note below is overturned by the ratified R-F12 lifecycle); (4) OHLC validity
+is unenforced (``_candidate_geometry`` checks only ``low <= high``, not the §1.1 VALID_BAR
+predicate). Repaired as ``ob.displacement_bos.v2``
+(:mod:`triad_origin.structures.order_block_v2`; versioned successor face
+:mod:`triad_origin.structures.order_block_registry_v2`). The bytes/logic below are preserved
+unchanged per the §1.5 withdrawal law — never edited in place, never deleted; rows produced
+under this version keep their version tag forever (never-blend across formula versions).
+
+F12 — causal order block: opposing-origin search, BOS-linked confirmation, and a break
 lifecycle (b03 grounding row; RC3 formula row F12, gate G2, ``triad.origin.v7.rc3.f12.v1``).
 
 A pure :class:`triad_origin.transition.DeterministicMachine`. **Zero cross-module coupling by

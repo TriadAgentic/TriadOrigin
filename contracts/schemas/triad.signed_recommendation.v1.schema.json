@@ -1,0 +1,130 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.signed_recommendation.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "CO-03 step 4: Learning's advisory output, hard-split from outcome.*. decision_authority is const NONE — consumers may read, never auto-apply. Registered by CO-03 (TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12) as an additive major. Registration activates no producer and grants no authority; posture unchanged OFF/OFF/OFF/LIVE, DENIED_SAFE_HOLD.",
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "SIGNED_RECOMMENDATION"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "properties": {
+        "decision_authority": {
+          "enum": [
+            "NONE"
+          ],
+          "type": "string"
+        },
+        "evidence_refs": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "proposal": {
+          "type": "object"
+        },
+        "recommendation_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "signature": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "signer": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "subject_scope": {
+          "type": "object"
+        },
+        "valid_to": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "recommendation_id",
+        "subject_scope",
+        "evidence_refs",
+        "proposal",
+        "decision_authority",
+        "signer",
+        "signature",
+        "valid_to"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.signed_recommendation.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.signed_recommendation.v1",
+  "type": "object"
+}

@@ -1,4 +1,18 @@
-"""F10 — three-bar fair-value gap (FVG) zone with penetration lifecycle (b03 grounding row;
+"""RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F10} —
+``fvg.three_bar.closed.v2`` withdrawal banner (repair spec §1.5).
+
+DEFECT: this v2 machine evaluates existing zones for touch/fill BEFORE the sequence-gap reset
+(the gap only clears the local 3-bar formation window), so a pre-gap zone can be "filled"
+across missing bars; the exact INVALIDATED path, the midpoint/penetration state, the TTL
+binding, and compaction are absent. Repaired as ``fvg.three_bar.closed.v3``
+(:mod:`triad_origin.structures.fvg_registry_v3` — continuity-first evaluation order,
+INVALIDATED{SEQUENCE_GAP}, reduced-rational penetration states, the FVG_TTL_BARS /
+FVG_TOUCH_PRICE_SOURCE / FVG_INVALIDATION_RULE / FVG_MAX_OPEN_PER_PARTITION bindings and
+terminal compaction). The bytes/logic below are FROZEN: never edited in place, never deleted;
+rows produced under v2 keep their version tag forever (never-blend applies across formula
+versions exactly as across cohorts).
+
+F10 — three-bar fair-value gap (FVG) zone with penetration lifecycle (b03 grounding row;
 golden vector GV-009).
 
 **Geometry (RC1/RC2, retained where compatible).** For finalized bars ``i-2``, ``i-1``, ``i``:

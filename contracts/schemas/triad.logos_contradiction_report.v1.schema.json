@@ -1,0 +1,136 @@
+{
+  "$id": "https://triad.origin.v7/contracts/triad.logos_contradiction_report.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "RESERVED ADVISORY-CHAIN STUB (CO-03 step 7). PENDING_SIGNATURE: OWNER-TOPO-01 is adjudicated (2026-08-12) but NOT signed; per the CO-03 stop rule this schema carries ONLY the contract name plus the required lineage/no-authority fields (artifact/model/prompt/retrieval versions, uncertainty, calibration, freshness, citations, decision_authority const NONE). The payload is CLOSED (additionalProperties false): any body field is refused until the signed CO-14 topology decision lands. Consumers refuse with the named refusal CONTRACT_RATIFICATION_REQUIRED. E04 is excluded from the seam (OWNER-TOPO-01 Amendment A2): no E04 stub exists and none is authorized here. Registered by CO-03 (TRIAD-ORIGIN-V7-CHANGE-ORDERS-2026-08-12) as an additive major. Registration activates no producer and grants no authority; posture unchanged OFF/OFF/OFF/LIVE, DENIED_SAFE_HOLD.",
+  "properties": {
+    "activation_manifest_id": {
+      "type": "string"
+    },
+    "artifact_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "build_commit": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "config_bundle_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "contract_manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "correlation_id": {
+      "type": "string"
+    },
+    "emitted_at_us": {
+      "type": "integer"
+    },
+    "event_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "event_kind": {
+      "enum": [
+        "LOGOS_CONTRADICTION_REPORT"
+      ],
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "calibration": {
+          "type": "object"
+        },
+        "citations": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "decision_authority": {
+          "enum": [
+            "NONE"
+          ],
+          "type": "string"
+        },
+        "freshness": {
+          "type": "object"
+        },
+        "model_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "prompt_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "retrieval_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "uncertainty": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "artifact_version",
+        "model_version",
+        "prompt_version",
+        "retrieval_version",
+        "uncertainty",
+        "calibration",
+        "freshness",
+        "citations",
+        "decision_authority"
+      ],
+      "type": "object"
+    },
+    "producer_epoch": {
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "type": "string"
+    },
+    "producer_instance_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "producer_service": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema": {
+      "const": "triad.logos_contradiction_report.v1"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "traceparent": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "artifact_sha256",
+    "build_commit",
+    "config_bundle_sha256",
+    "contract_manifest_sha256",
+    "emitted_at_us",
+    "event_id",
+    "event_kind",
+    "payload",
+    "producer_instance_id",
+    "producer_service",
+    "schema",
+    "schema_version"
+  ],
+  "title": "triad.logos_contradiction_report.v1",
+  "type": "object",
+  "x-status": "CONTRACT_RATIFICATION_REQUIRED"
+}

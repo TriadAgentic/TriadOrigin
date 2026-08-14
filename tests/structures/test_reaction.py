@@ -1,4 +1,13 @@
-"""F14 departure/first-touch battery: GV-012, the three departure conjuncts, mirror, invariance."""
+"""F14 departure/first-touch battery: GV-012, the three departure conjuncts, mirror, invariance.
+
+RETIRED-HISTORY POSTURE (TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F14): this battery pins
+the RETIRED ``reaction.first_touch.v1`` bytes for replay of rows produced under v1 (never-blend
+across formula versions, §1.5) — including the v1-only behaviors the v2 law outlaws
+(equality-at-knowledge confirms, caller-precomputed ``DEPARTURE_CANDIDATE`` eligibility,
+abstention-shaped re-registration conflict, silent pre-departure/duplicate-contact ignores).
+The corrected law is pinned by ``tests/structures/test_reaction_v2.py``; nothing here is a
+statement of current law.
+"""
 
 from __future__ import annotations
 
@@ -310,3 +319,83 @@ class TestInvariance:
         assert resumed.final_state == whole.final_state
         dup = run(full + [full[-1]])
         assert dup.final_state == whole.final_state
+
+
+class TestF14Causality:
+    """F14 causal contact + re-registration conflict (audit-repair coverage)."""
+
+    def test_contact_before_zone_knowledge_is_ignored(self):
+        inputs = [
+            zone_registered("Z1", common.LONG, z_near=105, z_far=100, knowledge_time=5000),
+            departure("Z1", distance=5),
+            contact("Z1", low=105, high=110, event_time=1000),  # market time 1000 < knowledge 5000
+        ]
+        result = run(inputs)
+        assert [e for e in result.events if e.get("event_kind") == "REACTION_CONFIRMED"] == []
+
+    def test_contact_at_zone_knowledge_time_confirms(self):
+        inputs = [
+            zone_registered("Z1", common.LONG, z_near=105, z_far=100, knowledge_time=1000),
+            departure("Z1", distance=5),
+            contact("Z1", low=105, high=110, event_time=1000),  # == knowledge: causal, confirms
+        ]
+        result = run(inputs)
+        assert any(e.get("event_kind") == "REACTION_CONFIRMED" for e in result.events)
+
+    def test_conflicting_reregistration_is_refused_and_original_preserved(self):
+        inputs = [
+            zone_registered("Z1", common.LONG, z_near=105, z_far=100, knowledge_time=1000),
+            zone_registered("Z1", common.SHORT, z_near=200, z_far=210, knowledge_time=2000,
+                            event_id="reg_conflict"),
+        ]
+        result = run(inputs)
+        assert "F14_ZONE_REREGISTRATION_CONFLICT" in \
+            [e.get("reason_code") for e in result.events]
+        row = result.final_state["zones"]["Z1"]
+        assert (row["direction"], row["z_near_ticks"], row["z_far_ticks"],
+                row["knowledge_time_us"]) == (common.LONG, 105, 100, 1000)
+
+    def test_identical_reregistration_is_idempotent_no_conflict(self):
+        reg = zone_registered("Z1", common.LONG, z_near=105, z_far=100, knowledge_time=1000)
+        result = run([reg, dict(reg, event_id="reg_again")])
+        assert [e for e in result.events if e.get("reason_code")] == []
+        assert list(result.final_state["zones"]) == ["Z1"]
+
+
+# ---------------------------------------------------------------------------------------------
+# RETIRED POSTURE (R-F14) — v1 is withdrawn with its banner; v2 is the live successor. This
+# battery above pins v1 BYTES for replay only (never-blend, §1.5); the assertions below make the
+# withdrawal explicit rather than only prose in the module docstring.
+# ---------------------------------------------------------------------------------------------
+
+
+class TestRetiredPosture:
+    def test_v1_module_carries_the_retired_defective_banner(self):
+        import ast
+
+        source = pathlib.Path(reaction.__file__).read_text(encoding="utf-8")
+        doc = ast.get_docstring(ast.parse(source)) or ""
+        assert (
+            "RETIRED_DEFECTIVE{defect_ref=TRIAD-ORIGIN-V7-FORMULA-REPAIR-2026-08-12 R-F14}"
+            in doc
+        )
+        # The banner token stands alone on its line (only whitespace/backticks around it) so the
+        # C.3 static gate recognizes v1 as retired.
+        banner_line = next(
+            line for line in doc.splitlines()
+            if line.strip().strip("`").lstrip().startswith("RETIRED_DEFECTIVE{")
+        )
+        stripped = banner_line.strip().strip("`").lstrip()
+        tail = stripped[stripped.find("}") + 1:].strip().strip("`").strip()
+        assert all(ch in "—–-. " for ch in tail)
+
+    def test_v1_bytes_are_the_defective_v1_semantic_version(self):
+        # The version string is unchanged (never relabeled in place, §1.5).
+        source = pathlib.Path(reaction.__file__).read_text(encoding="utf-8")
+        assert "reaction.first_touch.v1" in source
+
+    def test_the_v2_successor_module_exists(self):
+        from triad_origin.structures import reaction_v2
+
+        assert reaction_v2.SEMANTIC_VERSION == "reaction.first_touch.v2"
+        assert reaction_v2.RETIRED_PREDECESSOR == "reaction.first_touch.v1"

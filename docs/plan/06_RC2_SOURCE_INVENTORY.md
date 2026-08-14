@@ -1,8 +1,19 @@
 # 06 · Control-Package Source Inventory
 
-_Updated 2026-08-09 (B00). The package is now **COMPLETE**: the members recorded missing in the
-2026-08-09 audit were supplied by the operator, and the canonical registries arrive embedded in
-the RC3 master document, extracted and vendored under `docs/control/`._
+> **CO-08 correction (2026-08-13).** The B00 paragraph below originally read "The package is
+> now **COMPLETE**". That claim is withdrawn: the CO-08 preimage scan
+> ([`CO-08-PREIMAGE-LEDGER.md`](CO-08-PREIMAGE-LEDGER.md)) finds the 2 RC1 declared payloads
+> (`README.md` 2,015 B `82636c6f…`; complete-edition HTML 3,993,202 B `33c01f8a…`) and all
+> 18 RC2 declared canonical inputs (manifest, `canonical/control_bundle.json`, 13 registries,
+> 3 receipt schemas) **UNAVAILABLE** in this repository, its full git history, and the session
+> uploads. The presentation artifacts are present and hash-correct; the canonical original
+> bytes are not — the RC3-embedded registries are *derived* extractions, not the declared
+> preimages. The corpus is **PARTIAL** until those bytes are re-supplied and hash-verified.
+
+_Updated 2026-08-09 (B00), corrected 2026-08-13 (CO-08). Original B00 wording (withdrawn):
+"The package is now COMPLETE: the members recorded missing in the 2026-08-09 audit were
+supplied by the operator, and the canonical registries arrive embedded in the RC3 master
+document, extracted and vendored under `docs/control/`."_
 
 ## Authentication against RC3's own integrity table
 
